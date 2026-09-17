@@ -1,9 +1,9 @@
 {
   "cooldown_blocklist": {},
   "stagnation_tracker": {
-    "AVAX": 4,
+    "AVAX": 5,
     "JUP": 0,
     "ASTER": 0
   },
-  "last_run_timestamp": "2026-09-17 20:02:27"
+  "last_run_timestamp": "2026-09-17 20:05:57"
 }
