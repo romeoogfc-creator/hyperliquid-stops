@@ -18,7 +18,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install Dependencies
-        run: pip install hyperliquid eth-account
+        run: pip install hyperliquid-python-sdk eth-account
 
       - name: Run Stop Sync
         env:
