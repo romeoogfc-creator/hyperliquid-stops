@@ -1,0 +1,27 @@
+name: Hyperliquid Hourly Stop Sync
+
+on:
+  schedule:
+- cron: '0 * * * *' # Runs automatically at minute 0 of every hour
+  workflow_dispatch:      # Enables manual trigger button in GitHub UI
+
+jobs:
+  sync-stops:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: pip install hyperliquid eth-account
+
+      - name: Run Stop Sync
+        env:
+          HL_SECRET_KEY: ${{ secrets.HL_SECRET_KEY }}
+          HL_ACCOUNT_ADDRESS: ${{ secrets.HL_ACCOUNT_ADDRESS }}
+        run: python manage_stops.py
