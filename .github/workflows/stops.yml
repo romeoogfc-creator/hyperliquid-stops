@@ -24,4 +24,4 @@ jobs:
         env:
           HL_SECRET_KEY: ${{ secrets.HL_SECRET_KEY }}
           HL_ACCOUNT_ADDRESS: ${{ secrets.HL_ACCOUNT_ADDRESS }}
-        run: python manage_stops.py
+        run: python -u manage_stops.py
