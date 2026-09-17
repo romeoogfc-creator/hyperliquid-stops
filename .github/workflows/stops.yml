@@ -1,13 +1,15 @@
-name: Hyperliquid 30-Min Stop Sync
+name: Hyperliquid TR-GC-Crypto-LS-23 Engine
 
 on:
   schedule:
-    - cron: '*/30 * * * *' # Runs every 30 minutes
+    - cron: '*/30 * * * *'
   workflow_dispatch:
 
 jobs:
-  sync-stops:
+  run-bot:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -18,10 +20,17 @@ jobs:
           python-version: '3.11'
 
       - name: Install Dependencies
-        run: pip install hyperliquid-python-sdk eth-account
+        run: pip install hyperliquid-python-sdk eth-account pandas numpy
 
-      - name: Run Stop Sync
+      - name: Execute Trading Engine
         env:
           HL_SECRET_KEY: ${{ secrets.HL_SECRET_KEY }}
           HL_ACCOUNT_ADDRESS: ${{ secrets.HL_ACCOUNT_ADDRESS }}
-        run: python -u manage_stops.py
+        run: python -u bot_engine.py
+
+      - name: Save State to Repo
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add state.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "auto: update bot state [skip ci]" && git push)
