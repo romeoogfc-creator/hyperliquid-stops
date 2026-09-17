@@ -20,12 +20,15 @@ jobs:
           python-version: '3.11'
 
       - name: Install Dependencies
-        run: pip install hyperliquid-python-sdk eth-account pandas numpy
+        run: pip install hyperliquid-python-sdk eth-account pandas numpy requests
 
       - name: Execute Trading Engine
         env:
           HL_SECRET_KEY: ${{ secrets.HL_SECRET_KEY }}
           HL_ACCOUNT_ADDRESS: ${{ secrets.HL_ACCOUNT_ADDRESS }}
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
+          RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
         run: python -u bot_engine.py
 
       - name: Save State to Repo
