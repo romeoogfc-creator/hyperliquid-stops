@@ -106,32 +106,23 @@ def execute_engine():
     open_orders = info.frontend_open_orders(ACCOUNT_ADDRESS)
     all_mids = info.all_mids()
 
-    # 1. Process Spot Balances & Valuations (Funds USD)
-    spot_funds = []
-    total_spot_value = 0.0
+    # Aggregate Assets (Spot Balances + Position Equities) matching SIGNUM logic
+    assets_map = {}
+
+    # 1. Spot Balances
     for b in spot_state.get("balances", []):
         coin = b.get("coin")
         total_bal = float(b.get("total", 0))
         if total_bal <= 0:
             continue
         price = 1.0 if coin == "USDC" else float(all_mids.get(coin, 0))
-        balance_usd = total_bal * price
-        total_spot_value += balance_usd
-        spot_funds.append({
-            "asset": coin,
-            "balance": total_bal,
-            "balance_usd": balance_usd
-        })
+        val_usd = total_bal * price
+        if coin not in assets_map:
+            assets_map[coin] = {"balance": 0.0, "balance_usd": 0.0}
+        assets_map[coin]["balance"] += total_bal
+        assets_map[coin]["balance_usd"] += val_usd
 
-    spot_funds.sort(key=lambda x: x["balance_usd"], reverse=True)
-
-    # 2. Process Perp Margin & Positions
-    margin_summary = user_state.get("marginSummary", {})
-    perp_account_value = float(margin_summary.get("accountValue", 0))
-
-    # Total Net Worth combining spot assets and perpetual positions
-    total_nav = total_spot_value + perp_account_value
-
+    # 2. Perpetual Positions (Collateral + PnL grouped by coin)
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
     positions_data = []
@@ -151,6 +142,7 @@ def execute_engine():
             current_px = float(all_mids.get(coin, entry_px))
             margin_used = float(pos.get("marginUsed", 0))
             unrealized_pnl = float(pos.get("unrealizedPnl", 0))
+            position_equity = margin_used + unrealized_pnl
 
             leverage_info = pos.get("leverage", {})
             leverage = float(leverage_info.get("value", 1.0)) if isinstance(leverage_info, dict) else 1.0
@@ -179,6 +171,11 @@ def execute_engine():
                 reduce_only=True
             )
 
+            if coin not in assets_map:
+                assets_map[coin] = {"balance": 0.0, "balance_usd": 0.0}
+            assets_map[coin]["balance"] += sz
+            assets_map[coin]["balance_usd"] += position_equity
+
             positions_data.append({
                 "bot_title": "Hyperliquid (TR-GC-Crypto-LS-23)",
                 "coin": coin,
@@ -197,12 +194,26 @@ def execute_engine():
 
     save_state(state)
 
+    # Calculate Total Net Worth precisely from sum of asset USD values
+    funds_list = []
+    total_nav = 0.0
+    for coin, data in assets_map.items():
+        if data["balance_usd"] > 0.01:
+            funds_list.append({
+                "asset": coin,
+                "balance": data["balance"],
+                "balance_usd": data["balance_usd"]
+            })
+            total_nav += data["balance_usd"]
+
+    funds_list.sort(key=lambda x: x["balance_usd"], reverse=True)
+
     # Build Plain Text Fallback
     text_fallback = f"TR-GC-Crypto-LS-23 | Bot #25900 Routine Run\nTimestamp: {timestamp}\nTotal Net Worth: USD ${total_nav:.2f}\nActive Positions: {active_count}/6"
 
     # Build HTML Rows for Funds Table
     funds_rows = ""
-    for f in spot_funds:
+    for f in funds_list:
         funds_rows += f"""
         <tr>
             <td style="padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;">{f['asset']}</td>
@@ -213,7 +224,7 @@ def execute_engine():
 
     # Build HTML Rows for Spot Assets per Bot Table
     spot_bot_rows = ""
-    for f in spot_funds:
+    for f in funds_list:
         if f['asset'] == 'USDC':
             spot_bot_rows += f"""
             <tr>
