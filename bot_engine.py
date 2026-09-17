@@ -60,6 +60,17 @@ def round_sig_figs(val, sig_figs=5):
         return 0
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
+def calculate_gaussian_channel(closes, poles=4, period=323, mult=1.414):
+    """Calculates Ehlers N-Pole Gaussian Channel upper and filter bands."""
+    s = pd.Series(closes)
+    alpha = (2.0 / (period + 1)) * (poles ** 0.5)
+    filtered = s.ewm(alpha=alpha, adjust=False).mean()
+    error = (s - filtered).abs()
+    deviation = error.ewm(alpha=alpha, adjust=False).mean() * mult
+    upper = filtered + deviation
+    filter_band = filtered
+    return upper.iloc[-1], filter_band.iloc[-1]
+
 def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0):
     if is_long:
         roe = ((current_px - entry_px) / entry_px) * leverage
@@ -88,10 +99,23 @@ def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0):
 
     return stop_px, roe, target_floor_roe
 
+def check_btc_daily_candle(info):
+    """Checks if BTC daily candle is Green (True) or Red (False)."""
+    try:
+        candles = info.candles_snapshot(name="BTC", interval="1d", startTime=int(time.time()*1000) - 86400000*3)
+        if candles and len(candles) > 0:
+            latest = candles[-1]
+            o = float(latest.get("o", 0))
+            c = float(latest.get("c", 0))
+            return c >= o
+    except Exception as e:
+        print(f"Error checking BTC daily candle: {e}")
+    return True
+
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     print("\n" + "="*60)
-    print(f"[{timestamp}] Executing TR-GC-Crypto-LS-23 Master Engine...")
+    print(f"[{timestamp}] Executing TR-GC-Crypto-LS-23 Full Master Engine...")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -105,11 +129,10 @@ def execute_engine():
     spot_state = info.spot_user_state(ACCOUNT_ADDRESS)
     open_orders = info.frontend_open_orders(ACCOUNT_ADDRESS)
     all_mids = info.all_mids()
+    meta = info.meta()
 
-    # Aggregate Assets (Spot Balances + Position Equities) matching SIGNUM logic
+    # 1. Process Spot Balances & Valuations (Funds USD)
     assets_map = {}
-
-    # 1. Spot Balances
     for b in spot_state.get("balances", []):
         coin = b.get("coin")
         total_bal = float(b.get("total", 0))
@@ -122,10 +145,11 @@ def execute_engine():
         assets_map[coin]["balance"] += total_bal
         assets_map[coin]["balance_usd"] += val_usd
 
-    # 2. Perpetual Positions (Collateral + PnL grouped by coin)
+    # 2. Process Perpetual Positions & Stops
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
     positions_data = []
+    active_coins = set()
 
     if asset_positions:
         for pos_item in asset_positions:
@@ -136,6 +160,7 @@ def execute_engine():
                 continue
 
             active_count += 1
+            active_coins.add(coin)
             is_long = szi > 0
             sz = abs(szi)
             entry_px = float(pos.get("entryPx", 0))
@@ -192,11 +217,81 @@ def execute_engine():
                 "status": "Active"
             })
 
+    # 3. Autonomous Top 100 Scanner & Entry Logic
+    btc_green = check_btc_daily_candle(info)
+    print(f"BTC Daily Candle Status: {'GREEN (LONGs Allowed)' if btc_green else 'RED (LONGs Blocked)'}")
+
+    universe = [asset["name"] for asset in meta.get("universe", [])]
+    market_data = []
+    for coin in universe:
+        if coin in active_coins or coin in ["USDC", "USDT"]:
+            continue
+        try:
+            px = float(all_mids.get(coin, 0))
+            if px <= 0:
+                continue
+            candles = info.candles_snapshot(name=coin, interval="1h", startTime=int(time.time()*1000) - 86400000*7)
+            if not candles or len(candles) < 50:
+                continue
+            closes = [float(c["c"]) for c in candles]
+            upper, filter_band = calculate_gaussian_channel(closes)
+            current_close = closes[-1]
+            
+            if current_close > upper and current_close <= upper * 1.025:
+                highs = [float(c["h"]) for c in candles[-14:]]
+                lows = [float(c["l"]) for c in candles[-14:]]
+                atr = np.mean([h - l for h, l in zip(highs, lows)])
+                is_ballistic = current_close > (upper + 1.5 * atr)
+                market_data.append({
+                    "coin": coin,
+                    "close": current_close,
+                    "upper": upper,
+                    "is_ballistic": is_ballistic
+                })
+        except Exception:
+            continue
+
+    if active_count < 6 and btc_green and market_data:
+        for candidate in market_data[: (6 - active_count)]:
+            coin = candidate["coin"]
+            px = candidate["close"]
+            is_ballistic = candidate["is_ballistic"]
+            
+            margin_summary = user_state.get("marginSummary", {})
+            total_nav = float(margin_summary.get("accountValue", 100.0))
+            target_pct = 0.12 if is_ballistic else 0.09
+            target_usd = max(45.0, total_nav * target_pct)
+            sz = round(target_usd / px, 4)
+            
+            print(f"Executing Autonomous LONG Entry on {coin} at ${px:.4f} (Size: {sz}, Ballistic: {is_ballistic})")
+            try:
+                res = exchange.market_open(coin, True, sz, px * 1.01)
+                if res.get("status") == "ok":
+                    active_count += 1
+                    active_coins.add(coin)
+            except Exception as e:
+                print(f"Failed to open position on {coin}: {e}")
+
+    # 4. 6/6 Rotation Check
+    if active_count == 6:
+        unprotected_trades = [p for p in positions_data if p["roe"] < 1.5]
+        if unprotected_trades:
+            stagnant_trade = max(unprotected_trades, key=lambda p: state["stagnation_tracker"].get(p["coin"], 0))
+            coin_to_rotate = stagnant_trade["coin"]
+            if state["stagnation_tracker"].get(coin_to_rotate, 0) >= 2:
+                print(f"Rotating stagnant trade {coin_to_rotate}")
+                try:
+                    exchange.market_close(coin_to_rotate)
+                    state["stagnation_tracker"][coin_to_rotate] = 0
+                    active_count -= 1
+                except Exception as e:
+                    print(f"Failed to close stagnant trade {coin_to_rotate}: {e}")
+
     save_state(state)
 
-    # Calculate Total Net Worth precisely from sum of asset USD values
-    funds_list = []
+    # Calculate Total Net Worth precisely
     total_nav = 0.0
+    funds_list = []
     for coin, data in assets_map.items():
         if data["balance_usd"] > 0.01:
             funds_list.append({
@@ -208,10 +303,8 @@ def execute_engine():
 
     funds_list.sort(key=lambda x: x["balance_usd"], reverse=True)
 
-    # Build Plain Text Fallback
-    text_fallback = f"TR-GC-Crypto-LS-23 | Bot #25900 Routine Run\nTimestamp: {timestamp}\nTotal Net Worth: USD ${total_nav:.2f}\nActive Positions: {active_count}/6"
+    text_fallback = f"TR-GC-Crypto-LS-23 | Bot #25900 Full Engine\nTimestamp: {timestamp}\nTotal Net Worth: USD ${total_nav:.2f}\nActive Positions: {active_count}/6"
 
-    # Build HTML Rows for Funds Table
     funds_rows = ""
     for f in funds_list:
         funds_rows += f"""
@@ -222,7 +315,6 @@ def execute_engine():
         </tr>
         """
 
-    # Build HTML Rows for Spot Assets per Bot Table
     spot_bot_rows = ""
     for f in funds_list:
         if f['asset'] == 'USDC':
@@ -236,7 +328,6 @@ def execute_engine():
             </tr>
             """
 
-    # Build HTML Rows for Positions per Bot Table
     positions_rows = ""
     for p in positions_data:
         pnl_color = "#2e7d32" if p["pnl"] >= 0 else "#c62828"
@@ -278,8 +369,8 @@ def execute_engine():
       <body>
         <div class="container">
           <div class="header">
-            <h2>TR-GC-Crypto-LS-23 | Bot #25900 Dashboard</h2>
-            <p>Automated Run Timestamp: {timestamp}</p>
+            <h2>TR-GC-Crypto-LS-23 | Bot #25900 Full Engine</h2>
+            <p>Automated Run Timestamp: {timestamp} &bull; BTC Trend: {'GREEN' if btc_green else 'RED'}</p>
           </div>
           <div class="content">
             
@@ -346,14 +437,14 @@ def execute_engine():
     </html>
     """
 
-    send_html_dashboard_email(f"Hyperliquid Dashboard Report — USD ${total_nav:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] Engine run complete. SIGNUM-style HTML dashboard email dispatched.")
+    send_html_dashboard_email(f"Hyperliquid Full Engine Report — USD ${total_nav:.2f}", html_content, text_fallback)
+    print(f"[{timestamp}] Full engine scan and management complete. Email dispatched.")
 
 if __name__ == "__main__":
     try:
         execute_engine()
     except Exception as e:
-        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Engine execution error: {e}"
+        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Full engine execution error: {e}"
         print(err_msg)
         send_html_dashboard_email("Hyperliquid Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
         raise e
