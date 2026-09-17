@@ -2,8 +2,8 @@ name: Hyperliquid Hourly Stop Sync
 
 on:
   schedule:
-- cron: '0 * * * *' # Runs automatically at minute 0 of every hour
-  workflow_dispatch:      # Enables manual trigger button in GitHub UI
+    - cron: '0 * * * *'
+  workflow_dispatch:
 
 jobs:
   sync-stops:
