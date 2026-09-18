@@ -58,7 +58,7 @@ def send_html_dashboard_email(subject, html_content, text_fallback):
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(sender_email, sender_password)
             server.sendmail(sender_email, receiver_email, msg.as_string())
-        print(f"SIGNUM-style telemetry report successfully sent to {receiver_email}")
+        print(f"Mobile-optimized telemetry report successfully sent to {receiver_email}")
     except Exception as e:
         print(f"Failed to send email: {e}")
 
@@ -320,12 +320,14 @@ def execute_engine():
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 11px; color: #475569;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
         <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log</div>
-        <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px;">
-          <tbody>{audit_rows}</tbody>
-        </table>
+        <div class="table-responsive">
+          <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%;">
+            <tbody>{audit_rows}</tbody>
+          </table>
+        </div>
         """
 
-    text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Engine\nTimestamp: {timestamp}\nTotal Net Worth: USD ${total_nav:.2f}\nActive Positions: {active_count}/6"
+    text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${total_nav:.2f}\nActive Positions: {active_count}/6"
 
     funds_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{f['asset']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${f['balance_usd']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #555;'>{f['balance']:.4f}</td></tr>" for f in sorted([{"asset": c, **d} for c, d in assets_map.items() if d["balance_usd"] > 0.01], key=lambda x: x["balance_usd"], reverse=True)])
     positions_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['leverage']}x</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['collateral']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td></tr>" for p in positions_data]) or "<tr><td colspan='7' style='padding: 15px; text-align: center; color: #666;'>No active positions found.</td></tr>"
@@ -335,21 +337,32 @@ def execute_engine():
     html_content = f"""
     <html>
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-          body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 20px; color: #333; }}
-          .container {{ max-width: 750px; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }}
-          .header {{ background: #0f172a; color: #ffffff; padding: 20px 25px; }}
-          .header h2 {{ margin: 0; font-size: 18px; font-weight: 600; }}
-          .header p {{ margin: 5px 0 0; font-size: 12px; color: #94a3b8; }}
-          .content {{ padding: 25px; }}
-          .net-worth-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 20px; margin-bottom: 25px; }}
-          .net-worth-title {{ font-size: 13px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 8px; }}
-          .net-worth-value {{ font-size: 28px; font-weight: 700; color: #0f172a; }}
-          .net-worth-subtitle {{ font-size: 12px; color: #64748b; margin-top: 5px; }}
-          .section-title {{ font-size: 14px; text-transform: uppercase; color: #475569; margin: 25px 0 10px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 5px; font-weight: 600; }}
-          table {{ width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 15px; }}
-          th {{ background: #f1f5f9; color: #475569; text-align: left; padding: 9px 10px; font-weight: 600; border-bottom: 2px solid #cbd5e1; }}
-          .footer {{ text-align: center; font-size: 11px; color: #94a3b8; padding: 15px; background: #f8fafc; border-top: 1px solid #e2e8f0; }}
+          body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 10px; color: #333; }}
+          .container {{ max-width: 100%; width: 100%; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); box-sizing: border-box; }}
+          .header {{ background: #0f172a; color: #ffffff; padding: 15px 20px; }}
+          .header h2 {{ margin: 0; font-size: 16px; font-weight: 600; }}
+          .header p {{ margin: 5px 0 0; font-size: 11px; color: #94a3b8; }}
+          .content {{ padding: 15px; }}
+          .net-worth-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin-bottom: 20px; }}
+          .net-worth-title {{ font-size: 12px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 6px; }}
+          .net-worth-value {{ font-size: 24px; font-weight: 700; color: #0f172a; }}
+          .net-worth-subtitle {{ font-size: 11px; color: #64748b; margin-top: 4px; }}
+          .section-title {{ font-size: 13px; text-transform: uppercase; color: #475569; margin: 20px 0 8px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; font-weight: 600; }}
+          .table-responsive {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 15px; }}
+          table {{ width: 100%; border-collapse: collapse; font-size: 11px; white-space: nowrap; }}
+          th {{ background: #f1f5f9; color: #475569; text-align: left; padding: 8px 8px; font-weight: 600; border-bottom: 2px solid #cbd5e1; }}
+          td {{ padding: 8px 8px; }}
+          .footer {{ text-align: center; font-size: 10px; color: #94a3b8; padding: 12px; background: #f8fafc; border-top: 1px solid #e2e8f0; }}
+          @media screen and (min-width: 600px) {{
+            body {{ padding: 20px; }}
+            .container {{ max-width: 750px; }}
+            .header {{ padding: 20px 25px; }}
+            .header h2 {{ font-size: 18px; }}
+            .content {{ padding: 25px; }}
+            table {{ font-size: 12px; white-space: normal; }}
+          }}
         </style>
       </head>
       <body>
@@ -366,10 +379,14 @@ def execute_engine():
             </div>
 
             <div class="section-title">Funds (USD)</div>
-            <table><thead><tr><th>Asset</th><th>Balance USD</th><th>Balance</th></tr></thead><tbody>{funds_rows}</tbody></table>
+            <div class="table-responsive">
+              <table><thead><tr><th>Asset</th><th>Balance USD</th><th>Balance</th></tr></thead><tbody>{funds_rows}</tbody></table>
+            </div>
 
             <div class="section-title">Positions per Bot (USD)</div>
-            <table><thead><tr><th>Bot Title</th><th>Asset</th><th>Leverage</th><th>Side</th><th>Collateral USD</th><th>Unrealized P&L USD</th><th>Bot Status</th></tr></thead><tbody>{positions_rows}</tbody></table>
+            <div class="table-responsive">
+              <table><thead><tr><th>Bot Title</th><th>Asset</th><th>Leverage</th><th>Side</th><th>Collateral USD</th><th>Unrealized P&L USD</th><th>Bot Status</th></tr></thead><tbody>{positions_rows}</tbody></table>
+            </div>
 
             {audit_section}
 
@@ -381,7 +398,7 @@ def execute_engine():
     """
 
     send_html_dashboard_email(f"Hyperliquid Test Report — USD ${total_nav:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] Telemetry execution and reporting complete.")
+    print(f"[{timestamp}] Mobile-optimized telemetry execution complete.")
 
 if __name__ == "__main__":
     try:
