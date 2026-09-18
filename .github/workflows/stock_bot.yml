@@ -2,8 +2,9 @@ name: Alpaca TR-GC-Equities-LS-01 Engine
 
 on:
   schedule:
-    # Runs every 30 mins, Mon-Fri between 9:30 AM and 4:00 PM ET (UTC hours: 14:00 to 21:00 UTC)
-    - cron: '*/30 14-21 * * 1-5'
+    # Runs every 30 mins from 13:00 UTC to 20:00 UTC, Mon-Fri
+    # Precisely covers 9:00 AM to 4:00 PM ET / 8:00 AM to 3:00 PM CT (Opening bell to close)
+    - cron: '*/30 13-20 * * 1-5'
   workflow_dispatch:
 
 jobs:
