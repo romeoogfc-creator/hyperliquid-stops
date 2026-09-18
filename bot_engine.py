@@ -61,15 +61,15 @@ def round_sig_figs(val, sig_figs=5):
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
 def calculate_gaussian_channel(closes, poles=4, period=323, mult=1.414):
-    """Calculates Ehlers N-Pole Gaussian Channel upper and filter bands."""
+    """Calculates Ehlers N-Pole Gaussian Channel upper, lower, and filter bands."""
     s = pd.Series(closes)
     alpha = (2.0 / (period + 1)) * (poles ** 0.5)
     filtered = s.ewm(alpha=alpha, adjust=False).mean()
     error = (s - filtered).abs()
     deviation = error.ewm(alpha=alpha, adjust=False).mean() * mult
     upper = filtered + deviation
-    filter_band = filtered
-    return upper.iloc[-1], filter_band.iloc[-1]
+    lower = filtered - deviation
+    return upper.iloc[-1], lower.iloc[-1], filtered.iloc[-1]
 
 def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0):
     if is_long:
@@ -94,10 +94,12 @@ def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0):
 
     if is_long:
         stop_px = entry_px * (1 + (target_floor_roe / leverage))
+        is_buy_order = False
     else:
         stop_px = entry_px * (1 - (target_floor_roe / leverage))
+        is_buy_order = True
 
-    return stop_px, roe, target_floor_roe
+    return stop_px, roe, target_floor_roe, is_buy_order
 
 def check_btc_daily_candle(info):
     """Checks if BTC daily candle is Green (True) or Red (False)."""
@@ -115,7 +117,7 @@ def check_btc_daily_candle(info):
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     print("\n" + "="*60)
-    print(f"[{timestamp}] Executing TR-GC-Crypto-LS-23 Full Master Engine...")
+    print(f"[{timestamp}] Executing TR-GC-Crypto-LS-23 Bi-Directional Master Engine...")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -174,9 +176,8 @@ def execute_engine():
             if leverage <= 0:
                 leverage = 1.0
 
-            stop_px_raw, current_roe, target_floor = calculate_stop_price(entry_px, is_long, current_px, leverage)
+            stop_px_raw, current_roe, target_floor, is_buy_order = calculate_stop_price(entry_px, is_long, current_px, leverage)
             px = round_sig_figs(stop_px_raw, 5)
-            is_buy_order = not is_long
 
             if current_roe < 0.01:
                 state["stagnation_tracker"][coin] = state["stagnation_tracker"].get(coin, 0) + 1
@@ -217,12 +218,13 @@ def execute_engine():
                 "status": "Active"
             })
 
-    # 3. Autonomous Top 100 Scanner & Entry Logic
+    # 3. Autonomous Bi-Directional Scanner & Entry Logic
     btc_green = check_btc_daily_candle(info)
-    print(f"BTC Daily Candle Status: {'GREEN (LONGs Allowed)' if btc_green else 'RED (LONGs Blocked)'}")
+    print(f"BTC Daily Candle Status: {'GREEN (LONGs Allowed / SHORTs Blocked)' if btc_green else 'RED (SHORTs Allowed / LONGs Blocked)'}")
 
-    universe = [asset["name"] for asset in meta.get("universe", [])]
-    market_data = []
+    universe = [asset["name"] for asset in meta.get("universe", [])][:100] # Top 100 coin universe
+    market_candidates = []
+
     for coin in universe:
         if coin in active_coins or coin in ["USDC", "USDT"]:
             continue
@@ -234,27 +236,40 @@ def execute_engine():
             if not candles or len(candles) < 50:
                 continue
             closes = [float(c["c"]) for c in candles]
-            upper, filter_band = calculate_gaussian_channel(closes)
+            upper, lower, filter_band = calculate_gaussian_channel(closes)
             current_close = closes[-1]
             
-            if current_close > upper and current_close <= upper * 1.025:
-                highs = [float(c["h"]) for c in candles[-14:]]
-                lows = [float(c["l"]) for c in candles[-14:]]
-                atr = np.mean([h - l for h, l in zip(highs, lows)])
+            highs = [float(c["h"]) for c in candles[-14:]]
+            lows = [float(c["l"]) for c in candles[-14:]]
+            atr = np.mean([h - l for h, l in zip(highs, lows)])
+
+            # LONG Signal (Only if BTC is Green)
+            if btc_green and current_close > upper and current_close <= upper * 1.025:
                 is_ballistic = current_close > (upper + 1.5 * atr)
-                market_data.append({
+                market_candidates.append({
                     "coin": coin,
                     "close": current_close,
-                    "upper": upper,
+                    "is_long": True,
+                    "is_ballistic": is_ballistic
+                })
+            
+            # SHORT Signal (Only if BTC is Red)
+            elif not btc_green and current_close < lower and current_close >= lower * 0.975:
+                is_ballistic = current_close < (lower - 1.5 * atr)
+                market_candidates.append({
+                    "coin": coin,
+                    "close": current_close,
+                    "is_long": False,
                     "is_ballistic": is_ballistic
                 })
         except Exception:
             continue
 
-    if active_count < 6 and btc_green and market_data:
-        for candidate in market_data[: (6 - active_count)]:
+    if active_count < 6 and market_candidates:
+        for candidate in market_candidates[: (6 - active_count)]:
             coin = candidate["coin"]
             px = candidate["close"]
+            is_long = candidate["is_long"]
             is_ballistic = candidate["is_ballistic"]
             
             margin_summary = user_state.get("marginSummary", {})
@@ -263,9 +278,14 @@ def execute_engine():
             target_usd = max(45.0, total_nav * target_pct)
             sz = round(target_usd / px, 4)
             
-            print(f"Executing Autonomous LONG Entry on {coin} at ${px:.4f} (Size: {sz}, Ballistic: {is_ballistic})")
+            side_str = "LONG" if is_long else "SHORT"
+            print(f"Executing Autonomous {side_str} Entry on {coin} at ${px:.4f} (Size: {sz}, Ballistic: {is_ballistic})")
             try:
-                res = exchange.market_open(coin, True, sz, px * 1.01)
+                if is_long:
+                    res = exchange.market_open(coin, True, sz, px * 1.01)
+                else:
+                    res = exchange.market_open(coin, False, sz, px * 0.99)
+                    
                 if res.get("status") == "ok":
                     active_count += 1
                     active_coins.add(coin)
@@ -303,7 +323,7 @@ def execute_engine():
 
     funds_list.sort(key=lambda x: x["balance_usd"], reverse=True)
 
-    text_fallback = f"TR-GC-Crypto-LS-23 | Bot #25900 Full Engine\nTimestamp: {timestamp}\nTotal Net Worth: USD ${total_nav:.2f}\nActive Positions: {active_count}/6"
+    text_fallback = f"TR-GC-Crypto-LS-23 | Bi-Directional Engine\nTimestamp: {timestamp}\nTotal Net Worth: USD ${total_nav:.2f}\nActive Positions: {active_count}/6"
 
     funds_rows = ""
     for f in funds_list:
@@ -369,8 +389,8 @@ def execute_engine():
       <body>
         <div class="container">
           <div class="header">
-            <h2>TR-GC-Crypto-LS-23 | Bot #25900 Full Engine</h2>
-            <p>Automated Run Timestamp: {timestamp} &bull; BTC Trend: {'GREEN' if btc_green else 'RED'}</p>
+            <h2>TR-GC-Crypto-LS-23 | Bi-Directional Engine</h2>
+            <p>Automated Run Timestamp: {timestamp} &bull; BTC Regime: {'GREEN (LONGs Only)' if btc_green else 'RED (SHORTs Only)'}</p>
           </div>
           <div class="content">
             
@@ -437,14 +457,14 @@ def execute_engine():
     </html>
     """
 
-    send_html_dashboard_email(f"Hyperliquid Full Engine Report — USD ${total_nav:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] Full engine scan and management complete. Email dispatched.")
+    send_html_dashboard_email(f"Hyperliquid Bi-Directional Report — USD ${total_nav:.2f}", html_content, text_fallback)
+    print(f"[{timestamp}] Bi-Directional engine scan and management complete. Email dispatched.")
 
 if __name__ == "__main__":
     try:
         execute_engine()
     except Exception as e:
-        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Full engine execution error: {e}"
+        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Bi-Directional engine execution error: {e}"
         print(err_msg)
         send_html_dashboard_email("Hyperliquid Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
         raise e
