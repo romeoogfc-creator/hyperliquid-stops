@@ -118,7 +118,7 @@ def check_btc_daily_candle(info):
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Test Telemetry Engine Started (24h Stagnation Mode).")
+    audit_logs.append(f"[{timestamp}] Test Telemetry Engine Started (Signum-Style Net Worth Mode).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -134,23 +134,19 @@ def execute_engine():
     all_mids = info.all_mids()
     meta = info.meta()
 
-    margin_summary = user_state.get("marginSummary", {})
-    total_nav = float(margin_summary.get("accountValue", 500.0))
-
-    assets_map = {}
+    # Get total USDC baseline from spot balances
+    spot_usdc = 0.0
     for b in spot_state.get("balances", []):
-        coin = b.get("coin")
-        total_bal = float(b.get("total", 0))
-        if total_bal <= 0:
-            continue
-        price = 1.0 if coin == "USDC" else float(all_mids.get(coin, 0))
-        val_usd = total_bal * price
-        assets_map[coin] = {"balance": total_bal, "balance_usd": val_usd}
+        if b.get("coin") == "USDC":
+            spot_usdc = float(b.get("total", 0))
+
+    total_nav = spot_usdc if spot_usdc > 0 else 500.0
 
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
     positions_data = []
     active_coins = set()
+    total_positions_value = 0.0
 
     if asset_positions:
         for pos_item in asset_positions:
@@ -168,6 +164,8 @@ def execute_engine():
             current_px = float(all_mids.get(coin, entry_px))
             margin_used = float(pos.get("marginUsed", 0))
             unrealized_pnl = float(pos.get("unrealizedPnl", 0))
+            pos_equity = margin_used + unrealized_pnl
+            total_positions_value += pos_equity
 
             leverage_info = pos.get("leverage", {})
             leverage = float(leverage_info.get("value", 1.0)) if isinstance(leverage_info, dict) else 1.0
@@ -214,6 +212,16 @@ def execute_engine():
                 "floor": target_floor * 100,
                 "status": "Active"
             })
+
+    # Signum-style Funds Map: Remaining unallocated USDC + position values
+    remaining_usdc = max(0.0, total_nav - total_positions_value)
+    assets_map = {
+        "USDC": {"balance": remaining_usdc, "balance_usd": remaining_usdc}
+    }
+    for p in positions_data:
+        coin = p["coin"]
+        pos_val = p["collateral"] + p["pnl"]
+        assets_map[coin] = {"balance": p["sz"], "balance_usd": pos_val}
 
     btc_green, btc_open, btc_close = check_btc_daily_candle(info)
     regime_str = f"GREEN (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> LONGs Allowed" if btc_green else f"RED (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> SHORTs Allowed"
@@ -303,7 +311,7 @@ def execute_engine():
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 11px; color: #475569;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (24h Stagnation)</div>
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Signum Mode)</div>
         <div class="table-responsive">
           <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%;">
             <tbody>{audit_rows}</tbody>
@@ -316,7 +324,7 @@ def execute_engine():
     funds_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${d['balance_usd']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #555;'>{d['balance']:.4f}</td></tr>" for f, d in assets_map.items() if d['balance_usd'] > 0.01])
     positions_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['leverage']}x</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['collateral']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td></tr>" for p in positions_data]) or "<tr><td colspan='7' style='padding: 15px; text-align: center; color: #666;'>No active positions found.</td></tr>"
 
-    mode_label = 'DEBUG / 24H STAGNATION TEST' if VERBOSE_TEST_MODE else 'PRODUCTION'
+    mode_label = 'DEBUG / SIGNUM LAYOUT TEST' if VERBOSE_TEST_MODE else 'PRODUCTION'
 
     html_content = f"""
     <html>
@@ -351,7 +359,7 @@ def execute_engine():
             <div class="net-worth-card">
               <div class="net-worth-title">Total Net Worth</div>
               <div class="net-worth-value">USD ${total_nav:.2f}</div>
-              <div class="net-worth-subtitle">Based on official Hyperliquid Account Equity.</div>
+              <div class="net-worth-subtitle">Based on current Spot Assets & Positions (incl. unrealized P&L).</div>
             </div>
 
             <div class="section-title">Funds (USD)</div>
@@ -374,7 +382,7 @@ def execute_engine():
     """
 
     send_html_dashboard_email(f"Hyperliquid Report — USD ${total_nav:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] 24h Stagnation & Net Worth update complete.")
+    print(f"[{timestamp}] Signum-style layout update complete.")
 
 if __name__ == "__main__":
     try:
