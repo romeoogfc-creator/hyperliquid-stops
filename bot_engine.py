@@ -16,6 +16,13 @@ ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
 SECRET_KEY = os.getenv("HL_SECRET_KEY")
 STATE_FILE = "state.json"
 
+# =====================================================================
+# CONFIGURATION SWITCH FOR TESTING PHASE
+# Set to True for full diagnostic logs in email. 
+# Set to False later to trim email back to just the financial summary.
+# =====================================================================
+VERBOSE_TEST_MODE = True
+
 def load_state():
     if os.path.exists(STATE_FILE):
         try:
@@ -51,7 +58,7 @@ def send_html_dashboard_email(subject, html_content, text_fallback):
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(sender_email, sender_password)
             server.sendmail(sender_email, receiver_email, msg.as_string())
-        print(f"SIGNUM-style HTML dashboard email successfully sent to {receiver_email}")
+        print(f"SIGNUM-style telemetry report successfully sent to {receiver_email}")
     except Exception as e:
         print(f"Failed to send email: {e}")
 
@@ -61,7 +68,6 @@ def round_sig_figs(val, sig_figs=5):
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
 def calculate_gaussian_channel(closes, poles=4, period=323, mult=1.414):
-    """Calculates Ehlers N-Pole Gaussian Channel upper, lower, and filter bands."""
     s = pd.Series(closes)
     alpha = (2.0 / (period + 1)) * (poles ** 0.5)
     filtered = s.ewm(alpha=alpha, adjust=False).mean()
@@ -102,22 +108,22 @@ def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0):
     return stop_px, roe, target_floor_roe, is_buy_order
 
 def check_btc_daily_candle(info):
-    """Checks if BTC daily candle is Green (True) or Red (False)."""
     try:
-        candles = info.candles_snapshot(name="BTC", interval="1d", startTime=int(time.time()*1000) - 86400000*3)
+        now_ms = int(time.time() * 1000)
+        candles = info.candles_snapshot(name="BTC", interval="1d", startTime=now_ms - 86400000 * 5, endTime=now_ms)
         if candles and len(candles) > 0:
             latest = candles[-1]
             o = float(latest.get("o", 0))
             c = float(latest.get("c", 0))
-            return c >= o
+            return c >= o, o, c
     except Exception as e:
         print(f"Error checking BTC daily candle: {e}")
-    return True
+    return True, 0.0, 0.0
 
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print("\n" + "="*60)
-    print(f"[{timestamp}] Executing TR-GC-Crypto-LS-23 Bi-Directional Master Engine...")
+    audit_logs = []
+    audit_logs.append(f"[{timestamp}] Test Telemetry Engine Started.")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -133,7 +139,7 @@ def execute_engine():
     all_mids = info.all_mids()
     meta = info.meta()
 
-    # 1. Process Spot Balances & Valuations (Funds USD)
+    # 1. Process Spot Balances
     assets_map = {}
     for b in spot_state.get("balances", []):
         coin = b.get("coin")
@@ -188,7 +194,7 @@ def execute_engine():
                 if order.get("coin") == coin and order.get("isTrigger"):
                     exchange.cancel(coin, order["oid"])
 
-            res = exchange.order(
+            exchange.order(
                 coin,
                 is_buy_order,
                 sz,
@@ -217,13 +223,17 @@ def execute_engine():
                 "floor": target_floor * 100,
                 "status": "Active"
             })
+            audit_logs.append(f"Position Active: {coin} ({'LONG' if is_long else 'SHORT'}) | ROE: {current_roe*100:+.2f}% | Stop Set: ${px}")
 
     # 3. Autonomous Bi-Directional Scanner & Entry Logic
-    btc_green = check_btc_daily_candle(info)
-    print(f"BTC Daily Candle Status: {'GREEN (LONGs Allowed / SHORTs Blocked)' if btc_green else 'RED (SHORTs Allowed / LONGs Blocked)'}")
+    btc_green, btc_open, btc_close = check_btc_daily_candle(info)
+    regime_str = f"GREEN (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> LONGs Allowed" if btc_green else f"RED (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> SHORTs Allowed"
+    audit_logs.append(f"BTC Regime Check: {regime_str}")
 
-    universe = [asset["name"] for asset in meta.get("universe", [])][:100] # Top 100 coin universe
+    universe = [asset["name"] for asset in meta.get("universe", [])][:100]
     market_candidates = []
+    scanned_count = 0
+    now_ms = int(time.time() * 1000)
 
     for coin in universe:
         if coin in active_coins or coin in ["USDC", "USDT"]:
@@ -232,9 +242,10 @@ def execute_engine():
             px = float(all_mids.get(coin, 0))
             if px <= 0:
                 continue
-            candles = info.candles_snapshot(name=coin, interval="1h", startTime=int(time.time()*1000) - 86400000*7)
+            candles = info.candles_snapshot(name=coin, interval="1h", startTime=now_ms - 86400000 * 7, endTime=now_ms)
             if not candles or len(candles) < 50:
                 continue
+            scanned_count += 1
             closes = [float(c["c"]) for c in candles]
             upper, lower, filter_band = calculate_gaussian_channel(closes)
             current_close = closes[-1]
@@ -243,27 +254,18 @@ def execute_engine():
             lows = [float(c["l"]) for c in candles[-14:]]
             atr = np.mean([h - l for h, l in zip(highs, lows)])
 
-            # LONG Signal (Only if BTC is Green)
             if btc_green and current_close > upper and current_close <= upper * 1.025:
                 is_ballistic = current_close > (upper + 1.5 * atr)
-                market_candidates.append({
-                    "coin": coin,
-                    "close": current_close,
-                    "is_long": True,
-                    "is_ballistic": is_ballistic
-                })
-            
-            # SHORT Signal (Only if BTC is Red)
+                market_candidates.append({"coin": coin, "close": current_close, "is_long": True, "is_ballistic": is_ballistic})
+                audit_logs.append(f"MATCH LONG: {coin} @ ${current_close:.4f} (Upper: ${upper:.2f}, Ballistic: {is_ballistic})")
             elif not btc_green and current_close < lower and current_close >= lower * 0.975:
                 is_ballistic = current_close < (lower - 1.5 * atr)
-                market_candidates.append({
-                    "coin": coin,
-                    "close": current_close,
-                    "is_long": False,
-                    "is_ballistic": is_ballistic
-                })
-        except Exception:
+                market_candidates.append({"coin": coin, "close": current_close, "is_long": False, "is_ballistic": is_ballistic})
+                audit_logs.append(f"MATCH SHORT: {coin} @ ${current_close:.4f} (Lower: ${lower:.2f}, Ballistic: {is_ballistic})")
+        except Exception as e:
             continue
+
+    audit_logs.append(f"Scan Complete: Evaluated {scanned_count} universe assets. Found {len(market_candidates)} valid breakouts.")
 
     if active_count < 6 and market_candidates:
         for candidate in market_candidates[: (6 - active_count)]:
@@ -279,7 +281,6 @@ def execute_engine():
             sz = round(target_usd / px, 4)
             
             side_str = "LONG" if is_long else "SHORT"
-            print(f"Executing Autonomous {side_str} Entry on {coin} at ${px:.4f} (Size: {sz}, Ballistic: {is_ballistic})")
             try:
                 if is_long:
                     res = exchange.market_open(coin, True, sz, px * 1.01)
@@ -289,82 +290,46 @@ def execute_engine():
                 if res.get("status") == "ok":
                     active_count += 1
                     active_coins.add(coin)
+                    audit_logs.append(f"EXECUTION SUCCESS: Opened {side_str} on {coin} (Size: {sz})")
             except Exception as e:
-                print(f"Failed to open position on {coin}: {e}")
+                audit_logs.append(f"EXECUTION FAILED on {coin}: {e}")
+    else:
+        audit_logs.append(f"Execution Gate: Active slots ({active_count}/6). No new market entries triggered this run.")
 
-    # 4. 6/6 Rotation Check
+    # 4. Rotation Check
     if active_count == 6:
         unprotected_trades = [p for p in positions_data if p["roe"] < 1.5]
         if unprotected_trades:
             stagnant_trade = max(unprotected_trades, key=lambda p: state["stagnation_tracker"].get(p["coin"], 0))
             coin_to_rotate = stagnant_trade["coin"]
             if state["stagnation_tracker"].get(coin_to_rotate, 0) >= 2:
-                print(f"Rotating stagnant trade {coin_to_rotate}")
                 try:
                     exchange.market_close(coin_to_rotate)
                     state["stagnation_tracker"][coin_to_rotate] = 0
                     active_count -= 1
+                    audit_logs.append(f"ROTATION TRIGGERED: Closed stagnant trade {coin_to_rotate}")
                 except Exception as e:
-                    print(f"Failed to close stagnant trade {coin_to_rotate}: {e}")
+                    audit_logs.append(f"Rotation Failed on {coin_to_rotate}: {e}")
 
     save_state(state)
 
-    # Calculate Total Net Worth precisely
-    total_nav = 0.0
-    funds_list = []
-    for coin, data in assets_map.items():
-        if data["balance_usd"] > 0.01:
-            funds_list.append({
-                "asset": coin,
-                "balance": data["balance"],
-                "balance_usd": data["balance_usd"]
-            })
-            total_nav += data["balance_usd"]
-
-    funds_list.sort(key=lambda x: x["balance_usd"], reverse=True)
-
-    text_fallback = f"TR-GC-Crypto-LS-23 | Bi-Directional Engine\nTimestamp: {timestamp}\nTotal Net Worth: USD ${total_nav:.2f}\nActive Positions: {active_count}/6"
-
-    funds_rows = ""
-    for f in funds_list:
-        funds_rows += f"""
-        <tr>
-            <td style="padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;">{f['asset']}</td>
-            <td style="padding: 9px 10px; border-bottom: 1px solid #eee;">${f['balance_usd']:.2f}</td>
-            <td style="padding: 9px 10px; border-bottom: 1px solid #eee; color: #555;">{f['balance']:.4f}</td>
-        </tr>
+    total_nav = sum(data["balance_usd"] for data in assets_map.values() if data["balance_usd"] > 0.01)
+    
+    # Build Audit Table HTML only if VERBOSE_TEST_MODE is True
+    audit_section = ""
+    if VERBOSE_TEST_MODE:
+        audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 11px; color: #475569;'>{log}</td></tr>" for log in audit_logs])
+        audit_section = f"""
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log</div>
+        <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px;">
+          <tbody>{audit_rows}</tbody>
+        </table>
         """
 
-    spot_bot_rows = ""
-    for f in funds_list:
-        if f['asset'] == 'USDC':
-            spot_bot_rows += f"""
-            <tr>
-                <td style="padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: 500;">Hyperliquid (TR-GC-Crypto-LS-23)</td>
-                <td style="padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;">{f['asset']}</td>
-                <td style="padding: 9px 10px; border-bottom: 1px solid #eee;">${f['balance_usd']:.2f}</td>
-                <td style="padding: 9px 10px; border-bottom: 1px solid #eee;">{f['balance']:.4f}</td>
-                <td style="padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;">Active</td>
-            </tr>
-            """
+    text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Engine\nTimestamp: {timestamp}\nTotal Net Worth: USD ${total_nav:.2f}\nActive Positions: {active_count}/6"
 
-    positions_rows = ""
-    for p in positions_data:
-        pnl_color = "#2e7d32" if p["pnl"] >= 0 else "#c62828"
-        positions_rows += f"""
-        <tr>
-            <td style="padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: 500;">{p['bot_title']}</td>
-            <td style="padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;">{p['coin']}</td>
-            <td style="padding: 9px 10px; border-bottom: 1px solid #eee;">{p['leverage']}x</td>
-            <td style="padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;">{p['side']}</td>
-            <td style="padding: 9px 10px; border-bottom: 1px solid #eee;">${p['collateral']:.2f}</td>
-            <td style="padding: 9px 10px; border-bottom: 1px solid #eee; color: {pnl_color}; font-weight: bold;">${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td>
-            <td style="padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;">{p['status']}</td>
-        </tr>
-        """
-
-    if not positions_rows:
-        positions_rows = "<tr><td colspan='7' style='padding: 15px; text-align: center; color: #666;'>No active positions found.</td></tr>"
+    funds_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{f['asset']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${f['balance_usd']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #555;'>{f['balance']:.4f}</td></tr>" for f in sorted([{"asset": c, **d} for c, d in assets_map.items() if d["balance_usd"] > 0.01], key=lambda x: x["balance_usd"], reverse=True)])
+    positions_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['leverage']}x</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['collateral']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td></tr>" for p in positions_data]) or "<tr><td colspan='7' style='padding: 15px; text-align: center; color: #666;'>No active positions found.</td></tr>"
 
     html_content = f"""
     <html>
@@ -389,11 +354,10 @@ def execute_engine():
       <body>
         <div class="container">
           <div class="header">
-            <h2>TR-GC-Crypto-LS-23 | Bi-Directional Engine</h2>
-            <p>Automated Run Timestamp: {timestamp} &bull; BTC Regime: {'GREEN (LONGs Only)' if btc_green else 'RED (SHORTs Only)'}</p>
+            <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
+            <p>Timestamp: {timestamp} &bull; Mode: {'DEBUG / VERBOSE TEST' : 'PRODUCTION'}</p>
           </div>
           <div class="content">
-            
             <div class="net-worth-card">
               <div class="net-worth-title">Total Net Worth</div>
               <div class="net-worth-value">USD ${total_nav:.2f}</div>
@@ -401,70 +365,28 @@ def execute_engine():
             </div>
 
             <div class="section-title">Funds (USD)</div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Asset</th>
-                  <th>Balance USD</th>
-                  <th>Balance</th>
-                </tr>
-              </thead>
-              <tbody>
-                {funds_rows}
-              </tbody>
-            </table>
-
-            <div class="section-title">Spot Assets per Bot (USD)</div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Bot Title</th>
-                  <th>Asset</th>
-                  <th>Balance USD</th>
-                  <th>Balance</th>
-                  <th>Bot Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {spot_bot_rows}
-              </tbody>
-            </table>
+            <table><thead><tr><th>Asset</th><th>Balance USD</th><th>Balance</th></tr></thead><tbody>{funds_rows}</tbody></table>
 
             <div class="section-title">Positions per Bot (USD)</div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Bot Title</th>
-                  <th>Asset</th>
-                  <th>Leverage</th>
-                  <th>Side</th>
-                  <th>Collateral USD</th>
-                  <th>Unrealized P&L USD</th>
-                  <th>Bot Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {positions_rows}
-              </tbody>
-            </table>
+            <table><thead><tr><th>Bot Title</th><th>Asset</th><th>Leverage</th><th>Side</th><th>Collateral USD</th><th>Unrealized P&L USD</th><th>Bot Status</th></tr></thead><tbody>{positions_rows}</tbody></table>
+
+            {audit_section}
 
           </div>
-          <div class="footer">
-            Hyperliquid Autonomous Engine &bull; Managed via GitHub Actions
-          </div>
+          <div class="footer">Hyperliquid Autonomous Engine &bull; Managed via GitHub Actions</div>
         </div>
       </body>
     </html>
     """
 
-    send_html_dashboard_email(f"Hyperliquid Bi-Directional Report — USD ${total_nav:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] Bi-Directional engine scan and management complete. Email dispatched.")
+    send_html_dashboard_email(f"Hyperliquid Test Report — USD ${total_nav:.2f}", html_content, text_fallback)
+    print(f"[{timestamp}] Telemetry execution and reporting complete.")
 
 if __name__ == "__main__":
     try:
         execute_engine()
     except Exception as e:
-        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Bi-Directional engine execution error: {e}"
+        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Engine execution error: {e}"
         print(err_msg)
         send_html_dashboard_email("Hyperliquid Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
         raise e
