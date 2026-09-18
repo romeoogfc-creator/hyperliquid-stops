@@ -1,0 +1,44 @@
+name: Alpaca TR-GC-Equities-LS-01 Engine
+
+on:
+  schedule:
+    # Runs every 30 mins, Mon-Fri between 9:30 AM and 4:00 PM ET (UTC hours: 14:00 to 21:00 UTC)
+    - cron: '*/30 14-21 * * 1-5'
+  workflow_dispatch:
+
+jobs:
+  run-stock-bot:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests pandas numpy
+
+      - name: Execute Stock Trading Engine
+        env:
+          APAL_API_KEY_ID: ${{ secrets.APAL_API_KEY_ID }}
+          APAL_SECRET_KEY: ${{ secrets.APAL_SECRET_KEY }}
+          APAL_BASE_URL: ${{ secrets.APAL_BASE_URL }}
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
+          RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
+        run: |
+          python bot_engine_stocks.py
+
+      - name: Save State to Repo
+        if: always()
+        run: |
+          git config --global user.name "GitHub Actions Bot"
+          git config --global user.email "actions@github.com"
+          git add stock_state.json
+          git commit -m "Auto-update stock bot state [skip ci]" || echo "No changes to commit"
+          git push || echo "No changes to push"
