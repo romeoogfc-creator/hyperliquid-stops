@@ -262,7 +262,7 @@ def execute_engine():
                 is_ballistic = current_close < (lower - 1.5 * atr)
                 market_candidates.append({"coin": coin, "close": current_close, "is_long": False, "is_ballistic": is_ballistic})
                 audit_logs.append(f"MATCH SHORT: {coin} @ ${current_close:.4f} (Lower: ${lower:.2f}, Ballistic: {is_ballistic})")
-        except Exception as e:
+        except Exception:
             continue
 
     audit_logs.append(f"Scan Complete: Evaluated {scanned_count} universe assets. Found {len(market_candidates)} valid breakouts.")
@@ -315,7 +315,6 @@ def execute_engine():
 
     total_nav = sum(data["balance_usd"] for data in assets_map.values() if data["balance_usd"] > 0.01)
     
-    # Build Audit Table HTML only if VERBOSE_TEST_MODE is True
     audit_section = ""
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 11px; color: #475569;'>{log}</td></tr>" for log in audit_logs])
@@ -330,6 +329,8 @@ def execute_engine():
 
     funds_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{f['asset']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${f['balance_usd']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #555;'>{f['balance']:.4f}</td></tr>" for f in sorted([{"asset": c, **d} for c, d in assets_map.items() if d["balance_usd"] > 0.01], key=lambda x: x["balance_usd"], reverse=True)])
     positions_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['leverage']}x</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['collateral']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td></tr>" for p in positions_data]) or "<tr><td colspan='7' style='padding: 15px; text-align: center; color: #666;'>No active positions found.</td></tr>"
+
+    mode_label = 'DEBUG / VERBOSE TEST' if VERBOSE_TEST_MODE else 'PRODUCTION'
 
     html_content = f"""
     <html>
@@ -355,7 +356,7 @@ def execute_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: {'DEBUG / VERBOSE TEST' : 'PRODUCTION'}</p>
+            <p>Timestamp: {timestamp} &bull; Mode: {mode_label}</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
