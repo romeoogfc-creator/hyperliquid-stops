@@ -118,7 +118,7 @@ def check_btc_daily_candle(info):
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Test Telemetry Engine Started (Stop Price View Mode).")
+    audit_logs.append(f"[{timestamp}] Test Telemetry Engine Started (Institutional Grade Mode).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -134,12 +134,30 @@ def execute_engine():
     all_mids = info.all_mids()
     meta = info.meta()
 
+    # Fetch institutional asset contexts for live funding rates
+    funding_map = {}
+    try:
+        meta_and_contexts = info.meta_and_asset_ctxs()
+        universe_meta = meta_and_contexts[0]["universe"]
+        asset_ctxs = meta_and_contexts[1]
+        for u, ctx in zip(universe_meta, asset_ctxs):
+            c_name = u["name"]
+            f_rate = float(ctx.get("funding", 0.0)) * 100  # Hourly funding percentage
+            funding_map[c_name] = f_rate
+    except Exception as e:
+        audit_logs.append(f"Warning: Could not fetch asset contexts for funding: {e}")
+
+    margin_summary = user_state.get("marginSummary", {})
+    account_value = float(margin_summary.get("accountValue", 500.0))
+    total_margin_used = float(margin_summary.get("totalMarginUsed", 0.0))
+    margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
+
     spot_usdc = 0.0
     for b in spot_state.get("balances", []):
         if b.get("coin") == "USDC":
             spot_usdc = float(b.get("total", 0))
 
-    total_nav = spot_usdc if spot_usdc > 0 else 500.0
+    total_nav = spot_usdc if spot_usdc > 0 else account_value
 
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
@@ -173,6 +191,7 @@ def execute_engine():
 
             stop_px_raw, current_roe, target_floor, is_buy_order = calculate_stop_price(entry_px, is_long, current_px, leverage)
             px = round_sig_figs(stop_px_raw, 5)
+            funding_val = funding_map.get(coin, 0.0)
 
             if current_roe < 0.01:
                 state["stagnation_tracker"][coin] = state["stagnation_tracker"].get(coin, 0) + 1
@@ -181,7 +200,7 @@ def execute_engine():
 
             stag_count = state["stagnation_tracker"].get(coin, 0)
             stag_hours = (stag_count * 30) / 60
-            audit_logs.append(f"Position: {coin} | ROE: {current_roe*100:+.2f}% | Stop Set: ${px} | Stagnation: {stag_count}/48 runs ({stag_hours:.1f}h)")
+            audit_logs.append(f"Position: {coin} | ROE: {current_roe*100:+.2f}% | Stop: ${px} | Funding: {funding_val:+.4f}%/h | Stagnation: {stag_count}/48 ({stag_hours:.1f}h)")
 
             for order in open_orders:
                 if order.get("coin") == coin and order.get("isTrigger"):
@@ -207,6 +226,7 @@ def execute_engine():
                 "collateral": margin_used,
                 "pnl": unrealized_pnl,
                 "roe": current_roe * 100,
+                "funding": funding_val,
                 "stop": px,
                 "floor": target_floor * 100,
                 "status": "Active"
@@ -309,7 +329,7 @@ def execute_engine():
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 11px; color: #475569;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Stop Price View Mode)</div>
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Institutional Grade)</div>
         <div class="table-responsive">
           <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%;">
             <tbody>{audit_rows}</tbody>
@@ -317,14 +337,12 @@ def execute_engine():
         </div>
         """
 
-    text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${total_nav:.2f}\nActive Positions: {active_count}/6"
+    text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${total_nav:.2f} (Margin Util: {margin_util_pct:.1f}%)\nActive Positions: {active_count}/6"
 
     funds_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${d['balance_usd']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #555;'>{d['balance']:.4f}</td></tr>" for f, d in assets_map.items() if d['balance_usd'] > 0.01])
-    
-    # Updated positions table row to include the active Stop Price column
-    positions_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['leverage']}x</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['collateral']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #b45309;'>${p['stop']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td></tr>" for p in positions_data]) or "<tr><td colspan='8' style='padding: 15px; text-align: center; color: #666;'>No active positions found.</td></tr>"
+    positions_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['leverage']}x</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['collateral']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['funding'] <= 0 else '#c62828'}; font-family: monospace;'>{p['funding']:+.4f}%</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #b45309;'>${p['stop']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td></tr>" for p in positions_data]) or "<tr><td colspan='9' style='padding: 15px; text-align: center; color: #666;'>No active positions found.</td></tr>"
 
-    mode_label = 'DEBUG / STOP PRICE VIEW' if VERBOSE_TEST_MODE else 'PRODUCTION'
+    mode_label = 'DEBUG / INSTITUTIONAL GRADE' if VERBOSE_TEST_MODE else 'PRODUCTION'
 
     html_content = f"""
     <html>
@@ -341,6 +359,8 @@ def execute_engine():
           .net-worth-title {{ font-size: 12px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 6px; }}
           .net-worth-value {{ font-size: 24px; font-weight: 700; color: #0f172a; }}
           .net-worth-subtitle {{ font-size: 11px; color: #64748b; margin-top: 4px; }}
+          .rules-card {{ background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; font-size: 11px; color: #166534; }}
+          .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 12px; color: #15803d; }}
           .section-title {{ font-size: 13px; text-transform: uppercase; color: #475569; margin: 20px 0 8px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; font-weight: 600; }}
           .table-responsive {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 15px; }}
           table {{ width: 100%; border-collapse: collapse; font-size: 11px; white-space: nowrap; }}
@@ -359,7 +379,16 @@ def execute_engine():
             <div class="net-worth-card">
               <div class="net-worth-title">Total Net Worth</div>
               <div class="net-worth-value">USD ${total_nav:.2f}</div>
-              <div class="net-worth-subtitle">Based on current Spot Assets & Positions (incl. unrealized P&L).</div>
+              <div class="net-worth-subtitle">Based on current Spot Assets & Positions &bull; <b>Margin Utilization: {margin_util_pct:.1f}%</b></div>
+            </div>
+
+            <div class="rules-card">
+              <div class="rules-title">&#9989; Active Bot Rule Deck & Guardrails</div>
+              &bull; <b>Execution Engine:</b> 30-Min GitHub Cron &bull; <b>Max Slots:</b> 6/6 Active<br>
+              &bull; <b>Hard Stop:</b> -4.0% ROE (Native Hyperliquid 24/7 On-Chain Order)<br>
+              &bull; <b>Profit Ratchet Ladders:</b> +1.5% ROE (BE Floor) &bull; +2.0% ROE (Tier 1) &bull; +3.5% ROE (Tier 2) &bull; +10% ROE (+5% Floor)<br>
+              &bull; <b>Stagnation Rotation:</b> 24 Hours (48 Runs) max hold for ROE &lt; +1.5%<br>
+              &bull; <b>Sizing Tier:</b> Standard 8%–10% ($40-$50 floor) / Ballistic 12%–14% on ATR Breakout
             </div>
 
             <div class="section-title">Funds (USD)</div>
@@ -369,7 +398,7 @@ def execute_engine():
 
             <div class="section-title">Positions per Bot (USD)</div>
             <div class="table-responsive">
-              <table><thead><tr><th>Bot Title</th><th>Asset</th><th>Leverage</th><th>Side</th><th>Collateral USD</th><th>Unrealized P&L USD</th><th>Stop Price</th><th>Bot Status</th></tr></thead><tbody>{positions_rows}</tbody></table>
+              <table><thead><tr><th>Bot Title</th><th>Asset</th><th>Leverage</th><th>Side</th><th>Collateral USD</th><th>Unrealized P&L USD</th><th>Funding (Hourly)</th><th>Stop Price</th><th>Bot Status</th></tr></thead><tbody>{positions_rows}</tbody></table>
             </div>
 
             {audit_section}
@@ -382,7 +411,7 @@ def execute_engine():
     """
 
     send_html_dashboard_email(f"Hyperliquid Report — USD ${total_nav:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] Stop-price view email update complete.")
+    print(f"[{timestamp}] Institutional-grade telemetry update complete.")
 
 if __name__ == "__main__":
     try:
