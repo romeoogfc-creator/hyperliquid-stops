@@ -118,7 +118,7 @@ def check_btc_daily_candle(info):
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Test Telemetry Engine Started (Signum-Style Net Worth Mode).")
+    audit_logs.append(f"[{timestamp}] Test Telemetry Engine Started (Stop Price View Mode).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -134,7 +134,6 @@ def execute_engine():
     all_mids = info.all_mids()
     meta = info.meta()
 
-    # Get total USDC baseline from spot balances
     spot_usdc = 0.0
     for b in spot_state.get("balances", []):
         if b.get("coin") == "USDC":
@@ -182,7 +181,7 @@ def execute_engine():
 
             stag_count = state["stagnation_tracker"].get(coin, 0)
             stag_hours = (stag_count * 30) / 60
-            audit_logs.append(f"Position: {coin} | ROE: {current_roe*100:+.2f}% | Stagnation: {stag_count}/48 runs ({stag_hours:.1f}h)")
+            audit_logs.append(f"Position: {coin} | ROE: {current_roe*100:+.2f}% | Stop Set: ${px} | Stagnation: {stag_count}/48 runs ({stag_hours:.1f}h)")
 
             for order in open_orders:
                 if order.get("coin") == coin and order.get("isTrigger"):
@@ -213,7 +212,6 @@ def execute_engine():
                 "status": "Active"
             })
 
-    # Signum-style Funds Map: Remaining unallocated USDC + position values
     remaining_usdc = max(0.0, total_nav - total_positions_value)
     assets_map = {
         "USDC": {"balance": remaining_usdc, "balance_usd": remaining_usdc}
@@ -311,7 +309,7 @@ def execute_engine():
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 11px; color: #475569;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Signum Mode)</div>
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Stop Price View Mode)</div>
         <div class="table-responsive">
           <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%;">
             <tbody>{audit_rows}</tbody>
@@ -322,9 +320,11 @@ def execute_engine():
     text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${total_nav:.2f}\nActive Positions: {active_count}/6"
 
     funds_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${d['balance_usd']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #555;'>{d['balance']:.4f}</td></tr>" for f, d in assets_map.items() if d['balance_usd'] > 0.01])
-    positions_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['leverage']}x</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['collateral']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td></tr>" for p in positions_data]) or "<tr><td colspan='7' style='padding: 15px; text-align: center; color: #666;'>No active positions found.</td></tr>"
+    
+    # Updated positions table row to include the active Stop Price column
+    positions_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['leverage']}x</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['collateral']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #b45309;'>${p['stop']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td></tr>" for p in positions_data]) or "<tr><td colspan='8' style='padding: 15px; text-align: center; color: #666;'>No active positions found.</td></tr>"
 
-    mode_label = 'DEBUG / SIGNUM LAYOUT TEST' if VERBOSE_TEST_MODE else 'PRODUCTION'
+    mode_label = 'DEBUG / STOP PRICE VIEW' if VERBOSE_TEST_MODE else 'PRODUCTION'
 
     html_content = f"""
     <html>
@@ -369,7 +369,7 @@ def execute_engine():
 
             <div class="section-title">Positions per Bot (USD)</div>
             <div class="table-responsive">
-              <table><thead><tr><th>Bot Title</th><th>Asset</th><th>Leverage</th><th>Side</th><th>Collateral USD</th><th>Unrealized P&L USD</th><th>Bot Status</th></tr></thead><tbody>{positions_rows}</tbody></table>
+              <table><thead><tr><th>Bot Title</th><th>Asset</th><th>Leverage</th><th>Side</th><th>Collateral USD</th><th>Unrealized P&L USD</th><th>Stop Price</th><th>Bot Status</th></tr></thead><tbody>{positions_rows}</tbody></table>
             </div>
 
             {audit_section}
@@ -382,7 +382,7 @@ def execute_engine():
     """
 
     send_html_dashboard_email(f"Hyperliquid Report — USD ${total_nav:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] Signum-style layout update complete.")
+    print(f"[{timestamp}] Stop-price view email update complete.")
 
 if __name__ == "__main__":
     try:
