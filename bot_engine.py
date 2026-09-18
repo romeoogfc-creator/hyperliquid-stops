@@ -118,7 +118,7 @@ def check_btc_daily_candle(info):
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Test Telemetry Engine Started (Institutional Grade Mode).")
+    audit_logs.append(f"[{timestamp}] Test Telemetry Engine Started (Mobile Responsive Fix Mode).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -134,7 +134,6 @@ def execute_engine():
     all_mids = info.all_mids()
     meta = info.meta()
 
-    # Fetch institutional asset contexts for live funding rates
     funding_map = {}
     try:
         meta_and_contexts = info.meta_and_asset_ctxs()
@@ -142,7 +141,7 @@ def execute_engine():
         asset_ctxs = meta_and_contexts[1]
         for u, ctx in zip(universe_meta, asset_ctxs):
             c_name = u["name"]
-            f_rate = float(ctx.get("funding", 0.0)) * 100  # Hourly funding percentage
+            f_rate = float(ctx.get("funding", 0.0)) * 100
             funding_map[c_name] = f_rate
     except Exception as e:
         audit_logs.append(f"Warning: Could not fetch asset contexts for funding: {e}")
@@ -329,7 +328,7 @@ def execute_engine():
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 11px; color: #475569;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Institutional Grade)</div>
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Mobile Responsive)</div>
         <div class="table-responsive">
           <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%;">
             <tbody>{audit_rows}</tbody>
@@ -342,7 +341,7 @@ def execute_engine():
     funds_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${d['balance_usd']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #555;'>{d['balance']:.4f}</td></tr>" for f, d in assets_map.items() if d['balance_usd'] > 0.01])
     positions_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['leverage']}x</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['collateral']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['funding'] <= 0 else '#c62828'}; font-family: monospace;'>{p['funding']:+.4f}%</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #b45309;'>${p['stop']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td></tr>" for p in positions_data]) or "<tr><td colspan='9' style='padding: 15px; text-align: center; color: #666;'>No active positions found.</td></tr>"
 
-    mode_label = 'DEBUG / INSTITUTIONAL GRADE' if VERBOSE_TEST_MODE else 'PRODUCTION'
+    mode_label = 'DEBUG / MOBILE RESPONSIVE' if VERBOSE_TEST_MODE else 'PRODUCTION'
 
     html_content = f"""
     <html>
@@ -367,6 +366,16 @@ def execute_engine():
           th {{ background: #f1f5f9; color: #475569; text-align: left; padding: 8px 8px; font-weight: 600; border-bottom: 2px solid #cbd5e1; }}
           td {{ padding: 8px 8px; }}
           .footer {{ text-align: center; font-size: 10px; color: #94a3b8; padding: 12px; background: #f8fafc; border-top: 1px solid #e2e8f0; }}
+
+          /* Mobile Responsive Auto-Wrap Fix */
+          @media screen and (max-width: 600px) {{
+            body {{ padding: 2px !important; }}
+            .container {{ border-radius: 0 !important; }}
+            .content {{ padding: 8px !important; }}
+            table {{ font-size: 9px !important; white-space: normal !important; }}
+            th, td {{ padding: 5px 4px !important; }}
+            .net-worth-value {{ font-size: 20px !important; }}
+          }}
         </style>
       </head>
       <body>
@@ -411,7 +420,7 @@ def execute_engine():
     """
 
     send_html_dashboard_email(f"Hyperliquid Report — USD ${total_nav:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] Institutional-grade telemetry update complete.")
+    print(f"[{timestamp}] Mobile-responsive email update complete.")
 
 if __name__ == "__main__":
     try:
