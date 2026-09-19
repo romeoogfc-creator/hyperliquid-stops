@@ -78,12 +78,27 @@ def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0):
     else:
         roe = ((entry_px - current_px) / entry_px) * leverage
 
-    if roe >= 0.30:
-        target_floor_roe = 0.22
+    # Extended Profit Ratchet Ladders up to 100%+ ROE with a tight 2% pullback buffer
+    if roe >= 1.00:
+        target_floor_roe = 0.98
+    elif roe >= 0.90:
+        target_floor_roe = 0.88
+    elif roe >= 0.80:
+        target_floor_roe = 0.78
+    elif roe >= 0.70:
+        target_floor_roe = 0.68
+    elif roe >= 0.60:
+        target_floor_roe = 0.58
+    elif roe >= 0.50:
+        target_floor_roe = 0.48
+    elif roe >= 0.40:
+        target_floor_roe = 0.38
+    elif roe >= 0.30:
+        target_floor_roe = 0.28
     elif roe >= 0.20:
-        target_floor_roe = 0.12
+        target_floor_roe = 0.18
     elif roe >= 0.10:
-        target_floor_roe = 0.05
+        target_floor_roe = 0.08
     elif roe >= 0.035:
         target_floor_roe = 0.02
     elif roe >= 0.020:
@@ -405,7 +420,7 @@ def execute_engine():
               <div class="rules-title">&#9989; Active Bot Rule Deck & Guardrails</div>
               &bull; <b>Execution Engine:</b> 30-Min GitHub Cron &bull; <b>Max Slots:</b> 6/6 Active<br>
               &bull; <b>Hard Stop:</b> -4.0% ROE (Native Hyperliquid 24/7 On-Chain Order)<br>
-              &bull; <b>Profit Ratchet Ladders:</b> +1.5% ROE (BE Floor) &bull; +2.0% ROE (Tier 1) &bull; +3.5% ROE (Tier 2) &bull; +10% ROE (+5% Floor)<br>
+              &bull; <b>Profit Ratchet Ladders:</b> +1.5% (BE) &bull; +2% &bull; +3.5% &bull; +10% (+8%) &bull; +20% (+18%) &bull; +30% (+28%) &bull; +40% (+38%) &bull; ... scaling up to +100% (+98%) ROE<br>
               &bull; <b>Stagnation Rotation:</b> 24 Hours (48 Runs) max hold for ROE &lt; +1.5%<br>
               &bull; <b>Sizing Tier:</b> Standard 12%–14% ($50+ floor) / Ballistic 15%–17% on ATR Breakout
             </div>
