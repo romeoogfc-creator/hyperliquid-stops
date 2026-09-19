@@ -134,18 +134,6 @@ def execute_engine():
     all_mids = info.all_mids()
     meta = info.meta()
 
-    funding_map = {}
-    try:
-        meta_and_contexts = info.meta_and_asset_ctxs()
-        universe_meta = meta_and_contexts[0]["universe"]
-        asset_ctxs = meta_and_contexts[1]
-        for u, ctx in zip(universe_meta, asset_ctxs):
-            c_name = u["name"]
-            f_rate = float(ctx.get("funding", 0.0)) * 100
-            funding_map[c_name] = f_rate
-    except Exception as e:
-        audit_logs.append(f"Warning: Could not fetch asset contexts for funding: {e}")
-
     margin_summary = user_state.get("marginSummary", {})
     account_value = float(margin_summary.get("accountValue", 500.0))
     total_margin_used = float(margin_summary.get("totalMarginUsed", 0.0))
@@ -190,7 +178,6 @@ def execute_engine():
 
             stop_px_raw, current_roe, target_floor, is_buy_order = calculate_stop_price(entry_px, is_long, current_px, leverage)
             px = round_sig_figs(stop_px_raw, 5)
-            funding_val = funding_map.get(coin, 0.0)
 
             if current_roe < 0.01:
                 state["stagnation_tracker"][coin] = state["stagnation_tracker"].get(coin, 0) + 1
@@ -199,7 +186,7 @@ def execute_engine():
 
             stag_count = state["stagnation_tracker"].get(coin, 0)
             stag_hours = (stag_count * 30) / 60
-            audit_logs.append(f"Position: {coin} | ROE: {current_roe*100:+.2f}% | Stop: ${px} | Funding: {funding_val:+.4f}%/h | Stagnation: {stag_count}/48 ({stag_hours:.1f}h)")
+            audit_logs.append(f"Position: {coin} | ROE: {current_roe*100:+.2f}% | Stop: ${px} | Stagnation: {stag_count}/48 ({stag_hours:.1f}h)")
 
             for order in open_orders:
                 if order.get("coin") == coin and order.get("isTrigger"):
@@ -215,7 +202,7 @@ def execute_engine():
             )
 
             positions_data.append({
-                "bot_title": "Hyperliquid (TR-GC-Crypto-LS-23)",
+                "bot_title": "TR-GC-Crypto-LS-23",
                 "coin": coin,
                 "side": "LONG" if is_long else "SHORT",
                 "sz": sz,
@@ -223,22 +210,15 @@ def execute_engine():
                 "current": current_px,
                 "leverage": int(leverage),
                 "collateral": margin_used,
+                "position_usd": pos_equity,
                 "pnl": unrealized_pnl,
                 "roe": current_roe * 100,
-                "funding": funding_val,
                 "stop": px,
                 "floor": target_floor * 100,
                 "status": "Active"
             })
 
     remaining_usdc = max(0.0, total_nav - total_positions_value)
-    assets_map = {
-        "USDC": {"balance": remaining_usdc, "balance_usd": remaining_usdc}
-    }
-    for p in positions_data:
-        coin = p["coin"]
-        pos_val = p["collateral"] + p["pnl"]
-        assets_map[coin] = {"balance": p["sz"], "balance_usd": pos_val}
 
     btc_green, btc_open, btc_close = check_btc_daily_candle(info)
     regime_str = f"GREEN (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> LONGs Allowed" if btc_green else f"RED (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> SHORTs Allowed"
@@ -288,7 +268,6 @@ def execute_engine():
             is_long = candidate["is_long"]
             is_ballistic = candidate["is_ballistic"]
             
-            # Standard sizing 12%-14%, scaling to Ballistic 15%-17% on ATR breakouts
             target_pct = np.random.uniform(0.15, 0.17) if is_ballistic else np.random.uniform(0.12, 0.14)
             target_usd = max(50.0, total_nav * target_pct)
             sz = round(target_usd / px, 4)
@@ -339,24 +318,38 @@ def execute_engine():
 
     text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${total_nav:.2f} (Margin Util: {margin_util_pct:.1f}%)\nActive Positions: {active_count}/6"
 
-    funds_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${d['balance_usd']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #555;'>{d['balance']:.4f}</td></tr>" for f, d in assets_map.items() if d['balance_usd'] > 0.01])
-    
-    positions_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['leverage']}x</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['collateral']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['funding'] <= 0 else '#c62828'}; font-family: monospace;'>{p['funding']:+.4f}%</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #b45309;'>${p['stop']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td></tr>" for p in positions_data])
+    positions_rows = "".join([
+        f"<tr>"
+        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td>"
+        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}</td>"
+        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['leverage']}x</td>"
+        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td>"
+        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['collateral']:.2f}</td>"
+        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: 600; color: #0f172a;'>${p['position_usd']:.2f}</td>"
+        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td>"
+        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #334155;'>${round_sig_figs(p['entry'], 5)}</td>"
+        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #b45309;'>${p['stop']}</td>"
+        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td>"
+        f"</tr>"
+        for p in positions_data
+    ])
 
     if positions_data:
         total_collateral_sum = sum(p['collateral'] for p in positions_data)
+        total_position_usd_sum = sum(p['position_usd'] for p in positions_data)
         total_pnl_sum = sum(p['pnl'] for p in positions_data)
         total_roe_avg = (total_pnl_sum / total_collateral_sum * 100) if total_collateral_sum > 0 else 0.0
         positions_rows += f"""
         <tr style="background: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
             <td colspan="4" style="padding: 9px 10px; text-align: right;">TOTAL:</td>
             <td style="padding: 9px 10px;">${total_collateral_sum:.2f}</td>
+            <td style="padding: 9px 10px;">${total_position_usd_sum:.2f}</td>
             <td style="padding: 9px 10px; color: {'#2e7d32' if total_pnl_sum >= 0 else '#c62828'};">${total_pnl_sum:+.2f} ({total_roe_avg:+.2f}%)</td>
             <td colspan="3"></td>
         </tr>
         """
     else:
-        positions_rows = "<tr><td colspan='9' style='padding: 15px; text-align: center; color: #666;'>No active positions found.</td></tr>"
+        positions_rows = "<tr><td colspan='10' style='padding: 15px; text-align: center; color: #666;'>No active positions found.</td></tr>"
 
     mode_label = 'DEBUG / MOBILE RESPONSIVE' if VERBOSE_TEST_MODE else 'PRODUCTION'
 
@@ -405,7 +398,7 @@ def execute_engine():
             <div class="net-worth-card">
               <div class="net-worth-title">Total Net Worth</div>
               <div class="net-worth-value">USD ${total_nav:.2f}</div>
-              <div class="net-worth-subtitle">Based on current Spot Assets & Positions &bull; <b>Margin Utilization: {margin_util_pct:.1f}%</b></div>
+              <div class="net-worth-subtitle">Uninvested USDC: <b>${remaining_usdc:.2f}</b> &bull; Margin Utilization: <b>{margin_util_pct:.1f}%</b></div>
             </div>
 
             <div class="rules-card">
@@ -417,14 +410,9 @@ def execute_engine():
               &bull; <b>Sizing Tier:</b> Standard 12%–14% ($50+ floor) / Ballistic 15%–17% on ATR Breakout
             </div>
 
-            <div class="section-title">Funds (USD)</div>
-            <div class="table-responsive">
-              <table><thead><tr><th>Asset</th><th>Balance USD</th><th>Balance</th></tr></thead><tbody>{funds_rows}</tbody></table>
-            </div>
-
             <div class="section-title">Positions per Bot (USD)</div>
             <div class="table-responsive">
-              <table><thead><tr><th>Bot Title</th><th>Asset</th><th>Leverage</th><th>Side</th><th>Collateral USD</th><th>Unrealized P&L USD</th><th>Funding (Hourly)</th><th>Stop Price</th><th>Bot Status</th></tr></thead><tbody>{positions_rows}</tbody></table>
+              <table><thead><tr><th>Bot Title</th><th>Asset</th><th>Leverage</th><th>Side</th><th>Collateral USD</th><th>Position USD</th><th>Unrealized P&L USD</th><th>Buy Price</th><th>Stop Price</th><th>Bot Status</th></tr></thead><tbody>{positions_rows}</tbody></table>
             </div>
 
             {audit_section}
