@@ -288,8 +288,8 @@ def execute_engine():
             is_long = candidate["is_long"]
             is_ballistic = candidate["is_ballistic"]
             
-            # Permanent 12% default base sizing, scaling to 14% on ballistic ATR breakouts
-            target_pct = 0.14 if is_ballistic else 0.12
+            # Standard sizing 12%-14%, scaling to Ballistic 15%-17% on ATR breakouts
+            target_pct = np.random.uniform(0.15, 0.17) if is_ballistic else np.random.uniform(0.12, 0.14)
             target_usd = max(50.0, total_nav * target_pct)
             sz = round(target_usd / px, 4)
             
@@ -414,7 +414,7 @@ def execute_engine():
               &bull; <b>Hard Stop:</b> -4.0% ROE (Native Hyperliquid 24/7 On-Chain Order)<br>
               &bull; <b>Profit Ratchet Ladders:</b> +1.5% ROE (BE Floor) &bull; +2.0% ROE (Tier 1) &bull; +3.5% ROE (Tier 2) &bull; +10% ROE (+5% Floor)<br>
               &bull; <b>Stagnation Rotation:</b> 24 Hours (48 Runs) max hold for ROE &lt; +1.5%<br>
-              &bull; <b>Sizing Tier:</b> Standard 12% ($50+ floor) / Ballistic 14% on ATR Breakout
+              &bull; <b>Sizing Tier:</b> Standard 12%–14% ($50+ floor) / Ballistic 15%–17% on ATR Breakout
             </div>
 
             <div class="section-title">Funds (USD)</div>
