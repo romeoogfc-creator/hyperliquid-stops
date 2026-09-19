@@ -116,7 +116,7 @@ def check_btc_daily_candle(info):
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Test Telemetry Engine Started (Mobile Responsive Fix Mode).")
+    audit_logs.append(f"[{timestamp}] Test Telemetry Engine Started (Smart-Ranked #1 Momentum Queue Mode).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -248,16 +248,39 @@ def execute_engine():
 
             if btc_green and current_close > upper and current_close <= upper * 1.025:
                 is_ballistic = current_close > (upper + 1.5 * atr)
-                market_candidates.append({"coin": coin, "close": current_close, "is_long": True, "is_ballistic": is_ballistic})
-                audit_logs.append(f"MATCH LONG: {coin} @ ${current_close:.4f}")
+                # AVAX/JUP DNA Scoring Matrix: Quantify channel penetration & ATR momentum intensity
+                extension_score = (current_close - upper) / upper
+                atr_score = atr / current_close
+                momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
+
+                market_candidates.append({
+                    "coin": coin, 
+                    "close": current_close, 
+                    "is_long": True, 
+                    "is_ballistic": is_ballistic,
+                    "score": momentum_score
+                })
+                audit_logs.append(f"MATCH LONG: {coin} @ ${current_close:.4f} (Score: {momentum_score:.4f})")
             elif not btc_green and current_close < lower and current_close >= lower * 0.975:
                 is_ballistic = current_close < (lower - 1.5 * atr)
-                market_candidates.append({"coin": coin, "close": current_close, "is_long": False, "is_ballistic": is_ballistic})
-                audit_logs.append(f"MATCH SHORT: {coin} @ ${current_close:.4f}")
+                extension_score = (lower - current_close) / lower
+                atr_score = atr / current_close
+                momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
+
+                market_candidates.append({
+                    "coin": coin, 
+                    "close": current_close, 
+                    "is_long": False, 
+                    "is_ballistic": is_ballistic,
+                    "score": momentum_score
+                })
+                audit_logs.append(f"MATCH SHORT: {coin} @ ${current_close:.4f} (Score: {momentum_score:.4f})")
         except Exception:
             continue
 
-    audit_logs.append(f"Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
+    # Smart-Rank the Queue: Sort candidates by momentum score descending so the #1 absolute best setup is first in line!
+    market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
+    audit_logs.append(f"Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts (Smart-Ranked).")
 
     if active_count < 6 and market_candidates:
         for candidate in market_candidates[: (6 - active_count)]:
@@ -280,7 +303,7 @@ def execute_engine():
                 if res.get("status") == "ok":
                     active_count += 1
                     active_coins.add(coin)
-                    audit_logs.append(f"EXECUTION SUCCESS: Opened {side_str} on {coin}")
+                    audit_logs.append(f"EXECUTION SUCCESS: Opened #{1} Ranked {side_str} on {coin}")
             except Exception as e:
                 audit_logs.append(f"EXECUTION FAILED on {coin}: {e}")
     else:
@@ -306,7 +329,7 @@ def execute_engine():
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 11px; color: #475569;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Mobile Responsive)</div>
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Smart-Ranked Queue)</div>
         <div class="table-responsive">
           <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%;">
             <tbody>{audit_rows}</tbody>
@@ -405,6 +428,7 @@ def execute_engine():
               &bull; <b>Hard Stop:</b> -4.0% ROE (Native Hyperliquid 24/7 On-Chain Order)<br>
               &bull; <b>Profit Ratchet Ladders:</b> +1.5% (BE) &bull; +2% &bull; +3.5% &bull; +10% (+8%) &bull; +20% (+18%) &bull; +30% (+28%)<br>
               &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Ultra-Tight 2.5% Steps with 1% Buffer (Max 1.5% Give-Back) up to +300%+ ROE</i><br>
+              &bull; <b>Smart-Ranked Queue:</b> Scans & scores all breakouts, prioritizing the #1 apex runner<br>
               &bull; <b>Stagnation Rotation:</b> 24 Hours (48 Runs) max hold for ROE &lt; +1.5%<br>
               &bull; <b>Sizing Tier:</b> Standard 12%–14% ($50+ floor) / Ballistic 15%–17% on ATR Breakout
             </div>
