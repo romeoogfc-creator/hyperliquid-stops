@@ -288,8 +288,9 @@ def execute_engine():
             is_long = candidate["is_long"]
             is_ballistic = candidate["is_ballistic"]
             
-            target_pct = 0.12 if is_ballistic else 0.09
-            target_usd = max(45.0, total_nav * target_pct)
+            # Permanent 12% default base sizing, scaling to 14% on ballistic ATR breakouts
+            target_pct = 0.14 if is_ballistic else 0.12
+            target_usd = max(50.0, total_nav * target_pct)
             sz = round(target_usd / px, 4)
             
             side_str = "LONG" if is_long else "SHORT"
@@ -339,7 +340,23 @@ def execute_engine():
     text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${total_nav:.2f} (Margin Util: {margin_util_pct:.1f}%)\nActive Positions: {active_count}/6"
 
     funds_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${d['balance_usd']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #555;'>{d['balance']:.4f}</td></tr>" for f, d in assets_map.items() if d['balance_usd'] > 0.01])
-    positions_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['leverage']}x</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['collateral']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['funding'] <= 0 else '#c62828'}; font-family: monospace;'>{p['funding']:+.4f}%</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #b45309;'>${p['stop']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td></tr>" for p in positions_data]) or "<tr><td colspan='9' style='padding: 15px; text-align: center; color: #666;'>No active positions found.</td></tr>"
+    
+    positions_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['leverage']}x</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['collateral']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['funding'] <= 0 else '#c62828'}; font-family: monospace;'>{p['funding']:+.4f}%</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #b45309;'>${p['stop']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td></tr>" for p in positions_data])
+
+    if positions_data:
+        total_collateral_sum = sum(p['collateral'] for p in positions_data)
+        total_pnl_sum = sum(p['pnl'] for p in positions_data)
+        total_roe_avg = (total_pnl_sum / total_collateral_sum * 100) if total_collateral_sum > 0 else 0.0
+        positions_rows += f"""
+        <tr style="background: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
+            <td colspan="4" style="padding: 9px 10px; text-align: right;">TOTAL:</td>
+            <td style="padding: 9px 10px;">${total_collateral_sum:.2f}</td>
+            <td style="padding: 9px 10px; color: {'#2e7d32' if total_pnl_sum >= 0 else '#c62828'};">${total_pnl_sum:+.2f} ({total_roe_avg:+.2f}%)</td>
+            <td colspan="3"></td>
+        </tr>
+        """
+    else:
+        positions_rows = "<tr><td colspan='9' style='padding: 15px; text-align: center; color: #666;'>No active positions found.</td></tr>"
 
     mode_label = 'DEBUG / MOBILE RESPONSIVE' if VERBOSE_TEST_MODE else 'PRODUCTION'
 
@@ -397,7 +414,7 @@ def execute_engine():
               &bull; <b>Hard Stop:</b> -4.0% ROE (Native Hyperliquid 24/7 On-Chain Order)<br>
               &bull; <b>Profit Ratchet Ladders:</b> +1.5% ROE (BE Floor) &bull; +2.0% ROE (Tier 1) &bull; +3.5% ROE (Tier 2) &bull; +10% ROE (+5% Floor)<br>
               &bull; <b>Stagnation Rotation:</b> 24 Hours (48 Runs) max hold for ROE &lt; +1.5%<br>
-              &bull; <b>Sizing Tier:</b> Standard 8%–10% ($40-$50 floor) / Ballistic 12%–14% on ATR Breakout
+              &bull; <b>Sizing Tier:</b> Standard 12% ($50+ floor) / Ballistic 14% on ATR Breakout
             </div>
 
             <div class="section-title">Funds (USD)</div>
