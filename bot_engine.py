@@ -78,10 +78,10 @@ def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0):
     else:
         roe = ((entry_px - current_px) / entry_px) * leverage
 
-    # Dynamic 5% step-increment profit ratchets with a strict 2% trailing buffer up to 300%+ ROE
-    if roe >= 0.10:
-        milestone = floor(roe * 20) / 20
-        target_floor_roe = milestone - 0.02
+    # Ultra-tight 2.5% step-increment profit ratchets with a 1% trailing buffer (Max 1.5% give-back) up to 300%+ ROE
+    if roe >= 0.05:
+        milestone = floor(roe * 40) / 40
+        target_floor_roe = milestone - 0.01
     elif roe >= 0.035:
         target_floor_roe = 0.02
     elif roe >= 0.020:
@@ -404,7 +404,7 @@ def execute_engine():
               &bull; <b>Execution Engine:</b> 30-Min GitHub Cron &bull; <b>Max Slots:</b> 6/6 Active<br>
               &bull; <b>Hard Stop:</b> -4.0% ROE (Native Hyperliquid 24/7 On-Chain Order)<br>
               &bull; <b>Profit Ratchet Ladders:</b> +1.5% (BE) &bull; +2% &bull; +3.5% &bull; +10% (+8%) &bull; +20% (+18%) &bull; +30% (+28%)<br>
-              &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Step-by-Step 5% Increments: +35% (+33%) up to +300%+ ROE (Strict ~5% Max Give-Back)</i><br>
+              &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Ultra-Tight 2.5% Steps with 1% Buffer (Max 1.5% Give-Back) up to +300%+ ROE</i><br>
               &bull; <b>Stagnation Rotation:</b> 24 Hours (48 Runs) max hold for ROE &lt; +1.5%<br>
               &bull; <b>Sizing Tier:</b> Standard 12%–14% ($50+ floor) / Ballistic 15%–17% on ATR Breakout
             </div>
