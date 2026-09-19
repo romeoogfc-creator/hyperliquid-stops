@@ -78,67 +78,10 @@ def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0):
     else:
         roe = ((entry_px - current_px) / entry_px) * leverage
 
-    # Crystal clear step-by-step Supernova Ratchet Ladders up to 300%+ ROE with a strict 2% trailing buffer
-    if roe >= 3.00:
-        target_floor_roe = 2.98
-    elif roe >= 2.90:
-        target_floor_roe = 2.88
-    elif roe >= 2.80:
-        target_floor_roe = 2.78
-    elif roe >= 2.70:
-        target_floor_roe = 2.68
-    elif roe >= 2.60:
-        target_floor_roe = 2.58
-    elif roe >= 2.50:
-        target_floor_roe = 2.48
-    elif roe >= 2.40:
-        target_floor_roe = 2.38
-    elif roe >= 2.30:
-        target_floor_roe = 2.28
-    elif roe >= 2.20:
-        target_floor_roe = 2.18
-    elif roe >= 2.10:
-        target_floor_roe = 2.08
-    elif roe >= 2.00:
-        target_floor_roe = 1.98
-    elif roe >= 1.90:
-        target_floor_roe = 1.88
-    elif roe >= 1.80:
-        target_floor_roe = 1.78
-    elif roe >= 1.70:
-        target_floor_roe = 1.68
-    elif roe >= 1.60:
-        target_floor_roe = 1.58
-    elif roe >= 1.50:
-        target_floor_roe = 1.48
-    elif roe >= 1.40:
-        target_floor_roe = 1.38
-    elif roe >= 1.30:
-        target_floor_roe = 1.28
-    elif roe >= 1.20:
-        target_floor_roe = 1.18
-    elif roe >= 1.10:
-        target_floor_roe = 1.08
-    elif roe >= 1.00:
-        target_floor_roe = 0.98
-    elif roe >= 0.90:
-        target_floor_roe = 0.88
-    elif roe >= 0.80:
-        target_floor_roe = 0.78
-    elif roe >= 0.70:
-        target_floor_roe = 0.68
-    elif roe >= 0.60:
-        target_floor_roe = 0.58
-    elif roe >= 0.50:
-        target_floor_roe = 0.48
-    elif roe >= 0.40:
-        target_floor_roe = 0.38
-    elif roe >= 0.30:
-        target_floor_roe = 0.28
-    elif roe >= 0.20:
-        target_floor_roe = 0.18
-    elif roe >= 0.10:
-        target_floor_roe = 0.08
+    # Dynamic 5% step-increment profit ratchets with a strict 2% trailing buffer up to 300%+ ROE
+    if roe >= 0.10:
+        milestone = floor(roe * 20) / 20
+        target_floor_roe = milestone - 0.02
     elif roe >= 0.035:
         target_floor_roe = 0.02
     elif roe >= 0.020:
@@ -461,7 +404,7 @@ def execute_engine():
               &bull; <b>Execution Engine:</b> 30-Min GitHub Cron &bull; <b>Max Slots:</b> 6/6 Active<br>
               &bull; <b>Hard Stop:</b> -4.0% ROE (Native Hyperliquid 24/7 On-Chain Order)<br>
               &bull; <b>Profit Ratchet Ladders:</b> +1.5% (BE) &bull; +2% &bull; +3.5% &bull; +10% (+8%) &bull; +20% (+18%) &bull; +30% (+28%)<br>
-              &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Step-by-Step 10% Tiers: +40% to +100% (+98%) ... scaling seamlessly up to +300% (+298%)</i><br>
+              &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Step-by-Step 5% Increments: +35% (+33%) up to +300%+ ROE (Strict ~5% Max Give-Back)</i><br>
               &bull; <b>Stagnation Rotation:</b> 24 Hours (48 Runs) max hold for ROE &lt; +1.5%<br>
               &bull; <b>Sizing Tier:</b> Standard 12%–14% ($50+ floor) / Ballistic 15%–17% on ATR Breakout
             </div>
