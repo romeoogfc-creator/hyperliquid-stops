@@ -423,7 +423,7 @@ def execute_engine():
           .net-worth-title {{ font-size: 12px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 6px; }}
           .net-worth-value {{ font-size: 24px; font-weight: 700; color: #0f172a; }}
           .net-worth-subtitle {{ font-size: 11px; color: #64748b; margin-top: 4px; }}
-          .rules-card {{ background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; font-size: 11px; color: #166534; line-height: 1.5; }}
+          .rules-card {{ background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; font-size: 11px; color: #166534; line-height: 1.6; }}
           .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 12px; color: #15803d; }}
           .section-title {{ font-size: 13px; text-transform: uppercase; color: #475569; margin: 20px 0 8px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; font-weight: 600; }}
           .table-responsive {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 15px; }}
@@ -461,7 +461,7 @@ def execute_engine():
               &bull; <b>Execution Engine:</b> 30-Min GitHub Cron &bull; <b>Max Slots:</b> 6/6 Active<br>
               &bull; <b>Hard Stop:</b> -4.0% ROE (Native Hyperliquid 24/7 On-Chain Order)<br>
               &bull; <b>Profit Ratchet Ladders:</b> +1.5% (BE) &bull; +2% &bull; +3.5% &bull; +10% (+8%) &bull; +20% (+18%) &bull; +30% (+28%)<br>
-              &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Step-by-Step 10% Tiers scaling seamlessly up to +300% (+298%) ROE and beyond</i><br>
+              &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Step-by-Step 10% Tiers: +40% to +100% (+98%) ... scaling seamlessly up to +300% (+298%)</i><br>
               &bull; <b>Stagnation Rotation:</b> 24 Hours (48 Runs) max hold for ROE &lt; +1.5%<br>
               &bull; <b>Sizing Tier:</b> Standard 12%–14% ($50+ floor) / Ballistic 15%–17% on ATR Breakout
             </div>
