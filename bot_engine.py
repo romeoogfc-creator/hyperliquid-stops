@@ -39,21 +39,26 @@ def save_state(state):
         json.dump(state, f, indent=2)
 
 def run_gemini_market_shield():
-    """Queries Gemini with Google Search to detect sudden black-swan or macro news risks."""
+    """Queries Gemini with Google Search to detect black-swan risks and generate an executive market briefing."""
     if not GEMINI_API_KEY:
         print("GEMINI_API_KEY missing; skipping AI Macro Shield scan.")
-        return {"high_risk_detected": False, "risk_level": "UNKNOWN", "reason": "API Key Missing", "action": "ALLOW_TRADES"}
+        return {
+            "high_risk_detected": False, 
+            "risk_level": "UNKNOWN", 
+            "reason": "API Key Missing", 
+            "action": "ALLOW_TRADES",
+            "ai_market_brief": "AI Shield offline (Missing GEMINI_API_KEY secret)."
+        }
 
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
         prompt = """
-        Perform a live real-time web search for breaking cryptocurrency news, major market crashes, regulatory actions, 
-        FOMC/interest rate announcements, or sudden exchange halts from the last 1-2 hours.
+        Perform a live real-time web search for breaking cryptocurrency market news, BTC price momentum, regulatory actions, 
+        FOMC/interest rate updates, or sudden exchange incidents from the last 1-2 hours.
         Determine if there is extreme high-risk volatility or black-swan risk that could cause sudden whipsaws in perp futures.
-        Return structured JSON evaluating if new market entries should be temporarily blocked.
+        Provide a 2-sentence executive summary of current market sentiment and key catalysts for the email dashboard.
         """
 
-        # Model Fallback Cascade for maximum speed, cost efficiency, and reliability
         models = ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.6-flash"]
         
         for model_name in models:
@@ -70,9 +75,10 @@ def run_gemini_market_shield():
                                 "high_risk_detected": {"type": "BOOLEAN"},
                                 "risk_level": {"type": "STRING", "enum": ["LOW", "MODERATE", "HIGH"]},
                                 "reason": {"type": "STRING"},
-                                "action": {"type": "STRING", "enum": ["ALLOW_TRADES", "BLOCK_ENTRIES"]}
+                                "action": {"type": "STRING", "enum": ["ALLOW_TRADES", "BLOCK_ENTRIES"]},
+                                "ai_market_brief": {"type": "STRING"}
                             },
-                            "required": ["high_risk_detected", "risk_level", "reason", "action"]
+                            "required": ["high_risk_detected", "risk_level", "reason", "action", "ai_market_brief"]
                         }
                     )
                 )
@@ -84,7 +90,13 @@ def run_gemini_market_shield():
     except Exception as e:
         print(f"Gemini AI Shield execution error: {e}")
 
-    return {"high_risk_detected": False, "risk_level": "UNKNOWN", "reason": "AI Shield Bypass on Error", "action": "ALLOW_TRADES"}
+    return {
+        "high_risk_detected": False, 
+        "risk_level": "UNKNOWN", 
+        "reason": "AI Shield Bypass on Error", 
+        "action": "ALLOW_TRADES",
+        "ai_market_brief": "Market scanning operating normally under standard quantitative rules."
+    }
 
 def send_html_dashboard_email(subject, html_content, text_fallback):
     sender_email = os.getenv("SENDER_EMAIL")
@@ -127,7 +139,6 @@ def calculate_gaussian_channel(closes, poles=4, period=323, mult=1.414):
     return upper.iloc[-1], lower.iloc[-1], filtered.iloc[-1]
 
 def calculate_choppiness_index(highs, lows, closes, period=14):
-    """Calculates 14-period Choppiness Index (CI). Higher = Choppy/Sideways (>60), Lower = Clean Trend (<38)."""
     try:
         if len(closes) < period + 1:
             return 50.0
@@ -148,7 +159,6 @@ def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0, choppiness
     else:
         roe = ((entry_px - current_px) / entry_px) * leverage
 
-    # Upward Profit Ratchets (Never Loosen)
     if roe >= 0.05:
         milestone = floor(roe * 40) / 40
         target_floor_roe = milestone - 0.01
@@ -161,7 +171,6 @@ def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0, choppiness
     elif roe >= 0.005:
         target_floor_roe = -0.005       # Risk capped to -0.5% at +0.5% ROE
     else:
-        # SMART ADAPTIVE DOWNSIDE HARD STOP based on Market Regime
         if choppiness_index > 58.0:
             target_floor_roe = -0.012   # Choppy/Sideways Market -> Fast Cut (-1.2% max)
         elif is_ballistic:
@@ -246,7 +255,6 @@ def execute_engine():
             if leverage <= 0:
                 leverage = 1.0
 
-            # Calculate Choppiness Index for Active Asset
             try:
                 c_candles = info.candles_snapshot(name=coin, interval="1h", startTime=now_ms - 86400000 * 2, endTime=now_ms)
                 highs = [float(c["h"]) for c in c_candles]
@@ -347,7 +355,6 @@ def execute_engine():
             current_close = closes[-1]
             
             ci = calculate_choppiness_index(highs, lows, closes)
-            # STRICT ENTRY GUARDRAIL: Skip trade if market is severely choppy (CI > 62)
             if ci > 62.0:
                 continue
 
@@ -389,7 +396,6 @@ def execute_engine():
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
     audit_logs.append(f"Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts (Smart-Ranked).")
 
-    # EXECUTION GATE: Blocked if Max Slots reached OR if Gemini AI Shield detected high risk
     if ai_shield.get("high_risk_detected"):
         audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD. Reason: {ai_shield.get('reason')}")
     elif active_count < 6 and market_candidates:
@@ -494,6 +500,10 @@ def execute_engine():
 
     mode_label = 'DEBUG / MOBILE RESPONSIVE' if VERBOSE_TEST_MODE else 'PRODUCTION'
 
+    # Format AI Shield Status Badge
+    ai_risk_color = "#c62828" if ai_shield.get("high_risk_detected") else "#2e7d32"
+    ai_badge = f"<span style='background: {ai_risk_color}; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 10px;'>Risk Level: {ai_shield.get('risk_level', 'UNKNOWN')}</span>"
+
     html_content = f"""
     <html>
       <head>
@@ -509,8 +519,12 @@ def execute_engine():
           .net-worth-title {{ font-size: 12px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 6px; }}
           .net-worth-value {{ font-size: 24px; font-weight: 700; color: #0f172a; }}
           .net-worth-subtitle {{ font-size: 11px; color: #64748b; margin-top: 4px; }}
-          .rules-card {{ background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; font-size: 11px; color: #166534; line-height: 1.6; }}
-          .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 12px; color: #15803d; }}
+          
+          .ai-brief-card {{ background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; font-size: 11px; color: #166534; line-height: 1.6; }}
+          .ai-brief-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 12px; color: #15803d; display: flex; align-items: center; justify-content: space-between; }}
+          
+          .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; font-size: 11px; color: #334155; line-height: 1.6; }}
+          .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 12px; color: #0f172a; }}
           .section-title {{ font-size: 13px; text-transform: uppercase; color: #475569; margin: 20px 0 8px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; font-weight: 600; }}
           .table-responsive {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 15px; }}
           table {{ width: 100%; border-collapse: collapse; font-size: 11px; white-space: nowrap; }}
@@ -539,6 +553,15 @@ def execute_engine():
               <div class="net-worth-title">Total Net Worth</div>
               <div class="net-worth-value">USD ${account_value:.2f}</div>
               <div class="net-worth-subtitle">Static Unallocated USDC Reserve: <b>${static_usdc:.2f}</b> &bull; Margin Utilization: <b>{margin_util_pct:.1f}%</b></div>
+            </div>
+
+            <div class="ai-brief-card">
+              <div class="ai-brief-title">
+                <span>🤖 GEMINI AI EXECUTIVE MARKET BRIEFING</span>
+                {ai_badge}
+              </div>
+              <b>Live Market Assessment:</b> {ai_shield.get('ai_market_brief', 'Normal conditions.')}<br>
+              <b>Execution Recommendation:</b> {ai_shield.get('reason', 'Standard scan active.')}
             </div>
 
             <div class="rules-card">
