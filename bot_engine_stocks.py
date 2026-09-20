@@ -1,6 +1,7 @@
 import os
 import json
 import time
+from datetime import datetime, timedelta
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -199,6 +200,9 @@ def execute_stock_engine():
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
 
+    # Calculate rolling 20-day start date so historical queries work during off-hours/weekends
+    start_date = (datetime.now() - timedelta(days=20)).strftime('%Y-%m-%d')
+
     # 1. RUN GEMINI AI STOCK MACRO SHIELD SCAN
     ai_shield = run_gemini_stock_market_shield()
     ai_risk_status = "BLOCKED (High Risk)" if ai_shield.get("high_risk_detected") else "PASS (Normal Risk)"
@@ -238,9 +242,12 @@ def execute_stock_engine():
         total_positions_value += market_value
         active_symbols.add(symbol)
 
-        # Fetch recent bars to compute Choppiness Index for active stock (1Hour timeframe + IEX feed)
+        # Fetch recent bars with start date to compute Choppiness Index for active stock
         try:
-            bars_res = requests.get(f"https://data.alpaca.markets/v2/stocks/{symbol}/bars?timeframe=1Hour&limit=50&feed=iex", headers=HEADERS)
+            bars_res = requests.get(
+                f"https://data.alpaca.markets/v2/stocks/{symbol}/bars?timeframe=1Hour&limit=50&feed=iex&start={start_date}", 
+                headers=HEADERS
+            )
             bars = bars_res.json().get("bars", []) if bars_res.status_code == 200 else []
             closes = [float(b["c"]) for b in bars]
             highs = [float(b["h"]) for b in bars]
@@ -292,13 +299,15 @@ def execute_stock_engine():
             continue
         try:
             bars_res = requests.get(
-                f"https://data.alpaca.markets/v2/stocks/{symbol}/bars?timeframe=1Hour&limit=100&feed=iex",
+                f"https://data.alpaca.markets/v2/stocks/{symbol}/bars?timeframe=1Hour&limit=100&feed=iex&start={start_date}",
                 headers=HEADERS
             )
             if bars_res.status_code != 200:
+                audit_logs.append(f"Scan API Error [{symbol}]: HTTP {bars_res.status_code}")
                 continue
             bars = bars_res.json().get("bars", [])
             if not bars or len(bars) < 50:
+                audit_logs.append(f"Scan Insufficient Bars [{symbol}]: Got {len(bars) if bars else 0} bars")
                 continue
             scanned_count += 1
             closes = [float(b["c"]) for b in bars]
@@ -319,7 +328,8 @@ def execute_stock_engine():
                 is_ballistic = current_close > (upper + 1.5 * atr)
                 market_candidates.append({"symbol": symbol, "close": current_close, "is_long": True, "is_ballistic": is_ballistic, "ci": ci})
                 audit_logs.append(f"EQUITY MATCH LONG: {symbol} @ ${current_close:.2f} (CI: {ci:.1f})")
-        except Exception:
+        except Exception as e:
+            audit_logs.append(f"Scan Exception [{symbol}]: {e}")
             continue
 
     audit_logs.append(f"Stock Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} breakouts.")
