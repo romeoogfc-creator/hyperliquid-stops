@@ -1,17 +1,16 @@
-name: Alpaca TR-GC-Equities-LS-01 Engine
+name: TR-GC-Equities-LS-01
 
 on:
   schedule:
-    # Runs every 30 mins from 13:00 UTC to 20:00 UTC, Mon-Fri
-    # Precisely covers 9:00 AM to 4:00 PM ET / 8:00 AM to 3:00 PM CT (Opening bell to close)
+    # Runs every 30 minutes Monday-Friday during US Market hours (8 AM - 3 PM CT / 13:00 - 20:00 UTC)
     - cron: '*/30 13-20 * * 1-5'
   workflow_dispatch:
 
 jobs:
   run-stock-bot:
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -19,27 +18,29 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Install Dependencies
+      - name: Install dependencies
         run: |
-          python -m pip install --upgrade pip
-          pip install requests pandas numpy
+          pip install -r requirements.txt
 
-      - name: Execute Stock Trading Engine
+      - name: Run Stock Trading Engine
         env:
           APAL_API_KEY_ID: ${{ secrets.APAL_API_KEY_ID }}
           APAL_SECRET_KEY: ${{ secrets.APAL_SECRET_KEY }}
           APAL_BASE_URL: ${{ secrets.APAL_BASE_URL }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
           SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
           RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
         run: |
           python bot_engine_stocks.py
 
-      - name: Save State to Repo
-        if: always()
+      - name: Commit state changes
         run: |
           git config --global user.name "GitHub Actions Bot"
           git config --global user.email "actions@github.com"
+          git stash
+          git pull origin main --rebase
+          git stash pop || true
           git add stock_state.json
-          git commit -m "Auto-update stock bot state [skip ci]" || echo "No changes to commit"
-          git push || echo "No changes to push"
+          git commit -m "Auto-update stock bot state and telemetry [skip ci]" || exit 0
+          git push origin main
