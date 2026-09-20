@@ -78,7 +78,7 @@ def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0):
     else:
         roe = ((entry_px - current_px) / entry_px) * leverage
 
-    # Ultra-tight 2.5% step-increment profit ratchets with a 1% trailing buffer (Max 1.5% give-back) up to 300%+ ROE
+    # Dynamic 2.5% step-increment profit ratchets with a 1% trailing buffer (Max 1.5% Give-Back) up to 300%+ ROE
     if roe >= 0.05:
         milestone = floor(roe * 40) / 40
         target_floor_roe = milestone - 0.01
@@ -127,7 +127,6 @@ def execute_engine():
     info = Info(constants.MAINNET_API_URL, skip_ws=True)
 
     user_state = info.user_state(ACCOUNT_ADDRESS)
-    spot_state = info.spot_user_state(ACCOUNT_ADDRESS)
     open_orders = info.frontend_open_orders(ACCOUNT_ADDRESS)
     all_mids = info.all_mids()
     meta = info.meta()
@@ -137,18 +136,12 @@ def execute_engine():
     total_margin_used = float(margin_summary.get("totalMarginUsed", 0.0))
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
-    spot_usdc = 0.0
-    for b in spot_state.get("balances", []):
-        if b.get("coin") == "USDC":
-            spot_usdc = float(b.get("total", 0))
-
-    total_nav = spot_usdc if spot_usdc > 0 else account_value
-
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
     positions_data = []
     active_coins = set()
     total_positions_value = 0.0
+    total_unrealized_pnl = 0.0
 
     if asset_positions:
         for pos_item in asset_positions:
@@ -166,6 +159,7 @@ def execute_engine():
             current_px = float(all_mids.get(coin, entry_px))
             margin_used = float(pos.get("marginUsed", 0))
             unrealized_pnl = float(pos.get("unrealizedPnl", 0))
+            total_unrealized_pnl += unrealized_pnl
             pos_equity = margin_used + unrealized_pnl
             total_positions_value += pos_equity
 
@@ -184,7 +178,7 @@ def execute_engine():
 
             stag_count = state["stagnation_tracker"].get(coin, 0)
             stag_hours = (stag_count * 30) / 60
-            audit_logs.append(f"Position: {coin} | ROE: {current_roe*100:+.2f}% | Stop: ${px} | Stagnation: {stag_count}/48 ({stag_hours:.1f}h)")
+            audit_logs.append(f"Position: {coin} | ROE: {current_roe*100:+.2f}% | Stop: ${px} | Stagnation: {stag_count}/48 ({stag_hours:.1h}h)")
 
             for order in open_orders:
                 if order.get("coin") == coin and order.get("isTrigger"):
@@ -216,7 +210,8 @@ def execute_engine():
                 "status": "Active"
             })
 
-    remaining_usdc = max(0.0, total_nav - total_positions_value)
+    # True Static Cash Reserve (excludes floating PnL fluctuations so reserve remains steady)
+    static_usdc = max(0.0, account_value - total_unrealized_pnl - total_margin_used)
 
     btc_green, btc_open, btc_close = check_btc_daily_candle(info)
     regime_str = f"GREEN (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> LONGs Allowed" if btc_green else f"RED (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> SHORTs Allowed"
@@ -248,7 +243,6 @@ def execute_engine():
 
             if btc_green and current_close > upper and current_close <= upper * 1.025:
                 is_ballistic = current_close > (upper + 1.5 * atr)
-                # AVAX/JUP DNA Scoring Matrix: Quantify channel penetration & ATR momentum intensity
                 extension_score = (current_close - upper) / upper
                 atr_score = atr / current_close
                 momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
@@ -278,7 +272,7 @@ def execute_engine():
         except Exception:
             continue
 
-    # Smart-Rank the Queue: Sort candidates by momentum score descending so the #1 absolute best setup is first in line!
+    # Smart-Rank the Queue: Sort candidates by momentum score descending
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
     audit_logs.append(f"Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts (Smart-Ranked).")
 
@@ -290,7 +284,7 @@ def execute_engine():
             is_ballistic = candidate["is_ballistic"]
             
             target_pct = np.random.uniform(0.15, 0.17) if is_ballistic else np.random.uniform(0.12, 0.14)
-            target_usd = max(50.0, total_nav * target_pct)
+            target_usd = max(50.0, account_value * target_pct)
             sz = round(target_usd / px, 4)
             
             side_str = "LONG" if is_long else "SHORT"
@@ -325,6 +319,17 @@ def execute_engine():
 
     save_state(state)
 
+    # On-Deck Smart Queue Preview Rows (Top 3 Runners)
+    ondeck_rows = "".join([
+        f"<tr>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>#{i+1}</td>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold; color: #0f172a;'>{c['coin']}</td>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-family: monospace;'>${c['close']:.4f}</td>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: #b45309; font-weight: 600;'>Score: {c['score']:.4f}</td>"
+        f"</tr>"
+        for i, c in enumerate(market_candidates[:3])
+    ]) if market_candidates else "<tr><td colspan='4' style='padding: 10px; text-align: center; color: #666;'>No breakouts currently detected.</td></tr>"
+
     audit_section = ""
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 11px; color: #475569;'>{log}</td></tr>" for log in audit_logs])
@@ -337,7 +342,7 @@ def execute_engine():
         </div>
         """
 
-    text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${total_nav:.2f} (Margin Util: {margin_util_pct:.1f}%)\nActive Positions: {active_count}/6"
+    text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f} (Static USDC: ${static_usdc:.2f})\nActive Positions: {active_count}/6"
 
     positions_rows = "".join([
         f"<tr>"
@@ -398,7 +403,6 @@ def execute_engine():
           td {{ padding: 8px 8px; }}
           .footer {{ text-align: center; font-size: 10px; color: #94a3b8; padding: 12px; background: #f8fafc; border-top: 1px solid #e2e8f0; }}
 
-          /* Mobile Responsive Auto-Wrap Fix */
           @media screen and (max-width: 600px) {{
             body {{ padding: 2px !important; }}
             .container {{ border-radius: 0 !important; }}
@@ -418,16 +422,16 @@ def execute_engine():
           <div class="content">
             <div class="net-worth-card">
               <div class="net-worth-title">Total Net Worth</div>
-              <div class="net-worth-value">USD ${total_nav:.2f}</div>
-              <div class="net-worth-subtitle">Uninvested USDC: <b>${remaining_usdc:.2f}</b> &bull; Margin Utilization: <b>{margin_util_pct:.1f}%</b></div>
+              <div class="net-worth-value">USD ${account_value:.2f}</div>
+              <div class="net-worth-subtitle">Static Unallocated USDC Reserve: <b>${static_usdc:.2f}</b> &bull; Margin Utilization: <b>{margin_util_pct:.1f}%</b></div>
             </div>
 
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Bot Rule Deck & Guardrails</div>
               &bull; <b>Execution Engine:</b> 30-Min GitHub Cron &bull; <b>Max Slots:</b> 6/6 Active<br>
               &bull; <b>Hard Stop:</b> -4.0% ROE (Native Hyperliquid 24/7 On-Chain Order)<br>
-              &bull; <b>Profit Ratchet Ladders:</b> +1.5% (BE) &bull; +2% &bull; +3.5% &bull; +10% (+8%) &bull; +20% (+18%) &bull; +30% (+28%)<br>
-              &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Ultra-Tight 2.5% Steps with 1% Buffer (Max 1.5% Give-Back) up to +300%+ ROE</i><br>
+              &bull; <b>Profit Ratchet Ladders:</b> +1.5% (BE) &bull; +2% &bull; +3.5%<br>
+              &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Dynamic 2.5% Steps with 1% Buffer (Max 1.5% Give-Back) active from +5% up to +300%+ ROE</i><br>
               &bull; <b>Smart-Ranked Queue:</b> Scans & scores all breakouts, prioritizing the #1 apex runner<br>
               &bull; <b>Stagnation Rotation:</b> 24 Hours (48 Runs) max hold for ROE &lt; +1.5%<br>
               &bull; <b>Sizing Tier:</b> Standard 12%–14% ($50+ floor) / Ballistic 15%–17% on ATR Breakout
@@ -436,6 +440,11 @@ def execute_engine():
             <div class="section-title">Positions per Bot (USD)</div>
             <div class="table-responsive">
               <table><thead><tr><th>Bot Title</th><th>Asset</th><th>Leverage</th><th>Side</th><th>Collateral USD</th><th>Position USD</th><th>Unrealized P&L USD</th><th>Buy Price</th><th>Stop Price</th><th>Bot Status</th></tr></thead><tbody>{positions_rows}</tbody></table>
+            </div>
+
+            <div class="section-title">On-Deck Smart Queue (Top 3 Waiting Runners)</div>
+            <div class="table-responsive">
+              <table><thead><tr><th>Rank</th><th>Asset</th><th>Current Price</th><th>Momentum Score</th></tr></thead><tbody>{ondeck_rows}</tbody></table>
             </div>
 
             {audit_section}
@@ -447,7 +456,7 @@ def execute_engine():
     </html>
     """
 
-    send_html_dashboard_email(f"Hyperliquid Report — USD ${total_nav:.2f}", html_content, text_fallback)
+    send_html_dashboard_email(f"Hyperliquid Report — USD ${account_value:.2f}", html_content, text_fallback)
     print(f"[{timestamp}] Mobile-responsive email update complete.")
 
 if __name__ == "__main__":
