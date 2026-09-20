@@ -3,3 +3,4 @@ hyperliquid-python-sdk
 pandas
 numpy
 eth-account
+requests
