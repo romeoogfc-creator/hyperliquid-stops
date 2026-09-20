@@ -134,7 +134,8 @@ def round_sig_figs(val, sig_figs=5):
 
 def calculate_gaussian_channel(closes, poles=4, period=50, mult=1.414):
     s = pd.Series(closes)
-    alpha = (2.0 / (period + 1)) * (poles ** 0.5)
+    effective_period = min(period, max(5, len(closes) - 1))
+    alpha = (2.0 / (effective_period + 1)) * (poles ** 0.5)
     filtered = s.ewm(alpha=alpha, adjust=False).mean()
     error = (s - filtered).abs()
     deviation = error.ewm(alpha=alpha, adjust=False).mean() * mult
@@ -200,8 +201,8 @@ def execute_stock_engine():
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
 
-    # Rolling 20-day start date so historical queries work seamlessly during off-hours/weekends
-    start_date = (datetime.now() - timedelta(days=20)).strftime('%Y-%m-%d')
+    # 30-day rolling start date to ensure deep historical candle availability on IEX
+    start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
 
     # 1. RUN GEMINI AI STOCK MACRO SHIELD SCAN
     ai_shield = run_gemini_stock_market_shield()
@@ -245,7 +246,7 @@ def execute_stock_engine():
         # Fetch recent bars with start date to compute Choppiness Index for active stock
         try:
             bars_res = requests.get(
-                f"https://data.alpaca.markets/v2/stocks/{symbol}/bars?timeframe=1Hour&limit=50&feed=iex&start={start_date}", 
+                f"https://data.alpaca.markets/v2/stocks/{symbol}/bars?timeframe=1Hour&limit=100&feed=iex&start={start_date}", 
                 headers=HEADERS
             )
             bars = bars_res.json().get("bars", []) if bars_res.status_code == 200 else []
@@ -310,8 +311,8 @@ def execute_stock_engine():
     market_candidates = []
     scanned_count = 0
 
-    # BATCH SCANNING ENGINE: Queries Alpaca in chunks of 50 in a single API call for maximum speed
-    chunk_size = 50
+    # BATCH SCANNING ENGINE: Chunks of 25 symbols per API call for maximum reliability
+    chunk_size = 25
     for i in range(0, len(symbols_to_scan), chunk_size):
         chunk = symbols_to_scan[i:i + chunk_size]
         symbols_param = ",".join(chunk)
@@ -327,7 +328,8 @@ def execute_stock_engine():
 
             for symbol in chunk:
                 bars = all_bars_data.get(symbol, [])
-                if not bars or len(bars) < 50:
+                # Require 20 bars minimum (plenty for 14-period CI and EWM Gaussian calculations)
+                if not bars or len(bars) < 20:
                     continue
 
                 scanned_count += 1
@@ -343,7 +345,7 @@ def execute_stock_engine():
                 if ci > 62.0:
                     continue
 
-                atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])])
+                atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])]) if len(highs) >= 14 else (highs[-1] - lows[-1])
 
                 if current_close > upper and current_close <= upper * 1.025:
                     is_ballistic = current_close > (upper + 1.5 * atr)
