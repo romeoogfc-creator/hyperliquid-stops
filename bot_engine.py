@@ -127,20 +127,18 @@ def execute_engine():
     info = Info(constants.MAINNET_API_URL, skip_ws=True)
 
     user_state = info.user_state(ACCOUNT_ADDRESS)
+    spot_state = info.spot_user_state(ACCOUNT_ADDRESS)
     open_orders = info.frontend_open_orders(ACCOUNT_ADDRESS)
     all_mids = info.all_mids()
     meta = info.meta()
-
-    margin_summary = user_state.get("marginSummary", {})
-    account_value = float(margin_summary.get("accountValue", 0.0))
-    total_margin_used = float(margin_summary.get("totalMarginUsed", 0.0))
 
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
     positions_data = []
     active_coins = set()
-    total_positions_value = 0.0
+    total_margin_used = 0.0
     total_unrealized_pnl = 0.0
+    total_positions_value = 0.0
 
     if asset_positions:
         for pos_item in asset_positions:
@@ -157,6 +155,7 @@ def execute_engine():
             entry_px = float(pos.get("entryPx", 0))
             current_px = float(all_mids.get(coin, entry_px))
             margin_used = float(pos.get("marginUsed", 0))
+            total_margin_used += margin_used
             unrealized_pnl = float(pos.get("unrealizedPnl", 0))
             total_unrealized_pnl += unrealized_pnl
             pos_equity = margin_used + unrealized_pnl
@@ -209,9 +208,16 @@ def execute_engine():
                 "status": "Active"
             })
 
-    # True Static Cash Reserve (Withdrawable unallocated cash in account)
-    withdrawable = float(user_state.get("withdrawable", 0.0))
-    static_usdc = max(0.0, withdrawable)
+    # Extract unallocated spot USDC cash balance
+    spot_usdc = 0.0
+    for b in spot_state.get("balances", []):
+        if b.get("coin", "").upper() == "USDC":
+            spot_usdc = float(b.get("total", 0.0))
+            break
+
+    # Exact Global Net Worth matching Signum: Spot USDC + Active Position Equities
+    static_usdc = spot_usdc
+    account_value = spot_usdc + total_positions_value
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
     btc_green, btc_open, btc_close = check_btc_daily_candle(info)
