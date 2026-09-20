@@ -26,8 +26,15 @@ from google import genai
 from google.genai import types
 
 # ==============================================================================
-# CONFIGURATION & GUARDRAILS SETUP
+# CONFIGURATION & GUARDRAILS SETUP (ORIGINAL WORKING VARIABLES)
 # ==============================================================================
+HYPERLIQUID_SECRET_KEY = os.environ.get("HYPERLIQUID_SECRET_KEY", "YOUR_PRIVATE_KEY")
+HYPERLIQUID_ACCOUNT_ADDRESS = os.environ.get("HYPERLIQUID_ACCOUNT_ADDRESS", "YOUR_WALLET_ADDRESS")
+
+EMAIL_SENDER = os.environ.get("EMAIL_SENDER", "romeoogfc@gmail.com")
+EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD", "")
+EMAIL_RECIPIENT = os.environ.get("EMAIL_RECIPIENT", "romeoogfc@gmail.com")
+
 MAX_SLOTS = 6
 CI_ENTRY_MAX = 62.0
 STAGNATION_MAX_RUNS = 48  # 24 Hours @ 30-min cron runs
@@ -40,27 +47,6 @@ GEMINI_MODELS = [
 ]
 
 STATE_FILE = "hyperliquid_bot_state.json"
-
-# ==============================================================================
-# ENVIRONMENT & EXCHANGE INITIALIZATION (SANITY FIXED)
-# ==============================================================================
-def get_clean_env(key_name, default=""):
-    val = os.environ.get(key_name, default)
-    if val is None:
-        val = ""
-    val = str(val).strip()
-    if (val.startswith('"') and val.endswith('"')) or (val.startswith("'") and val.endswith("'")):
-        val = val[1:-1].strip()
-    return val
-
-def initialize_exchange():
-    raw_key = get_clean_env("HYPERLIQUID_SECRET_KEY")
-    raw_address = get_clean_env("HYPERLIQUID_ACCOUNT_ADDRESS")
-
-    account = Account.from_key(raw_key)
-    info = Info(constants.MAINNET_API_URL, skip_ws=True)
-    exchange = Exchange(account, constants.MAINNET_API_URL, account_address=raw_address)
-    return info, exchange, account.address
 
 # ==============================================================================
 # STATE PERSISTENCE HELPERS
@@ -85,7 +71,7 @@ def save_bot_state(state):
 # GEMINI AI MACRO SHIELD & RISK ENGINE
 # ==============================================================================
 def run_gemini_macro_shield():
-    api_key = get_clean_env("GEMINI_API_KEY")
+    api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
         return {"risk_level": "MODERATE", "assessment": "Gemini API key missing. Operating on standard risk parameters.", "recommendation": "Maintain standard execution."}
 
@@ -117,6 +103,12 @@ def run_gemini_macro_shield():
 # ==============================================================================
 # HYPERLIQUID DATA & LEDGER CALCULATIONS
 # ==============================================================================
+def initialize_exchange():
+    account = Account.from_key(HYPERLIQUID_SECRET_KEY)
+    info = Info(constants.MAINNET_API_URL, skip_ws=True)
+    exchange = Exchange(account, constants.MAINNET_API_URL, account_address=HYPERLIQUID_ACCOUNT_ADDRESS)
+    return info, exchange, account.address
+
 def fetch_net_worth_ledger(info, user_address):
     user_state = info.user_state(user_address)
     spot_state = info.spot_user_state(user_address)
@@ -363,10 +355,6 @@ def execute_open_entries(exchange, candidates, available_slots, net_worth, btc_r
 # TELEMETRY DASHBOARD & EMAIL GENERATOR
 # ==============================================================================
 def build_and_send_telemetry(ledger_data, macro_shield, btc_regime, active_positions_info, queue_candidates, logs):
-    email_sender = get_clean_env("EMAIL_SENDER")
-    email_password = get_clean_env("EMAIL_PASSWORD")
-    email_recipient = get_clean_env("EMAIL_RECIPIENT", email_sender)
-
     net_worth = ledger_data["total_net_worth"]
     unallocated = ledger_data["unallocated_cash"]
     margin_used = ledger_data["total_margin_used"]
@@ -420,7 +408,7 @@ def build_and_send_telemetry(ledger_data, macro_shield, btc_regime, active_posit
             
             <div style="background: #0d1b2a; color: #ffffff; padding: 20px;">
                 <h2 style="margin:0; font-size: 20px;">TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-                <p style="margin:5px 0 0 0; font-size: 12px; color: #8d99ae;">Timestamp: {timestamp} | Mode: LIVE / REAL-TIME REALIGNED</p>
+                <p style="margin:5px 0 0 0; font-size: 12px; color: #8d99ae;">Timestamp: {timestamp} | Mode: LIVE / REAL-TIME UPDATED</p>
             </div>
 
             <div style="padding: 20px;">
@@ -478,7 +466,7 @@ def build_and_send_telemetry(ledger_data, macro_shield, btc_regime, active_posit
                     </tbody>
                 </table>
 
-                <h3 style="margin-top: 30px; color: #1b263b; font-size: 15px;">LIVE TEST TELEMETRY & AUDIT LOG (SMART DOWNSIDE MODE)</h3>
+                <h3 style="margin-top: 30px; color: #1b263b; font-size: 15px;">LIVE TEST TELEMETRY & AUDIT LOG</h3>
                 <div style="background: #fffde7; border: 1px solid #fff59d; padding: 15px; font-family: monospace; font-size: 12px; color: #333; border-radius: 4px;">
                     {log_lines}
                 </div>
@@ -488,23 +476,23 @@ def build_and_send_telemetry(ledger_data, macro_shield, btc_regime, active_posit
     </html>
     """
 
-    if email_sender and email_password:
+    if EMAIL_SENDER and EMAIL_PASSWORD:
         try:
             msg = MIMEMultipart("alternative")
             msg["Subject"] = f"Hyperliquid Report — USD ${net_worth:.2f}"
-            msg["From"] = email_sender
-            msg["To"] = email_recipient
+            msg["From"] = EMAIL_SENDER
+            msg["To"] = EMAIL_RECIPIENT
             msg.attach(MIMEText(html_content, "html"))
 
             with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-                server.login(email_sender, email_password)
-                server.sendmail(email_sender, email_recipient, msg.as_string())
+                server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+                server.sendmail(EMAIL_SENDER, EMAIL_RECIPIENT, msg.as_string())
             print("[INFO] Telemetry email dispatched successfully.")
         except Exception as e:
             print(f"[ERROR] Failed to send email: {e}")
 
 # ==============================================================================
-# MAIN PIPELINE EXECUTION
+# MAIN PIPELINE EXECUTION (RE-ORDERED FOR REAL-TIME ACCURACY)
 # ==============================================================================
 def main():
     print("==================================================================")
@@ -543,7 +531,7 @@ def main():
         # Pause 2.0s for Hyperliquid REST orderbook settlement
         time.sleep(2.0)
 
-    # 5. RE-FETCH ACCOUNT STATE POST-EXECUTION (Guarantees real-time email accuracy)
+    # 5. RE-FETCH ACCOUNT STATE POST-EXECUTION (Real-time email accuracy update)
     post_trade_ledger = fetch_net_worth_ledger(info, user_address)
     user_state = post_trade_ledger["user_state"]
     all_mids = post_trade_ledger["all_mids"]
@@ -586,7 +574,7 @@ def main():
     # Filter On-Deck Queue to exclude assets that were just purchased
     remaining_queue = [c for c in queue_candidates if c["coin"] not in current_active_coins]
 
-    # 6. Dispatch Telemetry Email
+    # 6. Dispatch Telemetry Email Dashboard
     build_and_send_telemetry(
         post_trade_ledger,
         macro_shield,
