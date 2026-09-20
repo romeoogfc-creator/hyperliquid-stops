@@ -127,26 +127,13 @@ def execute_engine():
     info = Info(constants.MAINNET_API_URL, skip_ws=True)
 
     user_state = info.user_state(ACCOUNT_ADDRESS)
-    spot_state = info.spot_user_state(ACCOUNT_ADDRESS)
     open_orders = info.frontend_open_orders(ACCOUNT_ADDRESS)
     all_mids = info.all_mids()
     meta = info.meta()
 
     margin_summary = user_state.get("marginSummary", {})
-    perp_account_value = float(margin_summary.get("accountValue", 0.0))
+    account_value = float(margin_summary.get("accountValue", 0.0))
     total_margin_used = float(margin_summary.get("totalMarginUsed", 0.0))
-
-    # Extract unallocated USDC from spot wallet balances to match Signum global view
-    spot_usdc = 0.0
-    for b in spot_state.get("balances", []):
-        if b.get("coin", "").upper() == "USDC":
-            spot_usdc = float(b.get("total", 0.0))
-            break
-
-    # Global Net Worth = Perp Account Equity + Spot Unallocated USDC
-    account_value = perp_account_value + spot_usdc
-    static_usdc = spot_usdc
-    margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
@@ -221,6 +208,11 @@ def execute_engine():
                 "floor": target_floor * 100,
                 "status": "Active"
             })
+
+    # True Static Cash Reserve (Withdrawable unallocated cash in account)
+    withdrawable = float(user_state.get("withdrawable", 0.0))
+    static_usdc = max(0.0, withdrawable)
+    margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
     btc_green, btc_open, btc_close = check_btc_daily_candle(info)
     regime_str = f"GREEN (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> LONGs Allowed" if btc_green else f"RED (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> SHORTs Allowed"
