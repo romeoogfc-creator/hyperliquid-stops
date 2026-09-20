@@ -1,0 +1,5 @@
+google-genai
+hyperliquid-python-sdk
+pandas
+numpy
+eth-account
