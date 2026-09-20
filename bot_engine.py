@@ -26,14 +26,34 @@ from google import genai
 from google.genai import types
 
 # ==============================================================================
-# CONFIGURATION & GUARDRAILS SETUP (ORIGINAL WORKING VARIABLES)
+# CONFIGURATION & GUARDRAILS SETUP (ACCEPTS BOTH ENV VAR FORMATS)
 # ==============================================================================
-HYPERLIQUID_SECRET_KEY = os.environ.get("HYPERLIQUID_SECRET_KEY", "YOUR_PRIVATE_KEY")
-HYPERLIQUID_ACCOUNT_ADDRESS = os.environ.get("HYPERLIQUID_ACCOUNT_ADDRESS", "YOUR_WALLET_ADDRESS")
+HYPERLIQUID_SECRET_KEY = (
+    os.environ.get("HYPERLIQUID_SECRET_KEY") 
+    or os.environ.get("HL_SECRET_KEY") 
+    or "YOUR_PRIVATE_KEY"
+)
+HYPERLIQUID_ACCOUNT_ADDRESS = (
+    os.environ.get("HYPERLIQUID_ACCOUNT_ADDRESS") 
+    or os.environ.get("HL_ACCOUNT_ADDRESS") 
+    or "YOUR_WALLET_ADDRESS"
+)
 
-EMAIL_SENDER = os.environ.get("EMAIL_SENDER", "romeoogfc@gmail.com")
-EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD", "")
-EMAIL_RECIPIENT = os.environ.get("EMAIL_RECIPIENT", "romeoogfc@gmail.com")
+EMAIL_SENDER = (
+    os.environ.get("EMAIL_SENDER") 
+    or os.environ.get("SENDER_EMAIL") 
+    or "romeoogfc@gmail.com"
+)
+EMAIL_PASSWORD = (
+    os.environ.get("EMAIL_PASSWORD") 
+    or os.environ.get("SENDER_PASSWORD") 
+    or ""
+)
+EMAIL_RECIPIENT = (
+    os.environ.get("EMAIL_RECIPIENT") 
+    or os.environ.get("RECEIVER_EMAIL") 
+    or EMAIL_SENDER
+)
 
 MAX_SLOTS = 6
 CI_ENTRY_MAX = 62.0
