@@ -238,9 +238,9 @@ def execute_stock_engine():
         total_positions_value += market_value
         active_symbols.add(symbol)
 
-        # Fetch recent bars to compute Choppiness Index for active stock
+        # Fetch recent bars to compute Choppiness Index for active stock (1Hour timeframe + IEX feed)
         try:
-            bars_res = requests.get(f"https://data.alpaca.markets/v2/stocks/{symbol}/bars?timeframe=1H&limit=50", headers=HEADERS)
+            bars_res = requests.get(f"https://data.alpaca.markets/v2/stocks/{symbol}/bars?timeframe=1Hour&limit=50&feed=iex", headers=HEADERS)
             bars = bars_res.json().get("bars", []) if bars_res.status_code == 200 else []
             closes = [float(b["c"]) for b in bars]
             highs = [float(b["h"]) for b in bars]
@@ -292,7 +292,7 @@ def execute_stock_engine():
             continue
         try:
             bars_res = requests.get(
-                f"https://data.alpaca.markets/v2/stocks/{symbol}/bars?timeframe=1H&limit=100",
+                f"https://data.alpaca.markets/v2/stocks/{symbol}/bars?timeframe=1Hour&limit=100&feed=iex",
                 headers=HEADERS
             )
             if bars_res.status_code != 200:
