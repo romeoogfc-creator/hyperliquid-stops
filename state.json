@@ -2,9 +2,9 @@
   "cooldown_blocklist": {},
   "stagnation_tracker": {
     "BTC": 0,
-    "ETH": 16,
-    "ATOM": 14,
+    "ETH": 17,
+    "ATOM": 15,
     "ASTER": 0
   },
-  "last_run_timestamp": "2026-09-20 13:04:58"
+  "last_run_timestamp": "2026-09-20 13:35:53"
 }
