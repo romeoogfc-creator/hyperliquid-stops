@@ -132,13 +132,16 @@ def execute_engine():
     all_mids = info.all_mids()
     meta = info.meta()
 
+    margin_summary = user_state.get("marginSummary", {})
+    perp_account_value = float(margin_summary.get("accountValue", 0.0))
+    total_margin_used = float(margin_summary.get("totalMarginUsed", 0.0))
+
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
     positions_data = []
     active_coins = set()
-    total_margin_used = 0.0
-    total_unrealized_pnl = 0.0
     total_positions_value = 0.0
+    total_unrealized_pnl = 0.0
 
     if asset_positions:
         for pos_item in asset_positions:
@@ -155,7 +158,6 @@ def execute_engine():
             entry_px = float(pos.get("entryPx", 0))
             current_px = float(all_mids.get(coin, entry_px))
             margin_used = float(pos.get("marginUsed", 0))
-            total_margin_used += margin_used
             unrealized_pnl = float(pos.get("unrealizedPnl", 0))
             total_unrealized_pnl += unrealized_pnl
             pos_equity = margin_used + unrealized_pnl
@@ -215,9 +217,9 @@ def execute_engine():
             spot_usdc = float(b.get("total", 0.0))
             break
 
-    # Exact Global Net Worth matching Signum: Spot USDC + Active Position Equities
+    # Exact Global Net Worth matching Signum precisely: Spot USDC Wallet + Perp Account Equity
     static_usdc = spot_usdc
-    account_value = spot_usdc + total_positions_value
+    account_value = spot_usdc + perp_account_value
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
     btc_green, btc_open, btc_close = check_btc_daily_candle(info)
