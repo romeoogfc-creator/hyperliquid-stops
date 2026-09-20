@@ -127,14 +127,14 @@ def execute_engine():
     info = Info(constants.MAINNET_API_URL, skip_ws=True)
 
     user_state = info.user_state(ACCOUNT_ADDRESS)
-    spot_state = info.spot_user_state(ACCOUNT_ADDRESS)
     open_orders = info.frontend_open_orders(ACCOUNT_ADDRESS)
     all_mids = info.all_mids()
     meta = info.meta()
 
     margin_summary = user_state.get("marginSummary", {})
-    perp_account_value = float(margin_summary.get("accountValue", 0.0))
+    account_value = float(margin_summary.get("accountValue", 0.0))
     total_margin_used = float(margin_summary.get("totalMarginUsed", 0.0))
+    withdrawable = float(user_state.get("withdrawable", 0.0))
 
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
@@ -210,16 +210,8 @@ def execute_engine():
                 "status": "Active"
             })
 
-    # Extract unallocated spot USDC cash balance
-    spot_usdc = 0.0
-    for b in spot_state.get("balances", []):
-        if b.get("coin", "").upper() == "USDC":
-            spot_usdc = float(b.get("total", 0.0))
-            break
-
-    # Exact Global Net Worth matching Signum precisely: Spot USDC Wallet + Perp Account Equity
-    static_usdc = spot_usdc
-    account_value = spot_usdc + perp_account_value
+    # Direct native API values from Hyperliquid clearinghouse
+    static_usdc = withdrawable
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
     btc_green, btc_open, btc_close = check_btc_daily_candle(info)
@@ -362,7 +354,7 @@ def execute_engine():
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['collateral']:.2f}</td>"
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: 600; color: #0f172a;'>${p['position_usd']:.2f}</td>"
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #334155;'>${round_sig_figs(p['entry'], 5)}</td>"
+        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #334155;${round_sig_figs(p['entry'], 5)}</td>"
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #b45309;'>${p['stop']}</td>"
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td>"
         f"</tr>"
