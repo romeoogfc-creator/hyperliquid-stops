@@ -311,14 +311,14 @@ def execute_stock_engine():
     market_candidates = []
     scanned_count = 0
 
-    # BATCH SCANNING ENGINE: Chunks of 25 symbols per API call for maximum reliability
-    chunk_size = 25
+    # OPTIMIZED BATCH SCANNING ENGINE: 15 symbols per chunk with limit=2000 so every ticker gets full bar data
+    chunk_size = 15
     for i in range(0, len(symbols_to_scan), chunk_size):
         chunk = symbols_to_scan[i:i + chunk_size]
         symbols_param = ",".join(chunk)
 
         try:
-            url = f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbols_param}&timeframe=1Hour&limit=100&feed=iex&start={start_date}"
+            url = f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbols_param}&timeframe=1Hour&limit=2000&feed=iex&start={start_date}"
             bars_res = requests.get(url, headers=HEADERS)
             if bars_res.status_code != 200:
                 audit_logs.append(f"Batch Scan API Error: HTTP {bars_res.status_code}")
@@ -328,8 +328,7 @@ def execute_stock_engine():
 
             for symbol in chunk:
                 bars = all_bars_data.get(symbol, [])
-                # Require 20 bars minimum (plenty for 14-period CI and EWM Gaussian calculations)
-                if not bars or len(bars) < 20:
+                if not bars or len(bars) < 15:
                     continue
 
                 scanned_count += 1
