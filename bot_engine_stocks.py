@@ -9,8 +9,13 @@ import requests
 import pandas as pd
 import numpy as np
 
+# Google GenAI SDK Imports
+from google import genai
+from google.genai import types
+
 API_KEY = os.getenv("APAL_API_KEY_ID")
 SECRET_KEY = os.getenv("APAL_SECRET_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 BASE_URL = os.getenv("APAL_BASE_URL", "https://paper-api.alpaca.markets")
 STATE_FILE = "stock_state.json"
 
@@ -35,6 +40,67 @@ def save_state(state):
     state["last_run_timestamp"] = time.strftime('%Y-%m-%d %H:%M:%S')
     with open(STATE_FILE, "w") as f:
         json.dump(state, f, indent=2)
+
+def run_gemini_stock_market_shield():
+    """Queries Gemini with Google Search to detect US stock market black-swan risks and generate an executive market briefing."""
+    if not GEMINI_API_KEY:
+        print("GEMINI_API_KEY missing; skipping Stock AI Macro Shield scan.")
+        return {
+            "high_risk_detected": False, 
+            "risk_level": "UNKNOWN", 
+            "reason": "API Key Missing", 
+            "action": "ALLOW_TRADES",
+            "ai_market_brief": "AI Shield offline (Missing GEMINI_API_KEY secret)."
+        }
+
+    try:
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        prompt = """
+        Perform a live real-time web search for breaking US stock market news, SPY/QQQ market trends, Federal Reserve macro economic updates, 
+        unexpected earnings shocks, or geopolitical events from the last 1-2 hours.
+        Determine if there is extreme high-risk volatility or black-swan risk that could cause sudden crashes in equities.
+        Provide a 2-sentence executive summary of current US stock market sentiment and key catalysts for the email dashboard.
+        """
+
+        # Model Fallback Cascade for maximum speed, cost efficiency, and reliability
+        models = ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.6-flash"]
+        
+        for model_name in models:
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        tools=[types.Tool(google_search=types.GoogleSearch())],
+                        response_mime_type="application/json",
+                        response_schema={
+                            "type": "OBJECT",
+                            "properties": {
+                                "high_risk_detected": {"type": "BOOLEAN"},
+                                "risk_level": {"type": "STRING", "enum": ["LOW", "MODERATE", "HIGH"]},
+                                "reason": {"type": "STRING"},
+                                "action": {"type": "STRING", "enum": ["ALLOW_TRADES", "BLOCK_ENTRIES"]},
+                                "ai_market_brief": {"type": "STRING"}
+                            },
+                            "required": ["high_risk_detected", "risk_level", "reason", "action", "ai_market_brief"]
+                        }
+                    )
+                )
+                return json.loads(response.text)
+            except Exception as inner_e:
+                print(f"Gemini Stock AI Shield attempt failed on {model_name}: {inner_e}")
+                continue
+
+    except Exception as e:
+        print(f"Gemini Stock AI Shield execution error: {e}")
+
+    return {
+        "high_risk_detected": False, 
+        "risk_level": "UNKNOWN", 
+        "reason": "AI Shield Bypass on Error", 
+        "action": "ALLOW_TRADES",
+        "ai_market_brief": "Stock market scanning operating normally under standard quantitative rules."
+    }
 
 def send_html_dashboard_email(subject, html_content, text_fallback):
     sender_email = os.getenv("SENDER_EMAIL")
@@ -107,14 +173,19 @@ def calculate_stop_price(entry_px, is_long, current_px):
 def execute_stock_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Alpaca Stock Engine Started (Equities LS-01 Mode).")
+    audit_logs.append(f"[{timestamp}] Alpaca Stock Engine Started (Equities LS-01 + Gemini AI Shield Mode).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
 
+    # 1. RUN GEMINI AI STOCK MACRO SHIELD SCAN
+    ai_shield = run_gemini_stock_market_shield()
+    ai_risk_status = "BLOCKED (High Risk)" if ai_shield.get("high_risk_detected") else "PASS (Normal Risk)"
+    audit_logs.append(f"Gemini AI Shield: [{ai_shield.get('risk_level', 'UNKNOWN')}] {ai_shield.get('reason', '')} -> {ai_risk_status}")
+
     state = load_state()
 
-    # 1. Fetch Account Details & Positions from Alpaca
+    # 2. Fetch Account Details & Positions from Alpaca
     account_res = requests.get(f"{BASE_URL}/v2/account", headers=HEADERS)
     if account_res.status_code != 200:
         raise Exception(f"Failed to fetch Alpaca account: {account_res.text}")
@@ -179,7 +250,7 @@ def execute_stock_engine():
     for p in positions_data:
         assets_map[p["symbol"]] = {"balance": p["qty"], "balance_usd": p["market_value"]}
 
-    # 2. Stock Universe Scan (High-Liquidity Equities)
+    # 3. Stock Universe Scan (High-Liquidity Equities)
     watchlist = ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "NFLX", "PLTR", "COIN", "SPY", "QQQ"]
     market_candidates = []
     scanned_count = 0
@@ -210,14 +281,16 @@ def execute_stock_engine():
                 is_ballistic = current_close > (upper + 1.5 * atr)
                 market_candidates.append({"symbol": symbol, "close": current_close, "is_long": True, "is_ballistic": is_ballistic})
                 audit_logs.append(f"EQUITY MATCH LONG: {symbol} @ ${current_close:.2f}")
-        except Exception as e:
+        except Exception:
             continue
 
     audit_logs.append(f"Stock Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} breakouts.")
 
-    # 3. Execution Gate (Max 5 concurrent positions for stocks)
+    # 4. Execution Gate (Blocked if Max Slots reached OR if Gemini AI Shield detected high risk)
     MAX_STOCK_SLOTS = 5
-    if active_count < MAX_STOCK_SLOTS and market_candidates:
+    if ai_shield.get("high_risk_detected"):
+        audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD. Reason: {ai_shield.get('reason')}")
+    elif active_count < MAX_STOCK_SLOTS and market_candidates:
         for candidate in market_candidates[: (MAX_STOCK_SLOTS - active_count)]:
             symbol = candidate["symbol"]
             px = candidate["close"]
@@ -243,16 +316,19 @@ def execute_stock_engine():
                     audit_logs.append(f"ORDER SUCCESS: Bought {qty} shares of {symbol}")
             except Exception as e:
                 audit_logs.append(f"ORDER FAILED on {symbol}: {e}")
+    else:
+        audit_logs.append(f"Execution Gate: Active slots ({active_count}/{MAX_STOCK_SLOTS}). No new market entries triggered.")
 
     save_state(state)
 
     audit_section = ""
     if VERBOSE_TEST_MODE:
-        audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 11px; color: #475569;'>{log}</td></tr>" for log in audit_logs])
+        # Applied pre-wrap and word-break styling to force clean text wrapping in stock audit logs
+        audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
         <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Stock Engine)</div>
-        <div class="table-responsive">
-          <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%;">
+        <div class="table-responsive" style="overflow-x: hidden;">
+          <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
             <tbody>{audit_rows}</tbody>
           </table>
         </div>
@@ -262,6 +338,10 @@ def execute_stock_engine():
 
     funds_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${d['balance_usd']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #555;'>{d['balance']:.4f}</td></tr>" for f, d in assets_map.items() if d['balance_usd'] > 0.01])
     positions_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['symbol']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['market_value']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #b45309;'>${p['stop']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td></tr>" for p in positions_data]) or "<tr><td colspan='7' style='padding: 15px; text-align: center; color: #666;'>No active stock positions found.</td></tr>"
+
+    # Format AI Shield Status Badge
+    ai_risk_color = "#c62828" if ai_shield.get("high_risk_detected") else "#2e7d32"
+    ai_badge = f"<span style='background: {ai_risk_color}; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 10px;'>Risk Level: {ai_shield.get('risk_level', 'UNKNOWN')}</span>"
 
     html_content = f"""
     <html>
@@ -278,14 +358,19 @@ def execute_stock_engine():
           .net-worth-title {{ font-size: 12px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 6px; }}
           .net-worth-value {{ font-size: 24px; font-weight: 700; color: #0f172a; }}
           .net-worth-subtitle {{ font-size: 11px; color: #64748b; margin-top: 4px; }}
-          .rules-card {{ background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; font-size: 11px; color: #166534; }}
-          .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 12px; color: #15803d; }}
+          
+          .ai-brief-card {{ background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; font-size: 11px; color: #166534; line-height: 1.6; }}
+          .ai-brief-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 12px; color: #15803d; display: flex; align-items: center; justify-content: space-between; }}
+          
+          .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; font-size: 11px; color: #334155; line-height: 1.6; }}
+          .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 12px; color: #0f172a; }}
           .section-title {{ font-size: 13px; text-transform: uppercase; color: #475569; margin: 20px 0 8px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; font-weight: 600; }}
           .table-responsive {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 15px; }}
           table {{ width: 100%; border-collapse: collapse; font-size: 11px; white-space: nowrap; }}
           th {{ background: #f1f5f9; color: #475569; text-align: left; padding: 8px 8px; font-weight: 600; border-bottom: 2px solid #cbd5e1; }}
           td {{ padding: 8px 8px; }}
           .footer {{ text-align: center; font-size: 10px; color: #94a3b8; padding: 12px; background: #f8fafc; border-top: 1px solid #e2e8f0; }}
+          
           @media screen and (max-width: 600px) {{
             body {{ padding: 2px !important; }}
             .container {{ border-radius: 0 !important; }}
@@ -309,9 +394,19 @@ def execute_stock_engine():
               <div class="net-worth-subtitle">Alpaca Paper Sandbox &bull; <b>Margin Utilization: {margin_util_pct:.1f}%</b></div>
             </div>
 
+            <div class="ai-brief-card">
+              <div class="ai-brief-title">
+                <span>🤖 GEMINI AI EXECUTIVE STOCK MARKET BRIEFING</span>
+                {ai_badge}
+              </div>
+              <b>Live Market Assessment:</b> {ai_shield.get('ai_market_brief', 'Normal conditions.')}<br>
+              <b>Execution Recommendation:</b> {ai_shield.get('reason', 'Standard scan active.')}
+            </div>
+
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Stock Rule Deck & Guardrails</div>
-              &bull; <b>Market Hours Cron:</b> Mon-Fri US Trading Hours &bull; <b>Max Slots:</b> 5 Active<br>
+              &bull; <b>Market Hours Cron:</b> Mon-Fri US Trading Hours &bull; <b>Max Slots:</b> {active_count}/{MAX_STOCK_SLOTS} Active<br>
+              &bull; <b>Gemini AI Macro Shield:</b> Real-time Google Search news & black-swan scanning<br>
               &bull; <b>Hard Stop:</b> -4.0% ROE Floor<br>
               &bull; <b>Profit Ratchet Ladders:</b> +1.5% ROE (BE) &bull; +2.0% (Tier 1) &bull; +3.5% (Tier 2) &bull; +10% (+5% Floor)<br>
               &bull; <b>Asset Universe:</b> S&P 500 & Nasdaq Momentum Equities
