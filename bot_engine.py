@@ -31,7 +31,7 @@ def load_state():
                 return json.load(f)
         except Exception as e:
             print(f"Error loading state.json: {e}")
-    return {"cooldown_blocklist": {}, "stagnation_tracker": {}, "last_run_timestamp": ""}
+    return {"cooldown_blocklist": {}, "stagnation_tracker": {}, "last_run_timestamp": "", "ai_shield_cache": {}}
 
 def save_state(state):
     state["last_run_timestamp"] = time.strftime('%Y-%m-%d %H:%M:%S')
@@ -39,7 +39,16 @@ def save_state(state):
         json.dump(state, f, indent=2)
 
 def run_gemini_market_shield():
-    """Queries Gemini with Google Search to detect black-swan risks and generate an executive market briefing."""
+    """Queries Gemini with Google Search ONCE per day and caches the verdict in state.json to eliminate GCP API charges."""
+    state = load_state()
+    cached_shield = state.get("ai_shield_cache", {})
+    today_str = time.strftime('%Y-%m-%d')
+
+    # 1. READ FROM LOCAL JSON CACHE: Reuse today's verdict if already scanned ($0.00 cost)
+    if cached_shield.get("scan_date") == today_str and "high_risk_detected" in cached_shield:
+        print(f"Reading crypto market risk verdict from local state.json (Scanned today at {cached_shield.get('timestamp')}).")
+        return cached_shield
+
     if not GEMINI_API_KEY:
         print("GEMINI_API_KEY missing; skipping AI Macro Shield scan.")
         return {
@@ -50,6 +59,8 @@ def run_gemini_market_shield():
             "ai_market_brief": "AI Shield offline (Missing GEMINI_API_KEY secret)."
         }
 
+    # 2. EXECUTE API SCAN ONCE A DAY ONLY
+    print(f"Executing daily crypto Gemini AI Shield scan for {today_str}...")
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
         prompt = """
@@ -82,7 +93,14 @@ def run_gemini_market_shield():
                         }
                     )
                 )
-                return json.loads(response.text)
+                result = json.loads(response.text)
+                result["timestamp"] = time.strftime('%Y-%m-%d %H:%M:%S')
+                result["scan_date"] = today_str
+
+                # Save verdict to state.json cache
+                state["ai_shield_cache"] = result
+                save_state(state)
+                return result
             except Exception as inner_e:
                 print(f"Gemini AI Shield attempt failed on {model_name}: {inner_e}")
                 continue
@@ -90,7 +108,7 @@ def run_gemini_market_shield():
     except Exception as e:
         print(f"Gemini AI Shield execution error: {e}")
 
-    return {
+    return cached_shield if cached_shield else {
         "high_risk_detected": False, 
         "risk_level": "UNKNOWN", 
         "reason": "AI Shield Bypass on Error", 
@@ -208,7 +226,7 @@ def execute_engine():
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
 
-    # 1. RUN GEMINI AI MACRO SHIELD SCAN
+    # 1. RUN GEMINI AI MACRO SHIELD SCAN (Reads local cache or runs 1 daily API call)
     ai_shield = run_gemini_market_shield()
     ai_risk_status = "BLOCKED (High Risk)" if ai_shield.get("high_risk_detected") else "PASS (Normal Risk)"
     audit_logs.append(f"Gemini AI Shield: [{ai_shield.get('risk_level', 'UNKNOWN')}] {ai_shield.get('reason', '')} -> {ai_risk_status}")
@@ -453,7 +471,6 @@ def execute_engine():
 
     audit_section = ""
     if VERBOSE_TEST_MODE:
-        # Added pre-wrap and word-break styling to force text wrapping on long audit log lines
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
         <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Smart Downside Mode)</div>
@@ -567,7 +584,7 @@ def execute_engine():
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Bot Rule Deck & Guardrails</div>
               &bull; <b>Execution Engine:</b> 30-Min GitHub Cron &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
-              &bull; <b>Gemini AI Macro Shield:</b> Real-time 30-min Google Search news & black-swan scanning<br>
+              &bull; <b>Gemini AI Macro Shield:</b> Real-time Google Search news & black-swan scanning (Daily JSON Cached)<br>
               &bull; <b>Smart Downside Adaptive Stop:</b> -1.2% (Choppy) / -2.0% (Clean) / -3.5% (Ballistic Breakout)<br>
               &bull; <b>Micro-Ratchet Ladders:</b> +0.5% (-0.5% cap) &bull; +1.0% (BE) &bull; +2% &bull; +3.5%<br>
               &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Dynamic 2.5% Steps with 1% Buffer active from +5% up to +300%+ ROE</i><br>
