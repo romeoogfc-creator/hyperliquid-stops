@@ -453,11 +453,12 @@ def execute_engine():
 
     audit_section = ""
     if VERBOSE_TEST_MODE:
-        audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 11px; color: #475569;'>{log}</td></tr>" for log in audit_logs])
+        # Added pre-wrap and word-break styling to force text wrapping on long audit log lines
+        audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
         <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Smart Downside Mode)</div>
-        <div class="table-responsive">
-          <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%;">
+        <div class="table-responsive" style="overflow-x: hidden;">
+          <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
             <tbody>{audit_rows}</tbody>
           </table>
         </div>
@@ -500,7 +501,6 @@ def execute_engine():
 
     mode_label = 'DEBUG / MOBILE RESPONSIVE' if VERBOSE_TEST_MODE else 'PRODUCTION'
 
-    # Format AI Shield Status Badge
     ai_risk_color = "#c62828" if ai_shield.get("high_risk_detected") else "#2e7d32"
     ai_badge = f"<span style='background: {ai_risk_color}; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 10px;'>Risk Level: {ai_shield.get('risk_level', 'UNKNOWN')}</span>"
 
