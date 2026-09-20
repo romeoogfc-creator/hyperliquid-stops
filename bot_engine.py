@@ -226,7 +226,7 @@ def execute_engine():
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
 
-    # 1. RUN GEMINI AI MACRO SHIELD SCAN (Reads local cache or runs 1 daily API call)
+    # 1. RUN GEMINI AI MACRO SHIELD SCAN
     ai_shield = run_gemini_market_shield()
     ai_risk_status = "BLOCKED (High Risk)" if ai_shield.get("high_risk_detected") else "PASS (Normal Risk)"
     audit_logs.append(f"Gemini AI Shield: [{ai_shield.get('risk_level', 'UNKNOWN')}] {ai_shield.get('reason', '')} -> {ai_risk_status}")
@@ -238,16 +238,157 @@ def execute_engine():
 
     user_state = info.user_state(ACCOUNT_ADDRESS)
     spot_state = info.spot_user_state(ACCOUNT_ADDRESS)
-    open_orders = info.frontend_open_orders(ACCOUNT_ADDRESS)
     all_mids = info.all_mids()
     meta = info.meta()
+    now_ms = int(time.time() * 1000)
+
+    # Initial Active Positions Check
+    asset_positions = user_state.get("assetPositions", [])
+    active_count = 0
+    active_coins = set()
+    for pos_item in asset_positions:
+        pos = pos_item.get("position", {})
+        coin = pos.get("coin")
+        szi = float(pos.get("szi", 0))
+        if coin and szi != 0:
+            active_count += 1
+            active_coins.add(coin)
+
+    # BTC Regime Check
+    btc_green, btc_open, btc_close = check_btc_daily_candle(info)
+    regime_str = f"GREEN (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> LONGs Allowed" if btc_green else f"RED (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> SHORTs Allowed"
+    audit_logs.append(f"BTC Regime Check: {regime_str}")
+
+    # Market Scanner
+    universe = [asset["name"] for asset in meta.get("universe", [])][:100]
+    market_candidates = []
+    scanned_count = 0
+
+    for coin in universe:
+        if coin in active_coins or coin in ["USDC", "USDT"]:
+            continue
+        try:
+            px = float(all_mids.get(coin, 0))
+            if px <= 0:
+                continue
+            candles = info.candles_snapshot(name=coin, interval="1h", startTime=now_ms - 86400000 * 7, endTime=now_ms)
+            if not candles or len(candles) < 50:
+                continue
+            scanned_count += 1
+            closes = [float(c["c"]) for c in candles]
+            highs = [float(c["h"]) for c in candles]
+            lows = [float(c["l"]) for c in candles]
+
+            upper, lower, filter_band = calculate_gaussian_channel(closes)
+            current_close = closes[-1]
+            
+            ci = calculate_choppiness_index(highs, lows, closes)
+            if ci > 62.0:
+                continue
+
+            atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])])
+
+            if btc_green and current_close > upper and current_close <= upper * 1.025:
+                is_ballistic = current_close > (upper + 1.5 * atr)
+                extension_score = (current_close - upper) / upper
+                atr_score = atr / current_close
+                momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
+
+                market_candidates.append({
+                    "coin": coin, 
+                    "close": current_close, 
+                    "is_long": True, 
+                    "is_ballistic": is_ballistic,
+                    "score": momentum_score,
+                    "ci": ci
+                })
+                audit_logs.append(f"MATCH LONG: {coin} @ ${current_close:.4f} (Score: {momentum_score:.4f}, CI: {ci:.1f})")
+            elif not btc_green and current_close < lower and current_close >= lower * 0.975:
+                is_ballistic = current_close < (lower - 1.5 * atr)
+                extension_score = (lower - current_close) / lower
+                atr_score = atr / current_close
+                momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
+
+                market_candidates.append({
+                    "coin": coin, 
+                    "close": current_close, 
+                    "is_long": False, 
+                    "is_ballistic": is_ballistic,
+                    "score": momentum_score,
+                    "ci": ci
+                })
+                audit_logs.append(f"MATCH SHORT: {coin} @ ${current_close:.4f} (Score: {momentum_score:.4f}, CI: {ci:.1f})")
+        except Exception:
+            continue
+
+    market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
+    audit_logs.append(f"Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts (Smart-Ranked).")
+
+    # Account Net Worth Baseline
+    spot_usdc = 0.0
+    total_spot_net_worth = 0.0
+    for b in spot_state.get("balances", []):
+        coin = b.get("coin", "").upper()
+        total_amt = float(b.get("total", 0.0))
+        if total_amt > 0:
+            if coin == "USDC":
+                spot_usdc = total_amt
+                total_spot_net_worth += total_amt
+            else:
+                px = float(all_mids.get(coin, 0.0))
+                total_spot_net_worth += (total_amt * px)
+
+    margin_summary = user_state.get("marginSummary", {})
+    fallback_val = float(margin_summary.get("accountValue", 0.0))
+    account_value = total_spot_net_worth if total_spot_net_worth > 0 else fallback_val
+
+    # --- STEP 1: EXECUTE MARKET ENTRIES FIRST ---
+    trades_executed = False
+    if ai_shield.get("high_risk_detected"):
+        audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD. Reason: {ai_shield.get('reason')}")
+    elif active_count < 6 and market_candidates:
+        for candidate in market_candidates[: (6 - active_count)]:
+            coin = candidate["coin"]
+            px = candidate["close"]
+            is_long = candidate["is_long"]
+            is_ballistic = candidate["is_ballistic"]
+            
+            target_pct = np.random.uniform(0.15, 0.17) if is_ballistic else np.random.uniform(0.12, 0.14)
+            target_usd = max(50.0, account_value * target_pct)
+            sz = round(target_usd / px, 4)
+            
+            side_str = "LONG" if is_long else "SHORT"
+            try:
+                if is_long:
+                    res = exchange.market_open(coin, True, sz, px * 1.01)
+                else:
+                    res = exchange.market_open(coin, False, sz, px * 0.99)
+                    
+                if res.get("status") == "ok":
+                    active_count += 1
+                    active_coins.add(coin)
+                    audit_logs.append(f"EXECUTION SUCCESS: Opened #{1} Ranked {side_str} on {coin}")
+                    trades_executed = True
+            except Exception as e:
+                audit_logs.append(f"EXECUTION FAILED on {coin}: {e}")
+    else:
+        audit_logs.append(f"Execution Gate: Active slots ({active_count}/6). No new market entries triggered.")
+
+    # 2-second cooldown if new entries were executed for REST orderbook settlement
+    if trades_executed:
+        time.sleep(2.0)
+
+    # --- STEP 2: RE-FETCH POST-EXECUTION USER STATE & RATCHET ALL POSITIONS ---
+    user_state = info.user_state(ACCOUNT_ADDRESS)
+    spot_state = info.spot_user_state(ACCOUNT_ADDRESS)
+    open_orders = info.frontend_open_orders(ACCOUNT_ADDRESS)
+    all_mids = info.all_mids()
 
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
     positions_data = []
     active_coins = set()
     total_margin_used = 0.0
-    now_ms = int(time.time() * 1000)
 
     if asset_positions:
         for pos_item in asset_positions:
@@ -324,7 +465,7 @@ def execute_engine():
                 "status": "Active"
             })
 
-    # Exact Signum Net Worth Calculation
+    # Recalculate Net Worth & USDC Reserves Post-Trade Execution
     spot_usdc = 0.0
     total_spot_net_worth = 0.0
 
@@ -346,103 +487,6 @@ def execute_engine():
     static_usdc = max(0.0, account_value - total_margin_used)
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
-    btc_green, btc_open, btc_close = check_btc_daily_candle(info)
-    regime_str = f"GREEN (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> LONGs Allowed" if btc_green else f"RED (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> SHORTs Allowed"
-    audit_logs.append(f"BTC Regime Check: {regime_str}")
-
-    universe = [asset["name"] for asset in meta.get("universe", [])][:100]
-    market_candidates = []
-    scanned_count = 0
-
-    for coin in universe:
-        if coin in active_coins or coin in ["USDC", "USDT"]:
-            continue
-        try:
-            px = float(all_mids.get(coin, 0))
-            if px <= 0:
-                continue
-            candles = info.candles_snapshot(name=coin, interval="1h", startTime=now_ms - 86400000 * 7, endTime=now_ms)
-            if not candles or len(candles) < 50:
-                continue
-            scanned_count += 1
-            closes = [float(c["c"]) for c in candles]
-            highs = [float(c["h"]) for c in candles]
-            lows = [float(c["l"]) for c in candles]
-
-            upper, lower, filter_band = calculate_gaussian_channel(closes)
-            current_close = closes[-1]
-            
-            ci = calculate_choppiness_index(highs, lows, closes)
-            if ci > 62.0:
-                continue
-
-            atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])])
-
-            if btc_green and current_close > upper and current_close <= upper * 1.025:
-                is_ballistic = current_close > (upper + 1.5 * atr)
-                extension_score = (current_close - upper) / upper
-                atr_score = atr / current_close
-                momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
-
-                market_candidates.append({
-                    "coin": coin, 
-                    "close": current_close, 
-                    "is_long": True, 
-                    "is_ballistic": is_ballistic,
-                    "score": momentum_score,
-                    "ci": ci
-                })
-                audit_logs.append(f"MATCH LONG: {coin} @ ${current_close:.4f} (Score: {momentum_score:.4f}, CI: {ci:.1f})")
-            elif not btc_green and current_close < lower and current_close >= lower * 0.975:
-                is_ballistic = current_close < (lower - 1.5 * atr)
-                extension_score = (lower - current_close) / lower
-                atr_score = atr / current_close
-                momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
-
-                market_candidates.append({
-                    "coin": coin, 
-                    "close": current_close, 
-                    "is_long": False, 
-                    "is_ballistic": is_ballistic,
-                    "score": momentum_score,
-                    "ci": ci
-                })
-                audit_logs.append(f"MATCH SHORT: {coin} @ ${current_close:.4f} (Score: {momentum_score:.4f}, CI: {ci:.1f})")
-        except Exception:
-            continue
-
-    market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
-    audit_logs.append(f"Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts (Smart-Ranked).")
-
-    if ai_shield.get("high_risk_detected"):
-        audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD. Reason: {ai_shield.get('reason')}")
-    elif active_count < 6 and market_candidates:
-        for candidate in market_candidates[: (6 - active_count)]:
-            coin = candidate["coin"]
-            px = candidate["close"]
-            is_long = candidate["is_long"]
-            is_ballistic = candidate["is_ballistic"]
-            
-            target_pct = np.random.uniform(0.15, 0.17) if is_ballistic else np.random.uniform(0.12, 0.14)
-            target_usd = max(50.0, account_value * target_pct)
-            sz = round(target_usd / px, 4)
-            
-            side_str = "LONG" if is_long else "SHORT"
-            try:
-                if is_long:
-                    res = exchange.market_open(coin, True, sz, px * 1.01)
-                else:
-                    res = exchange.market_open(coin, False, sz, px * 0.99)
-                    
-                if res.get("status") == "ok":
-                    active_count += 1
-                    active_coins.add(coin)
-                    audit_logs.append(f"EXECUTION SUCCESS: Opened #{1} Ranked {side_str} on {coin}")
-            except Exception as e:
-                audit_logs.append(f"EXECUTION FAILED on {coin}: {e}")
-    else:
-        audit_logs.append(f"Execution Gate: Active slots ({active_count}/6). No new market entries triggered.")
-
     if active_count == 6:
         unprotected_trades = [p for p in positions_data if p["roe"] < 1.5]
         if unprotected_trades:
@@ -459,6 +503,9 @@ def execute_engine():
 
     save_state(state)
 
+    # Exclude bought assets from the waiting queue
+    remaining_candidates = [c for c in market_candidates if c["coin"] not in active_coins]
+
     ondeck_rows = "".join([
         f"<tr>"
         f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>#{i+1}</td>"
@@ -466,8 +513,8 @@ def execute_engine():
         f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-family: monospace;'>${c['close']:.4f}</td>"
         f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: #b45309; font-weight: 600;'>Score: {c['score']:.4f}</td>"
         f"</tr>"
-        for i, c in enumerate(market_candidates[:3])
-    ]) if market_candidates else "<tr><td colspan='4' style='padding: 10px; text-align: center; color: #666;'>No breakouts currently detected.</td></tr>"
+        for i, c in enumerate(remaining_candidates[:3])
+    ]) if remaining_candidates else "<tr><td colspan='4' style='padding: 10px; text-align: center; color: #666;'>No breakouts currently detected.</td></tr>"
 
     audit_section = ""
     if VERBOSE_TEST_MODE:
