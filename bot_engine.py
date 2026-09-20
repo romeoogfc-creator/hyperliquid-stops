@@ -78,6 +78,7 @@ def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0):
     else:
         roe = ((entry_px - current_px) / entry_px) * leverage
 
+    # Tightened Risk Model & Micro-Ratchets
     if roe >= 0.05:
         milestone = floor(roe * 40) / 40
         target_floor_roe = milestone - 0.01
@@ -85,10 +86,12 @@ def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0):
         target_floor_roe = 0.02
     elif roe >= 0.020:
         target_floor_roe = 0.01
-    elif roe >= 0.015:
-        target_floor_roe = 0.00
+    elif roe >= 0.010:
+        target_floor_roe = 0.00         # Break-Even locked at +1.0% ROE
+    elif roe >= 0.005:
+        target_floor_roe = -0.005       # Tight risk cap (-0.5%) at +0.5% ROE
     else:
-        target_floor_roe = -0.04
+        target_floor_roe = -0.020       # Tightened Hard Stop (-2.0% max loss)
 
     if is_long:
         stop_px = entry_px * (1 + (target_floor_roe / leverage))
@@ -440,9 +443,9 @@ def execute_engine():
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Bot Rule Deck & Guardrails</div>
               &bull; <b>Execution Engine:</b> 30-Min GitHub Cron &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
-              &bull; <b>Hard Stop:</b> -4.0% ROE (Native Hyperliquid 24/7 On-Chain Order)<br>
-              &bull; <b>Profit Ratchet Ladders:</b> +1.5% (BE) &bull; +2% &bull; +3.5%<br>
-              &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Dynamic 2.5% Steps with 1% Buffer (Max 1.5% Give-Back) active from +5% up to +300%+ ROE</i><br>
+              &bull; <b>Hard Stop:</b> -2.0% ROE (Tightened Native Hyperliquid 24/7 On-Chain Order)<br>
+              &bull; <b>Micro-Ratchet Ladders:</b> +0.5% (-0.5% cap) &bull; +1.0% (BE) &bull; +2% &bull; +3.5%<br>
+              &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Dynamic 2.5% Steps with 1% Buffer active from +5% up to +300%+ ROE</i><br>
               &bull; <b>Smart-Ranked Queue:</b> Scans & scores all breakouts, prioritizing the #1 apex runner<br>
               &bull; <b>Stagnation Rotation:</b> 24 Hours (48 Runs) max hold for ROE &lt; +1.5%<br>
               &bull; <b>Sizing Tier:</b> Standard 12%–14% ($50+ floor) / Ballistic 15%–17% on ATR Breakout
