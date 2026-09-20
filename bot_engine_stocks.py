@@ -35,7 +35,7 @@ def load_state():
                 return json.load(f)
         except Exception as e:
             print(f"Error loading stock state.json: {e}")
-    return {"stagnation_tracker": {}, "last_run_timestamp": ""}
+    return {"stagnation_tracker": {}, "last_run_timestamp": "", "ai_shield_cache": {}}
 
 def save_state(state):
     state["last_run_timestamp"] = time.strftime('%Y-%m-%d %H:%M:%S')
@@ -43,7 +43,16 @@ def save_state(state):
         json.dump(state, f, indent=2)
 
 def run_gemini_stock_market_shield():
-    """Queries Gemini with Google Search to detect US stock market black-swan risks and generate an executive market briefing."""
+    """Queries Gemini with Search Grounding ONCE per day at market open and caches the verdict in stock_state.json to eliminate GCP API charges."""
+    state = load_state()
+    cached_shield = state.get("ai_shield_cache", {})
+    today_str = datetime.now().strftime("%Y-%m-%d")
+
+    # 1. READ FROM LOCAL JSON CACHE: Reuse today's verdict if already scanned ($0.00 cost)
+    if cached_shield.get("scan_date") == today_str and "high_risk_detected" in cached_shield:
+        print(f"Reading market risk verdict from local stock_state.json (Scanned today at {cached_shield.get('timestamp')}).")
+        return cached_shield
+
     if not GEMINI_API_KEY:
         print("GEMINI_API_KEY missing; skipping Stock AI Macro Shield scan.")
         return {
@@ -54,6 +63,8 @@ def run_gemini_stock_market_shield():
             "ai_market_brief": "AI Shield offline (Missing GEMINI_API_KEY secret)."
         }
 
+    # 2. EXECUTE API SCAN ONCE A DAY ONLY
+    print(f"Executing daily market open Gemini AI Shield scan for {today_str}...")
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
         prompt = """
@@ -86,7 +97,14 @@ def run_gemini_stock_market_shield():
                         }
                     )
                 )
-                return json.loads(response.text)
+                result = json.loads(response.text)
+                result["timestamp"] = time.strftime('%Y-%m-%d %H:%M:%S')
+                result["scan_date"] = today_str
+
+                # Save verdict to stock_state.json cache
+                state["ai_shield_cache"] = result
+                save_state(state)
+                return result
             except Exception as inner_e:
                 print(f"Gemini Stock AI Shield attempt failed on {model_name}: {inner_e}")
                 continue
@@ -94,7 +112,8 @@ def run_gemini_stock_market_shield():
     except Exception as e:
         print(f"Gemini Stock AI Shield execution error: {e}")
 
-    return {
+    # Fallback to cached state if API error occurs
+    return cached_shield if cached_shield else {
         "high_risk_detected": False, 
         "risk_level": "UNKNOWN", 
         "reason": "AI Shield Bypass on Error", 
@@ -204,7 +223,7 @@ def execute_stock_engine():
     # 14-day rolling start date (~70 hourly candles per stock)
     start_date = (datetime.now() - timedelta(days=14)).strftime('%Y-%m-%d')
 
-    # 1. RUN GEMINI AI STOCK MACRO SHIELD SCAN
+    # 1. RUN GEMINI AI STOCK MACRO SHIELD SCAN (Reads local cache or runs 1 daily API call)
     ai_shield = run_gemini_stock_market_shield()
     ai_risk_status = "BLOCKED (High Risk)" if ai_shield.get("high_risk_detected") else "PASS (Normal Risk)"
     audit_logs.append(f"Gemini AI Shield: [{ai_shield.get('risk_level', 'UNKNOWN')}] {ai_shield.get('reason', '')} -> {ai_risk_status}")
@@ -496,7 +515,7 @@ def execute_stock_engine():
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Stock Rule Deck & Guardrails</div>
               &bull; <b>Market Hours Cron:</b> Mon-Fri US Trading Hours &bull; <b>Max Slots:</b> {active_count}/{MAX_STOCK_SLOTS} Active<br>
-              &bull; <b>Gemini AI Macro Shield:</b> Real-time Google Search news & black-swan scanning<br>
+              &bull; <b>Gemini AI Macro Shield:</b> Real-time Google Search news & black-swan scanning (Daily JSON Cached)<br>
               &bull; <b>Smart Downside Adaptive Stop:</b> -1.2% (Choppy) / -2.0% (Clean) / -3.5% (Ballistic Breakout)<br>
               &bull; <b>Micro-Ratchet Ladders:</b> +0.5% (-0.5% cap) &bull; +1.0% (BE) &bull; +2% &bull; +3.5%<br>
               &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Dynamic 2.5% Steps with 1% Buffer active from +5% up to +300%+ ROE</i><br>
