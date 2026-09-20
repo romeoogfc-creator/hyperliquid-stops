@@ -8,12 +8,18 @@ from math import log10, floor
 import eth_account
 import pandas as pd
 import numpy as np
+
+# Google GenAI SDK Imports
+from google import genai
+from google.genai import types
+
 from hyperliquid.info import Info
 from hyperliquid.exchange import Exchange
 from hyperliquid.utils import constants
 
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
 SECRET_KEY = os.getenv("HL_SECRET_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 STATE_FILE = "state.json"
 
 VERBOSE_TEST_MODE = True
@@ -31,6 +37,54 @@ def save_state(state):
     state["last_run_timestamp"] = time.strftime('%Y-%m-%d %H:%M:%S')
     with open(STATE_FILE, "w") as f:
         json.dump(state, f, indent=2)
+
+def run_gemini_market_shield():
+    """Queries Gemini with Google Search to detect sudden black-swan or macro news risks."""
+    if not GEMINI_API_KEY:
+        print("GEMINI_API_KEY missing; skipping AI Macro Shield scan.")
+        return {"high_risk_detected": False, "risk_level": "UNKNOWN", "reason": "API Key Missing", "action": "ALLOW_TRADES"}
+
+    try:
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        prompt = """
+        Perform a live real-time web search for breaking cryptocurrency news, major market crashes, regulatory actions, 
+        FOMC/interest rate announcements, or sudden exchange halts from the last 1-2 hours.
+        Determine if there is extreme high-risk volatility or black-swan risk that could cause sudden whipsaws in perp futures.
+        Return structured JSON evaluating if new market entries should be temporarily blocked.
+        """
+
+        # Model Fallback Cascade for maximum speed, cost efficiency, and reliability
+        models = ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.6-flash"]
+        
+        for model_name in models:
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        tools=[types.Tool(google_search=types.GoogleSearch())],
+                        response_mime_type="application/json",
+                        response_schema={
+                            "type": "OBJECT",
+                            "properties": {
+                                "high_risk_detected": {"type": "BOOLEAN"},
+                                "risk_level": {"type": "STRING", "enum": ["LOW", "MODERATE", "HIGH"]},
+                                "reason": {"type": "STRING"},
+                                "action": {"type": "STRING", "enum": ["ALLOW_TRADES", "BLOCK_ENTRIES"]}
+                            },
+                            "required": ["high_risk_detected", "risk_level", "reason", "action"]
+                        }
+                    )
+                )
+                return json.loads(response.text)
+            except Exception as inner_e:
+                print(f"Gemini AI Shield attempt failed on {model_name}: {inner_e}")
+                continue
+
+    except Exception as e:
+        print(f"Gemini AI Shield execution error: {e}")
+
+    return {"high_risk_detected": False, "risk_level": "UNKNOWN", "reason": "AI Shield Bypass on Error", "action": "ALLOW_TRADES"}
 
 def send_html_dashboard_email(subject, html_content, text_fallback):
     sender_email = os.getenv("SENDER_EMAIL")
@@ -140,10 +194,15 @@ def check_btc_daily_candle(info):
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Telemetry Engine Started (Smart Downside Adaptive Stop Mode).")
+    audit_logs.append(f"[{timestamp}] Telemetry Engine Started (Smart Downside + Gemini AI Shield Mode).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
+
+    # 1. RUN GEMINI AI MACRO SHIELD SCAN
+    ai_shield = run_gemini_market_shield()
+    ai_risk_status = "BLOCKED (High Risk)" if ai_shield.get("high_risk_detected") else "PASS (Normal Risk)"
+    audit_logs.append(f"Gemini AI Shield: [{ai_shield.get('risk_level', 'UNKNOWN')}] {ai_shield.get('reason', '')} -> {ai_risk_status}")
 
     state = load_state()
     wallet = eth_account.Account.from_key(SECRET_KEY)
@@ -330,7 +389,10 @@ def execute_engine():
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
     audit_logs.append(f"Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts (Smart-Ranked).")
 
-    if active_count < 6 and market_candidates:
+    # EXECUTION GATE: Blocked if Max Slots reached OR if Gemini AI Shield detected high risk
+    if ai_shield.get("high_risk_detected"):
+        audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD. Reason: {ai_shield.get('reason')}")
+    elif active_count < 6 and market_candidates:
         for candidate in market_candidates[: (6 - active_count)]:
             coin = candidate["coin"]
             px = candidate["close"]
@@ -482,6 +544,7 @@ def execute_engine():
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Bot Rule Deck & Guardrails</div>
               &bull; <b>Execution Engine:</b> 30-Min GitHub Cron &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
+              &bull; <b>Gemini AI Macro Shield:</b> Real-time 30-min Google Search news & black-swan scanning<br>
               &bull; <b>Smart Downside Adaptive Stop:</b> -1.2% (Choppy) / -2.0% (Clean) / -3.5% (Ballistic Breakout)<br>
               &bull; <b>Micro-Ratchet Ladders:</b> +0.5% (-0.5% cap) &bull; +1.0% (BE) &bull; +2% &bull; +3.5%<br>
               &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Dynamic 2.5% Steps with 1% Buffer active from +5% up to +300%+ ROE</i><br>
