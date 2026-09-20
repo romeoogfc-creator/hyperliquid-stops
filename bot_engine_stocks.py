@@ -200,7 +200,7 @@ def execute_stock_engine():
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
 
-    # Calculate rolling 20-day start date so historical queries work during off-hours/weekends
+    # Rolling 20-day start date so historical queries work seamlessly during off-hours/weekends
     start_date = (datetime.now() - timedelta(days=20)).strftime('%Y-%m-%d')
 
     # 1. RUN GEMINI AI STOCK MACRO SHIELD SCAN
@@ -289,47 +289,74 @@ def execute_stock_engine():
     for p in positions_data:
         assets_map[p["symbol"]] = {"balance": p["qty"], "balance_usd": p["market_value"]}
 
-    # 3. Stock Universe Scan (High-Liquidity Equities)
-    watchlist = ["AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "NFLX", "PLTR", "COIN", "SPY", "QQQ"]
+    # 3. EXPANDED STOCK UNIVERSE WATCHLIST (70+ Top S&P 500 & Nasdaq Momentum Equities)
+    watchlist = [
+        # Tech & Megacaps
+        "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "AVGO", "QCOM",
+        "INTC", "MU", "ARM", "AMAT", "LRCX", "SMCI", "ORCL", "CRM", "NOW", "PANW", "FTNT", "PLTR",
+        # High Beta, Fintech & Growth
+        "COIN", "HOOD", "SQ", "PYPL", "NET", "SNOW", "SHOP", "MSTR", "UBER", "ABNB", "RBLX", "DKNG",
+        # Consumer, Media & Industrial Leaders
+        "NFLX", "COST", "WMT", "HD", "DIS", "NKE", "SBUX", "BA", "CAT", "GE", "HON", "DE", "LMT",
+        # Finance, Energy & Healthcare Leaders
+        "JPM", "BAC", "GS", "MS", "V", "MA", "XOM", "CVX", "SLB", "LLY", "UNH", "JNJ", "PFE", "ABBV",
+        # Hardware & Semiconductors
+        "TXN", "ADI", "KLAC", "MCHP", "DELL",
+        # Major Index & Sector Benchmarks
+        "SPY", "QQQ", "IWM", "DIA", "SMH", "XLF", "XLE"
+    ]
+
+    symbols_to_scan = [s for s in watchlist if s not in active_symbols]
     market_candidates = []
     scanned_count = 0
 
-    for symbol in watchlist:
-        if symbol in active_symbols:
-            continue
+    # BATCH SCANNING ENGINE: Queries Alpaca in chunks of 50 in a single API call for maximum speed
+    chunk_size = 50
+    for i in range(0, len(symbols_to_scan), chunk_size):
+        chunk = symbols_to_scan[i:i + chunk_size]
+        symbols_param = ",".join(chunk)
+
         try:
-            bars_res = requests.get(
-                f"https://data.alpaca.markets/v2/stocks/{symbol}/bars?timeframe=1Hour&limit=100&feed=iex&start={start_date}",
-                headers=HEADERS
-            )
+            url = f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbols_param}&timeframe=1Hour&limit=100&feed=iex&start={start_date}"
+            bars_res = requests.get(url, headers=HEADERS)
             if bars_res.status_code != 200:
-                audit_logs.append(f"Scan API Error [{symbol}]: HTTP {bars_res.status_code}")
-                continue
-            bars = bars_res.json().get("bars", [])
-            if not bars or len(bars) < 50:
-                audit_logs.append(f"Scan Insufficient Bars [{symbol}]: Got {len(bars) if bars else 0} bars")
-                continue
-            scanned_count += 1
-            closes = [float(b["c"]) for b in bars]
-            highs = [float(b["h"]) for b in bars]
-            lows = [float(b["l"]) for b in bars]
-
-            upper, lower, filter_band = calculate_gaussian_channel(closes)
-            current_close = closes[-1]
-
-            ci = calculate_choppiness_index(highs, lows, closes)
-            # STRICT ENTRY GUARDRAIL: Skip stock setup if CI > 62.0
-            if ci > 62.0:
+                audit_logs.append(f"Batch Scan API Error: HTTP {bars_res.status_code}")
                 continue
 
-            atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])])
+            all_bars_data = bars_res.json().get("bars", {})
 
-            if current_close > upper and current_close <= upper * 1.025:
-                is_ballistic = current_close > (upper + 1.5 * atr)
-                market_candidates.append({"symbol": symbol, "close": current_close, "is_long": True, "is_ballistic": is_ballistic, "ci": ci})
-                audit_logs.append(f"EQUITY MATCH LONG: {symbol} @ ${current_close:.2f} (CI: {ci:.1f})")
+            for symbol in chunk:
+                bars = all_bars_data.get(symbol, [])
+                if not bars or len(bars) < 50:
+                    continue
+
+                scanned_count += 1
+                closes = [float(b["c"]) for b in bars]
+                highs = [float(b["h"]) for b in bars]
+                lows = [float(b["l"]) for b in bars]
+
+                upper, lower, filter_band = calculate_gaussian_channel(closes)
+                current_close = closes[-1]
+
+                ci = calculate_choppiness_index(highs, lows, closes)
+                # STRICT ENTRY GUARDRAIL: Skip stock setup if CI > 62.0
+                if ci > 62.0:
+                    continue
+
+                atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])])
+
+                if current_close > upper and current_close <= upper * 1.025:
+                    is_ballistic = current_close > (upper + 1.5 * atr)
+                    market_candidates.append({
+                        "symbol": symbol, 
+                        "close": current_close, 
+                        "is_long": True, 
+                        "is_ballistic": is_ballistic, 
+                        "ci": ci
+                    })
+                    audit_logs.append(f"EQUITY MATCH LONG: {symbol} @ ${current_close:.2f} (CI: {ci:.1f})")
         except Exception as e:
-            audit_logs.append(f"Scan Exception [{symbol}]: {e}")
+            audit_logs.append(f"Batch Scan Exception: {e}")
             continue
 
     audit_logs.append(f"Stock Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} breakouts.")
