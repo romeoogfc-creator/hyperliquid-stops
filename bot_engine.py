@@ -203,7 +203,7 @@ def execute_engine():
                 "status": "Active"
             })
 
-    # Exact Signum Ledger Replication: Sum of all spot asset balances * current mid price
+    # Exact Signum Net Worth Calculation
     spot_usdc = 0.0
     total_spot_net_worth = 0.0
 
@@ -221,7 +221,9 @@ def execute_engine():
     margin_summary = user_state.get("marginSummary", {})
     fallback_val = float(margin_summary.get("accountValue", 0.0))
     account_value = total_spot_net_worth if total_spot_net_worth > 0 else fallback_val
-    static_usdc = spot_usdc
+
+    # Unallocated cash reserve = Total Net Worth minus collateral allocated in open trades
+    static_usdc = max(0.0, account_value - total_margin_used)
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
     btc_green, btc_open, btc_close = check_btc_daily_candle(info)
