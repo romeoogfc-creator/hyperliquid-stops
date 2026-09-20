@@ -72,13 +72,29 @@ def calculate_gaussian_channel(closes, poles=4, period=323, mult=1.414):
     lower = filtered - deviation
     return upper.iloc[-1], lower.iloc[-1], filtered.iloc[-1]
 
-def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0):
+def calculate_choppiness_index(highs, lows, closes, period=14):
+    """Calculates 14-period Choppiness Index (CI). Higher = Choppy/Sideways (>60), Lower = Clean Trend (<38)."""
+    try:
+        if len(closes) < period + 1:
+            return 50.0
+        tr_sum = sum([max(highs[i] - lows[i], abs(highs[i] - closes[i-1]), abs(lows[i] - closes[i-1])) for i in range(1, period + 1)])
+        max_high = max(highs[-period:])
+        min_low = min(lows[-period:])
+        range_diff = max_high - min_low
+        if range_diff <= 0 or tr_sum <= 0:
+            return 50.0
+        ci = 100 * (log10(tr_sum / range_diff) / log10(period))
+        return ci
+    except Exception:
+        return 50.0
+
+def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0, choppiness_index=50.0, is_ballistic=False):
     if is_long:
         roe = ((current_px - entry_px) / entry_px) * leverage
     else:
         roe = ((entry_px - current_px) / entry_px) * leverage
 
-    # Tightened Risk Model & Micro-Ratchets
+    # Upward Profit Ratchets (Never Loosen)
     if roe >= 0.05:
         milestone = floor(roe * 40) / 40
         target_floor_roe = milestone - 0.01
@@ -89,9 +105,15 @@ def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0):
     elif roe >= 0.010:
         target_floor_roe = 0.00         # Break-Even locked at +1.0% ROE
     elif roe >= 0.005:
-        target_floor_roe = -0.005       # Tight risk cap (-0.5%) at +0.5% ROE
+        target_floor_roe = -0.005       # Risk capped to -0.5% at +0.5% ROE
     else:
-        target_floor_roe = -0.020       # Tightened Hard Stop (-2.0% max loss)
+        # SMART ADAPTIVE DOWNSIDE HARD STOP based on Market Regime
+        if choppiness_index > 58.0:
+            target_floor_roe = -0.012   # Choppy/Sideways Market -> Fast Cut (-1.2% max)
+        elif is_ballistic:
+            target_floor_roe = -0.035   # High-Conviction Ballistic Breakout -> Wide Room (-3.5% max)
+        else:
+            target_floor_roe = -0.020   # Standard Clean Trend -> Moderate Room (-2.0% max)
 
     if is_long:
         stop_px = entry_px * (1 + (target_floor_roe / leverage))
@@ -118,7 +140,7 @@ def check_btc_daily_candle(info):
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Test Telemetry Engine Started (Smart-Ranked #1 Momentum Queue Mode).")
+    audit_logs.append(f"[{timestamp}] Telemetry Engine Started (Smart Downside Adaptive Stop Mode).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -139,6 +161,7 @@ def execute_engine():
     positions_data = []
     active_coins = set()
     total_margin_used = 0.0
+    now_ms = int(time.time() * 1000)
 
     if asset_positions:
         for pos_item in asset_positions:
@@ -164,7 +187,17 @@ def execute_engine():
             if leverage <= 0:
                 leverage = 1.0
 
-            stop_px_raw, current_roe, target_floor, is_buy_order = calculate_stop_price(entry_px, is_long, current_px, leverage)
+            # Calculate Choppiness Index for Active Asset
+            try:
+                c_candles = info.candles_snapshot(name=coin, interval="1h", startTime=now_ms - 86400000 * 2, endTime=now_ms)
+                highs = [float(c["h"]) for c in c_candles]
+                lows = [float(c["l"]) for c in c_candles]
+                closes = [float(c["c"]) for c in c_candles]
+                ci = calculate_choppiness_index(highs, lows, closes)
+            except Exception:
+                ci = 50.0
+
+            stop_px_raw, current_roe, target_floor, is_buy_order = calculate_stop_price(entry_px, is_long, current_px, leverage, choppiness_index=ci)
             px = round_sig_figs(stop_px_raw, 5)
 
             if current_roe < 0.01:
@@ -174,7 +207,7 @@ def execute_engine():
 
             stag_count = state["stagnation_tracker"].get(coin, 0)
             stag_hours = (stag_count * 30) / 60
-            audit_logs.append(f"Position: {coin} | ROE: {current_roe*100:+.2f}% | Stop: ${px} | Stagnation: {stag_count}/48 ({stag_hours:.1f}h)")
+            audit_logs.append(f"Position: {coin} | ROE: {current_roe*100:+.2f}% | Stop: ${px} | CI: {ci:.1f} | Stagnation: {stag_count}/48 ({stag_hours:.1f}h)")
 
             for order in open_orders:
                 if order.get("coin") == coin and order.get("isTrigger"):
@@ -225,7 +258,6 @@ def execute_engine():
     fallback_val = float(margin_summary.get("accountValue", 0.0))
     account_value = total_spot_net_worth if total_spot_net_worth > 0 else fallback_val
 
-    # Unallocated cash reserve = Total Net Worth minus collateral allocated in open trades
     static_usdc = max(0.0, account_value - total_margin_used)
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
@@ -236,7 +268,6 @@ def execute_engine():
     universe = [asset["name"] for asset in meta.get("universe", [])][:100]
     market_candidates = []
     scanned_count = 0
-    now_ms = int(time.time() * 1000)
 
     for coin in universe:
         if coin in active_coins or coin in ["USDC", "USDT"]:
@@ -250,12 +281,18 @@ def execute_engine():
                 continue
             scanned_count += 1
             closes = [float(c["c"]) for c in candles]
+            highs = [float(c["h"]) for c in candles]
+            lows = [float(c["l"]) for c in candles]
+
             upper, lower, filter_band = calculate_gaussian_channel(closes)
             current_close = closes[-1]
             
-            highs = [float(c["h"]) for c in candles[-14:]]
-            lows = [float(c["l"]) for c in candles[-14:]]
-            atr = np.mean([h - l for h, l in zip(highs, lows)])
+            ci = calculate_choppiness_index(highs, lows, closes)
+            # STRICT ENTRY GUARDRAIL: Skip trade if market is severely choppy (CI > 62)
+            if ci > 62.0:
+                continue
+
+            atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])])
 
             if btc_green and current_close > upper and current_close <= upper * 1.025:
                 is_ballistic = current_close > (upper + 1.5 * atr)
@@ -268,9 +305,10 @@ def execute_engine():
                     "close": current_close, 
                     "is_long": True, 
                     "is_ballistic": is_ballistic,
-                    "score": momentum_score
+                    "score": momentum_score,
+                    "ci": ci
                 })
-                audit_logs.append(f"MATCH LONG: {coin} @ ${current_close:.4f} (Score: {momentum_score:.4f})")
+                audit_logs.append(f"MATCH LONG: {coin} @ ${current_close:.4f} (Score: {momentum_score:.4f}, CI: {ci:.1f})")
             elif not btc_green and current_close < lower and current_close >= lower * 0.975:
                 is_ballistic = current_close < (lower - 1.5 * atr)
                 extension_score = (lower - current_close) / lower
@@ -282,9 +320,10 @@ def execute_engine():
                     "close": current_close, 
                     "is_long": False, 
                     "is_ballistic": is_ballistic,
-                    "score": momentum_score
+                    "score": momentum_score,
+                    "ci": ci
                 })
-                audit_logs.append(f"MATCH SHORT: {coin} @ ${current_close:.4f} (Score: {momentum_score:.4f})")
+                audit_logs.append(f"MATCH SHORT: {coin} @ ${current_close:.4f} (Score: {momentum_score:.4f}, CI: {ci:.1f})")
         except Exception:
             continue
 
@@ -348,7 +387,7 @@ def execute_engine():
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 11px; color: #475569;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Smart-Ranked Queue)</div>
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Smart Downside Mode)</div>
         <div class="table-responsive">
           <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%;">
             <tbody>{audit_rows}</tbody>
@@ -443,10 +482,10 @@ def execute_engine():
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Bot Rule Deck & Guardrails</div>
               &bull; <b>Execution Engine:</b> 30-Min GitHub Cron &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
-              &bull; <b>Hard Stop:</b> -2.0% ROE (Tightened Native Hyperliquid 24/7 On-Chain Order)<br>
+              &bull; <b>Smart Downside Adaptive Stop:</b> -1.2% (Choppy) / -2.0% (Clean) / -3.5% (Ballistic Breakout)<br>
               &bull; <b>Micro-Ratchet Ladders:</b> +0.5% (-0.5% cap) &bull; +1.0% (BE) &bull; +2% &bull; +3.5%<br>
               &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Dynamic 2.5% Steps with 1% Buffer active from +5% up to +300%+ ROE</i><br>
-              &bull; <b>Smart-Ranked Queue:</b> Scans & scores all breakouts, prioritizing the #1 apex runner<br>
+              &bull; <b>Strict Choppiness Filter:</b> Skip entries if Choppiness Index (CI) &gt; 62<br>
               &bull; <b>Stagnation Rotation:</b> 24 Hours (48 Runs) max hold for ROE &lt; +1.5%<br>
               &bull; <b>Sizing Tier:</b> Standard 12%–14% ($50+ floor) / Ballistic 15%–17% on ATR Breakout
             </div>
