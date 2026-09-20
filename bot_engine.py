@@ -78,7 +78,6 @@ def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0):
     else:
         roe = ((entry_px - current_px) / entry_px) * leverage
 
-    # Dynamic 2.5% step-increment profit ratchets with a 1% trailing buffer (Max 1.5% Give-Back) up to 300%+ ROE
     if roe >= 0.05:
         milestone = floor(roe * 40) / 40
         target_floor_roe = milestone - 0.01
@@ -127,21 +126,16 @@ def execute_engine():
     info = Info(constants.MAINNET_API_URL, skip_ws=True)
 
     user_state = info.user_state(ACCOUNT_ADDRESS)
+    spot_state = info.spot_user_state(ACCOUNT_ADDRESS)
     open_orders = info.frontend_open_orders(ACCOUNT_ADDRESS)
     all_mids = info.all_mids()
     meta = info.meta()
-
-    margin_summary = user_state.get("marginSummary", {})
-    account_value = float(margin_summary.get("accountValue", 0.0))
-    total_margin_used = float(margin_summary.get("totalMarginUsed", 0.0))
-    withdrawable = float(user_state.get("withdrawable", 0.0))
 
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
     positions_data = []
     active_coins = set()
-    total_positions_value = 0.0
-    total_unrealized_pnl = 0.0
+    total_margin_used = 0.0
 
     if asset_positions:
         for pos_item in asset_positions:
@@ -158,10 +152,9 @@ def execute_engine():
             entry_px = float(pos.get("entryPx", 0))
             current_px = float(all_mids.get(coin, entry_px))
             margin_used = float(pos.get("marginUsed", 0))
+            total_margin_used += margin_used
             unrealized_pnl = float(pos.get("unrealizedPnl", 0))
-            total_unrealized_pnl += unrealized_pnl
             pos_equity = margin_used + unrealized_pnl
-            total_positions_value += pos_equity
 
             leverage_info = pos.get("leverage", {})
             leverage = float(leverage_info.get("value", 1.0)) if isinstance(leverage_info, dict) else 1.0
@@ -210,8 +203,25 @@ def execute_engine():
                 "status": "Active"
             })
 
-    # Direct native API values from Hyperliquid clearinghouse
-    static_usdc = withdrawable
+    # Exact Signum Ledger Replication: Sum of all spot asset balances * current mid price
+    spot_usdc = 0.0
+    total_spot_net_worth = 0.0
+
+    for b in spot_state.get("balances", []):
+        coin = b.get("coin", "").upper()
+        total_amt = float(b.get("total", 0.0))
+        if total_amt > 0:
+            if coin == "USDC":
+                spot_usdc = total_amt
+                total_spot_net_worth += total_amt
+            else:
+                px = float(all_mids.get(coin, 0.0))
+                total_spot_net_worth += (total_amt * px)
+
+    margin_summary = user_state.get("marginSummary", {})
+    fallback_val = float(margin_summary.get("accountValue", 0.0))
+    account_value = total_spot_net_worth if total_spot_net_worth > 0 else fallback_val
+    static_usdc = spot_usdc
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
     btc_green, btc_open, btc_close = check_btc_daily_candle(info)
@@ -273,7 +283,6 @@ def execute_engine():
         except Exception:
             continue
 
-    # Smart-Rank the Queue: Sort candidates by momentum score descending
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
     audit_logs.append(f"Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts (Smart-Ranked).")
 
@@ -320,7 +329,6 @@ def execute_engine():
 
     save_state(state)
 
-    # On-Deck Smart Queue Preview Rows (Top 3 Runners)
     ondeck_rows = "".join([
         f"<tr>"
         f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>#{i+1}</td>"
@@ -354,7 +362,7 @@ def execute_engine():
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['collateral']:.2f}</td>"
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: 600; color: #0f172a;'>${p['position_usd']:.2f}</td>"
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #334155;${round_sig_figs(p['entry'], 5)}</td>"
+        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #334155;'>${round_sig_figs(p['entry'], 5)}</td>"
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #b45309;'>${p['stop']}</td>"
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td>"
         f"</tr>"
@@ -429,13 +437,12 @@ def execute_engine():
 
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Bot Rule Deck & Guardrails</div>
-              &bull; <b>Execution Engine:</b> 30-Min GitHub Cron &bull; <b>Max Slots:</b> 5/6 Active<br>
+              &bull; <b>Execution Engine:</b> 30-Min GitHub Cron &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
               &bull; <b>Hard Stop:</b> -4.0% ROE (Native Hyperliquid 24/7 On-Chain Order)<br>
               &bull; <b>Profit Ratchet Ladders:</b> +1.5% (BE) &bull; +2% &bull; +3.5%<br>
               &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Dynamic 2.5% Steps with 1% Buffer (Max 1.5% Give-Back) active from +5% up to +300%+ ROE</i><br>
               &bull; <b>Smart-Ranked Queue:</b> Scans & scores all breakouts, prioritizing the #1 apex runner<br>
               &bull; <b>Stagnation Rotation:</b> 24 Hours (48 Runs) max hold for ROE &lt; +1.5%<br>
-              &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Note: 1 Slot open post-AVAX profit lock; ready to claim next #1 ranked runner.</i><br>
               &bull; <b>Sizing Tier:</b> Standard 12%–14% ($50+ floor) / Ballistic 15%–17% on ATR Breakout
             </div>
 
