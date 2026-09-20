@@ -38,6 +38,19 @@ def save_state(state):
     with open(STATE_FILE, "w") as f:
         json.dump(state, f, indent=2)
 
+def api_retry(func, *args, retries=3, delay=2.0, **kwargs):
+    """Retries Hyperliquid API calls if a 429 Rate Limit error is encountered."""
+    for attempt in range(retries):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            if "429" in str(e) and attempt < retries - 1:
+                print(f"[WARN] Hyperliquid 429 Rate Limit hit. Pausing {delay}s before retry ({attempt+1}/{retries})...")
+                time.sleep(delay)
+                delay *= 2.0
+            else:
+                raise e
+
 def run_gemini_market_shield():
     """Queries Gemini with Google Search ONCE per day and caches the verdict in state.json to eliminate GCP API charges."""
     state = load_state()
@@ -208,7 +221,7 @@ def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0, choppiness
 def check_btc_daily_candle(info):
     try:
         now_ms = int(time.time() * 1000)
-        candles = info.candles_snapshot(name="BTC", interval="1d", startTime=now_ms - 86400000 * 5, endTime=now_ms)
+        candles = api_retry(info.candles_snapshot, name="BTC", interval="1d", startTime=now_ms - 86400000 * 5, endTime=now_ms)
         if candles and len(candles) > 0:
             latest = candles[-1]
             o = float(latest.get("o", 0))
@@ -236,10 +249,10 @@ def execute_engine():
     exchange = Exchange(wallet, constants.MAINNET_API_URL, account_address=ACCOUNT_ADDRESS)
     info = Info(constants.MAINNET_API_URL, skip_ws=True)
 
-    user_state = info.user_state(ACCOUNT_ADDRESS)
-    spot_state = info.spot_user_state(ACCOUNT_ADDRESS)
-    all_mids = info.all_mids()
-    meta = info.meta()
+    user_state = api_retry(info.user_state, ACCOUNT_ADDRESS)
+    spot_state = api_retry(info.spot_user_state, ACCOUNT_ADDRESS)
+    all_mids = api_retry(info.all_mids)
+    meta = api_retry(info.meta)
     now_ms = int(time.time() * 1000)
 
     # Initial Active Positions Check
@@ -259,7 +272,7 @@ def execute_engine():
     regime_str = f"GREEN (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> LONGs Allowed" if btc_green else f"RED (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> SHORTs Allowed"
     audit_logs.append(f"BTC Regime Check: {regime_str}")
 
-    # Market Scanner
+    # Market Scanner with Pacing
     universe = [asset["name"] for asset in meta.get("universe", [])][:100]
     market_candidates = []
     scanned_count = 0
@@ -271,7 +284,9 @@ def execute_engine():
             px = float(all_mids.get(coin, 0))
             if px <= 0:
                 continue
-            candles = info.candles_snapshot(name=coin, interval="1h", startTime=now_ms - 86400000 * 7, endTime=now_ms)
+            
+            time.sleep(0.05)  # Throttle: 50ms delay between calls prevents 429 rate limit
+            candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 7, endTime=now_ms)
             if not candles or len(candles) < 50:
                 continue
             scanned_count += 1
@@ -374,15 +389,15 @@ def execute_engine():
     else:
         audit_logs.append(f"Execution Gate: Active slots ({active_count}/6). No new market entries triggered.")
 
-    # 2-second cooldown if new entries were executed for REST orderbook settlement
+    # Pause 2.5 seconds if trades were executed to let Hyperliquid REST settle
     if trades_executed:
-        time.sleep(2.0)
+        time.sleep(2.5)
 
     # --- STEP 2: RE-FETCH POST-EXECUTION USER STATE & RATCHET ALL POSITIONS ---
-    user_state = info.user_state(ACCOUNT_ADDRESS)
-    spot_state = info.spot_user_state(ACCOUNT_ADDRESS)
-    open_orders = info.frontend_open_orders(ACCOUNT_ADDRESS)
-    all_mids = info.all_mids()
+    user_state = api_retry(info.user_state, ACCOUNT_ADDRESS)
+    spot_state = api_retry(info.spot_user_state, ACCOUNT_ADDRESS)
+    open_orders = api_retry(info.frontend_open_orders, ACCOUNT_ADDRESS)
+    all_mids = api_retry(info.all_mids)
 
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
@@ -415,7 +430,8 @@ def execute_engine():
                 leverage = 1.0
 
             try:
-                c_candles = info.candles_snapshot(name=coin, interval="1h", startTime=now_ms - 86400000 * 2, endTime=now_ms)
+                time.sleep(0.05)
+                c_candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 2, endTime=now_ms)
                 highs = [float(c["h"]) for c in c_candles]
                 lows = [float(c["l"]) for c in c_candles]
                 closes = [float(c["c"]) for c in c_candles]
@@ -503,7 +519,6 @@ def execute_engine():
 
     save_state(state)
 
-    # Exclude bought assets from the waiting queue
     remaining_candidates = [c for c in market_candidates if c["coin"] not in active_coins]
 
     ondeck_rows = "".join([
