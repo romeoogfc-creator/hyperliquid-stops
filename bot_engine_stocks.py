@@ -201,8 +201,8 @@ def execute_stock_engine():
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
 
-    # 30-day rolling start date to ensure deep historical candle availability on IEX
-    start_date = (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d')
+    # 14-day rolling start date (~70 hourly candles per stock)
+    start_date = (datetime.now() - timedelta(days=14)).strftime('%Y-%m-%d')
 
     # 1. RUN GEMINI AI STOCK MACRO SHIELD SCAN
     ai_shield = run_gemini_stock_market_shield()
@@ -243,7 +243,7 @@ def execute_stock_engine():
         total_positions_value += market_value
         active_symbols.add(symbol)
 
-        # Fetch recent bars with start date to compute Choppiness Index for active stock
+        # Fetch recent bars to compute Choppiness Index for active stock
         try:
             bars_res = requests.get(
                 f"https://data.alpaca.markets/v2/stocks/{symbol}/bars?timeframe=1Hour&limit=100&feed=iex&start={start_date}", 
@@ -290,7 +290,7 @@ def execute_stock_engine():
     for p in positions_data:
         assets_map[p["symbol"]] = {"balance": p["qty"], "balance_usd": p["market_value"]}
 
-    # 3. EXPANDED STOCK UNIVERSE WATCHLIST (70+ Top S&P 500 & Nasdaq Momentum Equities)
+    # 3. EXPANDED WATCHLIST (70+ Top S&P 500 & Nasdaq Momentum Equities)
     watchlist = [
         # Tech & Megacaps
         "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "AVGO", "QCOM",
@@ -311,54 +311,70 @@ def execute_stock_engine():
     market_candidates = []
     scanned_count = 0
 
-    # OPTIMIZED BATCH SCANNING ENGINE: 15 symbols per chunk with limit=2000 so every ticker gets full bar data
-    chunk_size = 15
+    # BATCH SCANNING ENGINE WITH PAGINATION LOOP: Guarantees 100% of symbols are retrieved without truncation
+    chunk_size = 20
     for i in range(0, len(symbols_to_scan), chunk_size):
         chunk = symbols_to_scan[i:i + chunk_size]
         symbols_param = ",".join(chunk)
 
-        try:
-            url = f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbols_param}&timeframe=1Hour&limit=2000&feed=iex&start={start_date}"
-            bars_res = requests.get(url, headers=HEADERS)
-            if bars_res.status_code != 200:
-                audit_logs.append(f"Batch Scan API Error: HTTP {bars_res.status_code}")
+        all_bars_data = {}
+        page_token = None
+
+        while True:
+            url = f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbols_param}&timeframe=1Hour&limit=10000&feed=iex&start={start_date}"
+            if page_token:
+                url += f"&page_token={page_token}"
+
+            try:
+                bars_res = requests.get(url, headers=HEADERS)
+                if bars_res.status_code != 200:
+                    audit_logs.append(f"Batch Scan API Error: HTTP {bars_res.status_code}")
+                    break
+
+                res_json = bars_res.json()
+                returned_bars = res_json.get("bars", {})
+
+                for sym, b_list in returned_bars.items():
+                    if sym not in all_bars_data:
+                        all_bars_data[sym] = []
+                    all_bars_data[sym].extend(b_list)
+
+                page_token = res_json.get("next_page_token")
+                if not page_token:
+                    break
+            except Exception as e:
+                audit_logs.append(f"Batch Scan Exception: {e}")
+                break
+
+        for symbol in chunk:
+            bars = all_bars_data.get(symbol, [])
+            if not bars or len(bars) < 15:
                 continue
 
-            all_bars_data = bars_res.json().get("bars", {})
+            scanned_count += 1
+            closes = [float(b["c"]) for b in bars]
+            highs = [float(b["h"]) for b in bars]
+            lows = [float(b["l"]) for b in bars]
 
-            for symbol in chunk:
-                bars = all_bars_data.get(symbol, [])
-                if not bars or len(bars) < 15:
-                    continue
+            upper, lower, filter_band = calculate_gaussian_channel(closes)
+            current_close = closes[-1]
 
-                scanned_count += 1
-                closes = [float(b["c"]) for b in bars]
-                highs = [float(b["h"]) for b in bars]
-                lows = [float(b["l"]) for b in bars]
+            ci = calculate_choppiness_index(highs, lows, closes)
+            if ci > 62.0:
+                continue
 
-                upper, lower, filter_band = calculate_gaussian_channel(closes)
-                current_close = closes[-1]
+            atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])]) if len(highs) >= 14 else (highs[-1] - lows[-1])
 
-                ci = calculate_choppiness_index(highs, lows, closes)
-                # STRICT ENTRY GUARDRAIL: Skip stock setup if CI > 62.0
-                if ci > 62.0:
-                    continue
-
-                atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])]) if len(highs) >= 14 else (highs[-1] - lows[-1])
-
-                if current_close > upper and current_close <= upper * 1.025:
-                    is_ballistic = current_close > (upper + 1.5 * atr)
-                    market_candidates.append({
-                        "symbol": symbol, 
-                        "close": current_close, 
-                        "is_long": True, 
-                        "is_ballistic": is_ballistic, 
-                        "ci": ci
-                    })
-                    audit_logs.append(f"EQUITY MATCH LONG: {symbol} @ ${current_close:.2f} (CI: {ci:.1f})")
-        except Exception as e:
-            audit_logs.append(f"Batch Scan Exception: {e}")
-            continue
+            if current_close > upper and current_close <= upper * 1.025:
+                is_ballistic = current_close > (upper + 1.5 * atr)
+                market_candidates.append({
+                    "symbol": symbol, 
+                    "close": current_close, 
+                    "is_long": True, 
+                    "is_ballistic": is_ballistic, 
+                    "ci": ci
+                })
+                audit_logs.append(f"EQUITY MATCH LONG: {symbol} @ ${current_close:.2f} (CI: {ci:.1f})")
 
     audit_logs.append(f"Stock Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} breakouts.")
 
