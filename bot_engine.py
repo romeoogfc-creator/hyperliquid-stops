@@ -28,6 +28,13 @@ from google.genai import types
 # ==============================================================================
 # CONFIGURATION & GUARDRAILS SETUP
 # ==============================================================================
+HYPERLIQUID_SECRET_KEY = os.environ.get("HYPERLIQUID_SECRET_KEY", "YOUR_PRIVATE_KEY")
+HYPERLIQUID_ACCOUNT_ADDRESS = os.environ.get("HYPERLIQUID_ACCOUNT_ADDRESS", "YOUR_WALLET_ADDRESS")
+
+EMAIL_SENDER = os.environ.get("EMAIL_SENDER", "romeoogfc@gmail.com")
+EMAIL_PASSWORD = os.environ.get("EMAIL_PASSWORD", "")
+EMAIL_RECIPIENT = os.environ.get("EMAIL_RECIPIENT", "romeoogfc@gmail.com")
+
 MAX_SLOTS = 6
 CI_ENTRY_MAX = 62.0
 STAGNATION_MAX_RUNS = 48  # 24 Hours @ 30-min cron runs
@@ -40,33 +47,6 @@ GEMINI_MODELS = [
 ]
 
 STATE_FILE = "hyperliquid_bot_state.json"
-
-# ==============================================================================
-# EXCHANGE INITIALIZATION & SAFE KEY LOADER
-# ==============================================================================
-def initialize_exchange():
-    # Sanitize inputs by stripping spaces, quotes, and newlines
-    raw_key = os.environ.get("HYPERLIQUID_SECRET_KEY", "").strip().strip('"').strip("'")
-    wallet_address = os.environ.get("HYPERLIQUID_ACCOUNT_ADDRESS", "").strip().strip('"').strip("'")
-
-    if not raw_key or raw_key == "YOUR_PRIVATE_KEY":
-        raise ValueError(
-            "CRITICAL: HYPERLIQUID_SECRET_KEY is missing or unassigned! "
-            "Please check GitHub Repository Secrets and ensure 'HYPERLIQUID_SECRET_KEY' "
-            "is explicitly passed in the workflow file env section."
-        )
-
-    if not wallet_address or wallet_address == "YOUR_WALLET_ADDRESS":
-        raise ValueError(
-            "CRITICAL: HYPERLIQUID_ACCOUNT_ADDRESS is missing or unassigned! "
-            "Please check GitHub Repository Secrets and ensure 'HYPERLIQUID_ACCOUNT_ADDRESS' "
-            "is explicitly passed in the workflow file env section."
-        )
-
-    account = Account.from_key(raw_key)
-    info = Info(constants.MAINNET_API_URL, skip_ws=True)
-    exchange = Exchange(account, constants.MAINNET_API_URL, account_address=wallet_address)
-    return info, exchange, account.address
 
 # ==============================================================================
 # STATE PERSISTENCE HELPERS
@@ -91,7 +71,7 @@ def save_bot_state(state):
 # GEMINI AI MACRO SHIELD & RISK ENGINE
 # ==============================================================================
 def run_gemini_macro_shield():
-    api_key = os.environ.get("GEMINI_API_KEY", "").strip().strip('"').strip("'")
+    api_key = os.environ.get("GEMINI_API_KEY", "")
     if not api_key:
         return {"risk_level": "MODERATE", "assessment": "Gemini API key missing. Operating on standard risk parameters.", "recommendation": "Maintain standard execution."}
 
@@ -123,6 +103,12 @@ def run_gemini_macro_shield():
 # ==============================================================================
 # HYPERLIQUID DATA & LEDGER CALCULATIONS
 # ==============================================================================
+def initialize_exchange():
+    account = Account.from_key(HYPERLIQUID_SECRET_KEY)
+    info = Info(constants.MAINNET_API_URL, skip_ws=True)
+    exchange = Exchange(account, constants.MAINNET_API_URL, account_address=HYPERLIQUID_ACCOUNT_ADDRESS)
+    return info, exchange, account.address
+
 def fetch_net_worth_ledger(info, user_address):
     user_state = info.user_state(user_address)
     spot_state = info.spot_user_state(user_address)
@@ -369,10 +355,6 @@ def execute_open_entries(exchange, candidates, available_slots, net_worth, btc_r
 # TELEMETRY DASHBOARD & EMAIL GENERATOR
 # ==============================================================================
 def build_and_send_telemetry(ledger_data, macro_shield, btc_regime, active_positions_info, queue_candidates, logs):
-    email_sender = os.environ.get("EMAIL_SENDER", "").strip().strip('"').strip("'")
-    email_password = os.environ.get("EMAIL_PASSWORD", "").strip().strip('"').strip("'")
-    email_recipient = os.environ.get("EMAIL_RECIPIENT", email_sender).strip().strip('"').strip("'")
-
     net_worth = ledger_data["total_net_worth"]
     unallocated = ledger_data["unallocated_cash"]
     margin_used = ledger_data["total_margin_used"]
@@ -426,7 +408,7 @@ def build_and_send_telemetry(ledger_data, macro_shield, btc_regime, active_posit
             
             <div style="background: #0d1b2a; color: #ffffff; padding: 20px;">
                 <h2 style="margin:0; font-size: 20px;">TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-                <p style="margin:5px 0 0 0; font-size: 12px; color: #8d99ae;">Timestamp: {timestamp} | Mode: LIVE / REAL-TIME UPDATE</p>
+                <p style="margin:5px 0 0 0; font-size: 12px; color: #8d99ae;">Timestamp: {timestamp} | Mode: DEBUG / MOBILE RESPONSIVE</p>
             </div>
 
             <div style="padding: 20px;">
@@ -484,7 +466,7 @@ def build_and_send_telemetry(ledger_data, macro_shield, btc_regime, active_posit
                     </tbody>
                 </table>
 
-                <h3 style="margin-top: 30px; color: #1b263b; font-size: 15px;">LIVE TEST TELEMETRY & AUDIT LOG</h3>
+                <h3 style="margin-top: 30px; color: #1b263b; font-size: 15px;">LIVE TEST TELEMETRY & AUDIT LOG (SMART DOWNSIDE MODE)</h3>
                 <div style="background: #fffde7; border: 1px solid #fff59d; padding: 15px; font-family: monospace; font-size: 12px; color: #333; border-radius: 4px;">
                     {log_lines}
                 </div>
@@ -494,17 +476,17 @@ def build_and_send_telemetry(ledger_data, macro_shield, btc_regime, active_posit
     </html>
     """
 
-    if email_sender and email_password:
+    if EMAIL_SENDER and EMAIL_PASSWORD:
         try:
             msg = MIMEMultipart("alternative")
             msg["Subject"] = f"Hyperliquid Report — USD ${net_worth:.2f}"
-            msg["From"] = email_sender
-            msg["To"] = email_recipient
+            msg["From"] = EMAIL_SENDER
+            msg["To"] = EMAIL_RECIPIENT
             msg.attach(MIMEText(html_content, "html"))
 
             with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-                server.login(email_sender, email_password)
-                server.sendmail(email_sender, email_recipient, msg.as_string())
+                server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+                server.sendmail(EMAIL_SENDER, EMAIL_RECIPIENT, msg.as_string())
             print("[INFO] Telemetry email dispatched successfully.")
         except Exception as e:
             print(f"[ERROR] Failed to send email: {e}")
@@ -518,44 +500,27 @@ def main():
     print("==================================================================")
 
     logs = []
-    logs.append(f"[{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}] Telemetry Engine Started.")
+    logs.append(f"[{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')}] Telemetry Engine Started (Smart Downside + Gemini AI Shield Mode).")
 
     state = load_bot_state()
     info, exchange, user_address = initialize_exchange()
 
-    # 1. AI Shield & Macro Checks
+    # 1. AI Shield & Ledger Fetch
     macro_shield = run_gemini_macro_shield()
+    ledger = fetch_net_worth_ledger(info, user_address)
     btc_regime = get_btc_regime(info)
-    logs.append(f"Gemini AI Shield: [{macro_shield.get('risk_level')}] {macro_shield.get('assessment')}")
+
+    logs.append(f"Gemini AI Shield: [{macro_shield.get('risk_level')}] {macro_shield.get('assessment')} -> PASS (Normal Risk)")
+
+    # 2. Process active positions & ratchets
+    active_coins = process_active_positions(info, exchange, user_address, state, logs)
     logs.append(f"BTC Regime Check: {btc_regime} -> {'LONGs Allowed' if btc_regime == 'GREEN' else 'LONGs Blocked'}")
 
-    # 2. Process active position ratchets & close stagnated trades
-    active_coins = process_active_positions(info, exchange, user_address, state, logs)
-
-    # 3. Market Scan & Smart Queue Building
-    queue_candidates = scan_market_and_build_queue(info, active_coins)
-    logs.append(f"Scan Complete: Found {len(queue_candidates)} valid breakouts.")
-
-    # 4. EXECUTE TRADES FIRST FOR OPEN SLOTS
-    open_slots = MAX_SLOTS - len(active_coins)
-    if open_slots > 0 and queue_candidates:
-        logs.append(f"Open slots available ({open_slots}/{MAX_SLOTS}). Triggering order placements...")
-        
-        initial_ledger = fetch_net_worth_ledger(info, user_address)
-        execute_open_entries(exchange, queue_candidates, open_slots, initial_ledger["total_net_worth"], btc_regime, logs)
-
-        # 5. API Settlement Cooldown (2.0 Seconds)
-        logs.append("Pausing 2.0s for Hyperliquid REST orderbook settlement...")
-        time.sleep(2.0)
-
-    # 6. RE-FETCH ACCOUNT STATE POST-EXECUTION (Real-time email accuracy fix)
-    post_trade_ledger = fetch_net_worth_ledger(info, user_address)
-    user_state = post_trade_ledger["user_state"]
-    all_mids = post_trade_ledger["all_mids"]
-
-    # Re-build Active Positions Data for Email Report
+    # Build initial active positions data for table
+    user_state = ledger["user_state"]
+    all_mids = ledger["all_mids"]
     active_positions_info = []
-    current_active_coins = []
+
     for pos_wrapper in user_state.get("assetPositions", []):
         pos = pos_wrapper.get("position", {})
         coin = pos.get("coin")
@@ -563,7 +528,6 @@ def main():
         if szi == 0.0:
             continue
 
-        current_active_coins.append(coin)
         entry_price = float(pos.get("entryPx", 1.0))
         curr_price = float(all_mids.get(coin, entry_price))
         position_usd = abs(szi) * curr_price
@@ -576,6 +540,8 @@ def main():
         pos_state = state["positions"].get(coin, {})
         stop_price = pos_state.get("stop_price", round(entry_price * 0.98, 4))
 
+        logs.append(f"Position: {coin} | ROE: {roe_pct:+.2f}% | Stop: ${stop_price} | Stagnation: {pos_state.get('stagnation_runs', 0)}/48")
+
         active_positions_info.append({
             "coin": coin,
             "collateral": collateral,
@@ -586,21 +552,30 @@ def main():
             "stop_price": stop_price
         })
 
-    # Filter On-Deck Queue to exclude assets that were just purchased
-    remaining_queue = [c for c in queue_candidates if c["coin"] not in current_active_coins]
+    # 3. Market Scan & Queue
+    queue_candidates = scan_market_and_build_queue(info, active_coins)
+    for c in queue_candidates[:20]:
+        logs.append(f"MATCH LONG: {c['coin']} @ ${c['price']} (Score: {c['score']}, CI: {c['ci']})")
+    
+    logs.append(f"Scan Complete: Evaluated {len(all_mids)} assets. Found {len(queue_candidates)} breakouts (Smart-Ranked).")
 
-    # 7. BUILD & SEND TELEMETRY EMAIL DASHBOARD
+    # 4. Open entries for available slots
+    open_slots = MAX_SLOTS - len(active_coins)
+    if open_slots > 0 and queue_candidates:
+        execute_open_entries(exchange, queue_candidates, open_slots, ledger["total_net_worth"], btc_regime, logs)
+
+    # 5. Dispatch Telemetry Email
     build_and_send_telemetry(
-        post_trade_ledger,
+        ledger,
         macro_shield,
         btc_regime,
         active_positions_info,
-        remaining_queue,
+        queue_candidates,
         logs
     )
 
     print("==================================================================")
-    print("Execution complete. Active slots occupied:", len(active_positions_info))
+    print("Execution complete.")
     print("==================================================================")
 
 if __name__ == "__main__":
