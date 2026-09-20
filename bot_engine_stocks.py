@@ -62,7 +62,6 @@ def run_gemini_stock_market_shield():
         Provide a 2-sentence executive summary of current US stock market sentiment and key catalysts for the email dashboard.
         """
 
-        # Model Fallback Cascade for maximum speed, cost efficiency, and reliability
         models = ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.6-flash"]
         
         for model_name in models:
@@ -142,26 +141,48 @@ def calculate_gaussian_channel(closes, poles=4, period=50, mult=1.414):
     lower = filtered - deviation
     return upper.iloc[-1], lower.iloc[-1], filtered.iloc[-1]
 
-def calculate_stop_price(entry_px, is_long, current_px):
+def calculate_choppiness_index(highs, lows, closes, period=14):
+    """Calculates 14-period Choppiness Index (CI) for stock bars."""
+    try:
+        if len(closes) < period + 1:
+            return 50.0
+        tr_sum = sum([max(highs[i] - lows[i], abs(highs[i] - closes[i-1]), abs(lows[i] - closes[i-1])) for i in range(1, period + 1)])
+        max_high = max(highs[-period:])
+        min_low = min(lows[-period:])
+        range_diff = max_high - min_low
+        if range_diff <= 0 or tr_sum <= 0:
+            return 50.0
+        ci = 100 * (log10(tr_sum / range_diff) / log10(period))
+        return ci
+    except Exception:
+        return 50.0
+
+def calculate_stop_price(entry_px, is_long, current_px, choppiness_index=50.0, is_ballistic=False):
+    """Smart Dynamic Micro-Ratchet Stop Loss System."""
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
         roe = (entry_px - current_px) / entry_px
 
-    if roe >= 0.30:
-        target_floor_roe = 0.22
-    elif roe >= 0.20:
-        target_floor_roe = 0.12
-    elif roe >= 0.10:
-        target_floor_roe = 0.05
+    if roe >= 0.05:
+        milestone = floor(roe * 40) / 40
+        target_floor_roe = milestone - 0.01
     elif roe >= 0.035:
         target_floor_roe = 0.02
     elif roe >= 0.020:
         target_floor_roe = 0.01
-    elif roe >= 0.015:
-        target_floor_roe = 0.00
+    elif roe >= 0.010:
+        target_floor_roe = 0.00         # Break-Even locked at +1.0% ROE
+    elif roe >= 0.005:
+        target_floor_roe = -0.005       # Risk capped to -0.5% at +0.5% ROE
     else:
-        target_floor_roe = -0.04
+        # SMART ADAPTIVE DOWNSIDE HARD STOP
+        if choppiness_index > 58.0:
+            target_floor_roe = -0.012   # Choppy Stock -> Fast Cut (-1.2% max)
+        elif is_ballistic:
+            target_floor_roe = -0.035   # High-Conviction Ballistic Breakout -> Wide Room (-3.5% max)
+        else:
+            target_floor_roe = -0.020   # Standard Clean Trend -> Moderate Room (-2.0% max)
 
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
@@ -173,7 +194,7 @@ def calculate_stop_price(entry_px, is_long, current_px):
 def execute_stock_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Alpaca Stock Engine Started (Equities LS-01 + Gemini AI Shield Mode).")
+    audit_logs.append(f"[{timestamp}] Alpaca Stock Engine Started (Smart Downside + Gemini AI Shield Mode).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
@@ -217,7 +238,18 @@ def execute_stock_engine():
         total_positions_value += market_value
         active_symbols.add(symbol)
 
-        stop_px_raw, current_roe, target_floor = calculate_stop_price(entry_px, is_long, current_px)
+        # Fetch recent bars to compute Choppiness Index for active stock
+        try:
+            bars_res = requests.get(f"https://data.alpaca.markets/v2/stocks/{symbol}/bars?timeframe=1H&limit=50", headers=HEADERS)
+            bars = bars_res.json().get("bars", []) if bars_res.status_code == 200 else []
+            closes = [float(b["c"]) for b in bars]
+            highs = [float(b["h"]) for b in bars]
+            lows = [float(b["l"]) for b in bars]
+            ci = calculate_choppiness_index(highs, lows, closes)
+        except Exception:
+            ci = 50.0
+
+        stop_px_raw, current_roe, target_floor = calculate_stop_price(entry_px, is_long, current_px, choppiness_index=ci)
         px = round_sig_figs(stop_px_raw, 5)
 
         if current_roe < 0.01:
@@ -226,7 +258,7 @@ def execute_stock_engine():
             state["stagnation_tracker"][symbol] = 0
 
         stag_count = state["stagnation_tracker"].get(symbol, 0)
-        audit_logs.append(f"Stock Position: {symbol} | ROE: {current_roe*100:+.2f}% | Stop: ${px} | Stagnation: {stag_count}/48")
+        audit_logs.append(f"Stock Position: {symbol} | ROE: {current_roe*100:+.2f}% | Stop: ${px} | CI: {ci:.1f} | Stagnation: {stag_count}/48")
 
         positions_data.append({
             "bot_title": "Alpaca (TR-GC-Equities-LS-01)",
@@ -270,17 +302,23 @@ def execute_stock_engine():
                 continue
             scanned_count += 1
             closes = [float(b["c"]) for b in bars]
+            highs = [float(b["h"]) for b in bars]
+            lows = [float(b["l"]) for b in bars]
+
             upper, lower, filter_band = calculate_gaussian_channel(closes)
             current_close = closes[-1]
 
-            highs = [float(b["h"]) for b in bars[-14:]]
-            lows = [float(b["l"]) for b in bars[-14:]]
-            atr = np.mean([h - l for h, l in zip(highs, lows)])
+            ci = calculate_choppiness_index(highs, lows, closes)
+            # STRICT ENTRY GUARDRAIL: Skip stock setup if CI > 62.0
+            if ci > 62.0:
+                continue
+
+            atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])])
 
             if current_close > upper and current_close <= upper * 1.025:
                 is_ballistic = current_close > (upper + 1.5 * atr)
-                market_candidates.append({"symbol": symbol, "close": current_close, "is_long": True, "is_ballistic": is_ballistic})
-                audit_logs.append(f"EQUITY MATCH LONG: {symbol} @ ${current_close:.2f}")
+                market_candidates.append({"symbol": symbol, "close": current_close, "is_long": True, "is_ballistic": is_ballistic, "ci": ci})
+                audit_logs.append(f"EQUITY MATCH LONG: {symbol} @ ${current_close:.2f} (CI: {ci:.1f})")
         except Exception:
             continue
 
@@ -323,7 +361,6 @@ def execute_stock_engine():
 
     audit_section = ""
     if VERBOSE_TEST_MODE:
-        # Applied pre-wrap and word-break styling to force clean text wrapping in stock audit logs
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
         <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Stock Engine)</div>
@@ -339,7 +376,6 @@ def execute_stock_engine():
     funds_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${d['balance_usd']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #555;'>{d['balance']:.4f}</td></tr>" for f, d in assets_map.items() if d['balance_usd'] > 0.01])
     positions_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['symbol']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['market_value']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #b45309;'>${p['stop']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td></tr>" for p in positions_data]) or "<tr><td colspan='7' style='padding: 15px; text-align: center; color: #666;'>No active stock positions found.</td></tr>"
 
-    # Format AI Shield Status Badge
     ai_risk_color = "#c62828" if ai_shield.get("high_risk_detected") else "#2e7d32"
     ai_badge = f"<span style='background: {ai_risk_color}; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 10px;'>Risk Level: {ai_shield.get('risk_level', 'UNKNOWN')}</span>"
 
@@ -407,8 +443,10 @@ def execute_stock_engine():
               <div class="rules-title">&#9989; Active Stock Rule Deck & Guardrails</div>
               &bull; <b>Market Hours Cron:</b> Mon-Fri US Trading Hours &bull; <b>Max Slots:</b> {active_count}/{MAX_STOCK_SLOTS} Active<br>
               &bull; <b>Gemini AI Macro Shield:</b> Real-time Google Search news & black-swan scanning<br>
-              &bull; <b>Hard Stop:</b> -4.0% ROE Floor<br>
-              &bull; <b>Profit Ratchet Ladders:</b> +1.5% ROE (BE) &bull; +2.0% (Tier 1) &bull; +3.5% (Tier 2) &bull; +10% (+5% Floor)<br>
+              &bull; <b>Smart Downside Adaptive Stop:</b> -1.2% (Choppy) / -2.0% (Clean) / -3.5% (Ballistic Breakout)<br>
+              &bull; <b>Micro-Ratchet Ladders:</b> +0.5% (-0.5% cap) &bull; +1.0% (BE) &bull; +2% &bull; +3.5%<br>
+              &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Dynamic 2.5% Steps with 1% Buffer active from +5% up to +300%+ ROE</i><br>
+              &bull; <b>Strict Choppiness Filter:</b> Skip entries if Choppiness Index (CI) &gt; 62<br>
               &bull; <b>Asset Universe:</b> S&P 500 & Nasdaq Momentum Equities
             </div>
 
