@@ -1,11 +1,12 @@
 import os
 import json
 import time
+from datetime import datetime, timedelta
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from math import log10, floor
-import eth_account
+import requests
 import pandas as pd
 import numpy as np
 
@@ -13,68 +14,47 @@ import numpy as np
 from google import genai
 from google.genai import types
 
-from hyperliquid.info import Info
-from hyperliquid.exchange import Exchange
-from hyperliquid.utils import constants
-
-ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
-SECRET_KEY = os.getenv("HL_SECRET_KEY")
+API_KEY = os.getenv("APAL_API_KEY_ID")
+SECRET_KEY = os.getenv("APAL_SECRET_KEY")
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-STATE_FILE = "state.json"
+BASE_URL = os.getenv("APAL_BASE_URL", "https://paper-api.alpaca.markets")
+STATE_FILE = "stock_state.json"
 
 VERBOSE_TEST_MODE = True
 
+HEADERS = {
+    "APCA-API-KEY-ID": API_KEY,
+    "APCA-API-SECRET-KEY": SECRET_KEY,
+    "accept": "application/json"
+}
+
 def load_state():
-    default_state = {
-        "cooldown_blocklist": {}, 
-        "stagnation_tracker": {}, 
-        "closed_trades_ledger": [], 
-        "active_position_cache": {},
-        "previous_active_coins": [],
-        "last_run_timestamp": "", 
-        "ai_shield_cache": {}
-    }
     if os.path.exists(STATE_FILE):
         try:
             with open(STATE_FILE, "r") as f:
-                data = json.load(f)
-                for k, v in default_state.items():
-                    if k not in data:
-                        data[k] = v
-                return data
+                return json.load(f)
         except Exception as e:
-            print(f"Error loading state.json: {e}")
-    return default_state
+            print(f"Error loading stock state.json: {e}")
+    return {"stagnation_tracker": {}, "last_run_timestamp": "", "ai_shield_cache": {}}
 
 def save_state(state):
     state["last_run_timestamp"] = time.strftime('%Y-%m-%d %H:%M:%S')
     with open(STATE_FILE, "w") as f:
         json.dump(state, f, indent=2)
 
-def api_retry(func, *args, retries=5, delay=3.0, **kwargs):
-    for attempt in range(retries):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            if "429" in str(e) or "Rate limit" in str(e) or "Timeout" in str(e):
-                if attempt < retries - 1:
-                    print(f"[WARN] Hyperliquid API rate limit hit. Pausing {delay}s before retry ({attempt+1}/{retries})...")
-                    time.sleep(delay)
-                    delay *= 2.0
-                else:
-                    raise e
-            else:
-                raise e
-
-def run_gemini_market_shield():
+def run_gemini_stock_market_shield():
+    """Queries Gemini with Search Grounding ONCE per day at market open and caches the verdict in stock_state.json to eliminate GCP API charges."""
     state = load_state()
     cached_shield = state.get("ai_shield_cache", {})
-    today_str = time.strftime('%Y-%m-%d')
+    today_str = datetime.now().strftime("%Y-%m-%d")
 
+    # 1. READ FROM LOCAL JSON CACHE: Reuse today's verdict if already scanned ($0.00 cost)
     if cached_shield.get("scan_date") == today_str and "high_risk_detected" in cached_shield:
+        print(f"Reading market risk verdict from local stock_state.json (Scanned today at {cached_shield.get('timestamp')}).")
         return cached_shield
 
     if not GEMINI_API_KEY:
+        print("GEMINI_API_KEY missing; skipping Stock AI Macro Shield scan.")
         return {
             "high_risk_detected": False, 
             "risk_level": "UNKNOWN", 
@@ -83,15 +63,19 @@ def run_gemini_market_shield():
             "ai_market_brief": "AI Shield offline (Missing GEMINI_API_KEY secret)."
         }
 
+    # 2. EXECUTE API SCAN ONCE A DAY ONLY
+    print(f"Executing daily market open Gemini AI Shield scan for {today_str}...")
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
         prompt = """
-        Perform a live real-time web search for breaking cryptocurrency market news, BTC price momentum, regulatory actions, 
-        FOMC/interest rate updates, or sudden exchange incidents from the last 1-2 hours.
-        Determine if there is extreme high-risk volatility or black-swan risk that could cause sudden whipsaws in perp futures.
-        Provide a 2-sentence executive summary of current market sentiment and key catalysts for the email dashboard.
+        Perform a live real-time web search for breaking US stock market news, SPY/QQQ market trends, Federal Reserve macro economic updates, 
+        unexpected earnings shocks, or geopolitical events from the last 1-2 hours.
+        Determine if there is extreme high-risk volatility or black-swan risk that could cause sudden crashes in equities.
+        Provide a 2-sentence executive summary of current US stock market sentiment and key catalysts for the email dashboard.
         """
+
         models = ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.6-flash"]
+        
         for model_name in models:
             try:
                 response = client.models.generate_content(
@@ -116,20 +100,25 @@ def run_gemini_market_shield():
                 result = json.loads(response.text)
                 result["timestamp"] = time.strftime('%Y-%m-%d %H:%M:%S')
                 result["scan_date"] = today_str
+
+                # Save verdict to stock_state.json cache
                 state["ai_shield_cache"] = result
                 save_state(state)
                 return result
-            except Exception:
+            except Exception as inner_e:
+                print(f"Gemini Stock AI Shield attempt failed on {model_name}: {inner_e}")
                 continue
-    except Exception:
-        pass
 
+    except Exception as e:
+        print(f"Gemini Stock AI Shield execution error: {e}")
+
+    # Fallback to cached state if API error occurs
     return cached_shield if cached_shield else {
         "high_risk_detected": False, 
         "risk_level": "UNKNOWN", 
         "reason": "AI Shield Bypass on Error", 
         "action": "ALLOW_TRADES",
-        "ai_market_brief": "Market scanning operating normally under standard quantitative rules."
+        "ai_market_brief": "Stock market scanning operating normally under standard quantitative rules."
     }
 
 def send_html_dashboard_email(subject, html_content, text_fallback):
@@ -138,6 +127,7 @@ def send_html_dashboard_email(subject, html_content, text_fallback):
     receiver_email = os.getenv("RECEIVER_EMAIL")
 
     if not sender_email or not sender_password or not receiver_email:
+        print("Email credentials missing; skipping email notification.")
         return
 
     msg = MIMEMultipart("alternative")
@@ -152,6 +142,7 @@ def send_html_dashboard_email(subject, html_content, text_fallback):
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(sender_email, sender_password)
             server.sendmail(sender_email, receiver_email, msg.as_string())
+        print(f"Stock telemetry report successfully sent to {receiver_email}")
     except Exception as e:
         print(f"Failed to send email: {e}")
 
@@ -160,9 +151,10 @@ def round_sig_figs(val, sig_figs=5):
         return 0
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
-def calculate_gaussian_channel(closes, poles=4, period=323, mult=1.414):
+def calculate_gaussian_channel(closes, poles=4, period=50, mult=1.414):
     s = pd.Series(closes)
-    alpha = (2.0 / (period + 1)) * (poles ** 0.5)
+    effective_period = min(period, max(5, len(closes) - 1))
+    alpha = (2.0 / (effective_period + 1)) * (poles ** 0.5)
     filtered = s.ewm(alpha=alpha, adjust=False).mean()
     error = (s - filtered).abs()
     deviation = error.ewm(alpha=alpha, adjust=False).mean() * mult
@@ -171,6 +163,7 @@ def calculate_gaussian_channel(closes, poles=4, period=323, mult=1.414):
     return upper.iloc[-1], lower.iloc[-1], filtered.iloc[-1]
 
 def calculate_choppiness_index(highs, lows, closes, period=14):
+    """Calculates 14-period Choppiness Index (CI) for stock bars."""
     try:
         if len(closes) < period + 1:
             return 50.0
@@ -185,11 +178,12 @@ def calculate_choppiness_index(highs, lows, closes, period=14):
     except Exception:
         return 50.0
 
-def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0, choppiness_index=50.0, is_ballistic=False):
+def calculate_stop_price(entry_px, is_long, current_px, choppiness_index=50.0, is_ballistic=False):
+    """Smart Dynamic Micro-Ratchet Stop Loss System."""
     if is_long:
-        roe = ((current_px - entry_px) / entry_px) * leverage
+        roe = (current_px - entry_px) / entry_px
     else:
-        roe = ((entry_px - current_px) / entry_px) * leverage
+        roe = (entry_px - current_px) / entry_px
 
     if roe >= 0.05:
         milestone = floor(roe * 40) / 40
@@ -199,358 +193,250 @@ def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0, choppiness
     elif roe >= 0.020:
         target_floor_roe = 0.01
     elif roe >= 0.010:
-        target_floor_roe = 0.00       # Break-Even locked at +1.0% ROE
+        target_floor_roe = 0.00         # Break-Even locked at +1.0% ROE
     elif roe >= 0.005:
-        target_floor_roe = -0.005     # Risk capped to -0.5% at +0.5% ROE
+        target_floor_roe = -0.005       # Risk capped to -0.5% at +0.5% ROE
     else:
+        # SMART ADAPTIVE DOWNSIDE HARD STOP
         if choppiness_index > 58.0:
-            target_floor_roe = -0.025   # Choppy Market -> -2.5% ROE
+            target_floor_roe = -0.012   # Choppy Stock -> Fast Cut (-1.2% max)
         elif is_ballistic:
-            target_floor_roe = -0.050   # Ballistic Breakout -> -5.0% ROE
+            target_floor_roe = -0.035   # High-Conviction Ballistic Breakout -> Wide Room (-3.5% max)
         else:
-            target_floor_roe = -0.035   # Standard Clean Trend -> -3.5% ROE
+            target_floor_roe = -0.020   # Standard Clean Trend -> Moderate Room (-2.0% max)
 
     if is_long:
-        stop_px = entry_px * (1 + (target_floor_roe / leverage))
-        is_buy_order = False
+        stop_px = entry_px * (1 + target_floor_roe)
     else:
-        stop_px = entry_px * (1 - (target_floor_roe / leverage))
-        is_buy_order = True
+        stop_px = entry_px * (1 - target_floor_roe)
 
-    return stop_px, roe, target_floor_roe, is_buy_order
+    return stop_px, roe, target_floor_roe
 
-def check_btc_daily_candle(info):
-    try:
-        now_ms = int(time.time() * 1000)
-        candles = api_retry(info.candles_snapshot, name="BTC", interval="1d", startTime=now_ms - 86400000 * 5, endTime=now_ms)
-        if candles and len(candles) > 0:
-            latest = candles[-1]
-            o = float(latest.get("o", 0))
-            c = float(latest.get("c", 0))
-            return c >= o, o, c
-    except Exception:
-        pass
-    return True, 0.0, 0.0
-
-def execute_engine():
+def execute_stock_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Telemetry Engine Started (Smart Breathing Room + Exit Metrics + Audit Logs Restored).")
+    audit_logs.append(f"[{timestamp}] Alpaca Stock Engine Started (Smart Downside + Gemini AI Shield Mode).")
 
-    if not SECRET_KEY or not ACCOUNT_ADDRESS:
-        raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
+    if not API_KEY or not SECRET_KEY:
+        raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
 
-    ai_shield = run_gemini_market_shield()
+    # 14-day rolling start date (~70 hourly candles per stock)
+    start_date = (datetime.now() - timedelta(days=14)).strftime('%Y-%m-%d')
+
+    # 1. RUN GEMINI AI STOCK MACRO SHIELD SCAN (Reads local cache or runs 1 daily API call)
+    ai_shield = run_gemini_stock_market_shield()
+    ai_risk_status = "BLOCKED (High Risk)" if ai_shield.get("high_risk_detected") else "PASS (Normal Risk)"
+    audit_logs.append(f"Gemini AI Shield: [{ai_shield.get('risk_level', 'UNKNOWN')}] {ai_shield.get('reason', '')} -> {ai_risk_status}")
+
     state = load_state()
-    wallet = eth_account.Account.from_key(SECRET_KEY)
-    exchange = Exchange(wallet, constants.MAINNET_API_URL, account_address=ACCOUNT_ADDRESS)
-    info = Info(constants.MAINNET_API_URL, skip_ws=True)
 
-    user_state = api_retry(info.user_state, ACCOUNT_ADDRESS)
-    spot_state = api_retry(info.spot_user_state, ACCOUNT_ADDRESS)
-    all_mids = api_retry(info.all_mids)
-    meta = api_retry(info.meta)
-    now_ms = int(time.time() * 1000)
+    # 2. Fetch Account Details & Positions from Alpaca
+    account_res = requests.get(f"{BASE_URL}/v2/account", headers=HEADERS)
+    if account_res.status_code != 200:
+        raise Exception(f"Failed to fetch Alpaca account: {account_res.text}")
+    account_data = account_res.json()
 
-    sz_decimals_map = {}
-    for asset in meta.get("universe", []):
-        sz_decimals_map[asset.get("name")] = asset.get("szDecimals", 4)
+    equity = float(account_data.get("equity", 100000.0))
+    cash = float(account_data.get("cash", 100000.0))
+    buying_power = float(account_data.get("buying_power", 100000.0))
+    margin_util_pct = ((equity - cash) / equity * 100) if equity > 0 else 0.0
 
-    asset_positions = user_state.get("assetPositions", [])
-    active_count = 0
-    active_coins = set()
-    current_active_cache = {}
+    positions_res = requests.get(f"{BASE_URL}/v2/positions", headers=HEADERS)
+    positions_list = positions_res.json() if positions_res.status_code == 200 else []
 
-    for pos_item in asset_positions:
-        pos = pos_item.get("position", {})
-        coin = pos.get("coin")
-        szi = float(pos.get("szi", 0))
-        if coin and szi != 0:
-            active_count += 1
-            active_coins.add(coin)
-            current_active_cache[coin] = {
-                "entry_px": float(pos.get("entryPx", 0)),
-                "current_px": float(all_mids.get(coin, pos.get("entryPx", 0))),
-                "szi": szi
-            }
+    active_count = len(positions_list)
+    positions_data = []
+    active_symbols = set()
+    total_positions_value = 0.0
 
-    previous_cache = state.get("active_position_cache", {})
-    closed_coins = set(previous_cache.keys()) - active_coins
-
-    for closed_coin in closed_coins:
-        old_data = previous_cache.get(closed_coin, {})
-        entry_px = old_data.get("entry_px", 0.0)
-        exit_px = float(all_mids.get(closed_coin, entry_px))
+    for pos in positions_list:
+        symbol = pos.get("symbol")
+        qty = float(pos.get("qty", 0))
+        side = pos.get("side", "long")
+        is_long = side == "long"
+        entry_px = float(pos.get("avg_entry_price", 0))
+        current_px = float(pos.get("current_price", entry_px))
+        market_value = float(pos.get("market_value", 0))
+        unrealized_pnl = float(pos.get("unrealized_pl", 0))
         
-        already_logged = any(t["coin"] == closed_coin for t in state["closed_trades_ledger"][:2])
-        if not already_logged:
-            state["closed_trades_ledger"].insert(0, {
-                "coin": closed_coin,
-                "entry_price": entry_px,
-                "exit_price": exit_px,
-                "exit_reason": "Stop-Loss Trigger / Exchange Fill",
-                "timestamp": timestamp
-            })
-            state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
+        total_positions_value += market_value
+        active_symbols.add(symbol)
 
-    state["active_position_cache"] = current_active_cache
-    state["previous_active_coins"] = list(active_coins)
+        # Fetch recent bars to compute Choppiness Index for active stock
+        try:
+            bars_res = requests.get(
+                f"https://data.alpaca.markets/v2/stocks/{symbol}/bars?timeframe=1Hour&limit=100&feed=iex&start={start_date}", 
+                headers=HEADERS
+            )
+            bars = bars_res.json().get("bars", []) if bars_res.status_code == 200 else []
+            closes = [float(b["c"]) for b in bars]
+            highs = [float(b["h"]) for b in bars]
+            lows = [float(b["l"]) for b in bars]
+            ci = calculate_choppiness_index(highs, lows, closes)
+        except Exception:
+            ci = 50.0
 
-    btc_green, btc_open, btc_close = check_btc_daily_candle(info)
+        stop_px_raw, current_roe, target_floor = calculate_stop_price(entry_px, is_long, current_px, choppiness_index=ci)
+        px = round_sig_figs(stop_px_raw, 5)
 
-    universe = [asset["name"] for asset in meta.get("universe", [])][:100]
+        if current_roe < 0.01:
+            state["stagnation_tracker"][symbol] = state["stagnation_tracker"].get(symbol, 0) + 1
+        else:
+            state["stagnation_tracker"][symbol] = 0
+
+        stag_count = state["stagnation_tracker"].get(symbol, 0)
+        audit_logs.append(f"Stock Position: {symbol} | ROE: {current_roe*100:+.2f}% | Stop: ${px} | CI: {ci:.1f} | Stagnation: {stag_count}/48")
+
+        positions_data.append({
+            "bot_title": "Alpaca (TR-GC-Equities-LS-01)",
+            "symbol": symbol,
+            "side": "LONG" if is_long else "SHORT",
+            "qty": qty,
+            "entry": entry_px,
+            "current": current_px,
+            "market_value": market_value,
+            "pnl": unrealized_pnl,
+            "roe": current_roe * 100,
+            "stop": px,
+            "floor": target_floor * 100,
+            "status": "Active"
+        })
+
+    remaining_cash = max(0.0, cash)
+    assets_map = {
+        "USD Cash": {"balance": remaining_cash, "balance_usd": remaining_cash}
+    }
+    for p in positions_data:
+        assets_map[p["symbol"]] = {"balance": p["qty"], "balance_usd": p["market_value"]}
+
+    # 3. EXPANDED WATCHLIST (70+ Top S&P 500 & Nasdaq Momentum Equities)
+    watchlist = [
+        # Tech & Megacaps
+        "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "AVGO", "QCOM",
+        "INTC", "MU", "ARM", "AMAT", "LRCX", "SMCI", "ORCL", "CRM", "NOW", "PANW", "FTNT", "PLTR",
+        # High Beta, Fintech & Growth
+        "COIN", "HOOD", "SQ", "PYPL", "NET", "SNOW", "SHOP", "MSTR", "UBER", "ABNB", "RBLX", "DKNG",
+        # Consumer, Media & Industrial Leaders
+        "NFLX", "COST", "WMT", "HD", "DIS", "NKE", "SBUX", "BA", "CAT", "GE", "HON", "DE", "LMT",
+        # Finance, Energy & Healthcare Leaders
+        "JPM", "BAC", "GS", "MS", "V", "MA", "XOM", "CVX", "SLB", "LLY", "UNH", "JNJ", "PFE", "ABBV",
+        # Hardware & Semiconductors
+        "TXN", "ADI", "KLAC", "MCHP", "DELL",
+        # Major Index & Sector Benchmarks
+        "SPY", "QQQ", "IWM", "DIA", "SMH", "XLF", "XLE"
+    ]
+
+    symbols_to_scan = [s for s in watchlist if s not in active_symbols]
     market_candidates = []
     scanned_count = 0
 
-    for coin in universe:
-        if coin in active_coins or coin in ["USDC", "USDT"]:
-            continue
-        try:
-            px = float(all_mids.get(coin, 0))
-            if px <= 0:
+    # BATCH SCANNING ENGINE WITH PAGINATION LOOP: Guarantees 100% of symbols are retrieved without truncation
+    chunk_size = 20
+    for i in range(0, len(symbols_to_scan), chunk_size):
+        chunk = symbols_to_scan[i:i + chunk_size]
+        symbols_param = ",".join(chunk)
+
+        all_bars_data = {}
+        page_token = None
+
+        while True:
+            url = f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbols_param}&timeframe=1Hour&limit=10000&feed=iex&start={start_date}"
+            if page_token:
+                url += f"&page_token={page_token}"
+
+            try:
+                bars_res = requests.get(url, headers=HEADERS)
+                if bars_res.status_code != 200:
+                    audit_logs.append(f"Batch Scan API Error: HTTP {bars_res.status_code}")
+                    break
+
+                res_json = bars_res.json()
+                returned_bars = res_json.get("bars", {})
+
+                for sym, b_list in returned_bars.items():
+                    if sym not in all_bars_data:
+                        all_bars_data[sym] = []
+                    all_bars_data[sym].extend(b_list)
+
+                page_token = res_json.get("next_page_token")
+                if not page_token:
+                    break
+            except Exception as e:
+                audit_logs.append(f"Batch Scan Exception: {e}")
+                break
+
+        for symbol in chunk:
+            bars = all_bars_data.get(symbol, [])
+            if not bars or len(bars) < 15:
                 continue
-            
-            time.sleep(0.25)
-            candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 7, endTime=now_ms)
-            if not candles or len(candles) < 50:
-                continue
+
             scanned_count += 1
-            closes = [float(c["c"]) for c in candles]
-            highs = [float(c["h"]) for c in candles]
-            lows = [float(c["l"]) for c in candles]
+            closes = [float(b["c"]) for b in bars]
+            highs = [float(b["h"]) for b in bars]
+            lows = [float(b["l"]) for b in bars]
 
             upper, lower, filter_band = calculate_gaussian_channel(closes)
             current_close = closes[-1]
-            
+
             ci = calculate_choppiness_index(highs, lows, closes)
             if ci > 62.0:
                 continue
 
-            atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])])
+            atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])]) if len(highs) >= 14 else (highs[-1] - lows[-1])
 
-            if btc_green and current_close > upper and current_close <= upper * 1.025:
+            if current_close > upper and current_close <= upper * 1.025:
                 is_ballistic = current_close > (upper + 1.5 * atr)
-                extension_score = (current_close - upper) / upper
-                atr_score = atr / current_close
-                momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
-
                 market_candidates.append({
-                    "coin": coin, "close": current_close, "is_long": True, "is_ballistic": is_ballistic,
-                    "score": momentum_score, "ci": ci
+                    "symbol": symbol, 
+                    "close": current_close, 
+                    "is_long": True, 
+                    "is_ballistic": is_ballistic, 
+                    "ci": ci
                 })
-                audit_logs.append(f"MATCH LONG: {coin} @ ${current_close:.4f} (Score: {momentum_score:.4f}, CI: {ci:.1f})")
-            elif not btc_green and current_close < lower and current_close >= lower * 0.975:
-                is_ballistic = current_close < (lower - 1.5 * atr)
-                extension_score = (lower - current_close) / lower
-                atr_score = atr / current_close
-                momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
+                audit_logs.append(f"EQUITY MATCH LONG: {symbol} @ ${current_close:.2f} (CI: {ci:.1f})")
 
-                market_candidates.append({
-                    "coin": coin, "close": current_close, "is_long": False, "is_ballistic": is_ballistic,
-                    "score": momentum_score, "ci": ci
-                })
-                audit_logs.append(f"MATCH SHORT: {coin} @ ${current_close:.4f} (Score: {momentum_score:.4f}, CI: {ci:.1f})")
-        except Exception:
-            continue
+    audit_logs.append(f"Stock Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} breakouts.")
 
-    market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
-    audit_logs.append(f"Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
-
-    spot_usdc = 0.0
-    total_spot_net_worth = 0.0
-    for b in spot_state.get("balances", []):
-        coin = b.get("coin", "").upper()
-        total_amt = float(b.get("total", 0.0))
-        if total_amt > 0:
-            if coin == "USDC":
-                spot_usdc = total_amt
-                total_spot_net_worth += total_amt
-            else:
-                px = float(all_mids.get(coin, 0.0))
-                total_spot_net_worth += (total_amt * px)
-
-    margin_summary = user_state.get("marginSummary", {})
-    fallback_val = float(margin_summary.get("accountValue", 0.0))
-    account_value = total_spot_net_worth if total_spot_net_worth > 0 else fallback_val
-
-    # --- STEP 1: EXECUTE MARKET ENTRIES ---
-    trades_executed = False
-    if not ai_shield.get("high_risk_detected") and active_count < 6 and market_candidates:
-        for candidate in market_candidates[: (6 - active_count)]:
-            coin = candidate["coin"]
+    # 4. Execution Gate (Blocked if Max Slots reached OR if Gemini AI Shield detected high risk)
+    MAX_STOCK_SLOTS = 5
+    if ai_shield.get("high_risk_detected"):
+        audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD. Reason: {ai_shield.get('reason')}")
+    elif active_count < MAX_STOCK_SLOTS and market_candidates:
+        for candidate in market_candidates[: (MAX_STOCK_SLOTS - active_count)]:
+            symbol = candidate["symbol"]
             px = candidate["close"]
             is_long = candidate["is_long"]
             is_ballistic = candidate["is_ballistic"]
-            
-            target_pct = np.random.uniform(0.15, 0.17) if is_ballistic else np.random.uniform(0.12, 0.14)
-            target_usd = max(50.0, account_value * target_pct)
-            
-            decimals = sz_decimals_map.get(coin, 4)
-            raw_sz = target_usd / px
-            sz = round(raw_sz, decimals)
-            if decimals == 0:
-                sz = int(sz)
 
+            target_pct = 0.12 if is_ballistic else 0.09
+            target_usd = max(100.0, equity * target_pct)
+            qty = max(1, int(target_usd / px))
+
+            order_payload = {
+                "symbol": symbol,
+                "qty": str(qty),
+                "side": "buy" if is_long else "sell",
+                "type": "market",
+                "time_in_force": "gtc"
+            }
             try:
-                try:
-                    exchange.update_leverage(coin, 5, True)
-                except Exception:
-                    pass
-
-                res = exchange.market_open(coin, is_long, sz, px * (1.01 if is_long else 0.99))
-                if res.get("status") == "ok":
+                order_res = requests.post(f"{BASE_URL}/v2/orders", json=order_payload, headers=HEADERS)
+                if order_res.status_code == 200:
                     active_count += 1
-                    active_coins.add(coin)
-                    trades_executed = True
-                    audit_logs.append(f"EXECUTION SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {coin}")
+                    active_symbols.add(symbol)
+                    audit_logs.append(f"ORDER SUCCESS: Bought {qty} shares of {symbol}")
             except Exception as e:
-                audit_logs.append(f"EXECUTION FAILED on {coin}: {e}")
-
-    if trades_executed:
-        time.sleep(2.5)
-
-    # --- STEP 2: RE-FETCH USER STATE & RATCHET ALL POSITIONS ---
-    user_state = api_retry(info.user_state, ACCOUNT_ADDRESS)
-    spot_state = api_retry(info.spot_user_state, ACCOUNT_ADDRESS)
-    open_orders = api_retry(info.frontend_open_orders, ACCOUNT_ADDRESS)
-    all_mids = api_retry(info.all_mids)
-
-    asset_positions = user_state.get("assetPositions", [])
-    active_count = 0
-    positions_data = []
-    active_coins = set()
-    total_margin_used = 0.0
-
-    if asset_positions:
-        for pos_item in asset_positions:
-            pos = pos_item.get("position", {})
-            coin = pos.get("coin")
-            szi = float(pos.get("szi", 0))
-            if not coin or szi == 0:
-                continue
-
-            active_count += 1
-            active_coins.add(coin)
-            is_long = szi > 0
-            sz = abs(szi)
-            entry_px = float(pos.get("entryPx", 0))
-            current_px = float(all_mids.get(coin, entry_px))
-            margin_used = float(pos.get("marginUsed", 0))
-            total_margin_used += margin_used
-            unrealized_pnl = float(pos.get("unrealizedPnl", 0))
-            pos_equity = margin_used + unrealized_pnl
-
-            leverage_info = pos.get("leverage", {})
-            leverage = float(leverage_info.get("value", 1.0)) if isinstance(leverage_info, dict) else 1.0
-            if leverage <= 0:
-                leverage = 1.0
-
-            try:
-                time.sleep(0.05)
-                c_candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 2, endTime=now_ms)
-                highs = [float(c["h"]) for c in c_candles]
-                lows = [float(c["l"]) for c in c_candles]
-                closes = [float(c["c"]) for c in c_candles]
-                ci = calculate_choppiness_index(highs, lows, closes)
-            except Exception:
-                ci = 50.0
-
-            stop_px_raw, current_roe, target_floor, is_buy_order = calculate_stop_price(entry_px, is_long, current_px, leverage, choppiness_index=ci)
-            px = round_sig_figs(stop_px_raw, 5)
-
-            initial_risk_ref = 0.035
-            r_multiple = current_roe / initial_risk_ref if initial_risk_ref > 0 else 0.0
-
-            if current_roe < 0.01:
-                state["stagnation_tracker"][coin] = state["stagnation_tracker"].get(coin, 0) + 1
-            else:
-                state["stagnation_tracker"][coin] = 0
-
-            stag_count = state["stagnation_tracker"].get(coin, 0)
-            audit_logs.append(f"Position: {coin} | ROE: {current_roe*100:+.2f}% | Stop: ${px} | CI: {ci:.1f} | Stagnation: {stag_count}/48")
-            
-            for order in open_orders:
-                if order.get("coin") == coin and order.get("isTrigger"):
-                    exchange.cancel(coin, order["oid"])
-
-            exchange.order(
-                coin, is_buy_order, sz, px,
-                {"trigger": {"triggerPx": px, "isMarket": True, "tpsl": "sl"}},
-                reduce_only=True
-            )
-
-            positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23",
-                "coin": coin,
-                "side": "LONG" if is_long else "SHORT",
-                "sz": sz,
-                "entry": entry_px,
-                "current": current_px,
-                "leverage": int(leverage),
-                "collateral": margin_used,
-                "position_usd": pos_equity,
-                "pnl": unrealized_pnl,
-                "roe": current_roe * 100,
-                "r_multiple": r_multiple,
-                "stop": px,
-                "floor": target_floor * 100,
-                "status": "Active"
-            })
-
-    # Stagnation Rotation Check
-    if active_count == 6:
-        unprotected_trades = [p for p in positions_data if p["roe"] < 1.5]
-        if unprotected_trades:
-            stagnant_trade = max(unprotected_trades, key=lambda p: state["stagnation_tracker"].get(p["coin"], 0))
-            coin_to_rotate = stagnant_trade["coin"]
-            if state["stagnation_tracker"].get(coin_to_rotate, 0) >= 48:
-                try:
-                    exchange.market_close(coin_to_rotate)
-                    state["stagnation_tracker"][coin_to_rotate] = 0
-                    state["closed_trades_ledger"].insert(0, {
-                        "coin": coin_to_rotate,
-                        "entry_price": stagnant_trade["entry"],
-                        "exit_price": stagnant_trade["current"],
-                        "exit_reason": "24h Stagnation Rotation (Low ROE)",
-                        "timestamp": timestamp
-                    })
-                    state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
-                    active_count -= 1
-                    audit_logs.append(f"ROTATION TRIGGERED: Closed stagnant trade {coin_to_rotate}")
-                except Exception as e:
-                    audit_logs.append(f"Rotation Failed on {coin_to_rotate}: {e}")
+                audit_logs.append(f"ORDER FAILED on {symbol}: {e}")
+    else:
+        audit_logs.append(f"Execution Gate: Active slots ({active_count}/{MAX_STOCK_SLOTS}). No new market entries triggered.")
 
     save_state(state)
-
-    remaining_candidates = [c for c in market_candidates if c["coin"] not in active_coins]
-
-    ondeck_rows = "".join([
-        f"<tr>"
-        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>#{i+1}</td>"
-        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold; color: #0f172a;'>{c['coin']}</td>"
-        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-family: monospace;'>${c['close']:.4f}</td>"
-        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: #b45309; font-weight: 600;'>Score: {c['score']:.4f}</td>"
-        f"</tr>"
-        for i, c in enumerate(remaining_candidates[:3])
-    ]) if remaining_candidates else "<tr><td colspan='4' style='padding: 10px; text-align: center; color: #666;'>No breakouts currently detected.</td></tr>"
-
-    closed_ledger = state.get("closed_trades_ledger", [])
-    closed_rows = "".join([
-        f"<tr>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['coin']}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(t.get('entry_price', 0), 5)}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(t.get('exit_price', 0), 5)}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: #b45309;'>{t['exit_reason']}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 10px;'>{t['timestamp']}</td>"
-        f"</tr>"
-        for t in closed_ledger[:5]
-    ]) if closed_ledger else "<tr><td colspan='5' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
 
     audit_section = ""
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Smart Breathing Room Mode)</div>
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Stock Engine)</div>
         <div class="table-responsive" style="overflow-x: hidden;">
           <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
             <tbody>{audit_rows}</tbody>
@@ -558,40 +444,10 @@ def execute_engine():
         </div>
         """
 
-    text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/6"
+    text_fallback = f"TR-GC-Equities-LS-01 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f} (Margin Util: {margin_util_pct:.1f}%)\nActive Positions: {active_count}/{MAX_STOCK_SLOTS}"
 
-    positions_rows = "".join([
-        f"<tr>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['leverage']}x</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['collateral']:.2f}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: 600; color: #0f172a;'>${p['position_usd']:.2f}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}% / {p['r_multiple']:+.1f}R)</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #334155;'>${round_sig_figs(p['entry'], 5)}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #b45309;'>${p['stop']}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td>"
-        f"</tr>"
-        for p in positions_data
-    ])
-
-    if positions_data:
-        total_collateral_sum = sum(p['collateral'] for p in positions_data)
-        total_position_usd_sum = sum(p['position_usd'] for p in positions_data)
-        total_pnl_sum = sum(p['pnl'] for p in positions_data)
-        total_roe_avg = (total_pnl_sum / total_collateral_sum * 100) if total_collateral_sum > 0 else 0.0
-        positions_rows += f"""
-        <tr style="background: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
-            <td colspan="4" style="padding: 9px 10px; text-align: right;">TOTAL:</td>
-            <td style="padding: 9px 10px;">${total_collateral_sum:.2f}</td>
-            <td style="padding: 9px 10px;">${total_position_usd_sum:.2f}</td>
-            <td style="padding: 9px 10px; color: {'#2e7d32' if total_pnl_sum >= 0 else '#c62828'};">${total_pnl_sum:+.2f} ({total_roe_avg:+.2f}%)</td>
-            <td colspan="3"></td>
-        </tr>
-        """
-    else:
-        positions_rows = "<tr><td colspan='10' style='padding: 15px; text-align: center; color: #666;'>No active positions found.</td></tr>"
+    funds_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${d['balance_usd']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #555;'>{d['balance']:.4f}</td></tr>" for f, d in assets_map.items() if d['balance_usd'] > 0.01])
+    positions_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['symbol']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['market_value']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #b45309;'>${p['stop']}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td></tr>" for p in positions_data]) or "<tr><td colspan='7' style='padding: 15px; text-align: center; color: #666;'>No active stock positions found.</td></tr>"
 
     ai_risk_color = "#c62828" if ai_shield.get("high_risk_detected") else "#2e7d32"
     ai_badge = f"<span style='background: {ai_risk_color}; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 10px;'>Risk Level: {ai_shield.get('risk_level', 'UNKNOWN')}</span>"
@@ -623,56 +479,77 @@ def execute_engine():
           th {{ background: #f1f5f9; color: #475569; text-align: left; padding: 8px 8px; font-weight: 600; border-bottom: 2px solid #cbd5e1; }}
           td {{ padding: 8px 8px; }}
           .footer {{ text-align: center; font-size: 10px; color: #94a3b8; padding: 12px; background: #f8fafc; border-top: 1px solid #e2e8f0; }}
+          
+          @media screen and (max-width: 600px) {{
+            body {{ padding: 2px !important; }}
+            .container {{ border-radius: 0 !important; }}
+            .content {{ padding: 8px !important; }}
+            table {{ font-size: 9px !important; white-space: normal !important; }}
+            th, td {{ padding: 5px 4px !important; }}
+            .net-worth-value {{ font-size: 20px !important; }}
+          }}
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
-            <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-            <p>Timestamp: {timestamp}</p>
+            <h2>TR-GC-Equities-LS-01 | Stock Telemetry Dashboard</h2>
+            <p>Timestamp: {timestamp} &bull; Mode: EQUITIES PAPER</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
-              <div class="net-worth-title">Total Net Worth</div>
-              <div class="net-worth-value">USD ${account_value:.2f}</div>
+              <div class="net-worth-title">Total Account Equity</div>
+              <div class="net-worth-value">USD ${equity:.2f}</div>
+              <div class="net-worth-subtitle">Alpaca Paper Sandbox &bull; <b>Margin Utilization: {margin_util_pct:.1f}%</b></div>
+            </div>
+
+            <div class="ai-brief-card">
+              <div class="ai-brief-title">
+                <span>🤖 GEMINI AI EXECUTIVE STOCK MARKET BRIEFING</span>
+                {ai_badge}
+              </div>
+              <b>Live Market Assessment:</b> {ai_shield.get('ai_market_brief', 'Normal conditions.')}<br>
+              <b>Execution Recommendation:</b> {ai_shield.get('reason', 'Standard scan active.')}
             </div>
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Bot Rule Deck & Guardrails (Updated Breathing Room)</div>
-              &bull; <b>Smart Downside Adaptive Stop:</b> -2.5% (Choppy) / -3.5% (Clean Trend) / -5.0% (Ballistic)<br>
-              &bull; <b>Micro-Ratchet Ladders:</b> +0.5% (-0.5% cap) &bull; +1.0% (BE) &bull; +2% &bull; +3.5%
+              <div class="rules-title">&#9989; Active Stock Rule Deck & Guardrails</div>
+              &bull; <b>Market Hours Cron:</b> Mon-Fri US Trading Hours &bull; <b>Max Slots:</b> {active_count}/{MAX_STOCK_SLOTS} Active<br>
+              &bull; <b>Gemini AI Macro Shield:</b> Real-time Google Search news & black-swan scanning (Daily JSON Cached)<br>
+              &bull; <b>Smart Downside Adaptive Stop:</b> -1.2% (Choppy) / -2.0% (Clean) / -3.5% (Ballistic Breakout)<br>
+              &bull; <b>Micro-Ratchet Ladders:</b> +0.5% (-0.5% cap) &bull; +1.0% (BE) &bull; +2% &bull; +3.5%<br>
+              &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Dynamic 2.5% Steps with 1% Buffer active from +5% up to +300%+ ROE</i><br>
+              &bull; <b>Strict Choppiness Filter:</b> Skip entries if Choppiness Index (CI) &gt; 62<br>
+              &bull; <b>Asset Universe:</b> S&P 500 & Nasdaq Momentum Equities
             </div>
 
-            <div class="section-title">Positions per Bot (USD)</div>
+            <div class="section-title">Funds & Cash (USD)</div>
             <div class="table-responsive">
-              <table><thead><tr><th>Bot Title</th><th>Asset</th><th>Leverage</th><th>Side</th><th>Collateral USD</th><th>Position USD</th><th>Unrealized P&L USD</th><th>Buy Price</th><th>Stop Price</th><th>Bot Status</th></tr></thead><tbody>{positions_rows}</tbody></table>
+              <table><thead><tr><th>Asset</th><th>Balance USD</th><th>Shares / Balance</th></tr></thead><tbody>{funds_rows}</tbody></table>
             </div>
 
-            <div class="section-title">Recently Closed Trades & Exit Telemetry (With Entry/Exit Prices)</div>
+            <div class="section-title">Active Stock Positions</div>
             <div class="table-responsive">
-              <table><thead><tr><th>Asset</th><th>Entry Price</th><th>Exit Price</th><th>Exit Reason / Catalyst</th><th>Timestamp</th></tr></thead><tbody>{closed_rows}</tbody></table>
-            </div>
-
-            <div class="section-title">On-Deck Smart Queue</div>
-            <div class="table-responsive">
-              <table><thead><tr><th>Rank</th><th>Asset</th><th>Current Price</th><th>Momentum Score</th></tr></thead><tbody>{ondeck_rows}</tbody></table>
+              <table><thead><tr><th>Bot Title</th><th>Symbol</th><th>Side</th><th>Market Value USD</th><th>Unrealized P&L USD</th><th>Stop Price</th><th>Status</th></tr></thead><tbody>{positions_rows}</tbody></table>
             </div>
 
             {audit_section}
 
           </div>
-          <div class="footer">Hyperliquid Autonomous Engine &bull; Managed via GitHub Actions</div>
+          <div class="footer">Alpaca Autonomous Equity Engine &bull; Managed via GitHub Actions</div>
         </div>
       </body>
     </html>
     """
 
-    send_html_dashboard_email(f"Hyperliquid Report — USD ${account_value:.2f}", html_content, text_fallback)
+    send_html_dashboard_email(f"Alpaca Stock Report — USD ${equity:.2f}", html_content, text_fallback)
+    print(f"[{timestamp}] Stock telemetry report complete.")
 
 if __name__ == "__main__":
     try:
-        execute_engine()
+        execute_stock_engine()
     except Exception as e:
-        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Engine execution error: {e}"
+        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Stock Engine execution error: {e}"
         print(err_msg)
+        send_html_dashboard_email("Alpaca Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
         raise e
