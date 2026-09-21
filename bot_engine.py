@@ -72,11 +72,9 @@ def run_gemini_market_shield():
     today_str = time.strftime('%Y-%m-%d')
 
     if cached_shield.get("scan_date") == today_str and "high_risk_detected" in cached_shield:
-        print(f"Reading crypto market risk verdict from local state.json (Scanned today at {cached_shield.get('timestamp')}).")
         return cached_shield
 
     if not GEMINI_API_KEY:
-        print("GEMINI_API_KEY missing; skipping AI Macro Shield scan.")
         return {
             "high_risk_detected": False, 
             "risk_level": "UNKNOWN", 
@@ -85,7 +83,6 @@ def run_gemini_market_shield():
             "ai_market_brief": "AI Shield offline (Missing GEMINI_API_KEY secret)."
         }
 
-    print(f"Executing daily crypto Gemini AI Shield scan for {today_str}...")
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
         prompt = """
@@ -122,11 +119,10 @@ def run_gemini_market_shield():
                 state["ai_shield_cache"] = result
                 save_state(state)
                 return result
-            except Exception as inner_e:
-                print(f"Gemini AI Shield attempt failed on {model_name}: {inner_e}")
+            except Exception:
                 continue
-    except Exception as e:
-        print(f"Gemini AI Shield execution error: {e}")
+    except Exception:
+        pass
 
     return cached_shield if cached_shield else {
         "high_risk_detected": False, 
@@ -142,7 +138,6 @@ def send_html_dashboard_email(subject, html_content, text_fallback):
     receiver_email = os.getenv("RECEIVER_EMAIL")
 
     if not sender_email or not sender_password or not receiver_email:
-        print("Email credentials missing; skipping email notification.")
         return
 
     msg = MIMEMultipart("alternative")
@@ -157,7 +152,6 @@ def send_html_dashboard_email(subject, html_content, text_fallback):
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
             server.login(sender_email, sender_password)
             server.sendmail(sender_email, receiver_email, msg.as_string())
-        print(f"Telemetry report successfully sent to {receiver_email}")
     except Exception as e:
         print(f"Failed to send email: {e}")
 
@@ -209,7 +203,6 @@ def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0, choppiness
     elif roe >= 0.005:
         target_floor_roe = -0.005     # Risk capped to -0.5% at +0.5% ROE
     else:
-        # WIDENED INITIAL ROE FLOORS FOR LEVERAGED BREATHING ROOM
         if choppiness_index > 58.0:
             target_floor_roe = -0.025   # Choppy Market -> -2.5% ROE
         elif is_ballistic:
@@ -235,14 +228,14 @@ def check_btc_daily_candle(info):
             o = float(latest.get("o", 0))
             c = float(latest.get("c", 0))
             return c >= o, o, c
-    except Exception as e:
-        print(f"Error checking BTC daily candle: {e}")
+    except Exception:
+        pass
     return True, 0.0, 0.0
 
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Smart Breathing Room + Exit Metrics + Full Rules Deck).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started.")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -267,7 +260,6 @@ def execute_engine():
         coin_name = asset.get("name")
         sz_decimals_map[coin_name] = asset.get("szDecimals", 4)
 
-    # Initial Active Positions Check & Price Cache Tracking
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
     active_coins = set()
@@ -286,7 +278,6 @@ def execute_engine():
                 "szi": szi
             }
 
-    # Track closed positions by comparing active cache with current run active coins
     previous_cache = state.get("active_position_cache", {})
     closed_coins = set(previous_cache.keys()) - active_coins
 
@@ -309,12 +300,10 @@ def execute_engine():
     state["active_position_cache"] = current_active_cache
     state["previous_active_coins"] = list(active_coins)
 
-    # BTC Regime Check
     btc_green, btc_open, btc_close = check_btc_daily_candle(info)
     regime_str = f"GREEN (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> LONGs Allowed" if btc_green else f"RED (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> SHORTs Allowed"
     audit_logs.append(f"BTC Regime Check: {regime_str}")
 
-    # Top 100 Market Scanner with Optimized Pacing (0.25s throttle)
     universe = [asset["name"] for asset in meta.get("universe", [])][:100]
     market_candidates = []
     scanned_count = 0
@@ -355,7 +344,6 @@ def execute_engine():
                     "coin": coin, "close": current_close, "is_long": True, "is_ballistic": is_ballistic,
                     "score": momentum_score, "ci": ci
                 })
-                audit_logs.append(f"MATCH LONG: {coin} @ ${current_close:.4f} (Score: {momentum_score:.4f}, CI: {ci:.1f})")
             elif not btc_green and current_close < lower and current_close >= lower * 0.975:
                 is_ballistic = current_close < (lower - 1.5 * atr)
                 extension_score = (lower - current_close) / lower
@@ -366,14 +354,12 @@ def execute_engine():
                     "coin": coin, "close": current_close, "is_long": False, "is_ballistic": is_ballistic,
                     "score": momentum_score, "ci": ci
                 })
-                audit_logs.append(f"MATCH SHORT: {coin} @ ${current_close:.4f} (Score: {momentum_score:.4f}, CI: {ci:.1f})")
         except Exception:
             continue
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
-    audit_logs.append(f"Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts (Smart-Ranked).")
+    audit_logs.append(f"Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
 
-    # Account Net Worth Baseline (Signum Exact Replication)
     spot_usdc = 0.0
     total_spot_net_worth = 0.0
     for b in spot_state.get("balances", []):
@@ -391,10 +377,9 @@ def execute_engine():
     fallback_val = float(margin_summary.get("accountValue", 0.0))
     account_value = total_spot_net_worth if total_spot_net_worth > 0 else fallback_val
 
-    # --- STEP 1: EXECUTE MARKET ENTRIES (Max 6 Positions) ---
     trades_executed = False
     if ai_shield.get("high_risk_detected"):
-        audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD. Reason: {ai_shield.get('reason')}")
+        audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD.")
     elif active_count < 6 and market_candidates:
         for candidate in market_candidates[: (6 - active_count)]:
             coin = candidate["coin"]
@@ -411,7 +396,6 @@ def execute_engine():
             if decimals == 0:
                 sz = int(sz)
 
-            side_str = "LONG" if is_long else "SHORT"
             try:
                 try:
                     exchange.update_leverage(coin, 5, True)
@@ -423,18 +407,13 @@ def execute_engine():
                     active_count += 1
                     active_coins.add(coin)
                     trades_executed = True
-                    audit_logs.append(f"EXECUTION SUCCESS: Opened {side_str} on {coin} | Sz: {sz} @ ${px}")
-                else:
-                    audit_logs.append(f"EXECUTION API ERROR on {coin}: {res}")
+                    audit_logs.append(f"EXECUTION SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {coin}")
             except Exception as e:
                 audit_logs.append(f"EXECUTION FAILED on {coin}: {e}")
-    else:
-        audit_logs.append(f"Execution Gate: Active slots ({active_count}/6). No new market entries triggered.")
 
     if trades_executed:
         time.sleep(2.5)
 
-    # --- STEP 2: RE-FETCH USER STATE & RATCHET ALL POSITIONS ---
     user_state = api_retry(info.user_state, ACCOUNT_ADDRESS)
     spot_state = api_retry(info.spot_user_state, ACCOUNT_ADDRESS)
     open_orders = api_retry(info.frontend_open_orders, ACCOUNT_ADDRESS)
@@ -491,10 +470,6 @@ def execute_engine():
             else:
                 state["stagnation_tracker"][coin] = 0
 
-            stag_count = state["stagnation_tracker"].get(coin, 0)
-            stag_hours = (stag_count * 30) / 60
-            audit_logs.append(f"Position: {coin} | ROE: {current_roe*100:+.2f}% ({r_multiple:+.1f}R) | Stop: ${px} | CI: {ci:.1f} | Stagnation: {stag_count}/48 ({stag_hours:.1f}h)")
-
             for order in open_orders:
                 if order.get("coin") == coin and order.get("isTrigger"):
                     exchange.cancel(coin, order["oid"])
@@ -523,7 +498,6 @@ def execute_engine():
                 "status": "Active"
             })
 
-    # Recalculate Net Worth & Unallocated Cash
     spot_usdc = 0.0
     total_spot_net_worth = 0.0
     for b in spot_state.get("balances", []):
@@ -544,7 +518,6 @@ def execute_engine():
     static_usdc = max(0.0, account_value - total_margin_used)
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
-    # 24H Stagnation Rotation Check (Max 6 Slots)
     if active_count == 6:
         unprotected_trades = [p for p in positions_data if p["roe"] < 1.5]
         if unprotected_trades:
@@ -563,14 +536,12 @@ def execute_engine():
                     })
                     state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
                     active_count -= 1
-                    audit_logs.append(f"ROTATION TRIGGERED: Closed stagnant trade {coin_to_rotate} after 24h.")
-                except Exception as e:
-                    audit_logs.append(f"Rotation Failed on {coin_to_rotate}: {e}")
+                except Exception:
+                    pass
 
     save_state(state)
 
     remaining_candidates = [c for c in market_candidates if c["coin"] not in active_coins]
-
     ondeck_rows = "".join([
         f"<tr>"
         f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>#{i+1}</td>"
@@ -593,19 +564,7 @@ def execute_engine():
         for t in closed_ledger[:5]
     ]) if closed_ledger else "<tr><td colspan='5' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
 
-    audit_section = ""
-    if VERBOSE_TEST_MODE:
-        audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
-        audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Smart Breathing Room Mode)</div>
-        <div class="table-responsive" style="overflow-x: hidden;">
-          <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
-            <tbody>{audit_rows}</tbody>
-          </table>
-        </div>
-        """
-
-    text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f} (Static USDC: ${static_usdc:.2f})\nActive Positions: {active_count}/6"
+    text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/6"
 
     positions_rows = "".join([
         f"<tr>"
@@ -658,10 +617,8 @@ def execute_engine():
           .net-worth-title {{ font-size: 12px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 6px; }}
           .net-worth-value {{ font-size: 24px; font-weight: 700; color: #0f172a; }}
           .net-worth-subtitle {{ font-size: 11px; color: #64748b; margin-top: 4px; }}
-          
           .ai-brief-card {{ background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; font-size: 11px; color: #166534; line-height: 1.6; }}
           .ai-brief-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 12px; color: #15803d; display: flex; align-items: center; justify-content: space-between; }}
-          
           .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; font-size: 11px; color: #334155; line-height: 1.6; }}
           .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 12px; color: #0f172a; }}
           .section-title {{ font-size: 13px; text-transform: uppercase; color: #475569; margin: 20px 0 8px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; font-weight: 600; }}
@@ -670,15 +627,6 @@ def execute_engine():
           th {{ background: #f1f5f9; color: #475569; text-align: left; padding: 8px 8px; font-weight: 600; border-bottom: 2px solid #cbd5e1; }}
           td {{ padding: 8px 8px; }}
           .footer {{ text-align: center; font-size: 10px; color: #94a3b8; padding: 12px; background: #f8fafc; border-top: 1px solid #e2e8f0; }}
-
-          @media screen and (max-width: 600px) {{
-            body {{ padding: 2px !important; }}
-            .container {{ border-radius: 0 !important; }}
-            .content {{ padding: 8px !important; }}
-            table {{ font-size: 9px !important; white-space: normal !important; }}
-            th, td {{ padding: 5px 4px !important; }}
-            .net-worth-value {{ font-size: 20px !important; }}
-          }}
         </style>
       </head>
       <body>
@@ -709,6 +657,7 @@ def execute_engine():
               &bull; <b>Gemini AI Macro Shield:</b> Real-time Google Search news & black-swan scanning (Daily JSON Cached)<br>
               &bull; <b>Smart Downside Adaptive Stop:</b> -2.5% (Choppy) / -3.5% (Clean Trend) / -5.0% (Ballistic)<br>
               &bull; <b>Micro-Ratchet Ladders:</b> +0.5% (-0.5% cap) &bull; +1.0% (BE) &bull; +2% &bull; +3.5%<br>
+              &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Dynamic 2.5% Steps with 1% Buffer active from +5% up to +300%+ ROE</i><br>
               &bull; <b>Strict Choppiness Filter:</b> Skip entries if Choppiness Index (CI) &gt; 62<br>
               &bull; <b>Stagnation Rotation:</b> 24 Hours (48 Runs) max hold for ROE &lt; +1.5%<br>
               &bull; <b>Sizing Tier:</b> Standard 12%–14% ($50+ floor) / Ballistic 15%–17% on ATR Breakout<br>
@@ -730,8 +679,6 @@ def execute_engine():
               <table><thead><tr><th>Rank</th><th>Asset</th><th>Current Price</th><th>Momentum Score</th></tr></thead><tbody>{ondeck_rows}</tbody></table>
             </div>
 
-            {audit_section}
-
           </div>
           <div class="footer">Hyperliquid Autonomous Engine &bull; Managed via GitHub Actions</div>
         </div>
@@ -740,7 +687,6 @@ def execute_engine():
     """
 
     send_html_dashboard_email(f"Hyperliquid Report — USD ${account_value:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] Crypto telemetry report complete.")
 
 if __name__ == "__main__":
     try:
