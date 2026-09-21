@@ -209,7 +209,7 @@ def calculate_stop_price(entry_px, is_long, current_px, choppiness_index=50.0, i
 def execute_stock_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Alpaca Stock Engine Started.")
+    audit_logs.append(f"[{timestamp}] Alpaca Stock Engine Started (Optimized Equity Breathing Room + Full Telemetry Scan Logs).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
@@ -280,6 +280,9 @@ def execute_stock_engine():
         else:
             state["stagnation_tracker"][symbol] = 0
 
+        stag_count = state["stagnation_tracker"].get(symbol, 0)
+        audit_logs.append(f"Stock Position: {symbol} | ROE: {current_roe*100:+.2f}% | Stop: ${px} | CI: {ci:.1f} | Stagnation: {stag_count}/48")
+
         for order in open_orders:
             if order.get("symbol") == symbol and order.get("type") == "stop":
                 requests.delete(f"{BASE_URL}/v2/orders/{order.get('id')}", headers=HEADERS)
@@ -294,8 +297,8 @@ def execute_stock_engine():
         }
         try:
             requests.post(f"{BASE_URL}/v2/orders", json=stop_order_payload, headers=HEADERS)
-        except Exception:
-            pass
+        except Exception as e:
+            audit_logs.append(f"Stop Order Failed on {symbol}: {e}")
 
         positions_data.append({
             "bot_title": "TR-GC-Equities-LS-01",
@@ -336,8 +339,8 @@ def execute_stock_engine():
     state["active_position_cache"] = current_active_cache
     state["previous_active_symbols"] = list(active_symbols)
 
-    MAX_STOCK_SLOTS = 6
-    if active_count == MAX_STOCK_SLOTS:
+    MAX_STOCK_SLOLS = 6
+    if active_count == MAX_STOCK_SLOLS:
         unprotected_trades = [p for p in positions_data if p["roe"] < 1.5]
         if unprotected_trades:
             stagnant_trade = max(unprotected_trades, key=lambda p: state["stagnation_tracker"].get(p["symbol"], 0))
@@ -357,8 +360,9 @@ def execute_stock_engine():
                     })
                     state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
                     active_count -= 1
-                except Exception:
-                    pass
+                    audit_logs.append(f"ROTATION TRIGGERED: Closed stagnant stock {sym_to_rotate}")
+                except Exception as e:
+                    audit_logs.append(f"Stock Rotation Failed on {sym_to_rotate}: {e}")
 
     watchlist = [
         "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "AVGO", "QCOM",
@@ -427,11 +431,14 @@ def execute_stock_engine():
                 market_candidates.append({
                     "symbol": symbol, "close": current_close, "is_long": True, "is_ballistic": is_ballistic, "ci": ci
                 })
+                audit_logs.append(f"EQUITY MATCH LONG: {symbol} @ ${current_close:.2f} (CI: {ci:.1f})")
+
+    audit_logs.append(f"Stock Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} breakouts.")
 
     if ai_shield.get("high_risk_detected"):
-        pass
-    elif active_count < MAX_STOCK_SLOTS and market_candidates:
-        for candidate in market_candidates[: (MAX_STOCK_SLOTS - active_count)]:
+        audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD. Reason: {ai_shield.get('reason')}")
+    elif active_count < MAX_STOCK_SLOLS and market_candidates:
+        for candidate in market_candidates[: (MAX_STOCK_SLOLS - active_count)]:
             symbol = candidate["symbol"]
             px = candidate["close"]
             is_long = candidate["is_long"]
@@ -453,8 +460,13 @@ def execute_stock_engine():
                 if order_res.status_code == 200:
                     active_count += 1
                     active_symbols.add(symbol)
-            except Exception:
-                pass
+                    audit_logs.append(f"ORDER SUCCESS: Bought {qty} shares of {symbol}")
+                else:
+                    audit_logs.append(f"ORDER FAILED on {symbol}: {order_res.text}")
+            except Exception as e:
+                audit_logs.append(f"ORDER EXCEPTION on {symbol}: {e}")
+    else:
+        audit_logs.append(f"Execution Gate: Active slots ({active_count}/{MAX_STOCK_SLOLS}). No new market entries triggered.")
 
     save_state(state)
 
@@ -482,7 +494,7 @@ def execute_stock_engine():
         for t in closed_ledger[:5]
     ]) if closed_ledger else "<tr><td colspan='5' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
 
-    text_fallback = f"TR-GC-Equities-LS-01 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f} (Margin Util: {margin_util_pct:.1f}%)\nActive Positions: {active_count}/{MAX_STOCK_SLOTS}"
+    text_fallback = f"TR-GC-Equities-LS-01 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f} (Margin Util: {margin_util_pct:.1f}%)\nActive Positions: {active_count}/{MAX_STOCK_SLOLS}"
 
     positions_rows = "".join([
         f"<tr>"
@@ -532,8 +544,10 @@ def execute_stock_engine():
           .net-worth-title {{ font-size: 12px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 6px; }}
           .net-worth-value {{ font-size: 24px; font-weight: 700; color: #0f172a; }}
           .net-worth-subtitle {{ font-size: 11px; color: #64748b; margin-top: 4px; }}
+          
           .ai-brief-card {{ background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; font-size: 11px; color: #166534; line-height: 1.6; }}
           .ai-brief-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 12px; color: #15803d; display: flex; align-items: center; justify-content: space-between; }}
+          
           .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; font-size: 11px; color: #334155; line-height: 1.6; }}
           .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 12px; color: #0f172a; }}
           .section-title {{ font-size: 13px; text-transform: uppercase; color: #475569; margin: 20px 0 8px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; font-weight: 600; }}
@@ -568,14 +582,14 @@ def execute_stock_engine():
 
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Stock Rule Deck & Guardrails</div>
-              &bull; <b>Market Hours Cron:</b> Mon-Fri US Trading Hours &bull; <b>Max Slots:</b> {active_count}/{MAX_STOCK_SLOTS} Active<br>
+              &bull; <b>Market Hours Cron:</b> Mon-Fri US Trading Hours &bull; <b>Max Slots:</b> {active_count}/{MAX_STOCK_SLOLS} Active<br>
               &bull; <b>Gemini AI Macro Shield:</b> Real-time Google Search news & black-swan scanning (Daily JSON Cached)<br>
               &bull; <b>Smart Downside Adaptive Stop:</b> -2.0% (Choppy) / -3.0% (Clean Trend) / -5.0% (Ballistic Breakout)<br>
               &bull; <b>Micro-Ratchet Ladders:</b> +0.5% (-0.5% cap) &bull; +1.0% (BE) &bull; +2% &bull; +3.5%<br>
               &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Dynamic 2.5% Steps with 1% Buffer active from +5% up to +300%+ ROE</i><br>
               &bull; <b>Strict Choppiness Filter:</b> Skip entries if Choppiness Index (CI) &gt; 62<br>
               &bull; <b>Automated Stop Submission:</b> Native Alpaca GTC Stop-Market orders managed per cron run<br>
-              &bull; <b>Asset Universe:</b> S&P 500 & Nasdaq Momentum Equities
+              &bull; <b>Asset Universe:S&P</b> 500 & Nasdaq Momentum Equities
             </div>
 
             <div class="section-title">Active Stock Positions</div>
@@ -598,6 +612,7 @@ def execute_stock_engine():
     """
 
     send_html_dashboard_email(f"Alpaca Stock Report — USD ${equity:.2f}", html_content, text_fallback)
+    print(f"[{timestamp}] Stock telemetry report complete.")
 
 if __name__ == "__main__":
     try:
