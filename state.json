@@ -11,7 +11,7 @@
     "LDO": 0,
     "COMP": 0,
     "ZRO": 0,
-    "GMT": 1,
+    "GMT": 2,
     "IMX": 0,
     "FET": 0,
     "PYTH": 0,
@@ -23,13 +23,14 @@
     "JUP": 7,
     "APE": 0,
     "ARB": 5,
-    "APT": 12,
+    "APT": 13,
     "BSV": 0,
     "JTO": 1,
-    "XRP": 4,
-    "SUPER": 0
+    "XRP": 5,
+    "SUPER": 0,
+    "ORDI": 1
   },
-  "last_run_timestamp": "2026-09-21 18:41:23",
+  "last_run_timestamp": "2026-09-21 19:05:46",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "LOW",
@@ -40,14 +41,20 @@
     "scan_date": "2026-09-21"
   },
   "previous_active_coins": [
-    "BTC",
-    "XRP",
-    "SUPER",
     "ETH",
+    "GMT",
+    "XRP",
     "APT",
-    "GMT"
+    "BTC"
   ],
   "closed_trades_ledger": [
+    {
+      "coin": "SUPER",
+      "entry_price": 0.14872,
+      "exit_price": 0.148445,
+      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
+      "timestamp": "2026-09-21 19:04:49"
+    },
     {
       "coin": "BSV",
       "entry_price": 18.0788,
@@ -102,33 +109,28 @@
   "active_position_cache": {
     "BTC": {
       "entry_px": 78134.0,
-      "current_px": 86021.5,
+      "current_px": 86065.5,
       "szi": 0.0006
     },
     "ETH": {
       "entry_px": 2565.1,
-      "current_px": 2752.55,
+      "current_px": 2759.85,
       "szi": 0.0175
     },
     "XRP": {
       "entry_px": 1.4969,
-      "current_px": 1.50795,
+      "current_px": 1.50645,
       "szi": 55.0
     },
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.7566,
+      "current_px": 0.76,
       "szi": 83.66
     },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008266,
+      "current_px": 0.008255,
       "szi": 10173.0
-    },
-    "SUPER": {
-      "entry_px": 0.14872,
-      "current_px": 0.14916,
-      "szi": 489.0
     }
   }
 }
