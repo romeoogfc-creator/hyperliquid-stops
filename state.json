@@ -20,12 +20,13 @@
     "DYDX": 0,
     "SNX": 0,
     "MINA": 2,
-    "JUP": 2,
+    "JUP": 3,
     "APE": 0,
-    "ARB": 4,
-    "APT": 2
+    "ARB": 5,
+    "APT": 3,
+    "BSV": 1
   },
-  "last_run_timestamp": "2026-09-21 15:05:57",
+  "last_run_timestamp": "2026-09-21 15:37:35",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "LOW",
@@ -36,14 +37,19 @@
     "scan_date": "2026-09-21"
   },
   "previous_active_coins": [
-    "DYDX",
-    "APT",
-    "JUP",
+    "BTC",
     "ETH",
     "ARB",
-    "BTC"
+    "APT"
   ],
   "closed_trades_ledger": [
+    {
+      "coin": "JUP",
+      "entry_price": 0.30274,
+      "exit_price": 0.30208,
+      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
+      "timestamp": "2026-09-21 15:36:28"
+    },
     {
       "coin": "SNX",
       "exit_reason": "Stop-Loss Trigger / Exchange Fill",
@@ -63,33 +69,23 @@
   "active_position_cache": {
     "BTC": {
       "entry_px": 78134.0,
-      "current_px": 86074.5,
+      "current_px": 85975.5,
       "szi": 0.0006
     },
     "ETH": {
       "entry_px": 2565.1,
-      "current_px": 2743.35,
+      "current_px": 2741.05,
       "szi": 0.0175
-    },
-    "DYDX": {
-      "entry_px": 0.13953,
-      "current_px": 0.14035,
-      "szi": 508.9
     },
     "ARB": {
       "entry_px": 0.23698,
-      "current_px": 0.23473,
+      "current_px": 0.23244,
       "szi": 308.9
     },
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.7799,
+      "current_px": 0.77,
       "szi": 83.66
-    },
-    "JUP": {
-      "entry_px": 0.30274,
-      "current_px": 0.305035,
-      "szi": 224.0
     }
   }
 }
