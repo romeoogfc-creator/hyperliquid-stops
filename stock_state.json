@@ -1,13 +1,13 @@
 {
   "stagnation_tracker": {
-    "AVGO": 4,
-    "COIN": 4,
+    "AVGO": 0,
+    "COIN": 5,
     "INTC": 0,
-    "MU": 3,
-    "NVDA": 4,
-    "TXN": 4
+    "MU": 4,
+    "NVDA": 0,
+    "TXN": 0
   },
-  "last_run_timestamp": "2026-09-21 14:42:15",
+  "last_run_timestamp": "2026-09-21 15:12:11",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "MODERATE",
@@ -18,11 +18,11 @@
     "scan_date": "2026-09-21"
   },
   "previous_active_symbols": [
-    "TXN",
     "MU",
     "NVDA",
-    "COIN",
     "INTC",
-    "AVGO"
+    "COIN",
+    "AVGO",
+    "TXN"
   ]
 }
