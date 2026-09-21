@@ -19,12 +19,12 @@
     "NEO": 1,
     "DYDX": 0,
     "SNX": 0,
-    "MINA": 1,
-    "JUP": 3,
-    "APE": 1,
-    "ARB": 1
+    "MINA": 2,
+    "JUP": 0,
+    "APE": 0,
+    "ARB": 2
   },
-  "last_run_timestamp": "2026-09-21 14:21:31",
+  "last_run_timestamp": "2026-09-21 14:39:15",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "LOW",
@@ -35,8 +35,11 @@
     "scan_date": "2026-09-21"
   },
   "previous_active_coins": [
-    "BTC",
+    "APE",
+    "ARB",
     "JUP",
+    "BTC",
+    "MINA",
     "ETH"
   ],
   "closed_trades_ledger": [
