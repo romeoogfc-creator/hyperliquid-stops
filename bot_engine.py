@@ -235,7 +235,7 @@ def check_btc_daily_candle(info):
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started.")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Full Verbose Scan Telemetry Enabled).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -344,6 +344,7 @@ def execute_engine():
                     "coin": coin, "close": current_close, "is_long": True, "is_ballistic": is_ballistic,
                     "score": momentum_score, "ci": ci
                 })
+                audit_logs.append(f"CRYPTO MATCH LONG: {coin} @ ${current_close:.4f} (CI: {ci:.1f})")
             elif not btc_green and current_close < lower and current_close >= lower * 0.975:
                 is_ballistic = current_close < (lower - 1.5 * atr)
                 extension_score = (lower - current_close) / lower
@@ -354,11 +355,12 @@ def execute_engine():
                     "coin": coin, "close": current_close, "is_long": False, "is_ballistic": is_ballistic,
                     "score": momentum_score, "ci": ci
                 })
+                audit_logs.append(f"CRYPTO MATCH SHORT: {coin} @ ${current_close:.4f} (CI: {ci:.1f})")
         except Exception:
             continue
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
-    audit_logs.append(f"Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
+    audit_logs.append(f"Crypto Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
 
     spot_usdc = 0.0
     total_spot_net_worth = 0.0
@@ -407,7 +409,7 @@ def execute_engine():
                     active_count += 1
                     active_coins.add(coin)
                     trades_executed = True
-                    audit_logs.append(f"EXECUTION SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {coin}")
+                    audit_logs.append(f"EXECUTION SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {coin} (Size: {sz})")
             except Exception as e:
                 audit_logs.append(f"EXECUTION FAILED on {coin}: {e}")
 
@@ -469,6 +471,9 @@ def execute_engine():
                 state["stagnation_tracker"][coin] = state["stagnation_tracker"].get(coin, 0) + 1
             else:
                 state["stagnation_tracker"][coin] = 0
+
+            stag_count = state["stagnation_tracker"].get(coin, 0)
+            audit_logs.append(f"Crypto Position: {coin} | ROE: {current_roe*100:+.2f}% | Stop: ${px} | CI: {ci:.1f} | Stagnation: {stag_count}/48")
 
             for order in open_orders:
                 if order.get("coin") == coin and order.get("isTrigger"):
@@ -536,10 +541,23 @@ def execute_engine():
                     })
                     state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
                     active_count -= 1
-                except Exception:
-                    pass
+                    audit_logs.append(f"ROTATION TRIGGERED: Closed stagnant crypto {coin_to_rotate}")
+                except Exception as e:
+                    audit_logs.append(f"Crypto Rotation Failed on {coin_to_rotate}: {e}")
 
     save_state(state)
+
+    audit_section = ""
+    if VERBOSE_TEST_MODE:
+        audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
+        audit_section = f"""
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine)</div>
+        <div class="table-responsive" style="overflow-x: hidden;">
+          <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
+            <tbody>{audit_rows}</tbody>
+          </table>
+        </div>
+        """
 
     remaining_candidates = [c for c in market_candidates if c["coin"] not in active_coins]
     ondeck_rows = "".join([
@@ -678,6 +696,8 @@ def execute_engine():
             <div class="table-responsive">
               <table><thead><tr><th>Rank</th><th>Asset</th><th>Current Price</th><th>Momentum Score</th></tr></thead><tbody>{ondeck_rows}</tbody></table>
             </div>
+
+            {audit_section}
 
           </div>
           <div class="footer">Hyperliquid Autonomous Engine &bull; Managed via GitHub Actions</div>
