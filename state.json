@@ -17,12 +17,12 @@
     "PYTH": 0,
     "NEAR": 4,
     "NEO": 1,
-    "DYDX": 1,
-    "SNX": 1,
-    "MINA": 1,
-    "JUP": 1
+    "DYDX": 0,
+    "SNX": 0,
+    "MINA": 0,
+    "JUP": 2
   },
-  "last_run_timestamp": "2026-09-21 13:38:41",
+  "last_run_timestamp": "2026-09-21 13:54:21",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "LOW",
@@ -31,5 +31,13 @@
     "ai_market_brief": "Bitcoin remains in a stable consolidation phase near the $80,000\u2013$81,000 range following a period of high volatility and liquidity-driven short liquidations. Sentiment remains cautiously optimistic as the market pivots from recent macro-regulatory uncertainty toward monitoring potential breakouts in technical support levels.",
     "timestamp": "2026-09-21 00:07:12",
     "scan_date": "2026-09-21"
-  }
+  },
+  "previous_active_coins": [
+    "ETH",
+    "JUP",
+    "DYDX",
+    "SNX",
+    "MINA",
+    "BTC"
+  ]
 }
