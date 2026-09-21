@@ -174,42 +174,58 @@ def calculate_choppiness_index(highs, lows, closes, period=14):
     except Exception:
         return 50.0
 
-def calculate_stop_price(entry_px, is_long, current_px, choppiness_index=50.0, is_ballistic=False):
+def calculate_stop_price(entry_px, is_long, current_px, choppiness_index=50.0, is_ballistic=False, vol_ratio=1.0):
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
         roe = (entry_px - current_px) / entry_px
 
-    if roe >= 0.05:
-        milestone = floor(roe * 40) / 40
-        target_floor_roe = milestone - 0.01
-    elif roe >= 0.035:
-        target_floor_roe = 0.02
-    elif roe >= 0.020:
-        target_floor_roe = 0.01
+    leash_status = "Standard Ladder"
+    # 30-Min Volume Intelligence Dynamic Leash for Equities
+    if roe >= 0.02:
+        if vol_ratio > 1.5:
+            target_floor_roe = max(roe - 0.025, 0.01)
+            leash_status = f"Expanding (Surge Vol: {vol_ratio:.2f})"
+        elif vol_ratio < 0.8:
+            target_floor_roe = max(roe - 0.01, 0.01)
+            leash_status = f"Tightening (Stalled Vol: {vol_ratio:.2f})"
+        else:
+            if roe >= 0.05:
+                milestone = floor(roe * 40) / 40
+                target_floor_roe = milestone - 0.01
+            elif roe >= 0.035:
+                target_floor_roe = 0.02
+            else:
+                target_floor_roe = 0.01
+            leash_status = f"Active Step (Vol: {vol_ratio:.2f})"
     elif roe >= 0.010:
         target_floor_roe = 0.00       # Break-Even locked at +1.0% ROE
+        leash_status = "Break-Even Floor"
     elif roe >= 0.005:
         target_floor_roe = -0.005     # Risk capped to -0.5% at +0.5% ROE
+        leash_status = "Micro-Buffer Floor"
     else:
         if choppiness_index > 58.0:
             target_floor_roe = -0.020   # Choppy Equity -> -2.0% Max Stop
+            leash_status = "Choppy Defense Stop"
         elif is_ballistic:
             target_floor_roe = -0.050   # Ballistic Breakout -> -5.0% Max Stop
+            leash_status = "Ballistic Stop"
         else:
             target_floor_roe = -0.030   # Clean Trend Equity -> -3.0% Max Stop
+            leash_status = "Trend Defense Stop"
 
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
     else:
         stop_px = entry_px * (1 - target_floor_roe)
 
-    return stop_px, roe, target_floor_roe
+    return stop_px, roe, target_floor_roe, leash_status
 
 def execute_stock_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Alpaca Stock Engine Started (Optimized Equity Breathing Room + Full Telemetry Scan Logs).")
+    audit_logs.append(f"[{timestamp}] Alpaca Stock Engine Started (30m Live Volume Intelligence Leash Active).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
@@ -260,19 +276,26 @@ def execute_stock_engine():
         }
 
         try:
+            # Pull 30-minute bars for volume intelligence alignment
             bars_res = requests.get(
-                f"https://data.alpaca.markets/v2/stocks/{symbol}/bars?timeframe=1Hour&limit=100&feed=iex&start={start_date}", 
+                f"https://data.alpaca.markets/v2/stocks/{symbol}/bars?timeframe=30Min&limit=100&feed=iex&start={start_date}", 
                 headers=HEADERS
             )
             bars = bars_res.json().get("bars", []) if bars_res.status_code == 200 else []
             closes = [float(b["c"]) for b in bars]
             highs = [float(b["h"]) for b in bars]
             lows = [float(b["l"]) for b in bars]
+            vols = [float(b.get("v", 0)) for b in bars]
             ci = calculate_choppiness_index(highs, lows, closes)
+            
+            vol_ratio = (vols[-1] / np.mean(vols[-14:])) if len(vols) >= 14 and np.mean(vols[-14:]) > 0 else 1.0
         except Exception:
             ci = 50.0
+            vol_ratio = 1.0
 
-        stop_px_raw, current_roe, target_floor = calculate_stop_price(entry_px, is_long, current_px, choppiness_index=ci)
+        stop_px_raw, current_roe, target_floor, leash_status = calculate_stop_price(
+            entry_px, is_long, current_px, choppiness_index=ci, vol_ratio=vol_ratio
+        )
         px = round_sig_figs(stop_px_raw, 5)
 
         if current_roe < 0.01:
@@ -281,7 +304,7 @@ def execute_stock_engine():
             state["stagnation_tracker"][symbol] = 0
 
         stag_count = state["stagnation_tracker"].get(symbol, 0)
-        audit_logs.append(f"Stock Position: {symbol} | ROE: {current_roe*100:+.2f}% | Stop: ${px} | CI: {ci:.1f} | Stagnation: {stag_count}/48")
+        audit_logs.append(f"Stock Position: {symbol} | ROE: {current_roe*100:+.2f}% | Stop: ${px} | VolRatio: {vol_ratio:.2f} [{leash_status}] | Stg: {stag_count}/48")
 
         for order in open_orders:
             if order.get("symbol") == symbol and order.get("type") == "stop":
@@ -387,7 +410,7 @@ def execute_stock_engine():
         page_token = None
 
         while True:
-            url = f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbols_param}&timeframe=1Hour&limit=10000&feed=iex&start={start_date}"
+            url = f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbols_param}&timeframe=30Min&limit=10000&feed=iex&start={start_date}"
             if page_token:
                 url += f"&page_token={page_token}"
 
@@ -433,7 +456,7 @@ def execute_stock_engine():
                 })
                 audit_logs.append(f"EQUITY MATCH LONG: {symbol} @ ${current_close:.2f} (CI: {ci:.1f})")
 
-    audit_logs.append(f"Stock Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} breakouts.")
+    audit_logs.append(f"Stock Scan Complete (30m Interval): Evaluated {scanned_count} symbols. Found {len(market_candidates)} breakouts.")
 
     if ai_shield.get("high_risk_detected"):
         audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD. Reason: {ai_shield.get('reason')}")
@@ -474,7 +497,7 @@ def execute_stock_engine():
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Stock Engine)</div>
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Stock Engine - 30m Leash)</div>
         <div class="table-responsive" style="overflow-x: hidden;">
           <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
             <tbody>{audit_rows}</tbody>
@@ -562,7 +585,7 @@ def execute_stock_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Equities-LS-01 | Stock Telemetry Dashboard</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: EQUITIES PAPER</p>
+            <p>Timestamp: {timestamp} &bull; Mode: EQUITIES PAPER (30m Leash Active)</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -586,10 +609,10 @@ def execute_stock_engine():
               &bull; <b>Gemini AI Macro Shield:</b> Real-time Google Search news & black-swan scanning (Daily JSON Cached)<br>
               &bull; <b>Smart Downside Adaptive Stop:</b> -2.0% (Choppy) / -3.0% (Clean Trend) / -5.0% (Ballistic Breakout)<br>
               &bull; <b>Micro-Ratchet Ladders:</b> +0.5% (-0.5% cap) &bull; +1.0% (BE) &bull; +2% &bull; +3.5%<br>
-              &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Dynamic 2.5% Steps with 1% Buffer active from +5% up to +300%+ ROE</i><br>
+              &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; 30-Min Volume Intelligence Leash (Expands on 30m volume surges, tightens on stalls)</i><br>
               &bull; <b>Strict Choppiness Filter:</b> Skip entries if Choppiness Index (CI) &gt; 62<br>
               &bull; <b>Automated Stop Submission:</b> Native Alpaca GTC Stop-Market orders managed per cron run<br>
-              &bull; <b>Asset Universe:S&P</b> 500 & Nasdaq Momentum Equities
+              &bull; <b>Asset Universe:</b> S&P 500 & Nasdaq Momentum Equities
             </div>
 
             <div class="section-title">Active Stock Positions</div>
