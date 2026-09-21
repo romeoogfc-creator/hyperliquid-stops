@@ -35,7 +35,13 @@ def load_state():
                 return json.load(f)
         except Exception as e:
             print(f"Error loading stock state.json: {e}")
-    return {"stagnation_tracker": {}, "last_run_timestamp": "", "ai_shield_cache": {}}
+    return {
+        "stagnation_tracker": {}, 
+        "closed_trades_ledger": [], 
+        "previous_active_symbols": [], 
+        "last_run_timestamp": "", 
+        "ai_shield_cache": {}
+    }
 
 def save_state(state):
     state["last_run_timestamp"] = time.strftime('%Y-%m-%d %H:%M:%S')
@@ -43,12 +49,11 @@ def save_state(state):
         json.dump(state, f, indent=2)
 
 def run_gemini_stock_market_shield():
-    """Queries Gemini with Search Grounding ONCE per day at market open and caches the verdict in stock_state.json to eliminate GCP API charges."""
+    """Queries Gemini with Search Grounding ONCE per day at market open and caches the verdict in stock_state.json."""
     state = load_state()
     cached_shield = state.get("ai_shield_cache", {})
     today_str = datetime.now().strftime("%Y-%m-%d")
 
-    # 1. READ FROM LOCAL JSON CACHE: Reuse today's verdict if already scanned ($0.00 cost)
     if cached_shield.get("scan_date") == today_str and "high_risk_detected" in cached_shield:
         print(f"Reading market risk verdict from local stock_state.json (Scanned today at {cached_shield.get('timestamp')}).")
         return cached_shield
@@ -63,7 +68,6 @@ def run_gemini_stock_market_shield():
             "ai_market_brief": "AI Shield offline (Missing GEMINI_API_KEY secret)."
         }
 
-    # 2. EXECUTE API SCAN ONCE A DAY ONLY
     print(f"Executing daily market open Gemini AI Shield scan for {today_str}...")
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
@@ -101,7 +105,6 @@ def run_gemini_stock_market_shield():
                 result["timestamp"] = time.strftime('%Y-%m-%d %H:%M:%S')
                 result["scan_date"] = today_str
 
-                # Save verdict to stock_state.json cache
                 state["ai_shield_cache"] = result
                 save_state(state)
                 return result
@@ -112,7 +115,6 @@ def run_gemini_stock_market_shield():
     except Exception as e:
         print(f"Gemini Stock AI Shield execution error: {e}")
 
-    # Fallback to cached state if API error occurs
     return cached_shield if cached_shield else {
         "high_risk_detected": False, 
         "risk_level": "UNKNOWN", 
@@ -163,7 +165,6 @@ def calculate_gaussian_channel(closes, poles=4, period=50, mult=1.414):
     return upper.iloc[-1], lower.iloc[-1], filtered.iloc[-1]
 
 def calculate_choppiness_index(highs, lows, closes, period=14):
-    """Calculates 14-period Choppiness Index (CI) for stock bars."""
     try:
         if len(closes) < period + 1:
             return 50.0
@@ -197,7 +198,6 @@ def calculate_stop_price(entry_px, is_long, current_px, choppiness_index=50.0, i
     elif roe >= 0.005:
         target_floor_roe = -0.005       # Risk capped to -0.5% at +0.5% ROE
     else:
-        # SMART ADAPTIVE DOWNSIDE HARD STOP
         if choppiness_index > 58.0:
             target_floor_roe = -0.012   # Choppy Stock -> Fast Cut (-1.2% max)
         elif is_ballistic:
@@ -215,22 +215,21 @@ def calculate_stop_price(entry_px, is_long, current_px, choppiness_index=50.0, i
 def execute_stock_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Alpaca Stock Engine Started (Smart Downside + Gemini AI Shield Mode).")
+    audit_logs.append(f"[{timestamp}] Alpaca Stock Engine Started (Smart Downside + Automated Stops + Exit Telemetry + AI Shield).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
 
-    # 14-day rolling start date (~70 hourly candles per stock)
     start_date = (datetime.now() - timedelta(days=14)).strftime('%Y-%m-%d')
 
-    # 1. RUN GEMINI AI STOCK MACRO SHIELD SCAN (Reads local cache or runs 1 daily API call)
+    # 1. RUN GEMINI AI STOCK MACRO SHIELD SCAN
     ai_shield = run_gemini_stock_market_shield()
     ai_risk_status = "BLOCKED (High Risk)" if ai_shield.get("high_risk_detected") else "PASS (Normal Risk)"
     audit_logs.append(f"Gemini AI Shield: [{ai_shield.get('risk_level', 'UNKNOWN')}] {ai_shield.get('reason', '')} -> {ai_risk_status}")
 
     state = load_state()
 
-    # 2. Fetch Account Details & Positions from Alpaca
+    # 2. Fetch Account & Positions from Alpaca
     account_res = requests.get(f"{BASE_URL}/v2/account", headers=HEADERS)
     if account_res.status_code != 200:
         raise Exception(f"Failed to fetch Alpaca account: {account_res.text}")
@@ -238,11 +237,13 @@ def execute_stock_engine():
 
     equity = float(account_data.get("equity", 100000.0))
     cash = float(account_data.get("cash", 100000.0))
-    buying_power = float(account_data.get("buying_power", 100000.0))
     margin_util_pct = ((equity - cash) / equity * 100) if equity > 0 else 0.0
 
     positions_res = requests.get(f"{BASE_URL}/v2/positions", headers=HEADERS)
     positions_list = positions_res.json() if positions_res.status_code == 200 else []
+
+    orders_res = requests.get(f"{BASE_URL}/v2/orders?status=open", headers=HEADERS)
+    open_orders = orders_res.json() if orders_res.status_code == 200 else []
 
     active_count = len(positions_list)
     positions_data = []
@@ -262,7 +263,6 @@ def execute_stock_engine():
         total_positions_value += market_value
         active_symbols.add(symbol)
 
-        # Fetch recent bars to compute Choppiness Index for active stock
         try:
             bars_res = requests.get(
                 f"https://data.alpaca.markets/v2/stocks/{symbol}/bars?timeframe=1Hour&limit=100&feed=iex&start={start_date}", 
@@ -287,6 +287,26 @@ def execute_stock_engine():
         stag_count = state["stagnation_tracker"].get(symbol, 0)
         audit_logs.append(f"Stock Position: {symbol} | ROE: {current_roe*100:+.2f}% | Stop: ${px} | CI: {ci:.1f} | Stagnation: {stag_count}/48")
 
+        # AUTOMATED ALPACA STOP ORDER PLACEMENT
+        for order in open_orders:
+            if order.get("symbol") == symbol and order.get("type") == "stop":
+                requests.delete(f"{BASE_URL}/v2/orders/{order.get('id')}", headers=HEADERS)
+
+        stop_order_payload = {
+            "symbol": symbol,
+            "qty": str(abs(qty)),
+            "side": "sell" if is_long else "buy",
+            "type": "stop",
+            "stop_price": str(px),
+            "time_in_force": "gtc"
+        }
+        try:
+            stop_res = requests.post(f"{BASE_URL}/v2/orders", json=stop_order_payload, headers=HEADERS)
+            if stop_res.status_code == 200:
+                audit_logs.append(f"STOP ORDER UPDATED: {symbol} stop set at ${px}")
+        except Exception as e:
+            audit_logs.append(f"Stop Order Failed on {symbol}: {e}")
+
         positions_data.append({
             "bot_title": "Alpaca (TR-GC-Equities-LS-01)",
             "symbol": symbol,
@@ -302,6 +322,47 @@ def execute_stock_engine():
             "status": "Active"
         })
 
+    # Track closed positions for telemetry ledger
+    previous_symbols = set(state.get("previous_active_symbols", []))
+    closed_symbols = previous_symbols - active_symbols
+    for closed_sym in closed_symbols:
+        already_logged = any(t["symbol"] == closed_sym for t in state.get("closed_trades_ledger", [])[:2])
+        if not already_logged:
+            if "closed_trades_ledger" not in state:
+                state["closed_trades_ledger"] = []
+            state["closed_trades_ledger"].insert(0, {
+                "symbol": closed_sym,
+                "exit_reason": "Stop-Loss Trigger / Alpaca Execution",
+                "timestamp": timestamp
+            })
+            state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
+
+    state["previous_active_symbols"] = list(active_symbols)
+
+    # 24H STAGNATION ROTATION CHECK (Max 5 Slots)
+    MAX_STOCK_SLOTS = 5
+    if active_count == MAX_STOCK_SLOTS:
+        unprotected_trades = [p for p in positions_data if p["roe"] < 1.5]
+        if unprotected_trades:
+            stagnant_trade = max(unprotected_trades, key=lambda p: state["stagnation_tracker"].get(p["symbol"], 0))
+            sym_to_rotate = stagnant_trade["symbol"]
+            if state["stagnation_tracker"].get(sym_to_rotate, 0) >= 48:
+                try:
+                    requests.delete(f"{BASE_URL}/v2/positions/{sym_to_rotate}", headers=HEADERS)
+                    state["stagnation_tracker"][sym_to_rotate] = 0
+                    if "closed_trades_ledger" not in state:
+                        state["closed_trades_ledger"] = []
+                    state["closed_trades_ledger"].insert(0, {
+                        "symbol": sym_to_rotate,
+                        "exit_reason": "24h Stagnation Rotation (Low ROE)",
+                        "timestamp": timestamp
+                    })
+                    state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
+                    active_count -= 1
+                    audit_logs.append(f"ROTATION TRIGGERED: Closed stagnant stock {sym_to_rotate} after full 24h stagnation.")
+                except Exception as e:
+                    audit_logs.append(f"Stock Rotation Failed on {sym_to_rotate}: {e}")
+
     remaining_cash = max(0.0, cash)
     assets_map = {
         "USD Cash": {"balance": remaining_cash, "balance_usd": remaining_cash}
@@ -309,20 +370,14 @@ def execute_stock_engine():
     for p in positions_data:
         assets_map[p["symbol"]] = {"balance": p["qty"], "balance_usd": p["market_value"]}
 
-    # 3. EXPANDED WATCHLIST (70+ Top S&P 500 & Nasdaq Momentum Equities)
+    # 3. EXPANDED WATCHLIST SCANNING
     watchlist = [
-        # Tech & Megacaps
         "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "AVGO", "QCOM",
         "INTC", "MU", "ARM", "AMAT", "LRCX", "SMCI", "ORCL", "CRM", "NOW", "PANW", "FTNT", "PLTR",
-        # High Beta, Fintech & Growth
         "COIN", "HOOD", "SQ", "PYPL", "NET", "SNOW", "SHOP", "MSTR", "UBER", "ABNB", "RBLX", "DKNG",
-        # Consumer, Media & Industrial Leaders
         "NFLX", "COST", "WMT", "HD", "DIS", "NKE", "SBUX", "BA", "CAT", "GE", "HON", "DE", "LMT",
-        # Finance, Energy & Healthcare Leaders
         "JPM", "BAC", "GS", "MS", "V", "MA", "XOM", "CVX", "SLB", "LLY", "UNH", "JNJ", "PFE", "ABBV",
-        # Hardware & Semiconductors
         "TXN", "ADI", "KLAC", "MCHP", "DELL",
-        # Major Index & Sector Benchmarks
         "SPY", "QQQ", "IWM", "DIA", "SMH", "XLF", "XLE"
     ]
 
@@ -330,7 +385,6 @@ def execute_stock_engine():
     market_candidates = []
     scanned_count = 0
 
-    # BATCH SCANNING ENGINE WITH PAGINATION LOOP: Guarantees 100% of symbols are retrieved without truncation
     chunk_size = 20
     for i in range(0, len(symbols_to_scan), chunk_size):
         chunk = symbols_to_scan[i:i + chunk_size]
@@ -347,22 +401,17 @@ def execute_stock_engine():
             try:
                 bars_res = requests.get(url, headers=HEADERS)
                 if bars_res.status_code != 200:
-                    audit_logs.append(f"Batch Scan API Error: HTTP {bars_res.status_code}")
                     break
-
                 res_json = bars_res.json()
                 returned_bars = res_json.get("bars", {})
-
                 for sym, b_list in returned_bars.items():
                     if sym not in all_bars_data:
                         all_bars_data[sym] = []
                     all_bars_data[sym].extend(b_list)
-
                 page_token = res_json.get("next_page_token")
                 if not page_token:
                     break
-            except Exception as e:
-                audit_logs.append(f"Batch Scan Exception: {e}")
+            except Exception:
                 break
 
         for symbol in chunk:
@@ -397,8 +446,7 @@ def execute_stock_engine():
 
     audit_logs.append(f"Stock Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} breakouts.")
 
-    # 4. Execution Gate (Blocked if Max Slots reached OR if Gemini AI Shield detected high risk)
-    MAX_STOCK_SLOTS = 5
+    # 4. Execution Gate
     if ai_shield.get("high_risk_detected"):
         audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD. Reason: {ai_shield.get('reason')}")
     elif active_count < MAX_STOCK_SLOTS and market_candidates:
@@ -443,6 +491,16 @@ def execute_stock_engine():
           </table>
         </div>
         """
+
+    closed_ledger = state.get("closed_trades_ledger", [])
+    closed_rows = "".join([
+        f"<tr>"
+        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['symbol']}</td>"
+        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: #b45309;'>{t['exit_reason']}</td>"
+        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 10px;'>{t['timestamp']}</td>"
+        f"</tr>"
+        for t in closed_ledger[:5]
+    ]) if closed_ledger else "<tr><td colspan='3' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
 
     text_fallback = f"TR-GC-Equities-LS-01 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f} (Margin Util: {margin_util_pct:.1f}%)\nActive Positions: {active_count}/{MAX_STOCK_SLOTS}"
 
@@ -520,6 +578,7 @@ def execute_stock_engine():
               &bull; <b>Micro-Ratchet Ladders:</b> +0.5% (-0.5% cap) &bull; +1.0% (BE) &bull; +2% &bull; +3.5%<br>
               &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Dynamic 2.5% Steps with 1% Buffer active from +5% up to +300%+ ROE</i><br>
               &bull; <b>Strict Choppiness Filter:</b> Skip entries if Choppiness Index (CI) &gt; 62<br>
+              &bull; <b>Automated Stop Submission:</b> Native Alpaca GTC Stop-Market orders managed per cron run<br>
               &bull; <b>Asset Universe:</b> S&P 500 & Nasdaq Momentum Equities
             </div>
 
@@ -531,6 +590,11 @@ def execute_stock_engine():
             <div class="section-title">Active Stock Positions</div>
             <div class="table-responsive">
               <table><thead><tr><th>Bot Title</th><th>Symbol</th><th>Side</th><th>Market Value USD</th><th>Unrealized P&L USD</th><th>Stop Price</th><th>Status</th></tr></thead><tbody>{positions_rows}</tbody></table>
+            </div>
+
+            <div class="section-title">Recently Closed Trades & Exit Telemetry</div>
+            <div class="table-responsive">
+              <table><thead><tr><th>Symbol</th><th>Exit Reason / Catalyst</th><th>Timestamp</th></tr></thead><tbody>{closed_rows}</tbody></table>
             </div>
 
             {audit_section}
