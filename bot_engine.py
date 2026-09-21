@@ -57,7 +57,6 @@ def run_gemini_market_shield():
     cached_shield = state.get("ai_shield_cache", {})
     today_str = time.strftime('%Y-%m-%d')
 
-    # 1. READ FROM LOCAL JSON CACHE: Reuse today's verdict if already scanned ($0.00 cost)
     if cached_shield.get("scan_date") == today_str and "high_risk_detected" in cached_shield:
         print(f"Reading crypto market risk verdict from local state.json (Scanned today at {cached_shield.get('timestamp')}).")
         return cached_shield
@@ -72,7 +71,6 @@ def run_gemini_market_shield():
             "ai_market_brief": "AI Shield offline (Missing GEMINI_API_KEY secret)."
         }
 
-    # 2. EXECUTE API SCAN ONCE A DAY ONLY
     print(f"Executing daily crypto Gemini AI Shield scan for {today_str}...")
     try:
         client = genai.Client(api_key=GEMINI_API_KEY)
@@ -110,7 +108,6 @@ def run_gemini_market_shield():
                 result["timestamp"] = time.strftime('%Y-%m-%d %H:%M:%S')
                 result["scan_date"] = today_str
 
-                # Save verdict to state.json cache
                 state["ai_shield_cache"] = result
                 save_state(state)
                 return result
@@ -198,9 +195,9 @@ def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0, choppiness
     elif roe >= 0.020:
         target_floor_roe = 0.01
     elif roe >= 0.010:
-        target_floor_roe = 0.00         # Break-Even locked at +1.0% ROE
+        target_floor_roe = 0.00       # Break-Even locked at +1.0% ROE
     elif roe >= 0.005:
-        target_floor_roe = -0.005       # Risk capped to -0.5% at +0.5% ROE
+        target_floor_roe = -0.005     # Risk capped to -0.5% at +0.5% ROE
     else:
         if choppiness_index > 58.0:
             target_floor_roe = -0.012   # Choppy/Sideways Market -> Fast Cut (-1.2% max)
@@ -254,6 +251,12 @@ def execute_engine():
     all_mids = api_retry(info.all_mids)
     meta = api_retry(info.meta)
     now_ms = int(time.time() * 1000)
+
+    # Build szDecimals precision lookup map from exchange metadata
+    sz_decimals_map = {}
+    for asset in meta.get("universe", []):
+        coin_name = asset.get("name")
+        sz_decimals_map[coin_name] = asset.get("szDecimals", 4)
 
     # Initial Active Positions Check
     asset_positions = user_state.get("assetPositions", [])
@@ -357,7 +360,7 @@ def execute_engine():
     fallback_val = float(margin_summary.get("accountValue", 0.0))
     account_value = total_spot_net_worth if total_spot_net_worth > 0 else fallback_val
 
-    # --- STEP 1: EXECUTE MARKET ENTRIES FIRST ---
+    # --- STEP 1: EXECUTE MARKET ENTRIES FIRST (WITH CORRECTED szDecimals & ERROR PARSING) ---
     trades_executed = False
     if ai_shield.get("high_risk_detected"):
         audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD. Reason: {ai_shield.get('reason')}")
@@ -370,8 +373,14 @@ def execute_engine():
             
             target_pct = np.random.uniform(0.15, 0.17) if is_ballistic else np.random.uniform(0.12, 0.14)
             target_usd = max(50.0, account_value * target_pct)
-            sz = round(target_usd / px, 4)
             
+            # Use official asset szDecimals precision to prevent exchange rejection
+            decimals = sz_decimals_map.get(coin, 4)
+            raw_sz = target_usd / px
+            sz = round(raw_sz, decimals)
+            if decimals == 0:
+                sz = int(sz)
+
             side_str = "LONG" if is_long else "SHORT"
             try:
                 if is_long:
@@ -380,10 +389,24 @@ def execute_engine():
                     res = exchange.market_open(coin, False, sz, px * 0.99)
                     
                 if res.get("status") == "ok":
-                    active_count += 1
-                    active_coins.add(coin)
-                    audit_logs.append(f"EXECUTION SUCCESS: Opened #{1} Ranked {side_str} on {coin}")
-                    trades_executed = True
+                    data = res.get("response", {}).get("data", {})
+                    statuses = data.get("statuses", [])
+                    order_filled = False
+                    
+                    for st in statuses:
+                        if "filled" in st:
+                            order_filled = True
+                            fill_info = st["filled"]
+                            audit_logs.append(f"EXECUTION SUCCESS: Opened {side_str} on {coin} | Sz: {fill_info.get('totalSz')} @ ${fill_info.get('avgPx')}")
+                        elif "error" in st:
+                            audit_logs.append(f"EXECUTION REJECTED by Hyperliquid on {coin} ({side_str}, sz={sz}): {st['error']}")
+                            
+                    if order_filled:
+                        active_count += 1
+                        active_coins.add(coin)
+                        trades_executed = True
+                else:
+                    audit_logs.append(f"EXECUTION API ERROR on {coin}: {res}")
             except Exception as e:
                 audit_logs.append(f"EXECUTION FAILED on {coin}: {e}")
     else:
