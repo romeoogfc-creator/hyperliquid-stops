@@ -8,12 +8,12 @@
     "STX": 3,
     "RUNE": 0,
     "kLUNC": 8,
-    "LDO": 1,
+    "LDO": 0,
     "COMP": 0,
     "ZRO": 0,
     "GMT": 0
   },
-  "last_run_timestamp": "2026-09-21 08:06:50",
+  "last_run_timestamp": "2026-09-21 08:39:28",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "LOW",
