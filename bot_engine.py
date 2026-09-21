@@ -38,16 +38,19 @@ def save_state(state):
     with open(STATE_FILE, "w") as f:
         json.dump(state, f, indent=2)
 
-def api_retry(func, *args, retries=3, delay=2.0, **kwargs):
-    """Retries Hyperliquid API calls if a 429 Rate Limit error is encountered."""
+def api_retry(func, *args, retries=5, delay=3.0, **kwargs):
+    """Retries Hyperliquid API calls if a 429 Rate Limit error or timeout is encountered."""
     for attempt in range(retries):
         try:
             return func(*args, **kwargs)
         except Exception as e:
-            if "429" in str(e) and attempt < retries - 1:
-                print(f"[WARN] Hyperliquid 429 Rate Limit hit. Pausing {delay}s before retry ({attempt+1}/{retries})...")
-                time.sleep(delay)
-                delay *= 2.0
+            if "429" in str(e) or "Rate limit" in str(e) or "Timeout" in str(e):
+                if attempt < retries - 1:
+                    print(f"[WARN] Hyperliquid API rate limit/error hit. Pausing {delay}s before retry ({attempt+1}/{retries})...")
+                    time.sleep(delay)
+                    delay *= 2.0
+                else:
+                    raise e
             else:
                 raise e
 
@@ -275,7 +278,7 @@ def execute_engine():
     regime_str = f"GREEN (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> LONGs Allowed" if btc_green else f"RED (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> SHORTs Allowed"
     audit_logs.append(f"BTC Regime Check: {regime_str}")
 
-    # Market Scanner with Pacing
+    # Market Scanner with Optimized Pacing (0.25s throttle to prevent 429 rate limit errors)
     universe = [asset["name"] for asset in meta.get("universe", [])][:100]
     market_candidates = []
     scanned_count = 0
@@ -288,7 +291,7 @@ def execute_engine():
             if px <= 0:
                 continue
             
-            time.sleep(0.05)  # Throttle: 50ms delay between calls prevents 429 rate limit
+            time.sleep(0.25)  # Throttle: 250ms delay between calls prevents 429 rate limit errors
             candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 7, endTime=now_ms)
             if not candles or len(candles) < 50:
                 continue
@@ -360,7 +363,7 @@ def execute_engine():
     fallback_val = float(margin_summary.get("accountValue", 0.0))
     account_value = total_spot_net_worth if total_spot_net_worth > 0 else fallback_val
 
-    # --- STEP 1: EXECUTE MARKET ENTRIES FIRST (WITH CORRECTED szDecimals & ERROR PARSING) ---
+    # --- STEP 1: EXECUTE MARKET ENTRIES FIRST (WITH 5x OPTIMAL LEVERAGE & CORRECTED szDecimals) ---
     trades_executed = False
     if ai_shield.get("high_risk_detected"):
         audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD. Reason: {ai_shield.get('reason')}")
@@ -383,6 +386,12 @@ def execute_engine():
 
             side_str = "LONG" if is_long else "SHORT"
             try:
+                # Enforce optimal 5x leverage for capital efficiency and safety before entry
+                try:
+                    exchange.update_leverage(coin, 5, True)
+                except Exception:
+                    pass
+
                 if is_long:
                     res = exchange.market_open(coin, True, sz, px * 1.01)
                 else:
@@ -465,6 +474,10 @@ def execute_engine():
             stop_px_raw, current_roe, target_floor, is_buy_order = calculate_stop_price(entry_px, is_long, current_px, leverage, choppiness_index=ci)
             px = round_sig_figs(stop_px_raw, 5)
 
+            # Compute R-Multiple Telemetry (Current ROE divided by initial risk floor baseline ~2.0% ROE)
+            initial_risk_ref = 0.020
+            r_multiple = current_roe / initial_risk_ref if initial_risk_ref > 0 else 0.0
+
             if current_roe < 0.01:
                 state["stagnation_tracker"][coin] = state["stagnation_tracker"].get(coin, 0) + 1
             else:
@@ -472,7 +485,7 @@ def execute_engine():
 
             stag_count = state["stagnation_tracker"].get(coin, 0)
             stag_hours = (stag_count * 30) / 60
-            audit_logs.append(f"Position: {coin} | ROE: {current_roe*100:+.2f}% | Stop: ${px} | CI: {ci:.1f} | Stagnation: {stag_count}/48 ({stag_hours:.1f}h)")
+            audit_logs.append(f"Position: {coin} | ROE: {current_roe*100:+.2f}% ({r_multiple:+.1f}R) | Stop: ${px} | CI: {ci:.1f} | Stagnation: {stag_count}/48 ({stag_hours:.1f}h)")
 
             for order in open_orders:
                 if order.get("coin") == coin and order.get("isTrigger"):
@@ -499,6 +512,7 @@ def execute_engine():
                 "position_usd": pos_equity,
                 "pnl": unrealized_pnl,
                 "roe": current_roe * 100,
+                "r_multiple": r_multiple,
                 "stop": px,
                 "floor": target_floor * 100,
                 "status": "Active"
@@ -576,7 +590,7 @@ def execute_engine():
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td>"
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['collateral']:.2f}</td>"
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: 600; color: #0f172a;'>${p['position_usd']:.2f}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td>"
+        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}% / {p['r_multiple']:+.1f}R)</td>"
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #334155;'>${round_sig_figs(p['entry'], 5)}</td>"
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #b45309;'>${p['stop']}</td>"
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td>"
@@ -675,7 +689,8 @@ def execute_engine():
               &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Dynamic 2.5% Steps with 1% Buffer active from +5% up to +300%+ ROE</i><br>
               &bull; <b>Strict Choppiness Filter:</b> Skip entries if Choppiness Index (CI) &gt; 62<br>
               &bull; <b>Stagnation Rotation:</b> 24 Hours (48 Runs) max hold for ROE &lt; +1.5%<br>
-              &bull; <b>Sizing Tier:</b> Standard 12%–14% ($50+ floor) / Ballistic 15%–17% on ATR Breakout
+              &bull; <b>Sizing Tier:</b> Standard 12%–14% ($50+ floor) / Ballistic 15%–17% on ATR Breakout<br>
+              &bull; <b>Leverage Profile:</b> Optimized 5x Safe Max Leverage (High Capital Efficiency)
             </div>
 
             <div class="section-title">Positions per Bot (USD)</div>
