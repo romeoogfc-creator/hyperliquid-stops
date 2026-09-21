@@ -19,10 +19,12 @@
     "NEO": 1,
     "DYDX": 0,
     "SNX": 0,
-    "MINA": 0,
-    "JUP": 2
+    "MINA": 1,
+    "JUP": 3,
+    "APE": 1,
+    "ARB": 1
   },
-  "last_run_timestamp": "2026-09-21 13:54:21",
+  "last_run_timestamp": "2026-09-21 14:21:31",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "LOW",
@@ -33,11 +35,25 @@
     "scan_date": "2026-09-21"
   },
   "previous_active_coins": [
-    "ETH",
+    "BTC",
     "JUP",
-    "DYDX",
-    "SNX",
-    "MINA",
-    "BTC"
+    "ETH"
+  ],
+  "closed_trades_ledger": [
+    {
+      "coin": "SNX",
+      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
+      "timestamp": "2026-09-21 14:20:29"
+    },
+    {
+      "coin": "DYDX",
+      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
+      "timestamp": "2026-09-21 14:20:29"
+    },
+    {
+      "coin": "MINA",
+      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
+      "timestamp": "2026-09-21 14:20:29"
+    }
   ]
 }
