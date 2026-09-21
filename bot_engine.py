@@ -185,30 +185,46 @@ def calculate_choppiness_index(highs, lows, closes, period=14):
     except Exception:
         return 50.0
 
-def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0, choppiness_index=50.0, is_ballistic=False):
+def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0, choppiness_index=50.0, is_ballistic=False, vol_ratio=1.0):
     if is_long:
         roe = ((current_px - entry_px) / entry_px) * leverage
     else:
         roe = ((entry_px - current_px) / entry_px) * leverage
 
-    if roe >= 0.05:
-        milestone = floor(roe * 40) / 40
-        target_floor_roe = milestone - 0.01
-    elif roe >= 0.035:
-        target_floor_roe = 0.02
-    elif roe >= 0.020:
-        target_floor_roe = 0.01
+    leash_status = "Standard Ladder"
+    # 30-Min Live Volume Intelligence Dynamic Leash
+    if roe >= 0.02:
+        if vol_ratio > 1.5:
+            target_floor_roe = max(roe - 0.025, 0.01)
+            leash_status = f"Expanding (Surge Vol: {vol_ratio:.2f})"
+        elif vol_ratio < 0.8:
+            target_floor_roe = max(roe - 0.01, 0.01)
+            leash_status = f"Tightening (Stalled Vol: {vol_ratio:.2f})"
+        else:
+            if roe >= 0.05:
+                milestone = floor(roe * 40) / 40
+                target_floor_roe = milestone - 0.01
+            elif roe >= 0.035:
+                target_floor_roe = 0.02
+            else:
+                target_floor_roe = 0.01
+            leash_status = f"Active Step (Vol: {vol_ratio:.2f})"
     elif roe >= 0.010:
         target_floor_roe = 0.00       # Break-Even locked at +1.0% ROE
+        leash_status = "Break-Even Floor"
     elif roe >= 0.005:
         target_floor_roe = -0.005     # Risk capped to -0.5% at +0.5% ROE
+        leash_status = "Micro-Buffer Floor"
     else:
         if choppiness_index > 58.0:
             target_floor_roe = -0.025   # Choppy Market -> -2.5% ROE
+            leash_status = "Choppy Defense Stop"
         elif is_ballistic:
             target_floor_roe = -0.050   # Ballistic Breakout -> -5.0% ROE
+            leash_status = "Ballistic Stop"
         else:
             target_floor_roe = -0.035   # Standard Clean Trend -> -3.5% ROE
+            leash_status = "Trend Defense Stop"
 
     if is_long:
         stop_px = entry_px * (1 + (target_floor_roe / leverage))
@@ -217,7 +233,7 @@ def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0, choppiness
         stop_px = entry_px * (1 - (target_floor_roe / leverage))
         is_buy_order = True
 
-    return stop_px, roe, target_floor_roe, is_buy_order
+    return stop_px, roe, target_floor_roe, is_buy_order, leash_status
 
 def check_btc_daily_candle(info):
     try:
@@ -235,7 +251,7 @@ def check_btc_daily_candle(info):
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Full Verbose Scan Telemetry Enabled).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (30m Live Volume Intelligence Leash Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -317,7 +333,8 @@ def execute_engine():
                 continue
             
             time.sleep(0.25)
-            candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 7, endTime=now_ms)
+            # Scan using 30-minute candles to perfectly align with cron execution
+            candles = api_retry(info.candles_snapshot, name=coin, interval="30m", startTime=now_ms - 86400000 * 3, endTime=now_ms)
             if not candles or len(candles) < 50:
                 continue
             scanned_count += 1
@@ -360,7 +377,7 @@ def execute_engine():
             continue
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
-    audit_logs.append(f"Crypto Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
+    audit_logs.append(f"Crypto Scan Complete (30m Interval): Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
 
     spot_usdc = 0.0
     total_spot_net_worth = 0.0
@@ -453,15 +470,22 @@ def execute_engine():
 
             try:
                 time.sleep(0.05)
-                c_candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 2, endTime=now_ms)
+                # Pull 30-minute live candles to compute exact live volume ratio
+                c_candles = api_retry(info.candles_snapshot, name=coin, interval="30m", startTime=now_ms - 86400000 * 2, endTime=now_ms)
                 highs = [float(c["h"]) for c in c_candles]
                 lows = [float(c["l"]) for c in c_candles]
                 closes = [float(c["c"]) for c in c_candles]
+                vols = [float(c.get("v", 0)) for c in c_candles]
                 ci = calculate_choppiness_index(highs, lows, closes)
+                
+                vol_ratio = (vols[-1] / np.mean(vols[-14:])) if len(vols) >= 14 and np.mean(vols[-14:]) > 0 else 1.0
             except Exception:
                 ci = 50.0
+                vol_ratio = 1.0
 
-            stop_px_raw, current_roe, target_floor, is_buy_order = calculate_stop_price(entry_px, is_long, current_px, leverage, choppiness_index=ci)
+            stop_px_raw, current_roe, target_floor, is_buy_order, leash_status = calculate_stop_price(
+                entry_px, is_long, current_px, leverage, choppiness_index=ci, vol_ratio=vol_ratio
+            )
             px = round_sig_figs(stop_px_raw, 5)
 
             initial_risk_ref = 0.035
@@ -473,7 +497,7 @@ def execute_engine():
                 state["stagnation_tracker"][coin] = 0
 
             stag_count = state["stagnation_tracker"].get(coin, 0)
-            audit_logs.append(f"Crypto Position: {coin} | ROE: {current_roe*100:+.2f}% | Stop: ${px} | CI: {ci:.1f} | Stagnation: {stag_count}/48")
+            audit_logs.append(f"Crypto Position: {coin} | ROE: {current_roe*100:+.2f}% | Stop: ${px} | VolRatio: {vol_ratio:.2f} [{leash_status}] | Stg: {stag_count}/48")
 
             for order in open_orders:
                 if order.get("coin") == coin and order.get("isTrigger"):
@@ -551,7 +575,7 @@ def execute_engine():
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine)</div>
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine - 30m Leash)</div>
         <div class="table-responsive" style="overflow-x: hidden;">
           <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
             <tbody>{audit_rows}</tbody>
@@ -651,7 +675,7 @@ def execute_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-            <p>Timestamp: {timestamp}</p>
+            <p>Timestamp: {timestamp} (30m Volume-Aware Leash Active)</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -675,7 +699,7 @@ def execute_engine():
               &bull; <b>Gemini AI Macro Shield:</b> Real-time Google Search news & black-swan scanning (Daily JSON Cached)<br>
               &bull; <b>Smart Downside Adaptive Stop:</b> -2.5% (Choppy) / -3.5% (Clean Trend) / -5.0% (Ballistic)<br>
               &bull; <b>Micro-Ratchet Ladders:</b> +0.5% (-0.5% cap) &bull; +1.0% (BE) &bull; +2% &bull; +3.5%<br>
-              &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Dynamic 2.5% Steps with 1% Buffer active from +5% up to +300%+ ROE</i><br>
+              &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; 30-Min Volume Intelligence Leash (Expands on 30m volume surges, tightens on stalls)</i><br>
               &bull; <b>Strict Choppiness Filter:</b> Skip entries if Choppiness Index (CI) &gt; 62<br>
               &bull; <b>Stagnation Rotation:</b> 24 Hours (48 Runs) max hold for ROE &lt; +1.5%<br>
               &bull; <b>Sizing Tier:</b> Standard 12%–14% ($50+ floor) / Ballistic 15%–17% on ATR Breakout<br>
