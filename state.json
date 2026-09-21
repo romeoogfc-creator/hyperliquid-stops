@@ -12,9 +12,9 @@
     "COMP": 0,
     "ZRO": 0,
     "GMT": 0,
-    "IMX": 1
+    "IMX": 0
   },
-  "last_run_timestamp": "2026-09-21 09:06:48",
+  "last_run_timestamp": "2026-09-21 09:39:01",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "LOW",
