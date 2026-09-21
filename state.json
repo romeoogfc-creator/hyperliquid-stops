@@ -14,9 +14,10 @@
     "GMT": 0,
     "IMX": 0,
     "FET": 0,
-    "PYTH": 2
+    "PYTH": 3,
+    "NEAR": 1
   },
-  "last_run_timestamp": "2026-09-21 10:38:03",
+  "last_run_timestamp": "2026-09-21 11:06:29",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "LOW",
