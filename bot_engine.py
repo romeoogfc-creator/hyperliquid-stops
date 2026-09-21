@@ -25,13 +25,7 @@ STATE_FILE = "state.json"
 VERBOSE_TEST_MODE = True
 
 def load_state():
-    if os.path.exists(STATE_FILE):
-        try:
-            with open(STATE_FILE, "r") as f:
-                return json.load(f)
-        except Exception as e:
-            print(f"Error loading state.json: {e}")
-    return {
+    default_state = {
         "cooldown_blocklist": {}, 
         "stagnation_tracker": {}, 
         "closed_trades_ledger": [], 
@@ -39,6 +33,18 @@ def load_state():
         "last_run_timestamp": "", 
         "ai_shield_cache": {}
     }
+    if os.path.exists(STATE_FILE):
+        try:
+            with open(STATE_FILE, "r") as f:
+                data = json.load(f)
+                # Ensure all newly introduced keys exist even if loading an old state.json
+                for k, v in default_state.items():
+                    if k not in data:
+                        data[k] = v
+                return data
+        except Exception as e:
+            print(f"Error loading state.json: {e}")
+    return default_state
 
 def save_state(state):
     state["last_run_timestamp"] = time.strftime('%Y-%m-%d %H:%M:%S')
