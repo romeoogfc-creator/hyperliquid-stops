@@ -7,11 +7,11 @@
     "ASTER": 0,
     "STX": 3,
     "RUNE": 0,
-    "kLUNC": 5,
-    "LDO": 4,
+    "kLUNC": 6,
+    "LDO": 5,
     "COMP": 0
   },
-  "last_run_timestamp": "2026-09-21 05:38:42",
+  "last_run_timestamp": "2026-09-21 06:08:18",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "LOW",
