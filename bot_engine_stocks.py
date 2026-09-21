@@ -192,12 +192,13 @@ def calculate_stop_price(entry_px, is_long, current_px, choppiness_index=50.0, i
     elif roe >= 0.005:
         target_floor_roe = -0.005     # Risk capped to -0.5% at +0.5% ROE
     else:
+        # OPTIMIZED EQUITY BREATHING ROOM STOPS
         if choppiness_index > 58.0:
-            target_floor_roe = -0.012   # Choppy Stock -> Fast Cut (-1.2% max)
+            target_floor_roe = -0.020   # Choppy Equity -> -2.0% Max Stop
         elif is_ballistic:
-            target_floor_roe = -0.035   # Ballistic Breakout -> Wide Room (-3.5% max)
+            target_floor_roe = -0.050   # Ballistic Breakout -> -5.0% Max Stop
         else:
-            target_floor_roe = -0.020   # Standard Clean Trend -> Moderate Room (-2.0% max)
+            target_floor_roe = -0.030   # Clean Trend Equity -> -3.0% Max Stop
 
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
@@ -209,7 +210,7 @@ def calculate_stop_price(entry_px, is_long, current_px, choppiness_index=50.0, i
 def execute_stock_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Alpaca Stock Engine Started (Smart Downside + Clean UI Telemetry).")
+    audit_logs.append(f"[{timestamp}] Alpaca Stock Engine Started (Optimized Equity Breathing Room + Fractional Support).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
@@ -339,8 +340,8 @@ def execute_stock_engine():
     state["active_position_cache"] = current_active_cache
     state["previous_active_symbols"] = list(active_symbols)
 
-    MAX_STOCK_SLOLS = 6
-    if active_count == MAX_STOCK_SLOLS:
+    MAX_STOCK_SLOTS = 6
+    if active_count == MAX_STOCK_SLOTS:
         unprotected_trades = [p for p in positions_data if p["roe"] < 1.5]
         if unprotected_trades:
             stagnant_trade = max(unprotected_trades, key=lambda p: state["stagnation_tracker"].get(p["symbol"], 0))
@@ -437,16 +438,17 @@ def execute_stock_engine():
 
     if ai_shield.get("high_risk_detected"):
         audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD. Reason: {ai_shield.get('reason')}")
-    elif active_count < MAX_STOCK_SLOLS and market_candidates:
-        for candidate in market_candidates[: (MAX_STOCK_SLOLS - active_count)]:
+    elif active_count < MAX_STOCK_SLOTS and market_candidates:
+        for candidate in market_candidates[: (MAX_STOCK_SLOTS - active_count)]:
             symbol = candidate["symbol"]
             px = candidate["close"]
             is_long = candidate["is_long"]
             is_ballistic = candidate["is_ballistic"]
 
             target_pct = 0.12 if is_ballistic else 0.09
-            target_usd = max(100.0, equity * target_pct)
-            qty = max(1, int(target_usd / px))
+            target_usd = max(50.0, equity * target_pct)
+            # FRACTIONAL SHARES SUPPORTED FOR SMALL ACCOUNTS ($1K TESTING)
+            qty = round(target_usd / px, 4)
 
             order_payload = {
                 "symbol": symbol,
@@ -461,10 +463,12 @@ def execute_stock_engine():
                     active_count += 1
                     active_symbols.add(symbol)
                     audit_logs.append(f"ORDER SUCCESS: Bought {qty} shares of {symbol}")
+                else:
+                    audit_logs.append(f"ORDER FAILED on {symbol}: {order_res.text}")
             except Exception as e:
-                audit_logs.append(f"ORDER FAILED on {symbol}: {e}")
+                audit_logs.append(f"ORDER EXCEPTION on {symbol}: {e}")
     else:
-        audit_logs.append(f"Execution Gate: Active slots ({active_count}/{MAX_STOCK_SLOLS}). No new market entries triggered.")
+        audit_logs.append(f"Execution Gate: Active slots ({active_count}/{MAX_STOCK_SLOTS}). No new market entries triggered.")
 
     save_state(state)
 
@@ -492,10 +496,8 @@ def execute_stock_engine():
         for t in closed_ledger[:5]
     ]) if closed_ledger else "<tr><td colspan='5' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
 
-    text_fallback = f"TR-GC-Equities-LS-01 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f} (Margin Util: {margin_util_pct:.1f}%)\nActive Positions: {active_count}/{MAX_STOCK_SLOLS}"
+    text_fallback = f"TR-GC-Equities-LS-01 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f} (Margin Util: {margin_util_pct:.1f}%)\nActive Positions: {active_count}/{MAX_STOCK_SLOTS}"
 
-    funds_rows = "".join([f"<tr><td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${d['balance_usd']:.2f}</td><td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #555;'>{d['balance']:.4f}</td></tr>" for f, d in {"USD Cash": {"balance": max(0.0, cash), "balance_usd": max(0.0, cash)}}.items()])
-    
     positions_rows = "".join([
         f"<tr>"
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td>"
@@ -582,9 +584,9 @@ def execute_stock_engine():
 
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Stock Rule Deck & Guardrails</div>
-              &bull; <b>Market Hours Cron:</b> Mon-Fri US Trading Hours &bull; <b>Max Slots:</b> {active_count}/{MAX_STOCK_SLOLS} Active<br>
+              &bull; <b>Market Hours Cron:</b> Mon-Fri US Trading Hours &bull; <b>Max Slots:</b> {active_count}/{MAX_STOCK_SLOTS} Active<br>
               &bull; <b>Gemini AI Macro Shield:</b> Real-time Google Search news & black-swan scanning (Daily JSON Cached)<br>
-              &bull; <b>Smart Downside Adaptive Stop:</b> -1.2% (Choppy) / -2.0% (Clean) / -3.5% (Ballistic Breakout)<br>
+              &bull; <b>Smart Downside Adaptive Stop:</b> -2.0% (Choppy) / -3.0% (Clean Trend) / -5.0% (Ballistic Breakout)<br>
               &bull; <b>Micro-Ratchet Ladders:</b> +0.5% (-0.5% cap) &bull; +1.0% (BE) &bull; +2% &bull; +3.5%<br>
               &bull; <b>Strict Choppiness Filter:</b> Skip entries if Choppiness Index (CI) &gt; 62<br>
               &bull; <b>Automated Stop Submission:</b> Native Alpaca GTC Stop-Market orders managed per cron run<br>
