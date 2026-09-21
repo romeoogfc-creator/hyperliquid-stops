@@ -1,13 +1,13 @@
 {
   "stagnation_tracker": {
-    "AVGO": 2,
-    "COIN": 2,
-    "INTC": 2,
-    "MU": 1,
-    "NVDA": 2,
-    "TXN": 2
+    "AVGO": 3,
+    "COIN": 3,
+    "INTC": 0,
+    "MU": 2,
+    "NVDA": 3,
+    "TXN": 3
   },
-  "last_run_timestamp": "2026-09-21 14:13:02",
+  "last_run_timestamp": "2026-09-21 14:16:59",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "MODERATE",
@@ -16,5 +16,13 @@
     "ai_market_brief": "U.S. stock futures are trending higher as investors look past the Federal Reserve\u2019s recent hawkish stance, focusing instead on diplomatic efforts to ease Middle East tensions and positive engagement ahead of this week's Trump-Xi summit. While the market remains cautious due to elevated valuations and seasonal volatility, the prevailing sentiment is one of constructive optimism driven by cooling oil prices and a resilient technology sector.",
     "timestamp": "2026-09-21 13:12:25",
     "scan_date": "2026-09-21"
-  }
+  },
+  "previous_active_symbols": [
+    "COIN",
+    "AVGO",
+    "MU",
+    "INTC",
+    "TXN",
+    "NVDA"
+  ]
 }
