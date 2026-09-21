@@ -31,7 +31,14 @@ def load_state():
                 return json.load(f)
         except Exception as e:
             print(f"Error loading state.json: {e}")
-    return {"cooldown_blocklist": {}, "stagnation_tracker": {}, "last_run_timestamp": "", "ai_shield_cache": {}}
+    return {
+        "cooldown_blocklist": {}, 
+        "stagnation_tracker": {}, 
+        "closed_trades_ledger": [], 
+        "previous_active_coins": [],
+        "last_run_timestamp": "", 
+        "ai_shield_cache": {}
+    }
 
 def save_state(state):
     state["last_run_timestamp"] = time.strftime('%Y-%m-%d %H:%M:%S')
@@ -255,7 +262,6 @@ def execute_engine():
     meta = api_retry(info.meta)
     now_ms = int(time.time() * 1000)
 
-    # Build szDecimals precision lookup map from exchange metadata
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
         coin_name = asset.get("name")
@@ -273,12 +279,27 @@ def execute_engine():
             active_count += 1
             active_coins.add(coin)
 
+    # Track closed positions by comparing with previous run active coins
+    previous_coins = set(state.get("previous_active_coins", []))
+    closed_coins = previous_coins - active_coins
+    for closed_coin in closed_coins:
+        already_logged = any(t["coin"] == closed_coin for t in state["closed_trades_ledger"][:2])
+        if not already_logged:
+            state["closed_trades_ledger"].insert(0, {
+                "coin": closed_coin,
+                "exit_reason": "Stop-Loss Trigger / Exchange Fill",
+                "timestamp": timestamp
+            })
+            state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
+
+    state["previous_active_coins"] = list(active_coins)
+
     # BTC Regime Check
     btc_green, btc_open, btc_close = check_btc_daily_candle(info)
     regime_str = f"GREEN (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> LONGs Allowed" if btc_green else f"RED (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> SHORTs Allowed"
     audit_logs.append(f"BTC Regime Check: {regime_str}")
 
-    # Market Scanner with Optimized Pacing (0.25s throttle to prevent 429 rate limit errors)
+    # Market Scanner with Optimized Pacing (0.25s throttle)
     universe = [asset["name"] for asset in meta.get("universe", [])][:100]
     market_candidates = []
     scanned_count = 0
@@ -291,7 +312,7 @@ def execute_engine():
             if px <= 0:
                 continue
             
-            time.sleep(0.25)  # Throttle: 250ms delay between calls prevents 429 rate limit errors
+            time.sleep(0.25)
             candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 7, endTime=now_ms)
             if not candles or len(candles) < 50:
                 continue
@@ -363,7 +384,7 @@ def execute_engine():
     fallback_val = float(margin_summary.get("accountValue", 0.0))
     account_value = total_spot_net_worth if total_spot_net_worth > 0 else fallback_val
 
-    # --- STEP 1: EXECUTE MARKET ENTRIES FIRST (WITH 5x OPTIMAL LEVERAGE & CORRECTED szDecimals) ---
+    # --- STEP 1: EXECUTE MARKET ENTRIES FIRST ---
     trades_executed = False
     if ai_shield.get("high_risk_detected"):
         audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD. Reason: {ai_shield.get('reason')}")
@@ -377,7 +398,6 @@ def execute_engine():
             target_pct = np.random.uniform(0.15, 0.17) if is_ballistic else np.random.uniform(0.12, 0.14)
             target_usd = max(50.0, account_value * target_pct)
             
-            # Use official asset szDecimals precision to prevent exchange rejection
             decimals = sz_decimals_map.get(coin, 4)
             raw_sz = target_usd / px
             sz = round(raw_sz, decimals)
@@ -386,7 +406,6 @@ def execute_engine():
 
             side_str = "LONG" if is_long else "SHORT"
             try:
-                # Enforce optimal 5x leverage for capital efficiency and safety before entry
                 try:
                     exchange.update_leverage(coin, 5, True)
                 except Exception:
@@ -421,11 +440,10 @@ def execute_engine():
     else:
         audit_logs.append(f"Execution Gate: Active slots ({active_count}/6). No new market entries triggered.")
 
-    # Pause 2.5 seconds if trades were executed to let Hyperliquid REST settle
     if trades_executed:
         time.sleep(2.5)
 
-    # --- STEP 2: RE-FETCH POST-EXECUTION USER STATE & RATCHET ALL POSITIONS ---
+    # --- STEP 2: RE-FETCH USER STATE & RATCHET ALL POSITIONS ---
     user_state = api_retry(info.user_state, ACCOUNT_ADDRESS)
     spot_state = api_retry(info.spot_user_state, ACCOUNT_ADDRESS)
     open_orders = api_retry(info.frontend_open_orders, ACCOUNT_ADDRESS)
@@ -474,7 +492,6 @@ def execute_engine():
             stop_px_raw, current_roe, target_floor, is_buy_order = calculate_stop_price(entry_px, is_long, current_px, leverage, choppiness_index=ci)
             px = round_sig_figs(stop_px_raw, 5)
 
-            # Compute R-Multiple Telemetry (Current ROE divided by initial risk floor baseline ~2.0% ROE)
             initial_risk_ref = 0.020
             r_multiple = current_roe / initial_risk_ref if initial_risk_ref > 0 else 0.0
 
@@ -549,6 +566,12 @@ def execute_engine():
                 try:
                     exchange.market_close(coin_to_rotate)
                     state["stagnation_tracker"][coin_to_rotate] = 0
+                    state["closed_trades_ledger"].insert(0, {
+                        "coin": coin_to_rotate,
+                        "exit_reason": "24h Stagnation Rotation (Low ROE)",
+                        "timestamp": timestamp
+                    })
+                    state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
                     active_count -= 1
                     audit_logs.append(f"ROTATION TRIGGERED: Closed stagnant trade {coin_to_rotate} after full 24h stagnation.")
                 except Exception as e:
@@ -567,6 +590,16 @@ def execute_engine():
         f"</tr>"
         for i, c in enumerate(remaining_candidates[:3])
     ]) if remaining_candidates else "<tr><td colspan='4' style='padding: 10px; text-align: center; color: #666;'>No breakouts currently detected.</td></tr>"
+
+    closed_ledger = state.get("closed_trades_ledger", [])
+    closed_rows = "".join([
+        f"<tr>"
+        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['coin']}</td>"
+        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: #b45309;'>{t['exit_reason']}</td>"
+        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 10px;'>{t['timestamp']}</td>"
+        f"</tr>"
+        for t in closed_ledger[:5]
+    ]) if closed_ledger else "<tr><td colspan='3' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
 
     audit_section = ""
     if VERBOSE_TEST_MODE:
@@ -686,7 +719,6 @@ def execute_engine():
               &bull; <b>Gemini AI Macro Shield:</b> Real-time Google Search news & black-swan scanning (Daily JSON Cached)<br>
               &bull; <b>Smart Downside Adaptive Stop:</b> -1.2% (Choppy) / -2.0% (Clean) / -3.5% (Ballistic Breakout)<br>
               &bull; <b>Micro-Ratchet Ladders:</b> +0.5% (-0.5% cap) &bull; +1.0% (BE) &bull; +2% &bull; +3.5%<br>
-              &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; Dynamic 2.5% Steps with 1% Buffer active from +5% up to +300%+ ROE</i><br>
               &bull; <b>Strict Choppiness Filter:</b> Skip entries if Choppiness Index (CI) &gt; 62<br>
               &bull; <b>Stagnation Rotation:</b> 24 Hours (48 Runs) max hold for ROE &lt; +1.5%<br>
               &bull; <b>Sizing Tier:</b> Standard 12%–14% ($50+ floor) / Ballistic 15%–17% on ATR Breakout<br>
@@ -696,6 +728,11 @@ def execute_engine():
             <div class="section-title">Positions per Bot (USD)</div>
             <div class="table-responsive">
               <table><thead><tr><th>Bot Title</th><th>Asset</th><th>Leverage</th><th>Side</th><th>Collateral USD</th><th>Position USD</th><th>Unrealized P&L USD</th><th>Buy Price</th><th>Stop Price</th><th>Bot Status</th></tr></thead><tbody>{positions_rows}</tbody></table>
+            </div>
+
+            <div class="section-title">Recently Closed Trades & Exit Telemetry</div>
+            <div class="table-responsive">
+              <table><thead><tr><th>Asset</th><th>Exit Reason / Catalyst</th><th>Timestamp</th></tr></thead><tbody>{closed_rows}</tbody></table>
             </div>
 
             <div class="section-title">On-Deck Smart Queue (Top 3 Waiting Runners)</div>
