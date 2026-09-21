@@ -13,10 +13,10 @@
     "ZRO": 0,
     "GMT": 0,
     "IMX": 0,
-    "FET": 1,
-    "PYTH": 1
+    "FET": 0,
+    "PYTH": 2
   },
-  "last_run_timestamp": "2026-09-21 10:06:35",
+  "last_run_timestamp": "2026-09-21 10:38:03",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "LOW",
