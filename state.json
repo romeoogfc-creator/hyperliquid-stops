@@ -17,16 +17,17 @@
     "PYTH": 0,
     "NEAR": 4,
     "NEO": 1,
-    "DYDX": 0,
+    "DYDX": 1,
     "SNX": 0,
     "MINA": 2,
     "JUP": 7,
     "APE": 0,
     "ARB": 5,
-    "APT": 7,
-    "BSV": 5
+    "APT": 8,
+    "BSV": 0,
+    "JTO": 1
   },
-  "last_run_timestamp": "2026-09-21 16:39:14",
+  "last_run_timestamp": "2026-09-21 17:05:39",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "LOW",
@@ -37,14 +38,26 @@
     "scan_date": "2026-09-21"
   },
   "previous_active_coins": [
-    "MINA",
-    "ETH",
-    "JUP",
+    "BSV",
     "BTC",
-    "APT",
-    "BSV"
+    "ETH",
+    "APT"
   ],
   "closed_trades_ledger": [
+    {
+      "coin": "JUP",
+      "entry_price": 0.30203,
+      "exit_price": 0.301235,
+      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
+      "timestamp": "2026-09-21 17:04:34"
+    },
+    {
+      "coin": "MINA",
+      "entry_price": 0.12353,
+      "exit_price": 0.121245,
+      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
+      "timestamp": "2026-09-21 17:04:34"
+    },
     {
       "coin": "ARB",
       "entry_price": 0.23698,
@@ -78,33 +91,23 @@
   "active_position_cache": {
     "BTC": {
       "entry_px": 78134.0,
-      "current_px": 85780.5,
+      "current_px": 85989.5,
       "szi": 0.0006
     },
     "ETH": {
       "entry_px": 2565.1,
-      "current_px": 2757.15,
+      "current_px": 2755.25,
       "szi": 0.0175
     },
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.7721,
+      "current_px": 0.7703,
       "szi": 83.66
     },
     "BSV": {
       "entry_px": 18.0788,
-      "current_px": 18.082,
+      "current_px": 18.1705,
       "szi": 4.88
-    },
-    "MINA": {
-      "entry_px": 0.12353,
-      "current_px": 0.122345,
-      "szi": 518.0
-    },
-    "JUP": {
-      "entry_px": 0.30203,
-      "current_px": 0.30122,
-      "szi": 221.0
     }
   }
 }
