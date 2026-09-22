@@ -218,19 +218,24 @@ def execute_stock_engine():
     orders_res = requests.get(f"{BASE_URL}/v2/orders?status=open", headers=HEADERS)
     open_orders = orders_res.json() if orders_res.status_code == 200 else []
 
-    # --- RULE 1: EOD SQUARE-OFF (3:55 PM CT / 15:55) ---
-    is_eod_square_off = (ct_now.hour == 15 and ct_now.minute >= 55) or (ct_now.hour > 15)
+    # --- RULE 1: PRE-CLOSE EOD SQUARE-OFF (2:50 PM CT / 14:50 to ensure flat before 3:00 PM close) ---
+    is_eod_square_off = (ct_now.hour == 14 and ct_now.minute >= 50) or (ct_now.hour >= 15)
 
     if is_eod_square_off and positions_list:
-        audit_logs.append("EOD SQUARE-OFF TRIGGERED (>= 3:55 PM CT): Liquidating all open positions for 100% cash flat.")
+        audit_logs.append("EOD SQUARE-OFF TRIGGERED (>= 2:50 PM CT): Liquidating all open positions for 100% cash flat.")
         for pos in positions_list:
             sym = pos.get("symbol")
-            qty = pos.get("qty")
+            qty = float(pos.get("qty", 0))
             side = pos.get("side")
+            entry_px = float(pos.get("avg_entry_price", 0))
+            current_px = float(pos.get("current_price", entry_px))
             close_side = "sell" if side == "long" else "buy"
+            
+            realized_pnl = (current_px - entry_px) * qty if side == "long" else (entry_px - current_px) * qty
+
             close_payload = {
                 "symbol": sym,
-                "qty": str(abs(float(qty))),
+                "qty": str(abs(qty)),
                 "side": close_side,
                 "type": "market",
                 "time_in_force": "day"
@@ -243,9 +248,10 @@ def execute_stock_engine():
                         state["closed_trades_ledger"] = []
                     state["closed_trades_ledger"].insert(0, {
                         "symbol": sym,
-                        "entry_price": float(pos.get("avg_entry_price", 0)),
-                        "exit_price": float(pos.get("current_price", 0)),
+                        "entry_price": entry_px,
+                        "exit_price": current_px,
                         "exit_reason": "EOD Square-Off (100% Cash Flat)",
+                        "realized_pnl": realized_pnl,
                         "timestamp": timestamp
                     })
             except Exception as e:
@@ -275,10 +281,8 @@ def execute_stock_engine():
         unrealized_pnl = float(pos.get("unrealized_pl", 0))
         
         active_symbols.add(symbol)
-
         current_roe = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
 
-        # Track and update Peak ROE across runs
         prev_peak = current_active_cache.get(symbol, {}).get("peak_roe", current_roe)
         peak_roe = max(current_roe, prev_peak)
 
@@ -289,11 +293,9 @@ def execute_stock_engine():
             "peak_roe": peak_roe
         }
 
-        # --- RULE 2: DYNAMIC TRAILING PEAK FLOOR (Tighter 0.3% Buffer Behind Peak) ---
-        stop_threshold = -0.007  # Razor-tight initial stop (-0.7%)
+        stop_threshold = -0.007 
         status_label = "Active Sniper Scalp"
 
-        # Once a trade hits +0.4% ROE, engage the Trailing Peak Follower (0.3% behind peak)
         if peak_roe >= 0.004:
             stop_threshold = peak_roe - 0.003
             status_label = f"Trailing Peak Floor ({stop_threshold*100:+.1f}%)"
@@ -304,6 +306,8 @@ def execute_stock_engine():
             reason = "Trailing Peak Profit Grab" if current_roe > 0 else "Razor-Tight Hard Stop (-0.7%)"
             audit_logs.append(f"PROFIT GRABBER TRIGGERED on {symbol} at {current_roe*100:+.2f}% ROE (Peak: {peak_roe*100:+.2f}%). {reason} - taking maximum profit and running!")
             close_side = "sell" if is_long else "buy"
+            realized_pnl = (current_px - entry_px) * qty if is_long else (entry_px - current_px) * qty
+
             close_payload = {
                 "symbol": symbol,
                 "qty": str(abs(qty)),
@@ -320,9 +324,10 @@ def execute_stock_engine():
                     "entry_price": entry_px,
                     "exit_price": current_px,
                     "exit_reason": reason,
+                    "realized_pnl": realized_pnl,
                     "timestamp": timestamp
                 })
-                state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
+                state["closed_trades_ledger"] = state["closed_trades_ledger"][:20]
                 active_count -= 1
                 continue
             except Exception as e:
@@ -348,6 +353,8 @@ def execute_stock_engine():
         old_data = current_active_cache.get(closed_sym, {})
         entry_px = old_data.get("entry_px", 0.0)
         exit_px = float(old_data.get("current_px", entry_px))
+        qty = old_data.get("qty", 0.0)
+        realized_pnl = (exit_px - entry_px) * qty
         
         already_logged = any(t["symbol"] == closed_sym for t in state.get("closed_trades_ledger", [])[:2])
         if not already_logged:
@@ -358,16 +365,15 @@ def execute_stock_engine():
                 "entry_price": entry_px,
                 "exit_price": exit_px,
                 "exit_reason": "Trailing Peak Profit Grab",
+                "realized_pnl": realized_pnl,
                 "timestamp": timestamp
             })
-            state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
+            state["closed_trades_ledger"] = state["closed_trades_ledger"][:20]
 
     state["active_position_cache"] = new_active_cache
     state["previous_active_symbols"] = list(active_symbols)
 
     MAX_STOCK_SLOTS = 6
-
-    # --- RULE 3: ALL-DAY TRADING WINDOW (8:30 AM - 3:30 PM CT) ---
     is_trading_window = (8 <= ct_now.hour < 15) or (ct_now.hour == 15 and ct_now.minute <= 30)
 
     watchlist = [
@@ -428,12 +434,10 @@ def execute_stock_engine():
             upper, lower, filter_band = calculate_gaussian_channel(closes)
             current_close = closes[-1]
 
-            # --- STRICT CHOPPINESS FILTER (CI > 62 Blocks Entries) ---
             ci = calculate_choppiness_index(highs, lows, closes)
             if ci > 62.0:
                 continue
 
-            # --- 30-MIN VOLUME INTELLIGENCE LEASH ---
             avg_vol = np.mean(volumes[-10:]) if len(volumes) >= 10 else volumes[-1]
             current_vol = volumes[-1]
             vol_ratio = current_vol / avg_vol if avg_vol > 0 else 1.0
@@ -449,7 +453,6 @@ def execute_stock_engine():
             }
             smart_queue_candidates.append(candidate_obj)
 
-            # Volume Intelligence Leash Gate: Require vol_ratio >= 0.8
             if current_close > upper and current_close <= upper * 1.02 and vol_ratio >= 0.8:
                 market_candidates.append(candidate_obj)
                 audit_logs.append(f"TRAILING SNIPER BREAKOUT MATCH: {symbol} @ ${current_close:.2f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
@@ -484,14 +487,22 @@ def execute_stock_engine():
                     active_count += 1
                     active_symbols.add(symbol)
                     audit_logs.append(f"TRAILING SNIPER ENTRY SUCCESS: Bought {qty} shares of {symbol}")
-                else:
-                    audit_logs.append(f"ORDER FAILED on {symbol}: {order_res.text}")
             except Exception as e:
                 audit_logs.append(f"ORDER EXCEPTION on {symbol}: {e}")
     else:
         audit_logs.append(f"Execution Gate: Active slots ({active_count}/{MAX_STOCK_SLOTS}). No new scalps triggered.")
 
     save_state(state)
+
+    # --- CALCULATE DAILY & LIFETIME PERFORMANCE METRICS ---
+    closed_ledger = state.get("closed_trades_ledger", [])
+    today_date_str = datetime.now().strftime('%Y-%m-%d')
+    
+    today_realized_pnl = sum(t.get("realized_pnl", 0.0) for t in closed_ledger if today_date_str in t.get("timestamp", ""))
+    active_unrealized_pnl = sum(p["pnl"] for p in positions_data) if positions_data else 0.0
+    today_total_gain = today_realized_pnl + active_unrealized_pnl
+
+    lifetime_cumulative_pnl = sum(t.get("realized_pnl", 0.0) for t in closed_ledger) + active_unrealized_pnl
 
     audit_section = ""
     if VERBOSE_TEST_MODE:
@@ -516,19 +527,19 @@ def execute_stock_engine():
         for i, c in enumerate(remaining_candidates[:3])
     ]) if remaining_candidates else "<tr><td colspan='4' style='padding: 10px; text-align: center; color: #666;'>No momentum candidates currently detected.</td></tr>"
 
-    closed_ledger = state.get("closed_trades_ledger", [])
     closed_rows = "".join([
         f"<tr>"
         f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['symbol']}</td>"
         f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(t.get('entry_price', 0), 5)}</td>"
         f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(t.get('exit_price', 0), 5)}</td>"
         f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: #b45309;'>{t['exit_reason']}</td>"
+        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if t.get('realized_pnl', 0) >= 0 else '#c62828'}; font-weight: bold;'>${t.get('realized_pnl', 0):+.2f}</td>"
         f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 10px;'>{t['timestamp']}</td>"
         f"</tr>"
         for t in closed_ledger[:5]
-    ]) if closed_ledger else "<tr><td colspan='5' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
+    ]) if closed_ledger else "<tr><td colspan='6' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
 
-    text_fallback = f"TR-GC-Equities-LS-01 | Trailing Peak Profit Hunter\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f} (Margin Util: {margin_util_pct:.1f}%)\nActive Scalps: {active_count}/{MAX_STOCK_SLOTS}"
+    text_fallback = f"TR-GC-Equities-LS-01 | Trailing Peak Profit Hunter\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Total Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
     positions_rows = "".join([
         f"<tr>"
@@ -577,8 +588,11 @@ def execute_stock_engine():
           .net-worth-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin-bottom: 20px; }}
           .net-worth-title {{ font-size: 12px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 6px; }}
           .net-worth-value {{ font-size: 24px; font-weight: 700; color: #0f172a; }}
-          .net-worth-subtitle {{ font-size: 11px; color: #64748b; margin-top: 4px; }}
+          .net-worth-subtitle {{ font-size: 11px; color: #64748b; margin-top: 4px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }}
           
+          .pnl-badge {{ background: {'#e6f4ea' if today_total_gain >= 0 else '#fce8e6'}; color: {'#137333' if today_total_gain >= 0 else '#c5221f'}; padding: 4px 8px; border-radius: 4px; font-weight: bold; }}
+          .lifetime-badge {{ background: #f1f5f9; color: #0f172a; padding: 4px 8px; border-radius: 4px; font-weight: bold; }}
+
           .ai-brief-card {{ background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; font-size: 11px; color: #166534; line-height: 1.6; }}
           .ai-brief-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 12px; color: #15803d; display: flex; align-items: center; justify-content: space-between; }}
           
@@ -602,7 +616,11 @@ def execute_stock_engine():
             <div class="net-worth-card">
               <div class="net-worth-title">Total Account Equity</div>
               <div class="net-worth-value">USD ${equity:.2f}</div>
-              <div class="net-worth-subtitle">Alpaca Paper Sandbox &bull; Margin Utilization: <b>{margin_util_pct:.1f}%</b></div>
+              <div class="net-worth-subtitle">
+                <span>Margin Utilization: <b>{margin_util_pct:.1f}%</b></span>
+                <span>Today's Gain: <span class="pnl-badge">${today_total_gain:+,.2f}</span></span>
+                <span>Lifetime P&L: <span class="lifetime-badge">${lifetime_cumulative_pnl:+,.2f}</span></span>
+              </div>
             </div>
 
             <div class="ai-brief-card">
@@ -619,7 +637,7 @@ def execute_stock_engine():
               &bull; <b>Dynamic Trailing Peak Floor:</b> Tracks peak ROE and hugs right behind it with a strict 0.3% buffer (~90%+ profit lock)<br>
               &bull; <b>Volume Intelligence Leash:</b> Sniffs volume stalls (vol ratio < 0.8)<br>
               &bull; <b>Strict Choppiness Filter:</b> Skips entries if Choppiness Index (CI) > 62<br>
-              &bull; <b>EOD Square-Off Rule:</b> Automatic 100% cash liquidation at 3:55 PM CT daily<br>
+              &bull; <b>Pre-Close EOD Square-Off:</b> Automatic 100% cash liquidation at 2:50 PM CT daily<br>
               &bull; <b>Asset Universe:</b> S&P 500 & Nasdaq Momentum Equities
             </div>
 
@@ -630,7 +648,7 @@ def execute_stock_engine():
 
             <div class="section-title">Recently Closed Trades & Exit Telemetry</div>
             <div class="table-responsive">
-              <table><thead><tr><th>Symbol</th><th>Entry Price</th><th>Exit Price</th><th>Exit Reason / Catalyst</th><th>Timestamp</th></tr></thead><tbody>{closed_rows}</tbody></table>
+              <table><thead><tr><th>Symbol</th><th>Entry Price</th><th>Exit Price</th><th>Exit Reason / Catalyst</th><th>Realized P&L</th><th>Timestamp</th></tr></thead><tbody>{closed_rows}</tbody></table>
             </div>
 
             <div class="section-title">On-Deck Momentum Queue</div>
