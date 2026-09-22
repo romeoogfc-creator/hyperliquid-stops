@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-22 21:16:29",
+  "last_run_timestamp": "2026-09-22 21:23:47",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "MODERATE",
@@ -158,5 +158,8 @@
       "timestamp": "2026-09-22 13:42:06"
     }
   ],
-  "active_position_cache": {}
+  "active_position_cache": {},
+  "daily_starting_equity": {
+    "2026-09-22": 101022.53
+  }
 }
