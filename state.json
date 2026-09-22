@@ -23,7 +23,7 @@
     "JUP": 7,
     "APE": 0,
     "ARB": 5,
-    "APT": 15,
+    "APT": 16,
     "BSV": 0,
     "JTO": 1,
     "XRP": 0,
@@ -33,7 +33,7 @@
     "WLD": 0,
     "PENDLE": 0
   },
-  "last_run_timestamp": "2026-09-22 07:06:43",
+  "last_run_timestamp": "2026-09-22 07:38:33",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "MODERATE",
@@ -44,12 +44,18 @@
     "scan_date": "2026-09-22"
   },
   "previous_active_coins": [
-    "GMT",
-    "APT",
     "BTC",
-    "PENDLE"
+    "APT",
+    "GMT"
   ],
   "closed_trades_ledger": [
+    {
+      "coin": "PENDLE",
+      "entry_price": 2.4627,
+      "exit_price": 2.42075,
+      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
+      "timestamp": "2026-09-22 07:37:41"
+    },
     {
       "coin": "SEI",
       "entry_price": 0.059313,
@@ -112,34 +118,22 @@
       "exit_price": 0.121245,
       "exit_reason": "Stop-Loss Trigger / Exchange Fill",
       "timestamp": "2026-09-21 17:04:34"
-    },
-    {
-      "coin": "ARB",
-      "entry_price": 0.23698,
-      "exit_price": 0.23197,
-      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
-      "timestamp": "2026-09-21 16:05:49"
     }
   ],
   "active_position_cache": {
     "BTC": {
       "entry_px": 78134.0,
-      "current_px": 85389.5,
+      "current_px": 85223.5,
       "szi": 0.0006
     },
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.766,
+      "current_px": 0.7678,
       "szi": 83.66
-    },
-    "PENDLE": {
-      "entry_px": 2.4627,
-      "current_px": 2.4504,
-      "szi": -33.0
     },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008509,
+      "current_px": 0.008434,
       "szi": 10173.0
     }
   }
