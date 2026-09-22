@@ -66,7 +66,7 @@ def run_gemini_stock_market_shield():
         return {
             "high_risk_detected": False, 
             "risk_level": "UNKNOWN", 
-            "reason": "API Key Missing", 
+            "reason": "APIKey Missing", 
             "action": "ALLOW_TRADES",
             "ai_market_brief": "AI Shield offline (Missing GEMINI_API_KEY secret)."
         }
@@ -276,7 +276,6 @@ def execute_stock_engine():
         }
 
         try:
-            # Pull 30-minute bars for volume intelligence alignment
             bars_res = requests.get(
                 f"https://data.alpaca.markets/v2/stocks/{symbol}/bars?timeframe=30Min&limit=100&feed=iex&start={start_date}", 
                 headers=HEADERS
@@ -399,6 +398,7 @@ def execute_stock_engine():
 
     symbols_to_scan = [s for s in watchlist if s not in active_symbols]
     market_candidates = []
+    smart_queue_candidates = []
     scanned_count = 0
 
     chunk_size = 20
@@ -449,13 +449,23 @@ def execute_stock_engine():
 
             atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])]) if len(highs) >= 14 else (highs[-1] - lows[-1])
 
+            is_ballistic = current_close > (upper + 1.5 * atr)
+            extension_score = max(0.0, (current_close - upper) / upper)
+            atr_score = atr / current_close if current_close > 0 else 0.0
+            momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
+
+            candidate_obj = {
+                "symbol": symbol, "close": current_close, "is_long": True, "is_ballistic": is_ballistic,
+                "score": momentum_score, "ci": ci
+            }
+            smart_queue_candidates.append(candidate_obj)
+
             if current_close > upper and current_close <= upper * 1.025:
-                is_ballistic = current_close > (upper + 1.5 * atr)
-                market_candidates.append({
-                    "symbol": symbol, "close": current_close, "is_long": True, "is_ballistic": is_ballistic, "ci": ci
-                })
+                market_candidates.append(candidate_obj)
                 audit_logs.append(f"EQUITY MATCH LONG: {symbol} @ ${current_close:.2f} (CI: {ci:.1f})")
 
+    market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
+    smart_queue_sorted = sorted(smart_queue_candidates, key=lambda x: x["score"], reverse=True)
     audit_logs.append(f"Stock Scan Complete (30m Interval): Evaluated {scanned_count} symbols. Found {len(market_candidates)} breakouts.")
 
     if ai_shield.get("high_risk_detected"):
@@ -471,19 +481,23 @@ def execute_stock_engine():
             target_usd = max(50.0, equity * target_pct)
             qty = round(target_usd / px, 4)
 
+            # Fractional orders must be DAY orders per Alpaca requirements
+            is_fractional = not float(qty).is_integer()
+            tif = "day" if is_fractional else "gtc"
+
             order_payload = {
                 "symbol": symbol,
                 "qty": str(qty),
                 "side": "buy" if is_long else "sell",
                 "type": "market",
-                "time_in_force": "gtc"
+                "time_in_force": tif
             }
             try:
                 order_res = requests.post(f"{BASE_URL}/v2/orders", json=order_payload, headers=HEADERS)
                 if order_res.status_code == 200:
                     active_count += 1
                     active_symbols.add(symbol)
-                    audit_logs.append(f"ORDER SUCCESS: Bought {qty} shares of {symbol}")
+                    audit_logs.append(f"ORDER SUCCESS: Bought {qty} shares of {symbol} (TIF: {tif})")
                 else:
                     audit_logs.append(f"ORDER FAILED on {symbol}: {order_res.text}")
             except Exception as e:
@@ -504,6 +518,17 @@ def execute_stock_engine():
           </table>
         </div>
         """
+
+    remaining_candidates = [c for c in smart_queue_sorted if c["symbol"] not in active_symbols]
+    ondeck_rows = "".join([
+        f"<tr>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>#{i+1}</td>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold; color: #0f172a;'>{c['symbol']}</td>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-family: monospace;'>${c['close']:.2f}</td>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: #b45309; font-weight: 600;'>Score: {c['score']:.4f}</td>"
+        f"</tr>"
+        for i, c in enumerate(remaining_candidates[:3])
+    ]) if remaining_candidates else "<tr><td colspan='4' style='padding: 10px; text-align: center; color: #666;'>No momentum candidates currently detected.</td></tr>"
 
     closed_ledger = state.get("closed_trades_ledger", [])
     closed_rows = "".join([
@@ -623,6 +648,11 @@ def execute_stock_engine():
             <div class="section-title">Recently Closed Trades & Exit Telemetry (With Entry/Exit Prices)</div>
             <div class="table-responsive">
               <table><thead><tr><th>Symbol</th><th>Entry Price</th><th>Exit Price</th><th>Exit Reason / Catalyst</th><th>Timestamp</th></tr></thead><tbody>{closed_rows}</tbody></table>
+            </div>
+
+            <div class="section-title">On-Deck Smart Queue (Top 3 Waiting Runners)</div>
+            <div class="table-responsive">
+              <table><thead><tr><th>Rank</th><th>Symbol</th><th>Current Price</th><th>Momentum Score</th></tr></thead><tbody>{ondeck_rows}</tbody></table>
             </div>
 
             {audit_section}
