@@ -31,7 +31,6 @@ HEADERS = {
 def get_central_time():
     """Pure-Python Texas Central Time (CST/CDT auto-DST) calculation without external dependencies."""
     utc_now = datetime.utcnow()
-    # Simple DST approximation for US Central Time (Second Sunday in March to first Sunday in November)
     year = utc_now.year
     dst_start = datetime(year, 3, 8)
     dst_start += timedelta(days=(6 - dst_start.weekday()) % 7)
@@ -253,12 +252,10 @@ def execute_stock_engine():
             except Exception as e:
                 audit_logs.append(f"EOD FLAT ERROR on {sym}: {e}")
         
-        # Cancel any open stop/limit orders
         for order in open_orders:
             requests.delete(f"{BASE_URL}/v2/orders/{order.get('id')}", headers=HEADERS)
 
         save_state(state)
-        # Send closing report and exit
         send_html_dashboard_email(f"Alpaca EOD Flat Report — USD ${equity:.2f}", "<p>All positions squared off flat for the day.</p>", "EOD Flat executed.")
         return
 
@@ -284,12 +281,10 @@ def execute_stock_engine():
             "qty": qty
         }
 
-        # Calculate Intraday ROE
         current_roe = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
 
         # --- RULE 2: RAZOR-TIGHT INTRADAY STOPS (-0.8%) & MOMENTUM EXITS ---
-        # If position drops to -0.8% or worse, or volume/momentum curls downward, exit immediately ("Bam, get out!")
-        stop_threshold = -0.008 # -0.8% razor-tight stop
+        stop_threshold = -0.008
         should_exit = current_roe <= stop_threshold
 
         if should_exit:
@@ -421,7 +416,7 @@ def execute_stock_engine():
             current_close = closes[-1]
 
             ci = calculate_choppiness_index(highs, lows, closes)
-            if ci > 60.0:  # Stricter chop filter for scalping
+            if ci > 60.0:
                 continue
 
             atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])]) if len(highs) >= 14 else (highs[-1] - lows[-1])
@@ -454,8 +449,7 @@ def execute_stock_engine():
 
             target_usd = max(50.0, equity * 0.10)
             qty = round(target_usd / px, 4)
-            is_fractional = not float(qty).is_integer()
-            tif = "day" if is_fractional else "day" # Scalper enforces DAY orders strictly
+            tif = "day"
 
             order_payload = {
                 "symbol": symbol,
@@ -514,7 +508,7 @@ def execute_stock_engine():
         for t in closed_ledger[:5]
     ]) if closed_ledger else "<tr><td colspan='5' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
 
-    text_fallback = f"TR-GC-Equities-LS-01 | Intraday Scalper Dashboard\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f} (Margin Util: {margin_util_pct:.1f}%)\nActive Scalps: {active_count}/{MAX_STOCK_SLOLS}"
+    text_fallback = f"TR-GC-Equities-LS-01 | Intraday Scalper Dashboard\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f} (Margin Util: {margin_util_pct:.1f}%)\nActive Scalps: {active_count}/{MAX_STOCK_SLOTS}"
 
     positions_rows = "".join([
         f"<tr>"
