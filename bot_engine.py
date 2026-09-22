@@ -185,37 +185,21 @@ def calculate_choppiness_index(highs, lows, closes, period=14):
     except Exception:
         return 50.0
 
-def calculate_stop_price(entry_px, is_long, current_px, leverage=1.0, choppiness_index=50.0, is_ballistic=False, vol_ratio=1.0):
+def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=1.0, choppiness_index=50.0, is_ballistic=False, vol_ratio=1.0, peak_roe=0.0):
     if is_long:
         roe = ((current_px - entry_px) / entry_px) * leverage
     else:
         roe = ((entry_px - current_px) / entry_px) * leverage
 
-    leash_status = "Standard Ladder"
-    # 30-Min Live Volume Intelligence Dynamic Leash
-    if roe >= 0.02:
-        if vol_ratio > 1.5:
-            target_floor_roe = max(roe - 0.025, 0.01)
-            leash_status = f"Expanding (Surge Vol: {vol_ratio:.2f})"
-        elif vol_ratio < 0.8:
-            target_floor_roe = max(roe - 0.01, 0.01)
-            leash_status = f"Tightening (Stalled Vol: {vol_ratio:.2f})"
-        else:
-            if roe >= 0.05:
-                milestone = floor(roe * 40) / 40
-                target_floor_roe = milestone - 0.01
-            elif roe >= 0.035:
-                target_floor_roe = 0.02
-            else:
-                target_floor_roe = 0.01
-            leash_status = f"Active Step (Vol: {vol_ratio:.2f})"
-    elif roe >= 0.010:
-        target_floor_roe = 0.00       # Break-Even locked at +1.0% ROE
-        leash_status = "Break-Even Floor"
-    elif roe >= 0.005:
-        target_floor_roe = -0.005     # Risk capped to -0.5% at +0.5% ROE
-        leash_status = "Micro-Buffer Floor"
+    leash_status = "Standard Sniper Stop"
+    
+    # --- DYNAMIC TRAILING PEAK FOLLOWER (0.3% Buffer Behind Peak ROE) ---
+    # Once a trade hits +0.4% ROE, engage the Trailing Peak Follower
+    if peak_roe >= 0.004:
+        target_floor_roe = peak_roe - 0.003
+        leash_status = f"Trailing Peak Floor ({target_floor_roe*100:+.1f}%)"
     else:
+        # Initial Defensive Stops before reaching peak threshold
         if choppiness_index > 58.0:
             target_floor_roe = -0.025   # Choppy Market -> -2.5% ROE
             leash_status = "Choppy Defense Stop"
@@ -251,7 +235,7 @@ def check_btc_daily_candle(info):
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (30m Live Volume Intelligence Leash Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (24/7 Trailing Peak Sniper Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -279,7 +263,8 @@ def execute_engine():
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
     active_coins = set()
-    current_active_cache = {}
+    current_active_cache = state.get("active_position_cache", {})
+    new_active_cache = {}
 
     for pos_item in asset_positions:
         pos = pos_item.get("position", {})
@@ -288,10 +273,21 @@ def execute_engine():
         if coin and szi != 0:
             active_count += 1
             active_coins.add(coin)
-            current_active_cache[coin] = {
-                "entry_px": float(pos.get("entryPx", 0)),
-                "current_px": float(all_mids.get(coin, pos.get("entryPx", 0))),
-                "szi": szi
+            
+            is_long = szi > 0
+            entry_px = float(pos.get("entryPx", 0))
+            current_px = float(all_mids.get(coin, entry_px))
+            current_roe = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
+            
+            # Retrieve or initialize Peak ROE across runs
+            prev_peak = current_active_cache.get(coin, {}).get("peak_roe", current_roe)
+            peak_roe = max(current_roe, prev_peak)
+
+            new_active_cache[coin] = {
+                "entry_px": entry_px,
+                "current_px": current_px,
+                "szi": szi,
+                "peak_roe": peak_roe
             }
 
     previous_cache = state.get("active_position_cache", {})
@@ -308,12 +304,12 @@ def execute_engine():
                 "coin": closed_coin,
                 "entry_price": entry_px,
                 "exit_price": exit_px,
-                "exit_reason": "Stop-Loss Trigger / Exchange Fill",
+                "exit_reason": "Trailing Peak Profit Grab",
                 "timestamp": timestamp
             })
             state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
 
-    state["active_position_cache"] = current_active_cache
+    state["active_position_cache"] = new_active_cache
     state["previous_active_coins"] = list(active_coins)
 
     btc_green, btc_open, btc_close = check_btc_daily_candle(info)
@@ -491,8 +487,13 @@ def execute_engine():
                 ci = 50.0
                 vol_ratio = 1.0
 
-            stop_px_raw, current_roe, target_floor, is_buy_order, leash_status = calculate_stop_price(
-                entry_px, is_long, current_px, leverage, choppiness_index=ci, vol_ratio=vol_ratio
+            # Pull tracked peak ROE for this coin from cache
+            current_roe = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
+            prev_peak = state.get("active_position_cache", {}).get(coin, {}).get("peak_roe", current_roe)
+            peak_roe = max(current_roe, prev_peak)
+
+            stop_px_raw, current_roe, target_floor, is_buy_order, leash_status = calculate_crypto_stop_price(
+                entry_px, is_long, current_px, leverage, choppiness_index=ci, vol_ratio=vol_ratio, peak_roe=peak_roe
             )
             px = round_sig_figs(stop_px_raw, 5)
 
@@ -505,7 +506,7 @@ def execute_engine():
                 state["stagnation_tracker"][coin] = 0
 
             stag_count = state["stagnation_tracker"].get(coin, 0)
-            audit_logs.append(f"Crypto Position: {coin} | ROE: {current_roe*100:+.2f}% | Stop: ${px} | VolRatio: {vol_ratio:.2f} [{leash_status}] | Stg: {stag_count}/48")
+            audit_logs.append(f"Crypto Position: {coin} | ROE: {current_roe*100:+.2f}% (Peak: {peak_roe*100:+.2f}%) | Stop: ${px} | [{leash_status}] | Stg: {stag_count}/48")
 
             for order in open_orders:
                 if order.get("coin") == coin and order.get("isTrigger"):
@@ -532,7 +533,7 @@ def execute_engine():
                 "r_multiple": r_multiple,
                 "stop": px,
                 "floor": target_floor * 100,
-                "status": "Active"
+                "status": leash_status
             })
 
     spot_usdc = 0.0
@@ -583,7 +584,7 @@ def execute_engine():
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine - 30m Leash)</div>
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine - 24/7 Trailing Sniper)</div>
         <div class="table-responsive" style="overflow-x: hidden;">
           <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
             <tbody>{audit_rows}</tbody>
@@ -683,7 +684,7 @@ def execute_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-            <p>Timestamp: {timestamp} (30m Volume-Aware Leash Active)</p>
+            <p>Timestamp: {timestamp} (24/7 Trailing Peak Follower Active)</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -702,15 +703,13 @@ def execute_engine():
             </div>
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Bot Rule Deck & Guardrails</div>
-              &bull; <b>Execution Engine:</b> 30-Min GitHub Cron &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
+              <div class="rules-title">&#9989; Active 24/7 Trailing Peak Guardrails</div>
+              &bull; <b>Execution Engine:</b> 30-Min 24/7 GitHub Cron &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
+              &bull; <b>Dynamic Trailing Peak Floor:</b> Tracks peak ROE 24/7 and hugs right behind it with a strict 0.3% buffer<br>
+              &bull; <b>BTC Regime Shield:</b> Block LONGs if daily candle is RED; block SHORTs if daily candle is GREEN<br>
               &bull; <b>Gemini AI Macro Shield:</b> Real-time Google Search news & black-swan scanning (Daily JSON Cached)<br>
-              &bull; <b>Smart Downside Adaptive Stop:</b> -2.5% (Choppy) / -3.5% (Clean Trend) / -5.0% (Ballistic)<br>
-              &bull; <b>Micro-Ratchet Ladders:</b> +0.5% (-0.5% cap) &bull; +1.0% (BE) &bull; +2% &bull; +3.5%<br>
-              &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; 30-Min Volume Intelligence Leash (Expands on 30m volume surges, tightens on stalls)</i><br>
               &bull; <b>Strict Choppiness Filter:</b> Skip entries if Choppiness Index (CI) &gt; 62<br>
               &bull; <b>Stagnation Rotation:</b> 24 Hours (48 Runs) max hold for ROE &lt; +1.5%<br>
-              &bull; <b>Sizing Tier:</b> Standard 12%–14% ($50+ floor) / Ballistic 15%–17% on ATR Breakout<br>
               &bull; <b>Leverage Profile:</b> Optimized 5x Safe Max Leverage
             </div>
 
