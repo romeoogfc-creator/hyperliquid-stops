@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-22 20:12:43",
+  "last_run_timestamp": "2026-09-22 20:41:28",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "MODERATE",
@@ -19,14 +19,35 @@
     "scan_date": "2026-09-22"
   },
   "previous_active_symbols": [
-    "INTC",
-    "DE",
-    "TXN",
+    "AVGO",
     "MU",
     "NVDA",
-    "AVGO"
+    "DE",
+    "INTC",
+    "TXN"
   ],
   "closed_trades_ledger": [
+    {
+      "symbol": "NVDA",
+      "entry_price": 221.98,
+      "exit_price": 228.15,
+      "exit_reason": "Trailing Peak Profit Grab",
+      "timestamp": "2026-09-22 20:41:19"
+    },
+    {
+      "symbol": "MU",
+      "entry_price": 1047.68,
+      "exit_price": 1091.0,
+      "exit_reason": "Trailing Peak Profit Grab",
+      "timestamp": "2026-09-22 20:41:19"
+    },
+    {
+      "symbol": "AVGO",
+      "entry_price": 355.285833,
+      "exit_price": 364.2387,
+      "exit_reason": "Trailing Peak Profit Grab",
+      "timestamp": "2026-09-22 20:41:19"
+    },
     {
       "symbol": "NVDA",
       "entry_price": 221.98,
@@ -59,7 +80,7 @@
   "active_position_cache": {
     "AVGO": {
       "entry_px": 355.285833,
-      "current_px": 364.39,
+      "current_px": 364.2387,
       "qty": 24.0,
       "peak_roe": 0.028636568236031956
     },
@@ -71,25 +92,25 @@
     },
     "INTC": {
       "entry_px": 118.3,
-      "current_px": 123.65,
+      "current_px": 123.42,
       "qty": 104.0,
       "peak_roe": 0.04522400676246838
     },
     "MU": {
       "entry_px": 1047.68,
-      "current_px": 1094.64,
+      "current_px": 1091.0,
       "qty": 8.0,
       "peak_roe": 0.044822846670739186
     },
     "NVDA": {
       "entry_px": 221.98,
-      "current_px": 228.429,
+      "current_px": 228.15,
       "qty": 40.0,
       "peak_roe": 0.034842328137670145
     },
     "TXN": {
       "entry_px": 264.579697,
-      "current_px": 272.0,
+      "current_px": 271.75,
       "qty": 33.0,
       "peak_roe": 0.028045625133511245
     }
