@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-22 20:41:28",
+  "last_run_timestamp": "2026-09-22 21:12:07",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "MODERATE",
@@ -27,6 +27,14 @@
     "TXN"
   ],
   "closed_trades_ledger": [
+    {
+      "symbol": "DE",
+      "entry_price": 698.43,
+      "exit_price": 703.12,
+      "exit_reason": "EOD Square-Off (100% Cash Flat)",
+      "realized_pnl": 67.64996700000079,
+      "timestamp": "2026-09-22 21:12:03"
+    },
     {
       "symbol": "NVDA",
       "entry_price": 221.98,
