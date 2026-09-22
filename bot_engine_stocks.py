@@ -190,7 +190,7 @@ def execute_stock_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     ct_now = get_central_time()
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Peak-Grabbing Sniper Engine Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
@@ -278,7 +278,7 @@ def execute_stock_engine():
 
         current_roe = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
 
-        # Track Peak ROE for 90-95% Profit Grabbing Snipers
+        # Track and update Peak ROE across runs
         prev_peak = current_active_cache.get(symbol, {}).get("peak_roe", current_roe)
         peak_roe = max(current_roe, prev_peak)
 
@@ -289,28 +289,20 @@ def execute_stock_engine():
             "peak_roe": peak_roe
         }
 
-        # --- RULE 2: 90-95% PEAK PROFIT GRABBING LADDERS ---
+        # --- RULE 2: DYNAMIC TRAILING PEAK FLOOR (Tighter 0.3% Buffer Behind Peak) ---
         stop_threshold = -0.007  # Razor-tight initial stop (-0.7%)
         status_label = "Active Sniper Scalp"
 
-        if peak_roe >= 0.035:  # +3.5% Peak -> Lock in +3.2% guaranteed profit (>91% profit lock)
-            stop_threshold = 0.032
-            status_label = "Peak Locked (+3.2% Floor)"
-        elif peak_roe >= 0.020: # +2.0% Peak -> Lock in +1.8% guaranteed profit (90% profit lock)
-            stop_threshold = 0.018
-            status_label = "Peak Locked (+1.8% Floor)"
-        elif peak_roe >= 0.010: # +1.0% Peak -> Lock in +0.9% guaranteed profit (90% profit lock)
-            stop_threshold = 0.009
-            status_label = "Peak Locked (+0.9% Floor)"
-        elif peak_roe >= 0.005: # +0.5% Peak -> Lock in +0.4% guaranteed profit (80% profit lock)
-            stop_threshold = 0.004
-            status_label = "Peak Locked (+0.4% Floor)"
+        # Once a trade hits +0.4% ROE, engage the Trailing Peak Follower (0.3% behind peak)
+        if peak_roe >= 0.004:
+            stop_threshold = peak_roe - 0.003
+            status_label = f"Trailing Peak Floor ({stop_threshold*100:+.1f}%)"
 
         should_exit = current_roe <= stop_threshold
 
         if should_exit:
-            reason = "90-95% Peak Profit Lock" if current_roe > 0 else "Razor-Tight Hard Stop (-0.7%)"
-            audit_logs.append(f"PROFIT GRABBER TRIGGERED on {symbol} at {current_roe*100:+.2f}% ROE (Peak: {peak_roe*100:+.2f}%). {reason} - taking profit and running!")
+            reason = "Trailing Peak Profit Grab" if current_roe > 0 else "Razor-Tight Hard Stop (-0.7%)"
+            audit_logs.append(f"PROFIT GRABBER TRIGGERED on {symbol} at {current_roe*100:+.2f}% ROE (Peak: {peak_roe*100:+.2f}%). {reason} - taking maximum profit and running!")
             close_side = "sell" if is_long else "buy"
             close_payload = {
                 "symbol": symbol,
@@ -365,7 +357,7 @@ def execute_stock_engine():
                 "symbol": closed_sym,
                 "entry_price": entry_px,
                 "exit_price": exit_px,
-                "exit_reason": "Volume Intelligence Stall / Profit Grab",
+                "exit_reason": "Trailing Peak Profit Grab",
                 "timestamp": timestamp
             })
             state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
@@ -436,12 +428,12 @@ def execute_stock_engine():
             upper, lower, filter_band = calculate_gaussian_channel(closes)
             current_close = closes[-1]
 
-            # --- STRICT CHOPPINESS FILTER (CI > 62 Blocks Entries)[cite: 5, 6] ---
+            # --- STRICT CHOPPINESS FILTER (CI > 62 Blocks Entries) ---
             ci = calculate_choppiness_index(highs, lows, closes)
             if ci > 62.0:
                 continue
 
-            # --- 30-MIN VOLUME INTELLIGENCE LEASH[cite: 5] ---
+            # --- 30-MIN VOLUME INTELLIGENCE LEASH ---
             avg_vol = np.mean(volumes[-10:]) if len(volumes) >= 10 else volumes[-1]
             current_vol = volumes[-1]
             vol_ratio = current_vol / avg_vol if avg_vol > 0 else 1.0
@@ -457,14 +449,14 @@ def execute_stock_engine():
             }
             smart_queue_candidates.append(candidate_obj)
 
-            # Volume Intelligence Leash Gate: Require vol_ratio >= 0.8[cite: 5]
+            # Volume Intelligence Leash Gate: Require vol_ratio >= 0.8
             if current_close > upper and current_close <= upper * 1.02 and vol_ratio >= 0.8:
                 market_candidates.append(candidate_obj)
-                audit_logs.append(f"PEAK-GRABBER BREAKOUT MATCH: {symbol} @ ${current_close:.2f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
+                audit_logs.append(f"TRAILING SNIPER BREAKOUT MATCH: {symbol} @ ${current_close:.2f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
     smart_queue_sorted = sorted(smart_queue_candidates, key=lambda x: x["score"], reverse=True)
-    audit_logs.append(f"Peak-Grabber Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} validated triggers.")
+    audit_logs.append(f"Trailing Sniper Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} validated triggers.")
 
     if ai_shield.get("high_risk_detected"):
         audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD. Reason: {ai_shield.get('reason')}")
@@ -491,7 +483,7 @@ def execute_stock_engine():
                 if order_res.status_code == 200:
                     active_count += 1
                     active_symbols.add(symbol)
-                    audit_logs.append(f"PEAK-GRABBER ENTRY SUCCESS: Bought {qty} shares of {symbol}")
+                    audit_logs.append(f"TRAILING SNIPER ENTRY SUCCESS: Bought {qty} shares of {symbol}")
                 else:
                     audit_logs.append(f"ORDER FAILED on {symbol}: {order_res.text}")
             except Exception as e:
@@ -505,7 +497,7 @@ def execute_stock_engine():
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Peak-Grabbing Sniper Engine)</div>
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Trailing Peak Sniper Engine)</div>
         <div class="table-responsive" style="overflow-x: hidden;">
           <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
             <tbody>{audit_rows}</tbody>
@@ -536,7 +528,7 @@ def execute_stock_engine():
         for t in closed_ledger[:5]
     ]) if closed_ledger else "<tr><td colspan='5' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
 
-    text_fallback = f"TR-GC-Equities-LS-01 | Peak-Grabbing Profit Hunter\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f} (Margin Util: {margin_util_pct:.1f}%)\nActive Scalps: {active_count}/{MAX_STOCK_SLOTS}"
+    text_fallback = f"TR-GC-Equities-LS-01 | Trailing Peak Profit Hunter\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f} (Margin Util: {margin_util_pct:.1f}%)\nActive Scalps: {active_count}/{MAX_STOCK_SLOTS}"
 
     positions_rows = "".join([
         f"<tr>"
@@ -603,8 +595,8 @@ def execute_stock_engine():
       <body>
         <div class="container">
           <div class="header">
-            <h2>TR-GC-Equities-LS-01 | Peak-Grabbing Profit Hunter</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: 90-95% PEAK LOCK SNIPER</p>
+            <h2>TR-GC-Equities-LS-01 | Trailing Peak Profit Hunter</h2>
+            <p>Timestamp: {timestamp} &bull; Mode: DYNAMIC TRAILING PEAK FOLLOWER (0.3% Buffer)</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -623,10 +615,10 @@ def execute_stock_engine():
             </div>
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active 90-95% Peak Profit Snipers Guardrails</div>
-              &bull; <b>90-95% Peak Profit Lock:</b> +0.5% (+0.4%) &bull; +1.0% (+0.9%) &bull; +2.0% (+1.8%) &bull; +3.5% (+3.2% floor)<br>
-              &bull; <b>Volume Intelligence Leash:</b> Sniffs volume stalls (vol ratio < 0.8)[cite: 5]<br>
-              &bull; <b>Strict Choppiness Filter:</b> Skips entries if Choppiness Index (CI) > 62[cite: 5, 6]<br>
+              <div class="rules-title">&#9989; Active Trailing Peak Sniper Guardrails</div>
+              &bull; <b>Dynamic Trailing Peak Floor:</b> Tracks peak ROE and hugs right behind it with a strict 0.3% buffer (~90%+ profit lock)<br>
+              &bull; <b>Volume Intelligence Leash:</b> Sniffs volume stalls (vol ratio < 0.8)<br>
+              &bull; <b>Strict Choppiness Filter:</b> Skips entries if Choppiness Index (CI) > 62<br>
               &bull; <b>EOD Square-Off Rule:</b> Automatic 100% cash liquidation at 3:55 PM CT daily<br>
               &bull; <b>Asset Universe:</b> S&P 500 & Nasdaq Momentum Equities
             </div>
@@ -649,20 +641,20 @@ def execute_stock_engine():
             {audit_section}
 
           </div>
-          <div class="footer">Alpaca Peak-Grabbing Sniper Engine &bull; Managed via GitHub Actions</div>
+          <div class="footer">Alpaca Trailing Peak Sniper Engine &bull; Managed via GitHub Actions</div>
         </div>
       </body>
     </html>
     """
 
-    send_html_dashboard_email(f"Alpaca Peak-Grabbing Report — USD ${equity:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] Peak-Grabbing Sniper telemetry report complete.")
+    send_html_dashboard_email(f"Alpaca Trailing Peak Report — USD ${equity:.2f}", html_content, text_fallback)
+    print(f"[{timestamp}] Trailing Peak Sniper telemetry report complete.")
 
 if __name__ == "__main__":
     try:
         execute_stock_engine()
     except Exception as e:
-        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Peak-Grabbing Engine execution error: {e}"
+        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Trailing Peak Engine execution error: {e}"
         print(err_msg)
         send_html_dashboard_email("Alpaca Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
         raise e
