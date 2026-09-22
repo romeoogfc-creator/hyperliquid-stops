@@ -185,7 +185,7 @@ def calculate_choppiness_index(highs, lows, closes, period=14):
     except Exception:
         return 50.0
 
-def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=1.0, choppiness_index=50.0, is_ballistic=False, vol_ratio=1.0, peak_roe=0.0):
+def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, choppiness_index=50.0, is_ballistic=False, vol_ratio=1.0, peak_roe=0.0):
     if is_long:
         roe = ((current_px - entry_px) / entry_px) * leverage
     else:
@@ -193,13 +193,17 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=1.0, cho
 
     leash_status = "Standard Sniper Stop"
     
-    # --- DYNAMIC TRAILING PEAK FOLLOWER (0.3% Buffer Behind Peak ROE) ---
-    # Once a trade hits +0.4% ROE, engage the Trailing Peak Follower
+    # --- VOLUME-AWARE DYNAMIC TRAILING PEAK FOLLOWER ---
     if peak_roe >= 0.004:
-        target_floor_roe = peak_roe - 0.003
-        leash_status = f"Trailing Peak Floor ({target_floor_roe*100:+.1f}%)"
+        if vol_ratio < 0.8:
+            # Volume stalled: snap buffer to 0.1% ROE to grab profit instantly
+            target_floor_roe = max(peak_roe - 0.001, 0.0)
+            leash_status = f"Volume Stall Lock (+0.1% Buffer)"
+        else:
+            # Healthy volume: use 0.5% ROE buffer for 5x leverage room
+            target_floor_roe = peak_roe - 0.005
+            leash_status = f"Trailing Peak Floor ({target_floor_roe*100:+.1f}%)"
     else:
-        # Initial Defensive Stops before reaching peak threshold
         if choppiness_index > 58.0:
             target_floor_roe = -0.025   # Choppy Market -> -2.5% ROE
             leash_status = "Choppy Defense Stop"
@@ -235,7 +239,7 @@ def check_btc_daily_candle(info):
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (24/7 Trailing Peak Sniper Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Volume-Aware Dynamic Trailing Sniper Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -279,7 +283,6 @@ def execute_engine():
             current_px = float(all_mids.get(coin, entry_px))
             current_roe = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
             
-            # Retrieve or initialize Peak ROE across runs
             prev_peak = current_active_cache.get(coin, {}).get("peak_roe", current_roe)
             peak_roe = max(current_roe, prev_peak)
 
@@ -304,7 +307,7 @@ def execute_engine():
                 "coin": closed_coin,
                 "entry_price": entry_px,
                 "exit_price": exit_px,
-                "exit_reason": "Trailing Peak Profit Grab",
+                "exit_reason": "Volume-Aware Trailing Profit Grab",
                 "timestamp": timestamp
             })
             state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
@@ -337,6 +340,7 @@ def execute_engine():
             closes = [float(c["c"]) for c in candles]
             highs = [float(c["h"]) for c in candles]
             lows = [float(c["l"]) for c in candles]
+            volumes = [float(c.get("v", 0)) for c in candles]
 
             upper, lower, filter_band = calculate_gaussian_channel(closes)
             current_close = closes[-1]
@@ -344,6 +348,11 @@ def execute_engine():
             ci = calculate_choppiness_index(highs, lows, closes)
             if ci > 62.0:
                 continue
+
+            # Volume Gate Verification: Require active momentum volume >= 0.8 avg
+            avg_vol = np.mean(volumes[-10:]) if len(volumes) >= 10 else volumes[-1]
+            current_vol = volumes[-1]
+            vol_ratio = current_vol / avg_vol if avg_vol > 0 else 1.0
 
             atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])])
 
@@ -355,13 +364,13 @@ def execute_engine():
                 
                 candidate_obj = {
                     "coin": coin, "close": current_close, "is_long": True, "is_ballistic": is_ballistic,
-                    "score": momentum_score, "ci": ci
+                    "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
                 }
                 smart_queue_candidates.append(candidate_obj)
 
-                if current_close > upper and current_close <= upper * 1.025:
+                if current_close > upper and current_close <= upper * 1.025 and vol_ratio >= 0.8:
                     market_candidates.append(candidate_obj)
-                    audit_logs.append(f"CRYPTO MATCH LONG: {coin} @ ${current_close:.4f} (CI: {ci:.1f})")
+                    audit_logs.append(f"CRYPTO MATCH LONG: {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
             else:
                 is_ballistic = current_close < (lower - 1.5 * atr)
                 extension_score = max(0.0, (lower - current_close) / lower)
@@ -370,13 +379,13 @@ def execute_engine():
 
                 candidate_obj = {
                     "coin": coin, "close": current_close, "is_long": False, "is_ballistic": is_ballistic,
-                    "score": momentum_score, "ci": ci
+                    "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
                 }
                 smart_queue_candidates.append(candidate_obj)
 
-                if current_close < lower and current_close >= lower * 0.975:
+                if current_close < lower and current_close >= lower * 0.975 and vol_ratio >= 0.8:
                     market_candidates.append(candidate_obj)
-                    audit_logs.append(f"CRYPTO MATCH SHORT: {coin} @ ${current_close:.4f} (CI: {ci:.1f})")
+                    audit_logs.append(f"CRYPTO MATCH SHORT: {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
         except Exception:
             continue
 
@@ -487,7 +496,6 @@ def execute_engine():
                 ci = 50.0
                 vol_ratio = 1.0
 
-            # Pull tracked peak ROE for this coin from cache
             current_roe = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
             prev_peak = state.get("active_position_cache", {}).get(coin, {}).get("peak_roe", current_roe)
             peak_roe = max(current_roe, prev_peak)
@@ -584,7 +592,7 @@ def execute_engine():
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine - 24/7 Trailing Sniper)</div>
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine - Volume-Aware Trailing Sniper)</div>
         <div class="table-responsive" style="overflow-x: hidden;">
           <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
             <tbody>{audit_rows}</tbody>
@@ -684,7 +692,7 @@ def execute_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-            <p>Timestamp: {timestamp} (24/7 Trailing Peak Follower Active)</p>
+            <p>Timestamp: {timestamp} (Volume-Aware Dynamic Trailing Sniper Active)</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -703,9 +711,9 @@ def execute_engine():
             </div>
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active 24/7 Trailing Peak Guardrails</div>
+              <div class="rules-title">&#9989; Active Volume-Aware Guardrails</div>
               &bull; <b>Execution Engine:</b> 30-Min 24/7 GitHub Cron &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
-              &bull; <b>Dynamic Trailing Peak Floor:</b> Tracks peak ROE 24/7 and hugs right behind it with a strict 0.3% buffer<br>
+              &bull; <b>Volume-Aware Dynamic Buffer:</b> 0.5% ROE on healthy volume / Snaps to 0.1% ROE on volume stalls<br>
               &bull; <b>BTC Regime Shield:</b> Block LONGs if daily candle is RED; block SHORTs if daily candle is GREEN<br>
               &bull; <b>Gemini AI Macro Shield:</b> Real-time Google Search news & black-swan scanning (Daily JSON Cached)<br>
               &bull; <b>Strict Choppiness Filter:</b> Skip entries if Choppiness Index (CI) &gt; 62<br>
