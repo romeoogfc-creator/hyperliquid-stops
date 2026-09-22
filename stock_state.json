@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-22 21:12:07",
+  "last_run_timestamp": "2026-09-22 21:16:29",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "MODERATE",
@@ -18,15 +18,88 @@
     "timestamp": "2026-09-22 13:13:23",
     "scan_date": "2026-09-22"
   },
-  "previous_active_symbols": [
-    "AVGO",
-    "MU",
-    "NVDA",
-    "DE",
-    "INTC",
-    "TXN"
-  ],
+  "previous_active_symbols": [],
   "closed_trades_ledger": [
+    {
+      "symbol": "MU",
+      "entry_price": 1047.68,
+      "exit_price": 1091.0,
+      "exit_reason": "Trailing Peak Profit Grab",
+      "realized_pnl": 346.5599999999995,
+      "timestamp": "2026-09-22 21:16:24"
+    },
+    {
+      "symbol": "TXN",
+      "entry_price": 264.579697,
+      "exit_price": 271.75,
+      "exit_reason": "Trailing Peak Profit Grab",
+      "realized_pnl": 236.61999899999967,
+      "timestamp": "2026-09-22 21:16:24"
+    },
+    {
+      "symbol": "DE",
+      "entry_price": 698.43,
+      "exit_price": 703.12,
+      "exit_reason": "Trailing Peak Profit Grab",
+      "realized_pnl": 67.64996700000079,
+      "timestamp": "2026-09-22 21:16:24"
+    },
+    {
+      "symbol": "AVGO",
+      "entry_price": 355.285833,
+      "exit_price": 364.2387,
+      "exit_reason": "Trailing Peak Profit Grab",
+      "realized_pnl": 214.86880799999926,
+      "timestamp": "2026-09-22 21:16:24"
+    },
+    {
+      "symbol": "INTC",
+      "entry_price": 118.3,
+      "exit_price": 123.42,
+      "exit_reason": "Trailing Peak Profit Grab",
+      "realized_pnl": 532.4800000000005,
+      "timestamp": "2026-09-22 21:16:24"
+    },
+    {
+      "symbol": "TXN",
+      "entry_price": 264.579697,
+      "exit_price": 271.75,
+      "exit_reason": "EOD Square-Off (100% Cash Flat)",
+      "realized_pnl": 236.61999899999967,
+      "timestamp": "2026-09-22 21:16:24"
+    },
+    {
+      "symbol": "NVDA",
+      "entry_price": 221.98,
+      "exit_price": 228.09,
+      "exit_reason": "EOD Square-Off (100% Cash Flat)",
+      "realized_pnl": 244.40000000000055,
+      "timestamp": "2026-09-22 21:16:24"
+    },
+    {
+      "symbol": "MU",
+      "entry_price": 1047.68,
+      "exit_price": 1090.12,
+      "exit_reason": "EOD Square-Off (100% Cash Flat)",
+      "realized_pnl": 339.5199999999986,
+      "timestamp": "2026-09-22 21:16:24"
+    },
+    {
+      "symbol": "INTC",
+      "entry_price": 118.3,
+      "exit_price": 123.4876,
+      "exit_reason": "EOD Square-Off (100% Cash Flat)",
+      "realized_pnl": 539.5104000000003,
+      "timestamp": "2026-09-22 21:16:24"
+    },
+    {
+      "symbol": "AVGO",
+      "entry_price": 355.285833,
+      "exit_price": 364.2525,
+      "exit_reason": "EOD Square-Off (100% Cash Flat)",
+      "realized_pnl": 215.20000799999934,
+      "timestamp": "2026-09-22 21:16:24"
+    },
     {
       "symbol": "DE",
       "entry_price": 698.43,
@@ -85,42 +158,5 @@
       "timestamp": "2026-09-22 13:42:06"
     }
   ],
-  "active_position_cache": {
-    "AVGO": {
-      "entry_px": 355.285833,
-      "current_px": 364.2387,
-      "qty": 24.0,
-      "peak_roe": 0.028636568236031956
-    },
-    "DE": {
-      "entry_px": 698.43,
-      "current_px": 703.12,
-      "qty": 14.4243,
-      "peak_roe": 0.006715060922354502
-    },
-    "INTC": {
-      "entry_px": 118.3,
-      "current_px": 123.42,
-      "qty": 104.0,
-      "peak_roe": 0.04522400676246838
-    },
-    "MU": {
-      "entry_px": 1047.68,
-      "current_px": 1091.0,
-      "qty": 8.0,
-      "peak_roe": 0.044822846670739186
-    },
-    "NVDA": {
-      "entry_px": 221.98,
-      "current_px": 228.15,
-      "qty": 40.0,
-      "peak_roe": 0.034842328137670145
-    },
-    "TXN": {
-      "entry_px": 264.579697,
-      "current_px": 271.75,
-      "qty": 33.0,
-      "peak_roe": 0.028045625133511245
-    }
-  }
+  "active_position_cache": {}
 }
