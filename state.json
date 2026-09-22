@@ -23,30 +23,31 @@
     "JUP": 7,
     "APE": 0,
     "ARB": 5,
-    "APT": 0,
+    "APT": 1,
     "BSV": 0,
     "JTO": 1,
     "XRP": 0,
     "SUPER": 1,
     "ORDI": 2,
-    "SEI": 6,
-    "WLD": 1
+    "SEI": 7,
+    "WLD": 2
   },
-  "last_run_timestamp": "2026-09-21 23:36:59",
+  "last_run_timestamp": "2026-09-22 00:08:32",
   "ai_shield_cache": {
     "high_risk_detected": false,
-    "risk_level": "LOW",
-    "reason": "Market conditions are currently characterized by consolidation following a recent short squeeze. There are no indications of black-swan events or immediate regulatory crises that threaten systemic stability; major legislative hurdles like the CLARITY Act have already been priced in following recent procedural delays.",
+    "risk_level": "MODERATE",
+    "reason": "The market is currently undergoing a sustained bullish recovery driven by spot ETF demand and a derivatives-fueled short squeeze, rather than extreme systemic volatility or black-swan events.",
     "action": "ALLOW_TRADES",
-    "ai_market_brief": "Bitcoin remains in a stable consolidation phase near the $80,000\u2013$81,000 range following a period of high volatility and liquidity-driven short liquidations. Sentiment remains cautiously optimistic as the market pivots from recent macro-regulatory uncertainty toward monitoring potential breakouts in technical support levels.",
-    "timestamp": "2026-09-21 00:07:12",
-    "scan_date": "2026-09-21"
+    "ai_market_brief": "Bitcoin has reclaimed key technical levels near $86,000, supported by renewed institutional ETF inflows and aggressive derivatives-based buying that recently cleared significant short positions. While market sentiment remains firmly optimistic, traders should monitor for potential rapid unwinding of leverage as Bitcoin approaches $88,000\u2013$90,000 resistance zones.",
+    "timestamp": "2026-09-22 00:07:34",
+    "scan_date": "2026-09-22"
   },
   "previous_active_coins": [
-    "BTC",
-    "APT",
-    "SEI",
+    "WLD",
     "ETH",
+    "BTC",
+    "SEI",
+    "APT",
     "GMT"
   ],
   "closed_trades_ledger": [
@@ -120,27 +121,32 @@
   "active_position_cache": {
     "BTC": {
       "entry_px": 78134.0,
-      "current_px": 86433.5,
+      "current_px": 86355.5,
       "szi": 0.0006
     },
     "ETH": {
       "entry_px": 2565.1,
-      "current_px": 2769.95,
+      "current_px": 2770.05,
       "szi": 0.0175
     },
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.8066,
+      "current_px": 0.786,
       "szi": 83.66
+    },
+    "WLD": {
+      "entry_px": 0.45726,
+      "current_px": 0.45842,
+      "szi": 140.8
     },
     "SEI": {
       "entry_px": 0.059313,
-      "current_px": 0.059292,
+      "current_px": 0.05875,
       "szi": 1170.0
     },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008339,
+      "current_px": 0.0084,
       "szi": 10173.0
     }
   }
