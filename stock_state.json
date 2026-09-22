@@ -3,11 +3,11 @@
     "AVGO": 0,
     "COIN": 22,
     "INTC": 0,
-    "MU": 21,
+    "MU": 22,
     "NVDA": 0,
     "TXN": 0
   },
-  "last_run_timestamp": "2026-09-22 13:13:29",
+  "last_run_timestamp": "2026-09-22 13:42:22",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "MODERATE",
@@ -18,43 +18,45 @@
     "scan_date": "2026-09-22"
   },
   "previous_active_symbols": [
-    "COIN",
-    "AVGO",
     "INTC",
-    "MU",
+    "AVGO",
     "TXN",
+    "MU",
     "NVDA"
   ],
-  "closed_trades_ledger": [],
+  "closed_trades_ledger": [
+    {
+      "symbol": "COIN",
+      "entry_price": 205.48,
+      "exit_price": 199.67,
+      "exit_reason": "Stop-Loss Trigger / Alpaca Execution",
+      "timestamp": "2026-09-22 13:42:06"
+    }
+  ],
   "active_position_cache": {
     "AVGO": {
       "entry_px": 355.285833,
-      "current_px": 361.31,
+      "current_px": 362.55,
       "qty": 24.0
-    },
-    "COIN": {
-      "entry_px": 205.48,
-      "current_px": 199.67,
-      "qty": 46.0
     },
     "INTC": {
       "entry_px": 118.3,
-      "current_px": 119.691,
+      "current_px": 121.96,
       "qty": 104.0
     },
     "MU": {
       "entry_px": 1047.68,
-      "current_px": 1030.15,
+      "current_px": 1055.47,
       "qty": 8.0
     },
     "NVDA": {
       "entry_px": 221.98,
-      "current_px": 226.0692,
+      "current_px": 228.725,
       "qty": 40.0
     },
     "TXN": {
       "entry_px": 264.579697,
-      "current_px": 267.39,
+      "current_px": 268.67,
       "qty": 33.0
     }
   }
