@@ -23,7 +23,7 @@
     "JUP": 7,
     "APE": 0,
     "ARB": 5,
-    "APT": 8,
+    "APT": 9,
     "BSV": 0,
     "JTO": 1,
     "XRP": 0,
@@ -32,7 +32,7 @@
     "SEI": 0,
     "WLD": 0
   },
-  "last_run_timestamp": "2026-09-22 03:38:47",
+  "last_run_timestamp": "2026-09-22 04:06:03",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "MODERATE",
@@ -43,9 +43,9 @@
     "scan_date": "2026-09-22"
   },
   "previous_active_coins": [
-    "GMT",
     "BTC",
-    "APT"
+    "APT",
+    "GMT"
   ],
   "closed_trades_ledger": [
     {
@@ -122,17 +122,17 @@
   "active_position_cache": {
     "BTC": {
       "entry_px": 78134.0,
-      "current_px": 85567.5,
+      "current_px": 85754.5,
       "szi": 0.0006
     },
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.7686,
+      "current_px": 0.7726,
       "szi": 83.66
     },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008605,
+      "current_px": 0.008569,
       "szi": 10173.0
     }
   }
