@@ -47,7 +47,8 @@ def load_state():
         "active_position_cache": {},
         "previous_active_symbols": [],
         "last_run_timestamp": "", 
-        "ai_shield_cache": {}
+        "ai_shield_cache": {},
+        "daily_starting_equity": {}
     }
     if os.path.exists(STATE_FILE):
         try:
@@ -189,6 +190,8 @@ def calculate_choppiness_index(highs, lows, closes, period=14):
 def execute_stock_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     ct_now = get_central_time()
+    today_str = ct_now.strftime('%Y-%m-%d')
+    
     audit_logs = []
     audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
@@ -211,6 +214,17 @@ def execute_stock_engine():
     equity = float(account_data.get("equity", 100000.0))
     cash = float(account_data.get("cash", 100000.0))
     margin_util_pct = ((equity - cash) / equity * 100) if equity > 0 else 0.0
+
+    # Track daily starting equity snapshot for accurate daily gain calculation
+    daily_starting_dict = state.get("daily_starting_equity", {})
+    if today_str not in daily_starting_dict:
+        # If no snapshot for today yet, use current equity (or 100000.0 baseline if first day)
+        daily_starting_dict[today_str] = equity
+        state["daily_starting_equity"] = daily_starting_dict
+
+    today_start_eq = daily_starting_dict[today_str]
+    today_total_gain = equity - today_start_eq
+    lifetime_cumulative_pnl = equity - 100000.0  # Alpaca paper baseline is $100,000
 
     positions_res = requests.get(f"{BASE_URL}/v2/positions", headers=HEADERS)
     positions_list = positions_res.json() if positions_res.status_code == 200 else []
@@ -246,14 +260,18 @@ def execute_stock_engine():
                     audit_logs.append(f"EOD FLAT SUCCESS: Closed {sym}")
                     if "closed_trades_ledger" not in state:
                         state["closed_trades_ledger"] = []
-                    state["closed_trades_ledger"].insert(0, {
-                        "symbol": sym,
-                        "entry_price": entry_px,
-                        "exit_price": current_px,
-                        "exit_reason": "EOD Square-Off (100% Cash Flat)",
-                        "realized_pnl": realized_pnl,
-                        "timestamp": timestamp
-                    })
+                    
+                    # Deduplication check: only add if symbol + timestamp date doesn't already exist
+                    existing_symbols_today = [t['symbol'] for t in state["closed_trades_ledger"] if today_str in t.get("timestamp", "")]
+                    if sym not in existing_symbols_today:
+                        state["closed_trades_ledger"].insert(0, {
+                            "symbol": sym,
+                            "entry_price": entry_px,
+                            "exit_price": current_px,
+                            "exit_reason": "EOD Square-Off (100% Cash Flat)",
+                            "realized_pnl": realized_pnl,
+                            "timestamp": timestamp
+                        })
             except Exception as e:
                 audit_logs.append(f"EOD FLAT ERROR on {sym}: {e}")
         
@@ -261,7 +279,6 @@ def execute_stock_engine():
             requests.delete(f"{BASE_URL}/v2/orders/{order.get('id')}", headers=HEADERS)
 
         save_state(state)
-        # Clear positions list so script flows naturally into full HTML dashboard email generator
         positions_list = []
 
     active_count = len(positions_list)
@@ -319,14 +336,18 @@ def execute_stock_engine():
                 requests.post(f"{BASE_URL}/v2/orders", json=close_payload, headers=HEADERS)
                 if "closed_trades_ledger" not in state:
                     state["closed_trades_ledger"] = []
-                state["closed_trades_ledger"].insert(0, {
-                    "symbol": symbol,
-                    "entry_price": entry_px,
-                    "exit_price": current_px,
-                    "exit_reason": reason,
-                    "realized_pnl": realized_pnl,
-                    "timestamp": timestamp
-                })
+                
+                # Check duplication
+                existing_symbols_today = [t['symbol'] for t in state["closed_trades_ledger"] if today_str in t.get("timestamp", "")]
+                if symbol not in existing_symbols_today:
+                    state["closed_trades_ledger"].insert(0, {
+                        "symbol": symbol,
+                        "entry_price": entry_px,
+                        "exit_price": current_px,
+                        "exit_reason": reason,
+                        "realized_pnl": realized_pnl,
+                        "timestamp": timestamp
+                    })
                 state["closed_trades_ledger"] = state["closed_trades_ledger"][:20]
                 active_count -= 1
                 continue
@@ -356,8 +377,8 @@ def execute_stock_engine():
         qty = old_data.get("qty", 0.0)
         realized_pnl = (exit_px - entry_px) * qty
         
-        already_logged = any(t["symbol"] == closed_sym for t in state.get("closed_trades_ledger", [])[:2])
-        if not already_logged:
+        existing_symbols_today = [t['symbol'] for t in state.get("closed_trades_ledger", []) if today_str in t.get("timestamp", "")]
+        if closed_sym not in existing_symbols_today:
             if "closed_trades_ledger" not in state:
                 state["closed_trades_ledger"] = []
             state["closed_trades_ledger"].insert(0, {
@@ -494,16 +515,6 @@ def execute_stock_engine():
 
     save_state(state)
 
-    # --- CALCULATE DAILY & LIFETIME PERFORMANCE METRICS ---
-    closed_ledger = state.get("closed_trades_ledger", [])
-    today_date_str = datetime.now().strftime('%Y-%m-%d')
-    
-    today_realized_pnl = sum(t.get("realized_pnl", 0.0) for t in closed_ledger if today_date_str in t.get("timestamp", ""))
-    active_unrealized_pnl = sum(p["pnl"] for p in positions_data) if positions_data else 0.0
-    today_total_gain = today_realized_pnl + active_unrealized_pnl
-
-    lifetime_cumulative_pnl = sum(t.get("realized_pnl", 0.0) for t in closed_ledger) + active_unrealized_pnl
-
     audit_section = ""
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
@@ -527,6 +538,7 @@ def execute_stock_engine():
         for i, c in enumerate(remaining_candidates[:3])
     ]) if remaining_candidates else "<tr><td colspan='4' style='padding: 10px; text-align: center; color: #666;'>No momentum candidates currently detected.</td></tr>"
 
+    closed_ledger = state.get("closed_trades_ledger", [])
     closed_rows = "".join([
         f"<tr>"
         f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['symbol']}</td>"
