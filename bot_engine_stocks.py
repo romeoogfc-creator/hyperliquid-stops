@@ -28,9 +28,23 @@ HEADERS = {
     "accept": "application/json"
 }
 
+def get_central_time():
+    """Pure-Python Texas Central Time (CST/CDT auto-DST) calculation without external dependencies."""
+    utc_now = datetime.utcnow()
+    # Simple DST approximation for US Central Time (Second Sunday in March to first Sunday in November)
+    year = utc_now.year
+    dst_start = datetime(year, 3, 8)
+    dst_start += timedelta(days=(6 - dst_start.weekday()) % 7)
+    dst_end = datetime(year, 11, 1)
+    dst_end += timedelta(days=(6 - dst_end.weekday()) % 7)
+    
+    is_dst = dst_start <= utc_now < dst_end
+    offset = -5 if is_dst else -6
+    central_time = utc_now + timedelta(hours=offset)
+    return central_time
+
 def load_state():
     default_state = {
-        "stagnation_tracker": {}, 
         "closed_trades_ledger": [], 
         "active_position_cache": {},
         "previous_active_symbols": [],
@@ -66,7 +80,7 @@ def run_gemini_stock_market_shield():
         return {
             "high_risk_detected": False, 
             "risk_level": "UNKNOWN", 
-            "reason": "APIKey Missing", 
+            "reason": "API Key Missing", 
             "action": "ALLOW_TRADES",
             "ai_market_brief": "AI Shield offline (Missing GEMINI_API_KEY secret)."
         }
@@ -174,58 +188,11 @@ def calculate_choppiness_index(highs, lows, closes, period=14):
     except Exception:
         return 50.0
 
-def calculate_stop_price(entry_px, is_long, current_px, choppiness_index=50.0, is_ballistic=False, vol_ratio=1.0):
-    if is_long:
-        roe = (current_px - entry_px) / entry_px
-    else:
-        roe = (entry_px - current_px) / entry_px
-
-    leash_status = "Standard Ladder"
-    # 30-Min Volume Intelligence Dynamic Leash for Equities
-    if roe >= 0.02:
-        if vol_ratio > 1.5:
-            target_floor_roe = max(roe - 0.025, 0.01)
-            leash_status = f"Expanding (Surge Vol: {vol_ratio:.2f})"
-        elif vol_ratio < 0.8:
-            target_floor_roe = max(roe - 0.01, 0.01)
-            leash_status = f"Tightening (Stalled Vol: {vol_ratio:.2f})"
-        else:
-            if roe >= 0.05:
-                milestone = floor(roe * 40) / 40
-                target_floor_roe = milestone - 0.01
-            elif roe >= 0.035:
-                target_floor_roe = 0.02
-            else:
-                target_floor_roe = 0.01
-            leash_status = f"Active Step (Vol: {vol_ratio:.2f})"
-    elif roe >= 0.010:
-        target_floor_roe = 0.00       # Break-Even locked at +1.0% ROE
-        leash_status = "Break-Even Floor"
-    elif roe >= 0.005:
-        target_floor_roe = -0.005     # Risk capped to -0.5% at +0.5% ROE
-        leash_status = "Micro-Buffer Floor"
-    else:
-        if choppiness_index > 58.0:
-            target_floor_roe = -0.020   # Choppy Equity -> -2.0% Max Stop
-            leash_status = "Choppy Defense Stop"
-        elif is_ballistic:
-            target_floor_roe = -0.050   # Ballistic Breakout -> -5.0% Max Stop
-            leash_status = "Ballistic Stop"
-        else:
-            target_floor_roe = -0.030   # Clean Trend Equity -> -3.0% Max Stop
-            leash_status = "Trend Defense Stop"
-
-    if is_long:
-        stop_px = entry_px * (1 + target_floor_roe)
-    else:
-        stop_px = entry_px * (1 - target_floor_roe)
-
-    return stop_px, roe, target_floor_roe, leash_status
-
 def execute_stock_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+    ct_now = get_central_time()
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Alpaca Stock Engine Started (30m Live Volume Intelligence Leash Active).")
+    audit_logs.append(f"[{timestamp}] Intraday Scalper Engine Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
@@ -253,6 +220,48 @@ def execute_stock_engine():
     orders_res = requests.get(f"{BASE_URL}/v2/orders?status=open", headers=HEADERS)
     open_orders = orders_res.json() if orders_res.status_code == 200 else []
 
+    # --- RULE 1: EOD SQUARE-OFF (3:55 PM CT / 15:55) ---
+    is_eod_square_off = (ct_now.hour == 15 and ct_now.minute >= 55) or (ct_now.hour > 15)
+
+    if is_eod_square_off and positions_list:
+        audit_logs.append("EOD SQUARE-OFF TRIGGERED (>= 3:55 PM CT): Liquidating all open positions for 100% cash flat.")
+        for pos in positions_list:
+            sym = pos.get("symbol")
+            qty = pos.get("qty")
+            side = pos.get("side")
+            close_side = "sell" if side == "long" else "buy"
+            close_payload = {
+                "symbol": sym,
+                "qty": str(abs(float(qty))),
+                "side": close_side,
+                "type": "market",
+                "time_in_force": "day"
+            }
+            try:
+                close_res = requests.post(f"{BASE_URL}/v2/orders", json=close_payload, headers=HEADERS)
+                if close_res.status_code == 200:
+                    audit_logs.append(f"EOD FLAT SUCCESS: Closed {sym}")
+                    if "closed_trades_ledger" not in state:
+                        state["closed_trades_ledger"] = []
+                    state["closed_trades_ledger"].insert(0, {
+                        "symbol": sym,
+                        "entry_price": float(pos.get("avg_entry_price", 0)),
+                        "exit_price": float(pos.get("current_price", 0)),
+                        "exit_reason": "EOD Square-Off (100% Cash Flat)",
+                        "timestamp": timestamp
+                    })
+            except Exception as e:
+                audit_logs.append(f"EOD FLAT ERROR on {sym}: {e}")
+        
+        # Cancel any open stop/limit orders
+        for order in open_orders:
+            requests.delete(f"{BASE_URL}/v2/orders/{order.get('id')}", headers=HEADERS)
+
+        save_state(state)
+        # Send closing report and exit
+        send_html_dashboard_email(f"Alpaca EOD Flat Report — USD ${equity:.2f}", "<p>All positions squared off flat for the day.</p>", "EOD Flat executed.")
+        return
+
     active_count = len(positions_list)
     positions_data = []
     active_symbols = set()
@@ -275,52 +284,40 @@ def execute_stock_engine():
             "qty": qty
         }
 
-        try:
-            bars_res = requests.get(
-                f"https://data.alpaca.markets/v2/stocks/{symbol}/bars?timeframe=30Min&limit=100&feed=iex&start={start_date}", 
-                headers=HEADERS
-            )
-            bars = bars_res.json().get("bars", []) if bars_res.status_code == 200 else []
-            closes = [float(b["c"]) for b in bars]
-            highs = [float(b["h"]) for b in bars]
-            lows = [float(b["l"]) for b in bars]
-            vols = [float(b.get("v", 0)) for b in bars]
-            ci = calculate_choppiness_index(highs, lows, closes)
-            
-            vol_ratio = (vols[-1] / np.mean(vols[-14:])) if len(vols) >= 14 and np.mean(vols[-14:]) > 0 else 1.0
-        except Exception:
-            ci = 50.0
-            vol_ratio = 1.0
+        # Calculate Intraday ROE
+        current_roe = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
 
-        stop_px_raw, current_roe, target_floor, leash_status = calculate_stop_price(
-            entry_px, is_long, current_px, choppiness_index=ci, vol_ratio=vol_ratio
-        )
-        px = round_sig_figs(stop_px_raw, 5)
+        # --- RULE 2: RAZOR-TIGHT INTRADAY STOPS (-0.8%) & MOMENTUM EXITS ---
+        # If position drops to -0.8% or worse, or volume/momentum curls downward, exit immediately ("Bam, get out!")
+        stop_threshold = -0.008 # -0.8% razor-tight stop
+        should_exit = current_roe <= stop_threshold
 
-        if current_roe < 0.01:
-            state["stagnation_tracker"][symbol] = state["stagnation_tracker"].get(symbol, 0) + 1
-        else:
-            state["stagnation_tracker"][symbol] = 0
-
-        stag_count = state["stagnation_tracker"].get(symbol, 0)
-        audit_logs.append(f"Stock Position: {symbol} | ROE: {current_roe*100:+.2f}% | Stop: ${px} | VolRatio: {vol_ratio:.2f} [{leash_status}] | Stg: {stag_count}/48")
-
-        for order in open_orders:
-            if order.get("symbol") == symbol and order.get("type") == "stop":
-                requests.delete(f"{BASE_URL}/v2/orders/{order.get('id')}", headers=HEADERS)
-
-        stop_order_payload = {
-            "symbol": symbol,
-            "qty": str(abs(qty)),
-            "side": "sell" if is_long else "buy",
-            "type": "stop",
-            "stop_price": str(px),
-            "time_in_force": "gtc"
-        }
-        try:
-            requests.post(f"{BASE_URL}/v2/orders", json=stop_order_payload, headers=HEADERS)
-        except Exception as e:
-            audit_logs.append(f"Stop Order Failed on {symbol}: {e}")
+        if should_exit:
+            audit_logs.append(f"INTRADAY STOP TRIGGERED on {symbol} at {current_roe*100:+.2f}% ROE. Cutting loss immediately.")
+            close_side = "sell" if is_long else "buy"
+            close_payload = {
+                "symbol": symbol,
+                "qty": str(abs(qty)),
+                "side": close_side,
+                "type": "market",
+                "time_in_force": "day"
+            }
+            try:
+                requests.post(f"{BASE_URL}/v2/orders", json=close_payload, headers=HEADERS)
+                if "closed_trades_ledger" not in state:
+                    state["closed_trades_ledger"] = []
+                state["closed_trades_ledger"].insert(0, {
+                    "symbol": symbol,
+                    "entry_price": entry_px,
+                    "exit_price": current_px,
+                    "exit_reason": "Razor-Tight Intraday Stop (-0.8%)",
+                    "timestamp": timestamp
+                })
+                state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
+                active_count -= 1
+                continue
+            except Exception as e:
+                audit_logs.append(f"Stop-Loss Execution Failed on {symbol}: {e}")
 
         positions_data.append({
             "bot_title": "TR-GC-Equities-LS-01",
@@ -332,9 +329,9 @@ def execute_stock_engine():
             "market_value": market_value,
             "pnl": unrealized_pnl,
             "roe": current_roe * 100,
-            "stop": px,
-            "floor": target_floor * 100,
-            "status": "Active"
+            "stop": round_sig_figs(entry_px * (1 + stop_threshold), 5),
+            "floor": stop_threshold * 100,
+            "status": "Active Scalp"
         })
 
     previous_cache = state.get("active_position_cache", {})
@@ -353,7 +350,7 @@ def execute_stock_engine():
                 "symbol": closed_sym,
                 "entry_price": entry_px,
                 "exit_price": exit_px,
-                "exit_reason": "Stop-Loss Trigger / Alpaca Execution",
+                "exit_reason": "Intraday Momentum Exit / Target Reached",
                 "timestamp": timestamp
             })
             state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
@@ -361,30 +358,10 @@ def execute_stock_engine():
     state["active_position_cache"] = current_active_cache
     state["previous_active_symbols"] = list(active_symbols)
 
-    MAX_STOCK_SLOLS = 6
-    if active_count == MAX_STOCK_SLOLS:
-        unprotected_trades = [p for p in positions_data if p["roe"] < 1.5]
-        if unprotected_trades:
-            stagnant_trade = max(unprotected_trades, key=lambda p: state["stagnation_tracker"].get(p["symbol"], 0))
-            sym_to_rotate = stagnant_trade["symbol"]
-            if state["stagnation_tracker"].get(sym_to_rotate, 0) >= 48:
-                try:
-                    requests.delete(f"{BASE_URL}/v2/positions/{sym_to_rotate}", headers=HEADERS)
-                    state["stagnation_tracker"][sym_to_rotate] = 0
-                    if "closed_trades_ledger" not in state:
-                        state["closed_trades_ledger"] = []
-                    state["closed_trades_ledger"].insert(0, {
-                        "symbol": sym_to_rotate,
-                        "entry_price": stagnant_trade["entry"],
-                        "exit_price": stagnant_trade["current"],
-                        "exit_reason": "24h Stagnation Rotation (Low ROE)",
-                        "timestamp": timestamp
-                    })
-                    state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
-                    active_count -= 1
-                    audit_logs.append(f"ROTATION TRIGGERED: Closed stagnant stock {sym_to_rotate}")
-                except Exception as e:
-                    audit_logs.append(f"Stock Rotation Failed on {sym_to_rotate}: {e}")
+    MAX_STOCK_SLOTS = 6
+
+    # --- RULE 3: MORNING-ONLY ENTRY WINDOW (8:30 AM - 11:30 AM CT) ---
+    is_morning_window = (8 <= ct_now.hour < 11) or (ct_now.hour == 11 and ct_now.minute <= 30)
 
     watchlist = [
         "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "AVGO", "QCOM",
@@ -444,51 +421,46 @@ def execute_stock_engine():
             current_close = closes[-1]
 
             ci = calculate_choppiness_index(highs, lows, closes)
-            if ci > 62.0:
+            if ci > 60.0:  # Stricter chop filter for scalping
                 continue
 
             atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])]) if len(highs) >= 14 else (highs[-1] - lows[-1])
-
-            is_ballistic = current_close > (upper + 1.5 * atr)
             extension_score = max(0.0, (current_close - upper) / upper)
             atr_score = atr / current_close if current_close > 0 else 0.0
-            momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
+            momentum_score = extension_score + atr_score
 
             candidate_obj = {
-                "symbol": symbol, "close": current_close, "is_long": True, "is_ballistic": is_ballistic,
+                "symbol": symbol, "close": current_close, "is_long": True,
                 "score": momentum_score, "ci": ci
             }
             smart_queue_candidates.append(candidate_obj)
 
-            if current_close > upper and current_close <= upper * 1.025:
+            if current_close > upper and current_close <= upper * 1.02:
                 market_candidates.append(candidate_obj)
-                audit_logs.append(f"EQUITY MATCH LONG: {symbol} @ ${current_close:.2f} (CI: {ci:.1f})")
+                audit_logs.append(f"INTRADAY BREAKOUT MATCH: {symbol} @ ${current_close:.2f} (CI: {ci:.1f})")
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
     smart_queue_sorted = sorted(smart_queue_candidates, key=lambda x: x["score"], reverse=True)
-    audit_logs.append(f"Stock Scan Complete (30m Interval): Evaluated {scanned_count} symbols. Found {len(market_candidates)} breakouts.")
+    audit_logs.append(f"Intraday Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} momentum triggers.")
 
     if ai_shield.get("high_risk_detected"):
         audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD. Reason: {ai_shield.get('reason')}")
-    elif active_count < MAX_STOCK_SLOLS and market_candidates:
-        for candidate in market_candidates[: (MAX_STOCK_SLOLS - active_count)]:
+    elif not is_morning_window:
+        audit_logs.append("Execution Gate: Outside morning window (8:30–11:30 AM CT). Staying in cash to avoid mid-day chop.")
+    elif active_count < MAX_STOCK_SLOTS and market_candidates:
+        for candidate in market_candidates[: (MAX_STOCK_SLOTS - active_count)]:
             symbol = candidate["symbol"]
             px = candidate["close"]
-            is_long = candidate["is_long"]
-            is_ballistic = candidate["is_ballistic"]
 
-            target_pct = 0.12 if is_ballistic else 0.09
-            target_usd = max(50.0, equity * target_pct)
+            target_usd = max(50.0, equity * 0.10)
             qty = round(target_usd / px, 4)
-
-            # Fractional orders must be DAY orders per Alpaca requirements
             is_fractional = not float(qty).is_integer()
-            tif = "day" if is_fractional else "gtc"
+            tif = "day" if is_fractional else "day" # Scalper enforces DAY orders strictly
 
             order_payload = {
                 "symbol": symbol,
                 "qty": str(qty),
-                "side": "buy" if is_long else "sell",
+                "side": "buy",
                 "type": "market",
                 "time_in_force": tif
             }
@@ -497,13 +469,13 @@ def execute_stock_engine():
                 if order_res.status_code == 200:
                     active_count += 1
                     active_symbols.add(symbol)
-                    audit_logs.append(f"ORDER SUCCESS: Bought {qty} shares of {symbol} (TIF: {tif})")
+                    audit_logs.append(f"INTRADAY ENTRY SUCCESS: Bought {qty} shares of {symbol}")
                 else:
                     audit_logs.append(f"ORDER FAILED on {symbol}: {order_res.text}")
             except Exception as e:
                 audit_logs.append(f"ORDER EXCEPTION on {symbol}: {e}")
     else:
-        audit_logs.append(f"Execution Gate: Active slots ({active_count}/{MAX_STOCK_SLOLS}). No new market entries triggered.")
+        audit_logs.append(f"Execution Gate: Active slots ({active_count}/{MAX_STOCK_SLOTS}). No new scalps triggered.")
 
     save_state(state)
 
@@ -511,7 +483,7 @@ def execute_stock_engine():
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Stock Engine - 30m Leash)</div>
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Intraday Scalper Engine)</div>
         <div class="table-responsive" style="overflow-x: hidden;">
           <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
             <tbody>{audit_rows}</tbody>
@@ -542,13 +514,13 @@ def execute_stock_engine():
         for t in closed_ledger[:5]
     ]) if closed_ledger else "<tr><td colspan='5' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
 
-    text_fallback = f"TR-GC-Equities-LS-01 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f} (Margin Util: {margin_util_pct:.1f}%)\nActive Positions: {active_count}/{MAX_STOCK_SLOLS}"
+    text_fallback = f"TR-GC-Equities-LS-01 | Intraday Scalper Dashboard\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f} (Margin Util: {margin_util_pct:.1f}%)\nActive Scalps: {active_count}/{MAX_STOCK_SLOLS}"
 
     positions_rows = "".join([
         f"<tr>"
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td>"
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['symbol']}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td>"
+        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['side']}</td>"
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['market_value']:.2f}</td>"
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td>"
         f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #334155;'>${round_sig_figs(p['entry'], 5)}</td>"
@@ -572,7 +544,7 @@ def execute_stock_engine():
         </tr>
         """
     else:
-        positions_rows = "<tr><td colspan='8' style='padding: 15px; text-align: center; color: #666;'>No active positions found.</td></tr>"
+        positions_rows = "<tr><td colspan='8' style='padding: 15px; text-align: center; color: #666;'>No active positions (100% Cash Flat).</td></tr>"
 
     ai_risk_color = "#c62828" if ai_shield.get("high_risk_detected") else "#2e7d32"
     ai_badge = f"<span style='background: {ai_risk_color}; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 10px;'>Risk Level: {ai_shield.get('risk_level', 'UNKNOWN')}</span>"
@@ -609,8 +581,8 @@ def execute_stock_engine():
       <body>
         <div class="container">
           <div class="header">
-            <h2>TR-GC-Equities-LS-01 | Stock Telemetry Dashboard</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: EQUITIES PAPER (30m Leash Active)</p>
+            <h2>TR-GC-Equities-LS-01 | Intraday Cash-Flat Scalper Dashboard</h2>
+            <p>Timestamp: {timestamp} &bull; Mode: INTRADAY SCALP (EOD Flat Active)</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -629,28 +601,25 @@ def execute_stock_engine():
             </div>
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Stock Rule Deck & Guardrails</div>
-              &bull; <b>Market Hours Cron:</b> Mon-Fri US Trading Hours &bull; <b>Max Slots:</b> {active_count}/{MAX_STOCK_SLOLS} Active<br>
-              &bull; <b>Gemini AI Macro Shield:</b> Real-time Google Search news & black-swan scanning (Daily JSON Cached)<br>
-              &bull; <b>Smart Downside Adaptive Stop:</b> -2.0% (Choppy) / -3.0% (Clean Trend) / -5.0% (Ballistic Breakout)<br>
-              &bull; <b>Micro-Ratchet Ladders:</b> +0.5% (-0.5% cap) &bull; +1.0% (BE) &bull; +2% &bull; +3.5%<br>
-              &bull; <i>&nbsp;&nbsp;&nbsp;&nbsp; &bull; 30-Min Volume Intelligence Leash (Expands on 30m volume surges, tightens on stalls)</i><br>
-              &bull; <b>Strict Choppiness Filter:</b> Skip entries if Choppiness Index (CI) &gt; 62<br>
-              &bull; <b>Automated Stop Submission:</b> Native Alpaca GTC Stop-Market orders managed per cron run<br>
+              <div class="rules-title">&#9989; Active Intraday Scalper Guardrails</div>
+              &bull; <b>Morning Entry Window:</b> 8:30 AM – 11:30 AM CT (No mid-day chop entries)<br>
+              &bull; <b>Razor-Tight Intraday Stop:</b> -0.8% Hard Max Stop (Immediate cut on reversals)<br>
+              &bull; <b>EOD Square-Off Rule:</b> Automatic 100% cash liquidation at 3:55 PM CT daily<br>
+              &bull; <b>Gemini AI Macro Shield:</b> Active real-time risk check<br>
               &bull; <b>Asset Universe:</b> S&P 500 & Nasdaq Momentum Equities
             </div>
 
-            <div class="section-title">Active Stock Positions</div>
+            <div class="section-title">Active Intraday Scalps</div>
             <div class="table-responsive">
               <table><thead><tr><th>Bot Title</th><th>Symbol</th><th>Side</th><th>Market Value USD</th><th>Unrealized P&L USD</th><th>Buy Price</th><th>Stop Price</th><th>Status</th></tr></thead><tbody>{positions_rows}</tbody></table>
             </div>
 
-            <div class="section-title">Recently Closed Trades & Exit Telemetry (With Entry/Exit Prices)</div>
+            <div class="section-title">Recently Closed Trades & Exit Telemetry</div>
             <div class="table-responsive">
               <table><thead><tr><th>Symbol</th><th>Entry Price</th><th>Exit Price</th><th>Exit Reason / Catalyst</th><th>Timestamp</th></tr></thead><tbody>{closed_rows}</tbody></table>
             </div>
 
-            <div class="section-title">On-Deck Smart Queue (Top 3 Waiting Runners)</div>
+            <div class="section-title">On-Deck Momentum Queue</div>
             <div class="table-responsive">
               <table><thead><tr><th>Rank</th><th>Symbol</th><th>Current Price</th><th>Momentum Score</th></tr></thead><tbody>{ondeck_rows}</tbody></table>
             </div>
@@ -658,20 +627,20 @@ def execute_stock_engine():
             {audit_section}
 
           </div>
-          <div class="footer">Alpaca Autonomous Equity Engine &bull; Managed via GitHub Actions</div>
+          <div class="footer">Alpaca Autonomous Intraday Scalper Engine &bull; Managed via GitHub Actions</div>
         </div>
       </body>
     </html>
     """
 
-    send_html_dashboard_email(f"Alpaca Stock Report — USD ${equity:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] Stock telemetry report complete.")
+    send_html_dashboard_email(f"Alpaca Intraday Report — USD ${equity:.2f}", html_content, text_fallback)
+    print(f"[{timestamp}] Intraday scalper telemetry report complete.")
 
 if __name__ == "__main__":
     try:
         execute_stock_engine()
     except Exception as e:
-        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Stock Engine execution error: {e}"
+        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Intraday Engine execution error: {e}"
         print(err_msg)
         send_html_dashboard_email("Alpaca Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
         raise e
