@@ -23,16 +23,16 @@
     "JUP": 7,
     "APE": 0,
     "ARB": 5,
-    "APT": 2,
+    "APT": 3,
     "BSV": 0,
     "JTO": 1,
     "XRP": 0,
     "SUPER": 1,
     "ORDI": 2,
-    "SEI": 8,
+    "SEI": 9,
     "WLD": 0
   },
-  "last_run_timestamp": "2026-09-22 00:42:05",
+  "last_run_timestamp": "2026-09-22 01:05:31",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "MODERATE",
@@ -44,13 +44,25 @@
   },
   "previous_active_coins": [
     "APT",
-    "WLD",
     "SEI",
-    "BTC",
     "GMT",
-    "ETH"
+    "BTC"
   ],
   "closed_trades_ledger": [
+    {
+      "coin": "WLD",
+      "entry_price": 0.45726,
+      "exit_price": 0.4666,
+      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
+      "timestamp": "2026-09-22 01:04:38"
+    },
+    {
+      "coin": "ETH",
+      "entry_price": 2565.1,
+      "exit_price": 2743.25,
+      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
+      "timestamp": "2026-09-22 01:04:38"
+    },
     {
       "coin": "XRP",
       "entry_price": 1.4969,
@@ -106,47 +118,27 @@
       "exit_price": 0.30208,
       "exit_reason": "Stop-Loss Trigger / Exchange Fill",
       "timestamp": "2026-09-21 15:36:28"
-    },
-    {
-      "coin": "SNX",
-      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
-      "timestamp": "2026-09-21 14:20:29"
-    },
-    {
-      "coin": "DYDX",
-      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
-      "timestamp": "2026-09-21 14:20:29"
     }
   ],
   "active_position_cache": {
     "BTC": {
       "entry_px": 78134.0,
-      "current_px": 86210.5,
+      "current_px": 85732.5,
       "szi": 0.0006
-    },
-    "ETH": {
-      "entry_px": 2565.1,
-      "current_px": 2765.95,
-      "szi": 0.0175
     },
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.791,
+      "current_px": 0.7717,
       "szi": 83.66
-    },
-    "WLD": {
-      "entry_px": 0.45726,
-      "current_px": 0.47175,
-      "szi": 140.8
     },
     "SEI": {
       "entry_px": 0.059313,
-      "current_px": 0.059611,
+      "current_px": 0.059183,
       "szi": 1170.0
     },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008544,
+      "current_px": 0.008476,
       "szi": 10173.0
     }
   }
