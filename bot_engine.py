@@ -322,6 +322,7 @@ def execute_engine():
 
     universe = [asset["name"] for asset in meta.get("universe", [])][:100]
     market_candidates = []
+    smart_queue_candidates = []
     scanned_count = 0
 
     for coin in universe:
@@ -333,7 +334,6 @@ def execute_engine():
                 continue
             
             time.sleep(0.25)
-            # Scan using 30-minute candles to perfectly align with cron execution
             candles = api_retry(info.candles_snapshot, name=coin, interval="30m", startTime=now_ms - 86400000 * 3, endTime=now_ms)
             if not candles or len(candles) < 50:
                 continue
@@ -351,32 +351,41 @@ def execute_engine():
 
             atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])])
 
-            if btc_green and current_close > upper and current_close <= upper * 1.025:
+            if btc_green:
                 is_ballistic = current_close > (upper + 1.5 * atr)
-                extension_score = (current_close - upper) / upper
+                extension_score = max(0.0, (current_close - upper) / upper)
                 atr_score = atr / current_close
                 momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
-
-                market_candidates.append({
+                
+                candidate_obj = {
                     "coin": coin, "close": current_close, "is_long": True, "is_ballistic": is_ballistic,
                     "score": momentum_score, "ci": ci
-                })
-                audit_logs.append(f"CRYPTO MATCH LONG: {coin} @ ${current_close:.4f} (CI: {ci:.1f})")
-            elif not btc_green and current_close < lower and current_close >= lower * 0.975:
+                }
+                smart_queue_candidates.append(candidate_obj)
+
+                if current_close > upper and current_close <= upper * 1.025:
+                    market_candidates.append(candidate_obj)
+                    audit_logs.append(f"CRYPTO MATCH LONG: {coin} @ ${current_close:.4f} (CI: {ci:.1f})")
+            else:
                 is_ballistic = current_close < (lower - 1.5 * atr)
-                extension_score = (lower - current_close) / lower
+                extension_score = max(0.0, (lower - current_close) / lower)
                 atr_score = atr / current_close
                 momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
 
-                market_candidates.append({
+                candidate_obj = {
                     "coin": coin, "close": current_close, "is_long": False, "is_ballistic": is_ballistic,
                     "score": momentum_score, "ci": ci
-                })
-                audit_logs.append(f"CRYPTO MATCH SHORT: {coin} @ ${current_close:.4f} (CI: {ci:.1f})")
+                }
+                smart_queue_candidates.append(candidate_obj)
+
+                if current_close < lower and current_close >= lower * 0.975:
+                    market_candidates.append(candidate_obj)
+                    audit_logs.append(f"CRYPTO MATCH SHORT: {coin} @ ${current_close:.4f} (CI: {ci:.1f})")
         except Exception:
             continue
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
+    smart_queue_sorted = sorted(smart_queue_candidates, key=lambda x: x["score"], reverse=True)
     audit_logs.append(f"Crypto Scan Complete (30m Interval): Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
 
     spot_usdc = 0.0
@@ -470,7 +479,6 @@ def execute_engine():
 
             try:
                 time.sleep(0.05)
-                # Pull 30-minute live candles to compute exact live volume ratio
                 c_candles = api_retry(info.candles_snapshot, name=coin, interval="30m", startTime=now_ms - 86400000 * 2, endTime=now_ms)
                 highs = [float(c["h"]) for c in c_candles]
                 lows = [float(c["l"]) for c in c_candles]
@@ -583,7 +591,7 @@ def execute_engine():
         </div>
         """
 
-    remaining_candidates = [c for c in market_candidates if c["coin"] not in active_coins]
+    remaining_candidates = [c for c in smart_queue_sorted if c["coin"] not in active_coins]
     ondeck_rows = "".join([
         f"<tr>"
         f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>#{i+1}</td>"
@@ -592,7 +600,7 @@ def execute_engine():
         f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: #b45309; font-weight: 600;'>Score: {c['score']:.4f}</td>"
         f"</tr>"
         for i, c in enumerate(remaining_candidates[:3])
-    ]) if remaining_candidates else "<tr><td colspan='4' style='padding: 10px; text-align: center; color: #666;'>No breakouts currently detected.</td></tr>"
+    ]) if remaining_candidates else "<tr><td colspan='4' style='padding: 10px; text-align: center; color: #666;'>No momentum candidates currently detected.</td></tr>"
 
     closed_ledger = state.get("closed_trades_ledger", [])
     closed_rows = "".join([
