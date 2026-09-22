@@ -261,8 +261,8 @@ def execute_stock_engine():
             requests.delete(f"{BASE_URL}/v2/orders/{order.get('id')}", headers=HEADERS)
 
         save_state(state)
-        send_html_dashboard_email(f"Alpaca EOD Flat Report — USD ${equity:.2f}", "<p>All positions squared off flat for the day.</p>", "EOD Flat executed.")
-        return
+        # Clear positions list so script flows naturally into full HTML dashboard email generator
+        positions_list = []
 
     active_count = len(positions_list)
     positions_data = []
@@ -463,8 +463,8 @@ def execute_stock_engine():
 
     if ai_shield.get("high_risk_detected"):
         audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD. Reason: {ai_shield.get('reason')}")
-    elif not is_trading_window:
-        audit_logs.append("Execution Gate: Outside active trading hours.")
+    elif not is_trading_window or is_eod_square_off:
+        audit_logs.append("Execution Gate: Outside active trading hours or square-off window active.")
     elif active_count < MAX_STOCK_SLOTS and market_candidates:
         for candidate in market_candidates[: (MAX_STOCK_SLOTS - active_count)]:
             symbol = candidate["symbol"]
