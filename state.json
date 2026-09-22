@@ -23,7 +23,7 @@
     "JUP": 7,
     "APE": 0,
     "ARB": 5,
-    "APT": 44,
+    "APT": 0,
     "BSV": 0,
     "JTO": 1,
     "XRP": 0,
@@ -35,7 +35,7 @@
     "OP": 1,
     "ZEN": 2
   },
-  "last_run_timestamp": "2026-09-22 20:06:03",
+  "last_run_timestamp": "2026-09-22 20:39:38",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "MODERATE",
@@ -47,10 +47,16 @@
   },
   "previous_active_coins": [
     "APT",
-    "PENDLE",
     "GMT"
   ],
   "closed_trades_ledger": [
+    {
+      "coin": "PENDLE",
+      "entry_price": 2.436216,
+      "exit_price": 2.456,
+      "exit_reason": "Volume-Aware Trailing Profit Grab",
+      "timestamp": "2026-09-22 20:38:47"
+    },
     {
       "coin": "BTC",
       "entry_price": 78134.0,
@@ -113,33 +119,20 @@
       "exit_price": 0.148445,
       "exit_reason": "Stop-Loss Trigger / Exchange Fill",
       "timestamp": "2026-09-21 19:04:49"
-    },
-    {
-      "coin": "BSV",
-      "entry_price": 18.0788,
-      "exit_price": 18.1855,
-      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
-      "timestamp": "2026-09-21 18:06:38"
     }
   ],
   "active_position_cache": {
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.795,
+      "current_px": 0.8071,
       "szi": 83.66,
-      "peak_roe": 0.008371385083713915
-    },
-    "PENDLE": {
-      "entry_px": 2.436216,
-      "current_px": 2.44305,
-      "szi": -30.0,
-      "peak_roe": -0.0013685157637911294
+      "peak_roe": 0.023718924403855975
     },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008569,
+      "current_px": 0.008595,
       "szi": 10173.0,
-      "peak_roe": 0.040048543689320225
+      "peak_roe": 0.043082524271844586
     }
   }
 }
