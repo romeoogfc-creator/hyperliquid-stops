@@ -23,7 +23,7 @@
     "JUP": 7,
     "APE": 0,
     "ARB": 5,
-    "APT": 42,
+    "APT": 43,
     "BSV": 0,
     "JTO": 1,
     "XRP": 0,
@@ -31,11 +31,11 @@
     "ORDI": 2,
     "SEI": 0,
     "WLD": 0,
-    "PENDLE": 7,
+    "PENDLE": 8,
     "OP": 1,
     "ZEN": 2
   },
-  "last_run_timestamp": "2026-09-22 19:41:08",
+  "last_run_timestamp": "2026-09-22 20:00:58",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "MODERATE",
@@ -46,11 +46,18 @@
     "scan_date": "2026-09-22"
   },
   "previous_active_coins": [
-    "BTC",
+    "PENDLE",
     "APT",
     "GMT"
   ],
   "closed_trades_ledger": [
+    {
+      "coin": "BTC",
+      "entry_price": 78134.0,
+      "exit_price": 86245.5,
+      "exit_reason": "Volume-Aware Trailing Profit Grab",
+      "timestamp": "2026-09-22 20:00:04"
+    },
     {
       "coin": "LDO",
       "entry_price": 0.40639,
@@ -113,33 +120,26 @@
       "exit_price": 18.1855,
       "exit_reason": "Stop-Loss Trigger / Exchange Fill",
       "timestamp": "2026-09-21 18:06:38"
-    },
-    {
-      "coin": "JUP",
-      "entry_price": 0.30203,
-      "exit_price": 0.301235,
-      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
-      "timestamp": "2026-09-21 17:04:34"
     }
   ],
   "active_position_cache": {
-    "BTC": {
-      "entry_px": 78134.0,
-      "current_px": 86373.5,
-      "szi": 0.0006,
-      "peak_roe": 0.10545345176235697
-    },
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.7819,
+      "current_px": 0.788,
       "szi": 83.66,
-      "peak_roe": -0.00824454591577873
+      "peak_roe": -0.0005073566717401775
+    },
+    "PENDLE": {
+      "entry_px": 2.436216,
+      "current_px": 2.43955,
+      "szi": -30.0,
+      "peak_roe": -0.0013685157637911294
     },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008564,
+      "current_px": 0.00857,
       "szi": 10173.0,
-      "peak_roe": 0.03932038834951451
+      "peak_roe": 0.040048543689320225
     }
   }
 }
