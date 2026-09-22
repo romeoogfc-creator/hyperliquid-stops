@@ -8,7 +8,7 @@
     "STX": 3,
     "RUNE": 0,
     "kLUNC": 8,
-    "LDO": 4,
+    "LDO": 5,
     "COMP": 0,
     "ZRO": 0,
     "GMT": 0,
@@ -23,7 +23,7 @@
     "JUP": 7,
     "APE": 0,
     "ARB": 5,
-    "APT": 34,
+    "APT": 35,
     "BSV": 0,
     "JTO": 1,
     "XRP": 0,
@@ -31,11 +31,11 @@
     "ORDI": 2,
     "SEI": 0,
     "WLD": 0,
-    "PENDLE": 0,
+    "PENDLE": 1,
     "OP": 1,
     "ZEN": 2
   },
-  "last_run_timestamp": "2026-09-22 16:06:37",
+  "last_run_timestamp": "2026-09-22 16:39:26",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "MODERATE",
@@ -46,11 +46,10 @@
     "scan_date": "2026-09-22"
   },
   "previous_active_coins": [
+    "GMT",
     "LDO",
     "BTC",
-    "APT",
-    "GMT",
-    "PENDLE"
+    "APT"
   ],
   "closed_trades_ledger": [
     {
@@ -127,27 +126,22 @@
   "active_position_cache": {
     "BTC": {
       "entry_px": 78134.0,
-      "current_px": 86334.5,
+      "current_px": 86226.5,
       "szi": 0.0006
     },
     "LDO": {
       "entry_px": 0.40639,
-      "current_px": 0.41031,
+      "current_px": 0.41277,
       "szi": -166.0
     },
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.7677,
+      "current_px": 0.7688,
       "szi": 83.66
-    },
-    "PENDLE": {
-      "entry_px": 2.4451,
-      "current_px": 2.4178,
-      "szi": -29.0
     },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008519,
+      "current_px": 0.008505,
       "szi": 10173.0
     }
   }
