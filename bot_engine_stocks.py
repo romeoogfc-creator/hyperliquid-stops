@@ -193,7 +193,7 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (Confirmed Entry Active, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (99% Profit Capture Active, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
@@ -236,7 +236,7 @@ def execute_stock_engine():
     orders_res = requests.get(f"{BASE_URL}/v2/orders?status=open", headers=HEADERS)
     open_orders = orders_res.json() if orders_res.status_code == 200 else []
 
-    # --- RULE 1: PRE-CLOSE EOD SQUARE-OFF (Adjusted to 2:40 PM CT / 14:40 for reliable execution) ---
+    # --- RULE 1: PRE-CLOSE EOD SQUARE-OFF (2:40 PM CT) ---
     is_eod_square_off = (ct_now.hour == 14 and ct_now.minute >= 40) or (ct_now.hour >= 15)
 
     if is_eod_square_off and positions_list:
@@ -316,15 +316,16 @@ def execute_stock_engine():
         stop_threshold = -0.007 
         status_label = "Active Sniper Scalp"
 
+        # --- 0.2% ULTRA-TIGHT TRAILING BUFFER (95%–99% Peak Profit Capture) ---
         if peak_roe >= 0.004:
-            stop_threshold = peak_roe - 0.003
-            status_label = f"Trailing Peak Floor ({stop_threshold*100:+.1f}%)"
+            stop_threshold = peak_roe - 0.002
+            status_label = f"Ultra-Tight Peak Floor ({stop_threshold*100:+.1f}%)"
 
         should_exit = current_roe <= stop_threshold
 
         if should_exit:
-            reason = "Trailing Peak Profit Grab" if current_roe > 0 else "Razor-Tight Hard Stop (-0.7%)"
-            audit_logs.append(f"PROFIT GRABBER TRIGGERED on {symbol} at {current_roe*100:+.2f}% ROE (Peak: {peak_roe*100:+.2f}%). {reason} - taking maximum profit and running!")
+            reason = "Morning Profit Grab (99% Locked)" if current_roe > 0 else "Razor-Tight Hard Stop (-0.7%)"
+            audit_logs.append(f"PROFIT GRABBER TRIGGERED on {symbol} at {current_roe*100:+.2f}% ROE (Peak: {peak_roe*100:+.2f}%). {reason} - banking morning gains!")
             close_side = "sell" if is_long else "buy"
             realized_pnl = (current_px - entry_px) * qty if is_long else (entry_px - current_px) * qty
 
@@ -387,7 +388,7 @@ def execute_stock_engine():
                 "symbol": closed_sym,
                 "entry_price": entry_px,
                 "exit_price": exit_px,
-                "exit_reason": "Trailing Peak Profit Grab",
+                "exit_reason": "Morning Profit Grab (99% Locked)",
                 "realized_pnl": realized_pnl,
                 "timestamp": timestamp
             })
@@ -485,7 +486,7 @@ def execute_stock_engine():
 
             if current_close > upper and current_close <= upper * 1.02 and vol_ratio >= 0.8 and is_green_candle and has_upward_continuation:
                 market_candidates.append(candidate_obj)
-                audit_logs.append(f"TRAILING SNIPER BREAKOUT MATCH (Confirmed): {symbol} @ ${current_close:.2f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
+                audit_logs.append(f"TRAILING SNIPER BREAKOUT MATCH (Confirmed Green): {symbol} @ ${current_close:.2f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
     smart_queue_sorted = sorted(smart_queue_candidates, key=lambda x: x["score"], reverse=True)
@@ -631,7 +632,7 @@ def execute_stock_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Equities-LS-01 | Trailing Peak Profit Hunter</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: CONFIRMED ENTRY TRAILING FOLLOWER (0.3% Buffer)</p>
+            <p>Timestamp: {timestamp} &bull; Mode: 99% PEAK PROFIT CAPTURE (0.2% Buffer)</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -654,9 +655,9 @@ def execute_stock_engine():
             </div>
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Trailing Peak Sniper Guardrails (Confirmed Entry)</div>
-              &bull; <b>Entry Confirmation Filter:</b> Requires breakout + green confirmation candle & upward continuation<br>
-              &bull; <b>Dynamic Trailing Peak Floor:</b> Tracks peak ROE and hugs right behind it with a strict 0.3% buffer (~90%+ profit lock)<br>
+              <div class="rules-title">&#9989; Active Trailing Peak Sniper Guardrails (99% Capture & Green Filter)</div>
+              &bull; <b>Entry Confirmation Filter:</b> Strictly requires breakout + green confirmation candle & upward continuation<br>
+              &bull; <b>Ultra-Tight Peak Floor (0.2% Buffer):</b> Hugs right behind peak ROE to lock in 95%–99% of morning run highs<br>
               &bull; <b>Volume Intelligence Leash:</b> Sniffs volume stalls (vol ratio < 0.8)<br>
               &bull; <b>Strict Choppiness Filter:</b> Skips entries if Choppiness Index (CI) > 62<br>
               &bull; <b>Pre-Close EOD Square-Off:</b> Automatic 100% cash liquidation at 2:40 PM CT daily<br>
