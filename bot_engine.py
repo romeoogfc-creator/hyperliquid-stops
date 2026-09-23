@@ -349,7 +349,7 @@ def execute_engine():
             if ci > 62.0:
                 continue
 
-            # Volume Gate Verification: Require active momentum volume >= 0.8 avg
+            # Volume Gate Verification: Relaxed to >= 0.7 avg
             avg_vol = np.mean(volumes[-10:]) if len(volumes) >= 10 else volumes[-1]
             current_vol = volumes[-1]
             vol_ratio = current_vol / avg_vol if avg_vol > 0 else 1.0
@@ -368,7 +368,8 @@ def execute_engine():
                 }
                 smart_queue_candidates.append(candidate_obj)
 
-                if current_close > upper and current_close <= upper * 1.025 and vol_ratio >= 0.8:
+                # Widened Extension Cap to 4.0% (1.04) and relaxed volume to 0.7
+                if current_close > upper and current_close <= upper * 1.04 and vol_ratio >= 0.7:
                     market_candidates.append(candidate_obj)
                     audit_logs.append(f"CRYPTO MATCH LONG: {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
             else:
@@ -383,7 +384,8 @@ def execute_engine():
                 }
                 smart_queue_candidates.append(candidate_obj)
 
-                if current_close < lower and current_close >= lower * 0.975 and vol_ratio >= 0.8:
+                # Widened Extension Cap to 4.0% (0.96) and relaxed volume to 0.7
+                if current_close < lower and current_close >= lower * 0.96 and vol_ratio >= 0.7:
                     market_candidates.append(candidate_obj)
                     audit_logs.append(f"CRYPTO MATCH SHORT: {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
         except Exception:
