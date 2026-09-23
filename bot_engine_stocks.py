@@ -193,7 +193,7 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (99% Profit Capture Active, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (0.25% Balanced Buffer Active, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
@@ -316,16 +316,16 @@ def execute_stock_engine():
         stop_threshold = -0.007 
         status_label = "Active Sniper Scalp"
 
-        # --- 0.2% ULTRA-TIGHT TRAILING BUFFER (95%–99% Peak Profit Capture) ---
+        # --- BALANCED 0.25% TRAILING BUFFER (Gives trades room to breathe while locking strong peaks) ---
         if peak_roe >= 0.004:
-            stop_threshold = peak_roe - 0.002
-            status_label = f"Ultra-Tight Peak Floor ({stop_threshold*100:+.1f}%)"
+            stop_threshold = peak_roe - 0.0025
+            status_label = f"Balanced Peak Floor ({stop_threshold*100:+.1f}%)"
 
         should_exit = current_roe <= stop_threshold
 
         if should_exit:
-            reason = "Morning Profit Grab (99% Locked)" if current_roe > 0 else "Razor-Tight Hard Stop (-0.7%)"
-            audit_logs.append(f"PROFIT GRABBER TRIGGERED on {symbol} at {current_roe*100:+.2f}% ROE (Peak: {peak_roe*100:+.2f}%). {reason} - banking morning gains!")
+            reason = "Trailing Peak Profit Grab" if current_roe > 0 else "Razor-Tight Hard Stop (-0.7%)"
+            audit_logs.append(f"PROFIT GRABBER TRIGGERED on {symbol} at {current_roe*100:+.2f}% ROE (Peak: {peak_roe*100:+.2f}%). {reason} - banking gains!")
             close_side = "sell" if is_long else "buy"
             realized_pnl = (current_px - entry_px) * qty if is_long else (entry_px - current_px) * qty
 
@@ -388,7 +388,7 @@ def execute_stock_engine():
                 "symbol": closed_sym,
                 "entry_price": entry_px,
                 "exit_price": exit_px,
-                "exit_reason": "Morning Profit Grab (99% Locked)",
+                "exit_reason": "Trailing Peak Profit Grab",
                 "realized_pnl": realized_pnl,
                 "timestamp": timestamp
             })
@@ -632,7 +632,7 @@ def execute_stock_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Equities-LS-01 | Trailing Peak Profit Hunter</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: 99% PEAK PROFIT CAPTURE (0.2% Buffer)</p>
+            <p>Timestamp: {timestamp} &bull; Mode: BALANCED 0.25% BUFFER</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -655,9 +655,9 @@ def execute_stock_engine():
             </div>
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Trailing Peak Sniper Guardrails (99% Capture & Green Filter)</div>
+              <div class="rules-title">&#9989; Active Trailing Peak Sniper Guardrails (Balanced Buffer)</div>
               &bull; <b>Entry Confirmation Filter:</b> Strictly requires breakout + green confirmation candle & upward continuation<br>
-              &bull; <b>Ultra-Tight Peak Floor (0.2% Buffer):</b> Hugs right behind peak ROE to lock in 95%–99% of morning run highs<br>
+              &bull; <b>Balanced Peak Floor (0.25% Buffer):</b> Gives trades room to breathe while locking in strong peaks<br>
               &bull; <b>Volume Intelligence Leash:</b> Sniffs volume stalls (vol ratio < 0.8)<br>
               &bull; <b>Strict Choppiness Filter:</b> Skips entries if Choppiness Index (CI) > 62<br>
               &bull; <b>Pre-Close EOD Square-Off:</b> Automatic 100% cash liquidation at 2:40 PM CT daily<br>
