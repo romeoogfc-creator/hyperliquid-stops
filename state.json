@@ -35,7 +35,7 @@
     "OP": 1,
     "ZEN": 2
   },
-  "last_run_timestamp": "2026-09-23 00:08:13",
+  "last_run_timestamp": "2026-09-23 00:41:31",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "LOW",
@@ -46,8 +46,8 @@
     "scan_date": "2026-09-23"
   },
   "previous_active_coins": [
-    "APT",
-    "GMT"
+    "GMT",
+    "APT"
   ],
   "closed_trades_ledger": [
     {
@@ -124,15 +124,15 @@
   "active_position_cache": {
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.8305,
+      "current_px": 0.8273,
       "szi": 83.66,
       "peak_roe": 0.05618975139523086
     },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008702,
+      "current_px": 0.008809,
       "szi": 10173.0,
-      "peak_roe": 0.05837378640776684
+      "peak_roe": 0.06905339805825243
     }
   }
 }
