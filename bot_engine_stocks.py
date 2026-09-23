@@ -193,7 +193,7 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (Confirmed Entry Active, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
@@ -215,16 +215,20 @@ def execute_stock_engine():
     cash = float(account_data.get("cash", 100000.0))
     margin_util_pct = ((equity - cash) / equity * 100) if equity > 0 else 0.0
 
-    # Track daily starting equity snapshot for accurate daily gain calculation
+    # Fixed Daily Starting Equity Rollover
     daily_starting_dict = state.get("daily_starting_equity", {})
     if today_str not in daily_starting_dict:
-        # If no snapshot for today yet, use current equity (or 100000.0 baseline if first day)
-        daily_starting_dict[today_str] = equity
+        prev_days = [d for d in daily_starting_dict.keys() if d < today_str]
+        if prev_days:
+            latest_prev_day = max(prev_days)
+            daily_starting_dict[today_str] = daily_starting_dict[latest_prev_day]
+        else:
+            daily_starting_dict[today_str] = equity
         state["daily_starting_equity"] = daily_starting_dict
 
     today_start_eq = daily_starting_dict[today_str]
     today_total_gain = equity - today_start_eq
-    lifetime_cumulative_pnl = equity - 100000.0  # Alpaca paper baseline is $100,000
+    lifetime_cumulative_pnl = equity - 100000.0
 
     positions_res = requests.get(f"{BASE_URL}/v2/positions", headers=HEADERS)
     positions_list = positions_res.json() if positions_res.status_code == 200 else []
@@ -232,7 +236,7 @@ def execute_stock_engine():
     orders_res = requests.get(f"{BASE_URL}/v2/orders?status=open", headers=HEADERS)
     open_orders = orders_res.json() if orders_res.status_code == 200 else []
 
-    # --- RULE 1: PRE-CLOSE EOD SQUARE-OFF (2:50 PM CT / 14:50 to ensure flat before 3:00 PM close) ---
+    # --- RULE 1: PRE-CLOSE EOD SQUARE-OFF (2:50 PM CT) ---
     is_eod_square_off = (ct_now.hour == 14 and ct_now.minute >= 50) or (ct_now.hour >= 15)
 
     if is_eod_square_off and positions_list:
@@ -261,7 +265,6 @@ def execute_stock_engine():
                     if "closed_trades_ledger" not in state:
                         state["closed_trades_ledger"] = []
                     
-                    # Deduplication check: only add if symbol + timestamp date doesn't already exist
                     existing_symbols_today = [t['symbol'] for t in state["closed_trades_ledger"] if today_str in t.get("timestamp", "")]
                     if sym not in existing_symbols_today:
                         state["closed_trades_ledger"].insert(0, {
@@ -337,7 +340,6 @@ def execute_stock_engine():
                 if "closed_trades_ledger" not in state:
                     state["closed_trades_ledger"] = []
                 
-                # Check duplication
                 existing_symbols_today = [t['symbol'] for t in state["closed_trades_ledger"] if today_str in t.get("timestamp", "")]
                 if symbol not in existing_symbols_today:
                     state["closed_trades_ledger"].insert(0, {
@@ -448,12 +450,15 @@ def execute_stock_engine():
 
             scanned_count += 1
             closes = [float(b["c"]) for b in bars]
+            opens = [float(b["o"]) for b in bars]
             highs = [float(b["h"]) for b in bars]
             lows = [float(b["l"]) for b in bars]
             volumes = [float(b["v"]) for b in bars]
 
             upper, lower, filter_band = calculate_gaussian_channel(closes)
             current_close = closes[-1]
+            current_open = opens[-1]
+            prev_close = closes[-2]
 
             ci = calculate_choppiness_index(highs, lows, closes)
             if ci > 62.0:
@@ -474,9 +479,13 @@ def execute_stock_engine():
             }
             smart_queue_candidates.append(candidate_obj)
 
-            if current_close > upper and current_close <= upper * 1.02 and vol_ratio >= 0.8:
+            # ENTRY CONFIRMATION FILTER: Must be breakout AND green candle + upward continuation
+            is_green_candle = current_close > current_open
+            has_upward_continuation = current_close > prev_close
+
+            if current_close > upper and current_close <= upper * 1.02 and vol_ratio >= 0.8 and is_green_candle and has_upward_continuation:
                 market_candidates.append(candidate_obj)
-                audit_logs.append(f"TRAILING SNIPER BREAKOUT MATCH: {symbol} @ ${current_close:.2f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
+                audit_logs.append(f"TRAILING SNIPER BREAKOUT MATCH (Confirmed): {symbol} @ ${current_close:.2f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
     smart_queue_sorted = sorted(smart_queue_candidates, key=lambda x: x["score"], reverse=True)
@@ -622,7 +631,7 @@ def execute_stock_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Equities-LS-01 | Trailing Peak Profit Hunter</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: DYNAMIC TRAILING PEAK FOLLOWER (0.3% Buffer)</p>
+            <p>Timestamp: {timestamp} &bull; Mode: CONFIRMED ENTRY TRAILING FOLLOWER (0.3% Buffer)</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -645,7 +654,8 @@ def execute_stock_engine():
             </div>
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Trailing Peak Sniper Guardrails</div>
+              <div class="rules-title">&#9989; Active Trailing Peak Sniper Guardrails (Confirmed Entry)</div>
+              &bull; <b>Entry Confirmation Filter:</b> Requires breakout + green confirmation candle & upward continuation<br>
               &bull; <b>Dynamic Trailing Peak Floor:</b> Tracks peak ROE and hugs right behind it with a strict 0.3% buffer (~90%+ profit lock)<br>
               &bull; <b>Volume Intelligence Leash:</b> Sniffs volume stalls (vol ratio < 0.8)<br>
               &bull; <b>Strict Choppiness Filter:</b> Skips entries if Choppiness Index (CI) > 62<br>
