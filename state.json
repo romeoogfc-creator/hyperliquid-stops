@@ -20,10 +20,17 @@
     "DYDX": 0,
     "ATOM": 4,
     "SUSHI": 3,
-    "BIGTIME": 4,
-    "RSR": 2
+    "BIGTIME": 5,
+    "RSR": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "FIL",
+      "entry_price": 0.91986,
+      "exit_price": 0.92542,
+      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
+      "timestamp": "2026-09-23 22:36:01"
+    },
     {
       "coin": "ATOM",
       "entry_price": 1.683,
@@ -86,48 +93,34 @@
       "exit_price": 0.7553,
       "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
       "timestamp": "2026-09-23 20:26:01"
-    },
-    {
-      "coin": "INJ",
-      "entry_price": 7.6328,
-      "exit_price": 7.6713,
-      "exit_reason": "Balanced Buffer Profit Grab",
-      "timestamp": "2026-09-23 17:36:39"
     }
   ],
   "active_position_cache": {
     "DYDX": {
       "entry_px": 0.12878,
-      "current_px": 0.12692,
+      "current_px": 0.12635,
       "szi": -513.6,
       "peak_roe": 0.021587202981829513
     },
     "BIGTIME": {
       "entry_px": 0.007985,
-      "current_px": 0.008014,
+      "current_px": 0.007988,
       "szi": -8853.0,
-      "peak_roe": -0.0010018785222290954
-    },
-    "FIL": {
-      "entry_px": 0.91986,
-      "current_px": 0.92633,
-      "szi": -74.5,
-      "peak_roe": 0.00025003804926843596
+      "peak_roe": -0.0003757044458358836
     },
     "RSR": {
       "entry_px": 0.001626,
-      "current_px": 0.001631,
+      "current_px": 0.001629,
       "szi": -40004.0,
-      "peak_roe": -0.003075030750307511
+      "peak_roe": -0.0018450184501844799
     }
   },
   "previous_active_coins": [
-    "DYDX",
-    "FIL",
+    "RSR",
     "BIGTIME",
-    "RSR"
+    "DYDX"
   ],
-  "last_run_timestamp": "2026-09-23 22:06:17",
+  "last_run_timestamp": "2026-09-23 22:36:53",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "MODERATE",
