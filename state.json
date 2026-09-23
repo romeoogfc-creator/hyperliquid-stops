@@ -5,7 +5,7 @@
     "BLUR": 0,
     "MEME": 22,
     "GMT": 6,
-    "FIL": 7,
+    "FIL": 8,
     "CAKE": 5,
     "FET": 1,
     "ZEN": 1,
@@ -16,11 +16,11 @@
     "TRX": 12,
     "AVAX": 2,
     "JTO": 2,
-    "KAS": 7,
+    "KAS": 8,
     "DYDX": 0,
-    "ATOM": 2,
-    "SUSHI": 2,
-    "BIGTIME": 1
+    "ATOM": 3,
+    "SUSHI": 3,
+    "BIGTIME": 2
   },
   "closed_trades_ledger": [
     {
@@ -97,50 +97,50 @@
   "active_position_cache": {
     "ATOM": {
       "entry_px": 1.683,
-      "current_px": 1.685,
+      "current_px": 1.6838,
       "szi": -46.53,
-      "peak_roe": -0.001188354129530601
+      "peak_roe": -0.00047534165181218767
     },
     "DYDX": {
       "entry_px": 0.12878,
-      "current_px": 0.12625,
+      "current_px": 0.12654,
       "szi": -513.6,
       "peak_roe": 0.021587202981829513
     },
     "BIGTIME": {
       "entry_px": 0.007985,
-      "current_px": 0.007994,
+      "current_px": 0.007993,
       "szi": -8853.0,
-      "peak_roe": -0.0011271133375076509
+      "peak_roe": -0.0010018785222290954
     },
     "KAS": {
       "entry_px": 0.038779,
-      "current_px": 0.038767,
+      "current_px": 0.03874,
       "szi": -1758.0,
       "peak_roe": 0.0014956548647464475
     },
     "FIL": {
       "entry_px": 0.91986,
-      "current_px": 0.91967,
+      "current_px": 0.91963,
       "szi": -74.5,
-      "peak_roe": 0.00020655317113476342
+      "peak_roe": 0.00025003804926843596
     },
     "SUSHI": {
       "entry_px": 0.24549,
-      "current_px": 0.24557,
+      "current_px": 0.24533,
       "szi": -253.7,
-      "peak_roe": 0.00024440914090188804
+      "peak_roe": 0.000651757709071739
     }
   },
   "previous_active_coins": [
-    "BIGTIME",
     "SUSHI",
+    "BIGTIME",
     "DYDX",
-    "ATOM",
+    "FIL",
     "KAS",
-    "FIL"
+    "ATOM"
   ],
-  "last_run_timestamp": "2026-09-23 21:02:18",
+  "last_run_timestamp": "2026-09-23 21:06:53",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "MODERATE",
