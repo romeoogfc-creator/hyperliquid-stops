@@ -10,9 +10,25 @@
     "FET": 1,
     "ZEN": 1,
     "BANANA": 2,
-    "PYTH": 2
+    "PYTH": 2,
+    "INJ": 1,
+    "YGG": 1
   },
   "closed_trades_ledger": [
+    {
+      "coin": "PYTH",
+      "entry_price": 0.067479,
+      "exit_price": 0.06642,
+      "exit_reason": "Tight-Leash Profit Grab",
+      "timestamp": "2026-09-23 07:38:16"
+    },
+    {
+      "coin": "BANANA",
+      "entry_price": 4.20108,
+      "exit_price": 4.1747,
+      "exit_reason": "Tight-Leash Profit Grab",
+      "timestamp": "2026-09-23 07:38:16"
+    },
     {
       "coin": "CAKE",
       "entry_price": 2.722,
@@ -31,50 +47,36 @@
   "active_position_cache": {
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.844,
+      "current_px": 0.8338,
       "szi": 83.66,
       "peak_roe": 0.08269913749365809
     },
-    "BANANA": {
-      "entry_px": 4.20108,
-      "current_px": 4.19335,
-      "szi": 17.6,
-      "peak_roe": -0.0018400030468356848
-    },
     "BLUR": {
       "entry_px": 0.020334,
-      "current_px": 0.02068,
+      "current_px": 0.020623,
       "szi": 3393.0,
       "peak_roe": 0.023654962132389042
     },
     "MEME": {
       "entry_px": 0.000626,
-      "current_px": 0.000637,
+      "current_px": 0.000634,
       "szi": 140823.0,
       "peak_roe": 0.028753993610223648
     },
-    "PYTH": {
-      "entry_px": 0.067479,
-      "current_px": 0.067005,
-      "szi": 1012.0,
-      "peak_roe": -0.007024407593473558
-    },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008855,
+      "current_px": 0.00878,
       "szi": 10173.0,
       "peak_roe": 0.07463592233009698
     }
   },
   "previous_active_coins": [
-    "MEME",
-    "GMT",
-    "APT",
     "BLUR",
-    "BANANA",
-    "PYTH"
+    "APT",
+    "MEME",
+    "GMT"
   ],
-  "last_run_timestamp": "2026-09-23 07:07:10",
+  "last_run_timestamp": "2026-09-23 07:39:23",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "MODERATE",
