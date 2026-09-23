@@ -9,17 +9,52 @@
     "CAKE": 5,
     "FET": 1,
     "ZEN": 1,
-    "BANANA": 7,
+    "BANANA": 8,
     "PYTH": 2,
     "INJ": 0,
     "YGG": 0,
     "TRX": 12,
     "AVAX": 2,
     "JTO": 2,
-    "KAS": 4,
+    "KAS": 5,
     "DYDX": 0
   },
   "closed_trades_ledger": [
+    {
+      "coin": "MEME",
+      "entry_price": 0.000626,
+      "exit_price": 0.000584,
+      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
+      "timestamp": "2026-09-23 20:26:01"
+    },
+    {
+      "coin": "APT",
+      "entry_price": 0.7884,
+      "exit_price": 0.7553,
+      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
+      "timestamp": "2026-09-23 20:26:01"
+    },
+    {
+      "coin": "GMT",
+      "entry_price": 0.00824,
+      "exit_price": 0.008141,
+      "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
+      "timestamp": "2026-09-23 20:26:01"
+    },
+    {
+      "coin": "MEME",
+      "entry_price": 0.000626,
+      "exit_price": 0.000584,
+      "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
+      "timestamp": "2026-09-23 20:26:01"
+    },
+    {
+      "coin": "APT",
+      "entry_price": 0.7884,
+      "exit_price": 0.7553,
+      "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
+      "timestamp": "2026-09-23 20:26:01"
+    },
     {
       "coin": "INJ",
       "entry_price": 7.6328,
@@ -54,83 +89,34 @@
       "exit_price": 0.020476,
       "exit_reason": "Tight-Leash Profit Grab",
       "timestamp": "2026-09-23 12:07:07"
-    },
-    {
-      "coin": "INJ",
-      "entry_price": 7.9744,
-      "exit_price": 8.03655,
-      "exit_reason": "Tight-Leash Profit Grab",
-      "timestamp": "2026-09-23 09:05:13"
-    },
-    {
-      "coin": "YGG",
-      "entry_price": 0.027762,
-      "exit_price": 0.027953,
-      "exit_reason": "Tight-Leash Profit Grab",
-      "timestamp": "2026-09-23 09:05:13"
-    },
-    {
-      "coin": "PYTH",
-      "entry_price": 0.067479,
-      "exit_price": 0.06642,
-      "exit_reason": "Tight-Leash Profit Grab",
-      "timestamp": "2026-09-23 07:38:16"
-    },
-    {
-      "coin": "BANANA",
-      "entry_price": 4.20108,
-      "exit_price": 4.1747,
-      "exit_reason": "Tight-Leash Profit Grab",
-      "timestamp": "2026-09-23 07:38:16"
-    },
-    {
-      "coin": "CAKE",
-      "entry_price": 2.722,
-      "exit_price": 2.67365,
-      "exit_reason": "Tight-Leash Profit Grab",
-      "timestamp": "2026-09-23 05:37:04"
     }
   ],
   "active_position_cache": {
     "DYDX": {
       "entry_px": 0.12878,
-      "current_px": 0.12635,
+      "current_px": 0.12606,
       "szi": -513.6,
-      "peak_roe": 0.01886938965677912
-    },
-    "APT": {
-      "entry_px": 0.7884,
-      "current_px": 0.7586,
-      "szi": 83.66,
-      "peak_roe": 0.08269913749365809
+      "peak_roe": 0.021121292126106538
     },
     "BANANA": {
       "entry_px": 3.92784,
-      "current_px": 3.934,
+      "current_px": 3.9276,
       "szi": -16.7,
       "peak_roe": 0.0027597865493503818
     },
-    "MEME": {
-      "entry_px": 0.000626,
-      "current_px": 0.000586,
-      "szi": 140823.0,
-      "peak_roe": 0.0351437699680511
-    },
-    "GMT": {
-      "entry_px": 0.00824,
-      "current_px": 0.008149,
-      "szi": 10173.0,
-      "peak_roe": 0.07463592233009698
+    "KAS": {
+      "entry_px": 0.038779,
+      "current_px": 0.038721,
+      "szi": -1758.0,
+      "peak_roe": 0.0014956548647464475
     }
   },
   "previous_active_coins": [
-    "APT",
-    "BANANA",
-    "GMT",
-    "MEME",
-    "DYDX"
+    "DYDX",
+    "KAS",
+    "BANANA"
   ],
-  "last_run_timestamp": "2026-09-23 20:16:45",
+  "last_run_timestamp": "2026-09-23 20:26:59",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "MODERATE",
