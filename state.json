@@ -5,7 +5,7 @@
     "BLUR": 0,
     "MEME": 22,
     "GMT": 6,
-    "FIL": 8,
+    "FIL": 9,
     "CAKE": 5,
     "FET": 1,
     "ZEN": 1,
@@ -18,11 +18,26 @@
     "JTO": 2,
     "KAS": 8,
     "DYDX": 0,
-    "ATOM": 3,
+    "ATOM": 4,
     "SUSHI": 3,
-    "BIGTIME": 2
+    "BIGTIME": 3,
+    "RSR": 1
   },
   "closed_trades_ledger": [
+    {
+      "coin": "KAS",
+      "entry_price": 0.038779,
+      "exit_price": 0.038751,
+      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
+      "timestamp": "2026-09-23 21:36:13"
+    },
+    {
+      "coin": "SUSHI",
+      "entry_price": 0.24549,
+      "exit_price": 0.24723,
+      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
+      "timestamp": "2026-09-23 21:36:13"
+    },
     {
       "coin": "BANANA",
       "entry_price": 3.92784,
@@ -78,69 +93,48 @@
       "exit_price": 0.039052,
       "exit_reason": "Balanced Buffer Profit Grab",
       "timestamp": "2026-09-23 17:36:39"
-    },
-    {
-      "coin": "TRX",
-      "entry_price": 0.3417,
-      "exit_price": 0.339245,
-      "exit_reason": "Balanced Buffer Profit Grab",
-      "timestamp": "2026-09-23 17:36:39"
-    },
-    {
-      "coin": "AVAX",
-      "entry_price": 10.424,
-      "exit_price": 10.411,
-      "exit_reason": "Balanced Buffer Profit Grab",
-      "timestamp": "2026-09-23 14:39:17"
     }
   ],
   "active_position_cache": {
     "ATOM": {
       "entry_px": 1.683,
-      "current_px": 1.6838,
+      "current_px": 1.6947,
       "szi": -46.53,
       "peak_roe": -0.00047534165181218767
     },
     "DYDX": {
       "entry_px": 0.12878,
-      "current_px": 0.12654,
+      "current_px": 0.12742,
       "szi": -513.6,
       "peak_roe": 0.021587202981829513
     },
     "BIGTIME": {
       "entry_px": 0.007985,
-      "current_px": 0.007993,
+      "current_px": 0.008046,
       "szi": -8853.0,
       "peak_roe": -0.0010018785222290954
     },
-    "KAS": {
-      "entry_px": 0.038779,
-      "current_px": 0.03874,
-      "szi": -1758.0,
-      "peak_roe": 0.0014956548647464475
-    },
     "FIL": {
       "entry_px": 0.91986,
-      "current_px": 0.91963,
+      "current_px": 0.9276,
       "szi": -74.5,
       "peak_roe": 0.00025003804926843596
     },
-    "SUSHI": {
-      "entry_px": 0.24549,
-      "current_px": 0.24533,
-      "szi": -253.7,
-      "peak_roe": 0.000651757709071739
+    "RSR": {
+      "entry_px": 0.001626,
+      "current_px": 0.001634,
+      "szi": -40004.0,
+      "peak_roe": -0.004920049200491991
     }
   },
   "previous_active_coins": [
-    "SUSHI",
-    "BIGTIME",
-    "DYDX",
     "FIL",
-    "KAS",
-    "ATOM"
+    "BIGTIME",
+    "ATOM",
+    "DYDX",
+    "RSR"
   ],
-  "last_run_timestamp": "2026-09-23 21:06:53",
+  "last_run_timestamp": "2026-09-23 21:37:06",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "MODERATE",
