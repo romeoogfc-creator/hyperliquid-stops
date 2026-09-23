@@ -1,15 +1,15 @@
 {
   "cooldown_blocklist": {},
   "stagnation_tracker": {
-    "APT": 14,
+    "APT": 15,
     "BLUR": 0,
-    "MEME": 20,
-    "GMT": 4,
+    "MEME": 21,
+    "GMT": 5,
     "FIL": 5,
     "CAKE": 5,
     "FET": 1,
     "ZEN": 1,
-    "BANANA": 5,
+    "BANANA": 6,
     "PYTH": 2,
     "INJ": 0,
     "YGG": 0,
@@ -94,43 +94,43 @@
   "active_position_cache": {
     "DYDX": {
       "entry_px": 0.12878,
-      "current_px": 0.12649,
+      "current_px": 0.12645,
       "szi": -513.6,
       "peak_roe": 0.01879173784749189
     },
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.7604,
+      "current_px": 0.7596,
       "szi": 83.66,
       "peak_roe": 0.08269913749365809
     },
     "BANANA": {
       "entry_px": 3.92784,
-      "current_px": 3.93395,
+      "current_px": 3.92645,
       "szi": -16.7,
       "peak_roe": 0.0027597865493503818
     },
     "MEME": {
       "entry_px": 0.000626,
-      "current_px": 0.00059,
+      "current_px": 0.000586,
       "szi": 140823.0,
       "peak_roe": 0.0351437699680511
     },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008182,
+      "current_px": 0.008151,
       "szi": 10173.0,
       "peak_roe": 0.07463592233009698
     }
   },
   "previous_active_coins": [
-    "BANANA",
     "APT",
+    "DYDX",
+    "BANANA",
     "MEME",
-    "GMT",
-    "DYDX"
+    "GMT"
   ],
-  "last_run_timestamp": "2026-09-23 19:37:43",
+  "last_run_timestamp": "2026-09-23 20:06:48",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "MODERATE",
