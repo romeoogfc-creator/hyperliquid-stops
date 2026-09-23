@@ -9,8 +9,8 @@
     "CAKE": 5,
     "FET": 1,
     "ZEN": 1,
-    "BANANA": 1,
-    "PYTH": 1
+    "BANANA": 2,
+    "PYTH": 2
   },
   "closed_trades_ledger": [
     {
@@ -31,36 +31,50 @@
   "active_position_cache": {
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.8536,
+      "current_px": 0.844,
       "szi": 83.66,
       "peak_roe": 0.08269913749365809
     },
+    "BANANA": {
+      "entry_px": 4.20108,
+      "current_px": 4.19335,
+      "szi": 17.6,
+      "peak_roe": -0.0018400030468356848
+    },
     "BLUR": {
       "entry_px": 0.020334,
-      "current_px": 0.020815,
+      "current_px": 0.02068,
       "szi": 3393.0,
       "peak_roe": 0.023654962132389042
     },
     "MEME": {
       "entry_px": 0.000626,
-      "current_px": 0.000644,
+      "current_px": 0.000637,
       "szi": 140823.0,
       "peak_roe": 0.028753993610223648
     },
+    "PYTH": {
+      "entry_px": 0.067479,
+      "current_px": 0.067005,
+      "szi": 1012.0,
+      "peak_roe": -0.007024407593473558
+    },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008852,
+      "current_px": 0.008855,
       "szi": 10173.0,
-      "peak_roe": 0.07439320388349502
+      "peak_roe": 0.07463592233009698
     }
   },
   "previous_active_coins": [
+    "MEME",
+    "GMT",
     "APT",
     "BLUR",
-    "GMT",
-    "MEME"
+    "BANANA",
+    "PYTH"
   ],
-  "last_run_timestamp": "2026-09-23 06:42:32",
+  "last_run_timestamp": "2026-09-23 07:07:10",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "MODERATE",
