@@ -70,7 +70,6 @@ def save_state(state):
 def check_market_macro_regime():
     try:
         start_date = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
-        # Included start date and feed parameter so Alpaca returns actual daily bars
         url = f"https://data.alpaca.markets/v2/stocks/bars?symbols=SPY&timeframe=1Day&limit=5&feed=iex&start={start_date}"
         res = requests.get(url, headers=HEADERS)
         if res.status_code == 200:
@@ -210,7 +209,7 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (Profit Hunter Mode & Fixed SPY Shield, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (Profit Hunter Mode & 13% Sizing, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
@@ -530,7 +529,8 @@ def execute_stock_engine():
             symbol = candidate["symbol"]
             px = candidate["close"]
 
-            target_usd = max(50.0, equity * 0.10)
+            # --- SCALED 13% NAV ALLOCATION (Matching Crypto Ballistic Sizing) ---
+            target_usd = max(50.0, equity * 0.13)
             qty = round(target_usd / px, 4)
             tif = "day"
 
@@ -546,7 +546,7 @@ def execute_stock_engine():
                 if order_res.status_code == 200:
                     active_count += 1
                     active_symbols.add(symbol)
-                    audit_logs.append(f"TRAILING SNIPER ENTRY SUCCESS: Bought {qty} shares of {symbol}")
+                    audit_logs.append(f"TRAILING SNIPER ENTRY SUCCESS: Bought {qty} shares of {symbol} (~${target_usd:.2f})")
             except Exception as e:
                 audit_logs.append(f"ORDER EXCEPTION on {symbol}: {e}")
     else:
@@ -661,7 +661,7 @@ def execute_stock_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Equities-LS-01 | Trailing Peak Profit Hunter</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: PROFIT HUNTER & FIXED SPY SHIELD</p>
+            <p>Timestamp: {timestamp} &bull; Mode: PROFIT HUNTER & 13% NAV ALLOCATION</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -684,13 +684,12 @@ def execute_stock_engine():
             </div>
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Guardrails (Profit Hunter & Fixed SPY Shield)</div>
+              <div class="rules-title">&#9989; Active Guardrails (Profit Hunter & 13% Sizing)</div>
               &bull; <b>SPY Bloodbath Shield:</b> Instantly liquidates 100% of positions to cash if SPY flips red<br>
+              &bull; <b>Scaled Position Sizing:</b> 13% NAV per slot (matching crypto ballistic sizing)<br>
               &bull; <b>Entry Confirmation Filter:</b> Strictly requires breakout + green confirmation candle & upward continuation<br>
               &bull; <b>Balanced Peak Floor (0.25% Buffer):</b> Locks in robust peaks without choking positions<br>
               &bull; <b>Widened Initial Hard Stop:</b> Set to -1.2% to absorb midday chop and normal wicks<br>
-              &bull; <b>Volume Intelligence Leash:</b> Sniffs volume stalls (vol ratio < 0.8)<br>
-              &bull; <b>Strict Choppiness Filter:</b> Skips entries if Choppiness Index (CI) > 62<br>
               &bull; <b>Pre-Close EOD Square-Off:</b> Automatic 100% cash liquidation at 2:40 PM CT daily<br>
               &bull; <b>Asset Universe:</b> S&P 500 & Nasdaq Momentum Equities
             </div>
