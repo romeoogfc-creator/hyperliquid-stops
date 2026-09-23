@@ -218,7 +218,7 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (ATR Stops & Progressive Peak-Lock, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (Smart Volume-Adaptive Trailing, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
@@ -340,36 +340,67 @@ def execute_stock_engine():
         prev_peak = current_active_cache.get(symbol, {}).get("peak_roe", current_roe)
         peak_roe = max(current_roe, prev_peak)
 
+        # --- SMART RUNNER VOLUME-ADAPTIVE TRAILING ---
+        # Fetch latest 30-min bar to evaluate real-time volume ratio for this specific position
+        vol_ratio = 1.0
+        try:
+            bar_res = requests.get(f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=30Min&limit=5&feed=iex&start={start_date}", headers=HEADERS)
+            if bar_res.status_code == 200:
+                b_list = bar_res.json().get("bars", {}).get(symbol, [])
+                if len(b_list) >= 2:
+                    volumes = [float(b["v"]) for b in b_list]
+                    avg_v = np.mean(volumes[:-1]) if len(volumes) > 1 else volumes[-1]
+                    curr_v = volumes[-1]
+                    vol_ratio = curr_v / avg_v if avg_v > 0 else 1.0
+        except Exception:
+            pass
+
+        # Adjust trailing tightness based on volume strength:
+        # High institutional volume (>= 1.5) = wider breathing room for runners.
+        # Stalling volume (< 0.8) = tighter lock to secure profits before greed turns to red.
+        if vol_ratio >= 1.5:
+            vol_multiplier = 1.6  # Give runners space (+60% buffer expansion)
+            runner_tag = "🚀 Smart Runner (High Vol)"
+        elif vol_ratio < 0.8:
+            vol_multiplier = 0.7  # Tighter lock on volume stall
+            runner_tag = "⚠️ Volume Stall Lock"
+        else:
+            vol_multiplier = 1.0
+            runner_tag = "Active Scalp"
+
         new_active_cache[symbol] = {
             "entry_px": entry_px,
             "current_px": current_px,
             "qty": qty,
-            "peak_roe": peak_roe
+            "peak_roe": peak_roe,
+            "vol_ratio": vol_ratio
         }
 
-        # --- PROGRESSIVE TRAILING LADDER WITH PEAK-LOCK COMPRESSION ---
-        # Default initial stop threshold before trailing activates
-        stop_threshold = -0.012 
-        status_label = "Active Sniper Scalp"
+        stop_threshold = -0.012  # Default initial hard stop (-1.2%)
+        status_label = runner_tag
 
         if peak_roe >= 0.03:
-            # Ballistic Peak Lock: Hyper-tight 0.25% buffer to lock in massive gains instantly
-            stop_threshold = peak_roe - 0.0025
-            status_label = f"Ballistic Peak Lock ({stop_threshold*100:+.1f}%)"
+            # Ballistic Peak Lock with Volume Adaptation
+            base_buffer = 0.0025
+            adjusted_buffer = base_buffer * vol_multiplier
+            stop_threshold = peak_roe - adjusted_buffer
+            status_label = f"Ballistic Peak Lock [{vol_ratio:.1f}x Vol] ({stop_threshold*100:+.1f}%)"
         elif peak_roe >= 0.015:
-            # Mid ROE Profit Zone: Standard 0.4% buffer
-            stop_threshold = peak_roe - 0.0040
-            status_label = f"Mid Trailing Floor ({stop_threshold*100:+.1f}%)"
+            base_buffer = 0.0040
+            adjusted_buffer = base_buffer * vol_multiplier
+            stop_threshold = peak_roe - adjusted_buffer
+            status_label = f"Mid Trailing Floor [{vol_ratio:.1f}x Vol] ({stop_threshold*100:+.1f}%)"
         elif peak_roe >= 0.005:
-            # Early Breathing Zone: Generous 0.6% buffer to avoid premature wicks-tap
-            stop_threshold = peak_roe - 0.0060
-            status_label = f"Early Breathing Floor ({stop_threshold*100:+.1f}%)"
+            base_buffer = 0.0060
+            adjusted_buffer = base_buffer * vol_multiplier
+            stop_threshold = peak_roe - adjusted_buffer
+            status_label = f"Early Breathing Floor [{vol_ratio:.1f}x Vol] ({stop_threshold*100:+.1f}%)"
 
         should_exit = current_roe <= stop_threshold
 
         if should_exit:
-            reason = "Peak Profit Grab Lock" if current_roe > 0 else "Dynamic ATR Stop Loss"
-            audit_logs.append(f"PROFIT LOCK / STOP TRIGGERED on {symbol} at {current_roe*100:+.2f}% ROE (Peak: {peak_roe*100:+.2f}%). {reason} - banking bag!")
+            reason = "Smart Runner Profit Lock" if current_roe > 0 else "Dynamic Stop Loss"
+            audit_logs.append(f"EXIT TRIGGERED on {symbol} at {current_roe*100:+.2f}% ROE (Peak: {peak_roe*100:+.2f}%, VolRatio: {vol_ratio:.2f}). {reason} - securing bag!")
             close_side = "sell" if is_long else "buy"
             realized_pnl = (current_px - entry_px) * qty if is_long else (entry_px - current_px) * qty
 
@@ -432,7 +463,7 @@ def execute_stock_engine():
                 "symbol": closed_sym,
                 "entry_price": entry_px,
                 "exit_price": exit_px,
-                "exit_reason": "Peak Profit Grab Lock",
+                "exit_reason": "Smart Runner Profit Lock",
                 "realized_pnl": realized_pnl,
                 "timestamp": timestamp
             })
@@ -524,7 +555,6 @@ def execute_stock_engine():
             }
             smart_queue_candidates.append(candidate_obj)
 
-            # ENTRY CONFIRMATION FILTER: Must be breakout AND green candle + upward continuation
             is_green_candle = current_close > current_open
             has_upward_continuation = current_close > prev_close
 
@@ -547,7 +577,6 @@ def execute_stock_engine():
             symbol = candidate["symbol"]
             px = candidate["close"]
 
-            # --- SCALED 13% NAV ALLOCATION (Matching Crypto Ballistic Sizing) ---
             target_usd = max(50.0, equity * 0.13)
             qty = round(target_usd / px, 4)
             tif = "day"
@@ -679,7 +708,7 @@ def execute_stock_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Equities-LS-01 | Trailing Peak Profit Hunter</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: ATR STOPS & PROGRESSIVE PEAK-LOCK</p>
+            <p>Timestamp: {timestamp} &bull; Mode: SMART VOLUME-ADAPTIVE RUNNERS</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -702,10 +731,10 @@ def execute_stock_engine():
             </div>
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Guardrails (ATR Stops & Peak-Lock)</div>
+              <div class="rules-title">&#9989; Active Guardrails (Smart Volume-Adaptive Trailing)</div>
               &bull; <b>SPY Bloodbath Shield:</b> Instantly liquidates 100% of positions to cash if SPY flips red<br>
+              &bull; <b>Smart Runner Volume-Adaptation:</b> Heavy volume (>=1.5x) widens the trail so true runners run to the top; stalling volume (<0.8x) tightens the lock instantly<br>
               &bull; <b>ATR Dynamic Stops:</b> Adapts initial stop-loss to each stock's volatility (1.5x ATR)<br>
-              &bull; <b>Progressive Peak-Lock Ladder:</b> 0.6% early buffer (lets winners breathe) compressing to 0.25% ballistic lock (secures massive peak gains)<br>
               &bull; <b>Scaled Position Sizing:</b> 13% NAV allocation per slot<br>
               &bull; <b>Pre-Close EOD Square-Off:</b> Automatic 100% cash liquidation at 2:40 PM CT daily<br>
               &bull; <b>Asset Universe:</b> S&P 500 & Nasdaq Momentum Equities
