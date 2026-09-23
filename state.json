@@ -5,57 +5,57 @@
     "BLUR": 0,
     "MEME": 0,
     "GMT": 0,
-    "FIL": 2,
-    "CAKE": 2
+    "FIL": 3,
+    "CAKE": 3
   },
   "closed_trades_ledger": [],
   "active_position_cache": {
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.8317,
+      "current_px": 0.8349,
       "szi": 83.66,
       "peak_roe": 0.06329274479959418
     },
     "BLUR": {
       "entry_px": 0.020334,
-      "current_px": 0.020649,
+      "current_px": 0.020709,
       "szi": 3393.0,
       "peak_roe": 0.018589554440837996
     },
     "MEME": {
       "entry_px": 0.000626,
-      "current_px": 0.000634,
+      "current_px": 0.000636,
       "szi": 140823.0,
-      "peak_roe": 0.012779552715654915
+      "peak_roe": 0.015974440894568558
     },
     "FIL": {
       "entry_px": 1.0588,
-      "current_px": 1.0523,
+      "current_px": 1.04735,
       "szi": 79.1,
       "peak_roe": -0.006139025311673546
     },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008797,
+      "current_px": 0.00884,
       "szi": 10173.0,
-      "peak_roe": 0.07038834951456296
+      "peak_roe": 0.07281553398058249
     },
     "CAKE": {
       "entry_px": 2.722,
-      "current_px": 2.698,
+      "current_px": 2.68625,
       "szi": 33.0,
       "peak_roe": -0.008817046289493027
     }
   },
   "previous_active_coins": [
-    "FIL",
-    "CAKE",
     "BLUR",
+    "GMT",
     "APT",
+    "FIL",
     "MEME",
-    "GMT"
+    "CAKE"
   ],
-  "last_run_timestamp": "2026-09-23 04:06:24",
+  "last_run_timestamp": "2026-09-23 04:39:31",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "MODERATE",
