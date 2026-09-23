@@ -6,56 +6,58 @@
     "MEME": 0,
     "GMT": 0,
     "FIL": 5,
-    "CAKE": 5
+    "CAKE": 5,
+    "FET": 1
   },
-  "closed_trades_ledger": [],
+  "closed_trades_ledger": [
+    {
+      "coin": "CAKE",
+      "entry_price": 2.722,
+      "exit_price": 2.67365,
+      "exit_reason": "Tight-Leash Profit Grab",
+      "timestamp": "2026-09-23 05:37:04"
+    },
+    {
+      "coin": "FIL",
+      "entry_price": 1.0588,
+      "exit_price": 1.0529,
+      "exit_reason": "Tight-Leash Profit Grab",
+      "timestamp": "2026-09-23 05:37:04"
+    }
+  ],
   "active_position_cache": {
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.8422,
+      "current_px": 0.8438,
       "szi": 83.66,
-      "peak_roe": 0.06823947234906134
+      "peak_roe": 0.07026889903602233
     },
     "BLUR": {
       "entry_px": 0.020334,
-      "current_px": 0.020706,
+      "current_px": 0.020761,
       "szi": 3393.0,
-      "peak_roe": 0.018589554440837996
+      "peak_roe": 0.020999311497983685
     },
     "MEME": {
       "entry_px": 0.000626,
-      "current_px": 0.000631,
+      "current_px": 0.000633,
       "szi": 140823.0,
       "peak_roe": 0.015974440894568558
     },
-    "FIL": {
-      "entry_px": 1.0588,
-      "current_px": 1.0469,
-      "szi": 79.1,
-      "peak_roe": -0.006139025311673546
-    },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008822,
+      "current_px": 0.008846,
       "szi": 10173.0,
-      "peak_roe": 0.07281553398058249
-    },
-    "CAKE": {
-      "entry_px": 2.722,
-      "current_px": 2.66865,
-      "szi": 33.0,
-      "peak_roe": -0.008817046289493027
+      "peak_roe": 0.07354368932038821
     }
   },
   "previous_active_coins": [
-    "BLUR",
     "GMT",
     "MEME",
-    "CAKE",
-    "FIL",
-    "APT"
+    "APT",
+    "BLUR"
   ],
-  "last_run_timestamp": "2026-09-23 05:25:39",
+  "last_run_timestamp": "2026-09-23 05:37:56",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "MODERATE",
