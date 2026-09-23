@@ -1,9 +1,9 @@
 {
   "cooldown_blocklist": {},
   "stagnation_tracker": {
-    "APT": 5,
+    "APT": 6,
     "BLUR": 0,
-    "MEME": 11,
+    "MEME": 12,
     "GMT": 0,
     "FIL": 5,
     "CAKE": 5,
@@ -11,11 +11,12 @@
     "ZEN": 1,
     "BANANA": 2,
     "PYTH": 2,
-    "INJ": 0,
+    "INJ": 1,
     "YGG": 0,
-    "TRX": 9,
+    "TRX": 10,
     "AVAX": 2,
-    "JTO": 2
+    "JTO": 2,
+    "KAS": 1
   },
   "closed_trades_ledger": [
     {
@@ -78,36 +79,36 @@
   "active_position_cache": {
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.7665,
+      "current_px": 0.7643,
       "szi": 83.66,
       "peak_roe": 0.08269913749365809
     },
     "TRX": {
       "entry_px": 0.3417,
-      "current_px": 0.339515,
+      "current_px": 0.339305,
       "szi": -193.0,
-      "peak_roe": 0.006394498097746539
+      "peak_roe": 0.007009072285630613
     },
     "MEME": {
       "entry_px": 0.000626,
-      "current_px": 0.000595,
+      "current_px": 0.000593,
       "szi": 140823.0,
       "peak_roe": 0.0351437699680511
     },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008296,
+      "current_px": 0.008307,
       "szi": 10173.0,
       "peak_roe": 0.07463592233009698
     }
   },
   "previous_active_coins": [
-    "GMT",
-    "APT",
     "MEME",
+    "APT",
+    "GMT",
     "TRX"
   ],
-  "last_run_timestamp": "2026-09-23 15:39:38",
+  "last_run_timestamp": "2026-09-23 16:06:58",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "MODERATE",
