@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-23 13:42:47",
+  "last_run_timestamp": "2026-09-23 14:08:09",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "MODERATE",
@@ -19,11 +19,27 @@
     "scan_date": "2026-09-23"
   },
   "previous_active_symbols": [
-    "NVDA",
+    "PFE",
     "MSFT",
-    "PFE"
+    "SNOW"
   ],
   "closed_trades_ledger": [
+    {
+      "symbol": "SNOW",
+      "entry_price": 343.17,
+      "exit_price": 336.51,
+      "exit_reason": "Razor-Tight Hard Stop (-0.7%)",
+      "realized_pnl": -194.57323200000073,
+      "timestamp": "2026-09-23 14:07:58"
+    },
+    {
+      "symbol": "MSFT",
+      "entry_price": 504.38052,
+      "exit_price": 499.32,
+      "exit_reason": "Razor-Tight Hard Stop (-0.7%)",
+      "realized_pnl": -101.42648420399993,
+      "timestamp": "2026-09-23 14:07:58"
+    },
     {
       "symbol": "NVDA",
       "entry_price": 221.98,
@@ -166,40 +182,26 @@
       "exit_price": 228.15,
       "exit_reason": "Trailing Peak Profit Grab",
       "timestamp": "2026-09-22 20:41:19"
-    },
-    {
-      "symbol": "MU",
-      "entry_price": 1047.68,
-      "exit_price": 1091.0,
-      "exit_reason": "Trailing Peak Profit Grab",
-      "timestamp": "2026-09-22 20:41:19"
-    },
-    {
-      "symbol": "AVGO",
-      "entry_price": 355.285833,
-      "exit_price": 364.2387,
-      "exit_reason": "Trailing Peak Profit Grab",
-      "timestamp": "2026-09-22 20:41:19"
     }
   ],
   "active_position_cache": {
     "MSFT": {
       "entry_px": 504.38052,
-      "current_px": 507.08,
+      "current_px": 499.32,
       "qty": 20.0427,
       "peak_roe": 0.005352070298036082
     },
-    "NVDA": {
-      "entry_px": 221.98,
-      "current_px": 228.35,
-      "qty": 40.0,
-      "peak_roe": 0.03094873412019103
-    },
     "PFE": {
       "entry_px": 28.14,
-      "current_px": 28.04,
+      "current_px": 28.0401,
       "qty": 358.04,
-      "peak_roe": -0.0035536602700782308
+      "peak_roe": -0.003550106609808161
+    },
+    "SNOW": {
+      "entry_px": 343.17,
+      "current_px": 336.51,
+      "qty": 29.2152,
+      "peak_roe": -0.01940729084710209
     }
   },
   "daily_starting_equity": {
