@@ -5,7 +5,7 @@
     "BLUR": 0,
     "MEME": 22,
     "GMT": 6,
-    "FIL": 9,
+    "FIL": 10,
     "CAKE": 5,
     "FET": 1,
     "ZEN": 1,
@@ -20,10 +20,17 @@
     "DYDX": 0,
     "ATOM": 4,
     "SUSHI": 3,
-    "BIGTIME": 3,
-    "RSR": 1
+    "BIGTIME": 4,
+    "RSR": 2
   },
   "closed_trades_ledger": [
+    {
+      "coin": "ATOM",
+      "entry_price": 1.683,
+      "exit_price": 1.6936,
+      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
+      "timestamp": "2026-09-23 22:05:24"
+    },
     {
       "coin": "KAS",
       "entry_price": 0.038779,
@@ -86,55 +93,41 @@
       "exit_price": 7.6713,
       "exit_reason": "Balanced Buffer Profit Grab",
       "timestamp": "2026-09-23 17:36:39"
-    },
-    {
-      "coin": "KAS",
-      "entry_price": 0.038624,
-      "exit_price": 0.039052,
-      "exit_reason": "Balanced Buffer Profit Grab",
-      "timestamp": "2026-09-23 17:36:39"
     }
   ],
   "active_position_cache": {
-    "ATOM": {
-      "entry_px": 1.683,
-      "current_px": 1.6947,
-      "szi": -46.53,
-      "peak_roe": -0.00047534165181218767
-    },
     "DYDX": {
       "entry_px": 0.12878,
-      "current_px": 0.12742,
+      "current_px": 0.12692,
       "szi": -513.6,
       "peak_roe": 0.021587202981829513
     },
     "BIGTIME": {
       "entry_px": 0.007985,
-      "current_px": 0.008046,
+      "current_px": 0.008014,
       "szi": -8853.0,
       "peak_roe": -0.0010018785222290954
     },
     "FIL": {
       "entry_px": 0.91986,
-      "current_px": 0.9276,
+      "current_px": 0.92633,
       "szi": -74.5,
       "peak_roe": 0.00025003804926843596
     },
     "RSR": {
       "entry_px": 0.001626,
-      "current_px": 0.001634,
+      "current_px": 0.001631,
       "szi": -40004.0,
-      "peak_roe": -0.004920049200491991
+      "peak_roe": -0.003075030750307511
     }
   },
   "previous_active_coins": [
+    "DYDX",
     "FIL",
     "BIGTIME",
-    "ATOM",
-    "DYDX",
     "RSR"
   ],
-  "last_run_timestamp": "2026-09-23 21:37:06",
+  "last_run_timestamp": "2026-09-23 22:06:17",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "MODERATE",
