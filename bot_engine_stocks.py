@@ -69,8 +69,9 @@ def save_state(state):
 
 def check_market_macro_regime():
     try:
-        # Added &feed=iex to ensure Alpaca returns valid data instead of empty bars
-        url = "https://data.alpaca.markets/v2/stocks/bars?symbols=SPY&timeframe=1Day&limit=2&feed=iex"
+        start_date = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+        # Included start date and feed parameter so Alpaca returns actual daily bars
+        url = f"https://data.alpaca.markets/v2/stocks/bars?symbols=SPY&timeframe=1Day&limit=5&feed=iex&start={start_date}"
         res = requests.get(url, headers=HEADERS)
         if res.status_code == 200:
             bars_data = res.json().get("bars", {})
