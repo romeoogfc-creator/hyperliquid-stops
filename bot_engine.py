@@ -191,44 +191,45 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
     else:
         roe = ((entry_px - current_px) / entry_px) * leverage
 
-    leash_status = "Standard Sniper Stop"
+    leash_status = "Tiered Sniper Stop"
     
-    # --- MACRO REGIME MISMATCH CHECK (Blood-Bath Shield) ---
+    # --- MACRO REGIME MISMATCH GUARD (Blood-Bath Protection) ---
     regime_mismatch = (is_long and not btc_regime_green) or (not is_long and btc_regime_green)
 
     if regime_mismatch:
-        target_floor_roe = max(peak_roe - 0.002, 0.0) if peak_roe > 0 else 0.0
-        leash_status = "🚨 Macro Regime Defensive Lock"
+        target_floor_roe = max(peak_roe - 0.001, 0.0) if peak_roe > 0 else 0.0
+        leash_status = "🚨 Macro Regime Micro-Lock (Blood-Bath Defense)"
     else:
-        # --- SMART VOLUME-ADAPTIVE TRAILING PEAK FOLLOWER ---
-        if vol_ratio >= 1.5:
-            vol_multiplier = 1.6  # Give runners breathing room (+60% buffer expansion)
-            vol_tag = "🚀 Smart Runner (High Vol)"
-        elif vol_ratio < 0.8:
-            vol_multiplier = 0.7  # Tighter lock on volume stall
-            vol_tag = "⚠️ Volume Stall Lock"
-        else:
-            vol_multiplier = 1.0
-            vol_tag = "Balanced Peak Floor"
-
-        if peak_roe >= 0.004:
-            base_buffer = 0.005
-            adjusted_buffer = base_buffer * vol_multiplier
-            target_floor_roe = peak_roe - adjusted_buffer
-            leash_status = f"{vol_tag} [{vol_ratio:.1f}x Vol] ({target_floor_roe*100:+.2f}%)"
+        # --- CHOICE A: TIERED MEGA-RUNNER TRAILING PEAK FOLLOWER ---
+        if peak_roe >= 0.15:
+            # Tier 3: Mega-Runner Zone (+15%+ ROE). Wider 1.0% buffer lets it fly while locking a massive +14%+ floor.
+            target_floor_roe = peak_roe - 0.010
+            leash_status = f"🚀 Mega-Runner Leash [{peak_roe*100:.1f}% Peak]"
+        elif peak_roe >= 0.05:
+            # Tier 2: Mid-Runner Zone (+5% to +15% ROE). Balanced 0.5% buffer.
+            target_floor_roe = peak_roe - 0.005
+            leash_status = f"📈 Mid-Trend Peak Floor [{peak_roe*100:.1f}% Peak]"
+        elif peak_roe >= 0.004:
+            # Tier 1: Early Green Zone (+0.4% to +5% ROE). Tight 0.3% buffer to lock quick profits.
+            if vol_ratio < 0.8:
+                target_floor_roe = max(peak_roe - 0.001, 0.0)
+                leash_status = "⚡ Volume Stall Snap (+0.1% Buffer)"
+            else:
+                target_floor_roe = peak_roe - 0.003
+                leash_status = f"🎯 Quick Profit Lock [{peak_roe*100:.1f}% Peak]"
         else:
             if roe >= 0.01:
                 target_floor_roe = 0.0
                 leash_status = "Break-Even Lock (+1.0% Trigger)"
             elif choppiness_index > 58.0:
-                target_floor_roe = -0.012   # Balanced Choppy Stop to -1.2% ROE
-                leash_status = "Choppy Defense Stop"
+                target_floor_roe = -0.010   # Tight Choppy Stop to -1.0% ROE
+                leash_status = "Tight Choppy Defense Stop"
             elif is_ballistic:
-                target_floor_roe = -0.020   # Balanced Ballistic Stop to -2.0% ROE
+                target_floor_roe = -0.015   # Ballistic Stop to -1.5% ROE
                 leash_status = "Ballistic Stop"
             else:
-                target_floor_roe = -0.015   # Balanced Trend Stop to -1.5% ROE
-                leash_status = "Trend Defense Stop"
+                target_floor_roe = -0.010   # Tight Trend Stop to -1.0% ROE
+                leash_status = "Tight Trend Defense Stop"
 
     if is_long:
         stop_px = entry_px * (1 + (target_floor_roe / leverage))
@@ -255,7 +256,7 @@ def check_btc_daily_candle(info):
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Smart Volume-Adaptive Trailing Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Choice A Tiered Mega-Runner Sniper Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -326,7 +327,7 @@ def execute_engine():
                 "coin": closed_coin,
                 "entry_price": entry_px,
                 "exit_price": exit_px,
-                "exit_reason": "Smart Volume-Adaptive Profit Grab",
+                "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
                 "timestamp": timestamp
             })
             state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
@@ -619,7 +620,7 @@ def execute_engine():
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine - Smart Volume-Adaptive)</div>
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine - Choice A Tiered Sniper)</div>
         <div class="table-responsive" style="overflow-x: hidden;">
           <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
             <tbody>{audit_rows}</tbody>
@@ -719,7 +720,7 @@ def execute_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-            <p>Timestamp: {timestamp} (Smart Volume-Adaptive Trailing Active)</p>
+            <p>Timestamp: {timestamp} (Choice A Tiered Mega-Runner Sniper Active)</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -738,10 +739,10 @@ def execute_engine():
             </div>
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Guardrails (Smart Volume-Adaptive Trailing)</div>
+              <div class="rules-title">&#9989; Active Guardrails (Choice A Tiered Mega-Runner Sniper)</div>
               &bull; <b>Execution Engine:</b> 30-Min 24/7 GitHub Cron &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
-              &bull; <b>Smart Volume Adaptation:</b> High volume (>=1.5x) widens the trail for true runners; volume stalls (<0.8x) tighten the lock instantly<br>
-              &bull; <b>Macro Regime Guard:</b> Auto-tightens legacy stops if market trend flips against open positions<br>
+              &bull; <b>Tiered Trailing Leash:</b> 0.3% buffer for early green (+0.4% to +5%), 0.5% buffer for mid-trend (+5% to +15%), 1.0% buffer for mega-runners (+15%+)<br>
+              &bull; <b>Macro Regime Guard:</b> Instantly micro-locks legacy positions if trend flips against open side<br>
               &bull; <b>BTC Regime Shield:</b> Block LONGs if daily candle is RED; block SHORTs if daily candle is GREEN<br>
               &bull; <b>Leverage Profile: Optimized 5x Safe Max Leverage</b>
             </div>
