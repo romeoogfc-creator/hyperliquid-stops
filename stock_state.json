@@ -8,17 +8,24 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-22 21:23:47",
+  "last_run_timestamp": "2026-09-23 13:14:42",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "MODERATE",
-    "reason": "While geopolitical tensions regarding Iran and upcoming U.S.-China diplomatic meetings create uncertainty, the market is currently benefiting from an AI-led recovery and cooling oil prices. The Federal Reserve's recent rate hike and 'higher-for-longer' stance are well-telegraphed, and while volatility is expected, there is no evidence of an immediate black-swan collapse.",
+    "reason": "Market sentiment remains cautiously optimistic as equity indices hover near record highs, supported by resilient corporate earnings and recent stabilization in energy markets. While geopolitical tensions and uncertainty regarding Federal Reserve policy paths persist, there is no evidence of an immediate black-swan event or extreme volatility triggering a crash.",
     "action": "ALLOW_TRADES",
-    "ai_market_brief": "U.S. stock market sentiment remains cautiously optimistic as an AI-driven rally, fueled by positive reception for new technology, offsets concerns over elevated interest rates and geopolitical friction. Key catalysts currently driving price action include the upcoming high-stakes meeting between President Trump and President Xi Jinping, alongside ongoing energy supply fluctuations and Federal Reserve policy normalization.",
-    "timestamp": "2026-09-22 13:13:23",
-    "scan_date": "2026-09-22"
+    "ai_market_brief": "U.S. stock futures are trading mixed as investors monitor high-level geopolitical developments between the U.S. and Iran alongside the start of President Xi Jinping's state visit to Washington. While markets are navigating September seasonality and ongoing macro uncertainties, the overall sentiment is anchored by strong underlying technical momentum and a stable labor and growth environment.",
+    "timestamp": "2026-09-23 13:14:39",
+    "scan_date": "2026-09-23"
   },
-  "previous_active_symbols": [],
+  "previous_active_symbols": [
+    "DE",
+    "INTC",
+    "AVGO",
+    "TXN",
+    "NVDA",
+    "MU"
+  ],
   "closed_trades_ledger": [
     {
       "symbol": "MU",
@@ -158,8 +165,46 @@
       "timestamp": "2026-09-22 13:42:06"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "AVGO": {
+      "entry_px": 355.285833,
+      "current_px": 361.0551,
+      "qty": 24.0,
+      "peak_roe": 0.01623838178765759
+    },
+    "DE": {
+      "entry_px": 698.43,
+      "current_px": 700.55,
+      "qty": 14.4243,
+      "peak_roe": 0.003035379350829725
+    },
+    "INTC": {
+      "entry_px": 118.3,
+      "current_px": 122.39,
+      "qty": 104.0,
+      "peak_roe": 0.03457311918850384
+    },
+    "MU": {
+      "entry_px": 1047.68,
+      "current_px": 1088.91,
+      "qty": 8.0,
+      "peak_roe": 0.03935361942577888
+    },
+    "NVDA": {
+      "entry_px": 221.98,
+      "current_px": 227.61,
+      "qty": 40.0,
+      "peak_roe": 0.02536264528335897
+    },
+    "TXN": {
+      "entry_px": 264.579697,
+      "current_px": 269.0,
+      "qty": 33.0,
+      "peak_roe": 0.016706886621009283
+    }
+  },
   "daily_starting_equity": {
-    "2026-09-22": 101022.53
+    "2026-09-22": 101022.53,
+    "2026-09-23": 100687.3
   }
 }
