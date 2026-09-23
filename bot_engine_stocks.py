@@ -783,7 +783,7 @@ if __name__ == "__main__":
     try:
         execute_stock_engine()
     except Exception as e:
-        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S']}] Bi-Directional Engine execution error: {e}"
+        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Bi-Directional Engine execution error: {e}"
         print(err_msg)
         send_html_dashboard_email("Alpaca Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
         raise e
