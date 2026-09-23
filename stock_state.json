@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-23 14:43:23",
+  "last_run_timestamp": "2026-09-23 15:12:45",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "MODERATE",
@@ -19,14 +19,22 @@
     "scan_date": "2026-09-23"
   },
   "previous_active_symbols": [
+    "BA",
+    "XOM",
     "GE",
     "PFE",
-    "ABBV",
-    "BA",
     "LMT",
-    "XOM"
+    "ABBV"
   ],
   "closed_trades_ledger": [
+    {
+      "symbol": "GE",
+      "entry_price": 325.71,
+      "exit_price": 321.245,
+      "exit_reason": "Balanced Hard Stop (-1.2%)",
+      "realized_pnl": -137.53226949999922,
+      "timestamp": "2026-09-23 15:12:34"
+    },
     {
       "symbol": "SNOW",
       "entry_price": 343.17,
@@ -178,49 +186,42 @@
       "exit_reason": "EOD Square-Off (100% Cash Flat)",
       "realized_pnl": 67.64996700000079,
       "timestamp": "2026-09-22 21:12:03"
-    },
-    {
-      "symbol": "NVDA",
-      "entry_price": 221.98,
-      "exit_price": 228.15,
-      "exit_reason": "Trailing Peak Profit Grab",
-      "timestamp": "2026-09-22 20:41:19"
     }
   ],
   "active_position_cache": {
     "ABBV": {
       "entry_px": 269.0,
-      "current_px": 267.49,
+      "current_px": 265.89,
       "qty": 37.1969,
       "peak_roe": -0.005613382899628219
     },
     "BA": {
       "entry_px": 203.11,
-      "current_px": 202.04,
+      "current_px": 203.48,
       "qty": 49.347,
-      "peak_roe": -0.0016247353650731746
+      "peak_roe": 0.0018216729850818575
     },
     "GE": {
       "entry_px": 325.71,
-      "current_px": 324.805,
+      "current_px": 321.245,
       "qty": 30.8023,
       "peak_roe": -0.000552638850511212
     },
     "LMT": {
       "entry_px": 534.77,
-      "current_px": 532.79,
+      "current_px": 528.833,
       "qty": 18.7731,
       "peak_roe": -0.0037025263197262718
     },
     "PFE": {
       "entry_px": 28.14,
-      "current_px": 27.945,
+      "current_px": 27.93,
       "qty": 358.04,
       "peak_roe": -0.003375977256574231
     },
     "XOM": {
       "entry_px": 162.07,
-      "current_px": 161.995,
+      "current_px": 161.155,
       "qty": 61.8846,
       "peak_roe": -0.00046276300364033216
     }
