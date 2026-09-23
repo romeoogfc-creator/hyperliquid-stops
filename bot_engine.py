@@ -71,7 +71,7 @@ def run_gemini_market_shield():
     cached_shield = state.get("ai_shield_cache", {})
     today_str = time.strftime('%Y-%m-%d')
 
-    if cached_shield.get("scan_date") == today_str and "high_risk_detected" in cached_shield:
+    if cached_shield.get("scan_date") == today_str and "risk_level" in cached_shield:
         return cached_shield
 
     if not GEMINI_API_KEY:
@@ -196,11 +196,9 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
     # --- VOLUME-AWARE DYNAMIC TRAILING PEAK FOLLOWER ---
     if peak_roe >= 0.004:
         if vol_ratio < 0.8:
-            # Volume stalled: snap buffer to 0.1% ROE to grab profit instantly
             target_floor_roe = max(peak_roe - 0.001, 0.0)
             leash_status = f"Volume Stall Lock (+0.1% Buffer)"
         else:
-            # Healthy volume: use 0.5% ROE buffer for 5x leverage room
             target_floor_roe = peak_roe - 0.005
             leash_status = f"Trailing Peak Floor ({target_floor_roe*100:+.1f}%)"
     else:
@@ -245,8 +243,12 @@ def execute_engine():
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
 
     ai_shield = run_gemini_market_shield()
-    ai_risk_status = "BLOCKED (High Risk)" if ai_shield.get("high_risk_detected") else "PASS (Normal Risk)"
-    audit_logs.append(f"Gemini AI Shield: [{ai_shield.get('risk_level', 'UNKNOWN')}] {ai_shield.get('reason', '')} -> {ai_risk_status}")
+    risk_level = ai_shield.get("risk_level", "UNKNOWN")
+    
+    # MODIFIED: Only block if risk level is explicitly HIGH. Allow LOW and MODERATE through!
+    is_high_risk = (risk_level == "HIGH")
+    ai_risk_status = f"BLOCKED (High Risk)" if is_high_risk else f"PASS ({risk_level} Risk - Trading Active)"
+    audit_logs.append(f"Gemini AI Shield: [{risk_level}] {ai_shield.get('reason', '')} -> {ai_risk_status}")
 
     state = load_state()
     wallet = eth_account.Account.from_key(SECRET_KEY)
@@ -349,7 +351,6 @@ def execute_engine():
             if ci > 62.0:
                 continue
 
-            # Volume Gate Verification: Relaxed to >= 0.7 avg
             avg_vol = np.mean(volumes[-10:]) if len(volumes) >= 10 else volumes[-1]
             current_vol = volumes[-1]
             vol_ratio = current_vol / avg_vol if avg_vol > 0 else 1.0
@@ -368,7 +369,6 @@ def execute_engine():
                 }
                 smart_queue_candidates.append(candidate_obj)
 
-                # Widened Extension Cap to 4.0% (1.04) and relaxed volume to 0.7
                 if current_close > upper and current_close <= upper * 1.04 and vol_ratio >= 0.7:
                     market_candidates.append(candidate_obj)
                     audit_logs.append(f"CRYPTO MATCH LONG: {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
@@ -384,7 +384,6 @@ def execute_engine():
                 }
                 smart_queue_candidates.append(candidate_obj)
 
-                # Widened Extension Cap to 4.0% (0.96) and relaxed volume to 0.7
                 if current_close < lower and current_close >= lower * 0.96 and vol_ratio >= 0.7:
                     market_candidates.append(candidate_obj)
                     audit_logs.append(f"CRYPTO MATCH SHORT: {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
@@ -413,8 +412,8 @@ def execute_engine():
     account_value = total_spot_net_worth if total_spot_net_worth > 0 else fallback_val
 
     trades_executed = False
-    if ai_shield.get("high_risk_detected"):
-        audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD.")
+    if is_high_risk:
+        audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD (High Risk Detected).")
     elif active_count < 6 and market_candidates:
         for candidate in market_candidates[: (6 - active_count)]:
             coin = candidate["coin"]
@@ -660,8 +659,8 @@ def execute_engine():
     else:
         positions_rows = "<tr><td colspan='10' style='padding: 15px; text-align: center; color: #666;'>No active positions found.</td></tr>"
 
-    ai_risk_color = "#c62828" if ai_shield.get("high_risk_detected") else "#2e7d32"
-    ai_badge = f"<span style='background: {ai_risk_color}; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 10px;'>Risk Level: {ai_shield.get('risk_level', 'UNKNOWN')}</span>"
+    ai_risk_color = "#c62828" if is_high_risk else "#2e7d32"
+    ai_badge = f"<span style='background: {ai_risk_color}; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 10px;'>Risk Level: {risk_level}</span>"
 
     html_content = f"""
     <html>
@@ -720,7 +719,7 @@ def execute_engine():
               &bull; <b>Gemini AI Macro Shield:</b> Real-time Google Search news & black-swan scanning (Daily JSON Cached)<br>
               &bull; <b>Strict Choppiness Filter:</b> Skip entries if Choppiness Index (CI) &gt; 62<br>
               &bull; <b>Stagnation Rotation:</b> 24 Hours (48 Runs) max hold for ROE &lt; +1.5%<br>
-              &bull; <b>Leverage Profile:</b> Optimized 5x Safe Max Leverage
+              &bull; <b>Leverage Profile: Optimized 5x Safe Max Leverage</b>
             </div>
 
             <div class="section-title">Positions per Bot (USD)</div>
