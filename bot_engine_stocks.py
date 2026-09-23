@@ -69,16 +69,18 @@ def save_state(state):
 
 def check_market_macro_regime():
     try:
-        url = "https://data.alpaca.markets/v2/stocks/bars?symbols=SPY&timeframe=1Day&limit=2"
+        # Added &feed=iex to ensure Alpaca returns valid data instead of empty bars
+        url = "https://data.alpaca.markets/v2/stocks/bars?symbols=SPY&timeframe=1Day&limit=2&feed=iex"
         res = requests.get(url, headers=HEADERS)
         if res.status_code == 200:
-            bars = res.json().get("bars", {}).get("SPY", [])
-            if len(bars) >= 2:
-                latest_close = float(bars[-1]["c"])
-                prev_close = float(bars[-2]["c"])
+            bars_data = res.json().get("bars", {})
+            spy_bars = bars_data.get("SPY", [])
+            if len(spy_bars) >= 2:
+                latest_close = float(spy_bars[-1]["c"])
+                prev_close = float(spy_bars[-2]["c"])
                 return latest_close >= prev_close, prev_close, latest_close
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"Error checking SPY macro regime: {e}")
     return True, 0.0, 0.0
 
 def run_gemini_stock_market_shield():
@@ -207,7 +209,7 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (Profit Hunter Mode & SPY Bloodbath Shield, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (Profit Hunter Mode & Fixed SPY Shield, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
@@ -658,7 +660,7 @@ def execute_stock_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Equities-LS-01 | Trailing Peak Profit Hunter</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: PROFIT HUNTER & SPY BLOODBATH SHIELD</p>
+            <p>Timestamp: {timestamp} &bull; Mode: PROFIT HUNTER & FIXED SPY SHIELD</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -681,7 +683,7 @@ def execute_stock_engine():
             </div>
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Guardrails (Profit Hunter & Bloodbath Shield)</div>
+              <div class="rules-title">&#9989; Active Guardrails (Profit Hunter & Fixed SPY Shield)</div>
               &bull; <b>SPY Bloodbath Shield:</b> Instantly liquidates 100% of positions to cash if SPY flips red<br>
               &bull; <b>Entry Confirmation Filter:</b> Strictly requires breakout + green confirmation candle & upward continuation<br>
               &bull; <b>Balanced Peak Floor (0.25% Buffer):</b> Locks in robust peaks without choking positions<br>
