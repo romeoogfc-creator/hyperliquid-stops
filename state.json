@@ -1,22 +1,22 @@
 {
   "cooldown_blocklist": {},
   "stagnation_tracker": {
-    "APT": 15,
+    "APT": 16,
     "BLUR": 0,
-    "MEME": 21,
-    "GMT": 5,
+    "MEME": 22,
+    "GMT": 6,
     "FIL": 5,
     "CAKE": 5,
     "FET": 1,
     "ZEN": 1,
-    "BANANA": 6,
+    "BANANA": 7,
     "PYTH": 2,
     "INJ": 0,
     "YGG": 0,
     "TRX": 12,
     "AVAX": 2,
     "JTO": 2,
-    "KAS": 3,
+    "KAS": 4,
     "DYDX": 0
   },
   "closed_trades_ledger": [
@@ -94,19 +94,19 @@
   "active_position_cache": {
     "DYDX": {
       "entry_px": 0.12878,
-      "current_px": 0.12645,
+      "current_px": 0.12635,
       "szi": -513.6,
-      "peak_roe": 0.01879173784749189
+      "peak_roe": 0.01886938965677912
     },
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.7596,
+      "current_px": 0.7586,
       "szi": 83.66,
       "peak_roe": 0.08269913749365809
     },
     "BANANA": {
       "entry_px": 3.92784,
-      "current_px": 3.92645,
+      "current_px": 3.934,
       "szi": -16.7,
       "peak_roe": 0.0027597865493503818
     },
@@ -118,19 +118,19 @@
     },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008151,
+      "current_px": 0.008149,
       "szi": 10173.0,
       "peak_roe": 0.07463592233009698
     }
   },
   "previous_active_coins": [
     "APT",
-    "DYDX",
     "BANANA",
+    "GMT",
     "MEME",
-    "GMT"
+    "DYDX"
   ],
-  "last_run_timestamp": "2026-09-23 20:06:48",
+  "last_run_timestamp": "2026-09-23 20:16:45",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "MODERATE",
