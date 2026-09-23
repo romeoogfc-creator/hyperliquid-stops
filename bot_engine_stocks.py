@@ -236,11 +236,11 @@ def execute_stock_engine():
     orders_res = requests.get(f"{BASE_URL}/v2/orders?status=open", headers=HEADERS)
     open_orders = orders_res.json() if orders_res.status_code == 200 else []
 
-    # --- RULE 1: PRE-CLOSE EOD SQUARE-OFF (2:50 PM CT) ---
-    is_eod_square_off = (ct_now.hour == 14 and ct_now.minute >= 50) or (ct_now.hour >= 15)
+    # --- RULE 1: PRE-CLOSE EOD SQUARE-OFF (Adjusted to 2:40 PM CT / 14:40 for reliable execution) ---
+    is_eod_square_off = (ct_now.hour == 14 and ct_now.minute >= 40) or (ct_now.hour >= 15)
 
     if is_eod_square_off and positions_list:
-        audit_logs.append("EOD SQUARE-OFF TRIGGERED (>= 2:50 PM CT): Liquidating all open positions for 100% cash flat.")
+        audit_logs.append("EOD SQUARE-OFF TRIGGERED (>= 2:40 PM CT): Liquidating all open positions for 100% cash flat.")
         for pos in positions_list:
             sym = pos.get("symbol")
             qty = float(pos.get("qty", 0))
@@ -659,7 +659,7 @@ def execute_stock_engine():
               &bull; <b>Dynamic Trailing Peak Floor:</b> Tracks peak ROE and hugs right behind it with a strict 0.3% buffer (~90%+ profit lock)<br>
               &bull; <b>Volume Intelligence Leash:</b> Sniffs volume stalls (vol ratio < 0.8)<br>
               &bull; <b>Strict Choppiness Filter:</b> Skips entries if Choppiness Index (CI) > 62<br>
-              &bull; <b>Pre-Close EOD Square-Off:</b> Automatic 100% cash liquidation at 2:50 PM CT daily<br>
+              &bull; <b>Pre-Close EOD Square-Off:</b> Automatic 100% cash liquidation at 2:40 PM CT daily<br>
               &bull; <b>Asset Universe:</b> S&P 500 & Nasdaq Momentum Equities
             </div>
 
