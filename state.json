@@ -3,43 +3,45 @@
   "stagnation_tracker": {
     "APT": 0,
     "BLUR": 0,
-    "MEME": 4,
-    "GMT": 0
+    "MEME": 0,
+    "GMT": 0,
+    "FIL": 1,
+    "CAKE": 1
   },
   "closed_trades_ledger": [],
   "active_position_cache": {
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.8339,
+      "current_px": 0.8383,
       "szi": 83.66,
-      "peak_roe": 0.05771182141045153
+      "peak_roe": 0.06329274479959418
     },
     "BLUR": {
       "entry_px": 0.020334,
-      "current_px": 0.020596,
+      "current_px": 0.020712,
       "szi": 3393.0,
-      "peak_roe": 0.012884823448411445
+      "peak_roe": 0.018589554440837996
     },
     "MEME": {
       "entry_px": 0.000626,
-      "current_px": 0.000629,
+      "current_px": 0.00063,
       "szi": 140823.0,
-      "peak_roe": 0.0047923322683705505
+      "peak_roe": 0.0063897763578274576
     },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008772,
+      "current_px": 0.00882,
       "szi": 10173.0,
-      "peak_roe": 0.06456310679611643
+      "peak_roe": 0.07038834951456296
     }
   },
   "previous_active_coins": [
+    "MEME",
     "GMT",
-    "APT",
     "BLUR",
-    "MEME"
+    "APT"
   ],
-  "last_run_timestamp": "2026-09-23 03:39:15",
+  "last_run_timestamp": "2026-09-23 03:54:31",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "MODERATE",
