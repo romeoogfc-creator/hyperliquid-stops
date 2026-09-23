@@ -1,9 +1,9 @@
 {
   "cooldown_blocklist": {},
   "stagnation_tracker": {
-    "APT": 8,
+    "APT": 9,
     "BLUR": 0,
-    "MEME": 14,
+    "MEME": 15,
     "GMT": 0,
     "FIL": 5,
     "CAKE": 5,
@@ -16,9 +16,31 @@
     "TRX": 12,
     "AVAX": 2,
     "JTO": 2,
-    "KAS": 3
+    "KAS": 3,
+    "DYDX": 1
   },
   "closed_trades_ledger": [
+    {
+      "coin": "INJ",
+      "entry_price": 7.6328,
+      "exit_price": 7.6713,
+      "exit_reason": "Balanced Buffer Profit Grab",
+      "timestamp": "2026-09-23 17:36:39"
+    },
+    {
+      "coin": "KAS",
+      "entry_price": 0.038624,
+      "exit_price": 0.039052,
+      "exit_reason": "Balanced Buffer Profit Grab",
+      "timestamp": "2026-09-23 17:36:39"
+    },
+    {
+      "coin": "TRX",
+      "entry_price": 0.3417,
+      "exit_price": 0.339245,
+      "exit_reason": "Balanced Buffer Profit Grab",
+      "timestamp": "2026-09-23 17:36:39"
+    },
     {
       "coin": "AVAX",
       "entry_price": 10.424,
@@ -67,39 +89,14 @@
       "exit_price": 2.67365,
       "exit_reason": "Tight-Leash Profit Grab",
       "timestamp": "2026-09-23 05:37:04"
-    },
-    {
-      "coin": "FIL",
-      "entry_price": 1.0588,
-      "exit_price": 1.0529,
-      "exit_reason": "Tight-Leash Profit Grab",
-      "timestamp": "2026-09-23 05:37:04"
     }
   ],
   "active_position_cache": {
-    "INJ": {
-      "entry_px": 7.6328,
-      "current_px": 7.6167,
-      "szi": -8.9,
-      "peak_roe": 0.002109317681584711
-    },
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.7677,
+      "current_px": 0.7717,
       "szi": 83.66,
       "peak_roe": 0.08269913749365809
-    },
-    "TRX": {
-      "entry_px": 0.3417,
-      "current_px": 0.338465,
-      "szi": -193.0,
-      "peak_roe": 0.00946736903716707
-    },
-    "KAS": {
-      "entry_px": 0.038624,
-      "current_px": 0.038508,
-      "szi": -2193.0,
-      "peak_roe": 0.0030033140016569506
     },
     "MEME": {
       "entry_px": 0.000626,
@@ -109,20 +106,17 @@
     },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008321,
+      "current_px": 0.00832,
       "szi": 10173.0,
       "peak_roe": 0.07463592233009698
     }
   },
   "previous_active_coins": [
-    "INJ",
-    "GMT",
     "MEME",
-    "APT",
-    "KAS",
-    "TRX"
+    "GMT",
+    "APT"
   ],
-  "last_run_timestamp": "2026-09-23 17:05:57",
+  "last_run_timestamp": "2026-09-23 17:37:35",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "MODERATE",
