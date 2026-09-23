@@ -193,24 +193,29 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
 
     leash_status = "Standard Sniper Stop"
     
-    # --- VOLUME-AWARE DYNAMIC TRAILING PEAK FOLLOWER ---
+    # --- TIGHTENED TIGHT-LEASH TRAILING PEAK FOLLOWER (ONE-WAY STREET UP) ---
     if peak_roe >= 0.004:
         if vol_ratio < 0.8:
             target_floor_roe = max(peak_roe - 0.001, 0.0)
             leash_status = f"Volume Stall Lock (+0.1% Buffer)"
         else:
-            target_floor_roe = peak_roe - 0.005
-            leash_status = f"Trailing Peak Floor ({target_floor_roe*100:+.1f}%)"
+            # Shrunk trailing buffer from 0.5% to 0.25% ROE
+            target_floor_roe = peak_roe - 0.0025
+            leash_status = f"Tight Peak Floor ({target_floor_roe*100:+.2f}%)"
     else:
-        if choppiness_index > 58.0:
-            target_floor_roe = -0.025   # Choppy Market -> -2.5% ROE
-            leash_status = "Choppy Defense Stop"
+        if roe >= 0.01:
+            # Snap to Break-Even at +1.0% ROE or higher
+            target_floor_roe = 0.0
+            leash_status = "Break-Even Lock (+1.0% Trigger)"
+        elif choppiness_index > 58.0:
+            target_floor_roe = -0.010   # Tightened Choppy Stop to -1.0% ROE
+            leash_status = "Tight Choppy Defense Stop"
         elif is_ballistic:
-            target_floor_roe = -0.050   # Ballistic Breakout -> -5.0% ROE
-            leash_status = "Ballistic Stop"
+            target_floor_roe = -0.015   # Tightened Ballistic Stop to -1.5% ROE
+            leash_status = "Tight Ballistic Stop"
         else:
-            target_floor_roe = -0.035   # Standard Clean Trend -> -3.5% ROE
-            leash_status = "Trend Defense Stop"
+            target_floor_roe = -0.010   # Tightened Trend Stop to -1.0% ROE
+            leash_status = "Tight Trend Defense Stop"
 
     if is_long:
         stop_px = entry_px * (1 + (target_floor_roe / leverage))
@@ -237,7 +242,7 @@ def check_btc_daily_candle(info):
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Volume-Aware Dynamic Trailing Sniper Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Tight-Leash One-Way Street Sniper Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -245,7 +250,6 @@ def execute_engine():
     ai_shield = run_gemini_market_shield()
     risk_level = ai_shield.get("risk_level", "UNKNOWN")
     
-    # MODIFIED: Only block if risk level is explicitly HIGH. Allow LOW and MODERATE through!
     is_high_risk = (risk_level == "HIGH")
     ai_risk_status = f"BLOCKED (High Risk)" if is_high_risk else f"PASS ({risk_level} Risk - Trading Active)"
     audit_logs.append(f"Gemini AI Shield: [{risk_level}] {ai_shield.get('reason', '')} -> {ai_risk_status}")
@@ -309,7 +313,7 @@ def execute_engine():
                 "coin": closed_coin,
                 "entry_price": entry_px,
                 "exit_price": exit_px,
-                "exit_reason": "Volume-Aware Trailing Profit Grab",
+                "exit_reason": "Tight-Leash Profit Grab",
                 "timestamp": timestamp
             })
             state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
@@ -506,7 +510,7 @@ def execute_engine():
             )
             px = round_sig_figs(stop_px_raw, 5)
 
-            initial_risk_ref = 0.035
+            initial_risk_ref = 0.01
             r_multiple = current_roe / initial_risk_ref if initial_risk_ref > 0 else 0.0
 
             if current_roe < 0.01:
@@ -566,7 +570,7 @@ def execute_engine():
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
     if active_count == 6:
-        unprotected_trades = [p for p in positions_data if p["roe"] < 1.5]
+        unprotected_trades = [p for p in positions_data if p["roe"] < 1.0]
         if unprotected_trades:
             stagnant_trade = max(unprotected_trades, key=lambda p: state["stagnation_tracker"].get(p["coin"], 0))
             coin_to_rotate = stagnant_trade["coin"]
@@ -693,7 +697,7 @@ def execute_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-            <p>Timestamp: {timestamp} (Volume-Aware Dynamic Trailing Sniper Active)</p>
+            <p>Timestamp: {timestamp} (Tight-Leash One-Way Street Sniper Active)</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -712,13 +716,13 @@ def execute_engine():
             </div>
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Volume-Aware Guardrails</div>
+              <div class="rules-title">&#9989; Active Volume-Aware Guardrails (Tight Leash)</div>
               &bull; <b>Execution Engine:</b> 30-Min 24/7 GitHub Cron &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
-              &bull; <b>Volume-Aware Dynamic Buffer:</b> 0.5% ROE on healthy volume / Snaps to 0.1% ROE on volume stalls<br>
+              &bull; <b>Razor-Thin Trailing Buffer:</b> 0.25% ROE on healthy peaks / Snaps to 0.1% ROE on volume stalls<br>
+              &bull; <b>Break-Even Lock:</b> Automatically snaps to 0.0% loss at +1.0% ROE<br>
+              &bull; <b>Tight Initial Stops:</b> Max initial loss capped at -1.0% ROE<br>
               &bull; <b>BTC Regime Shield:</b> Block LONGs if daily candle is RED; block SHORTs if daily candle is GREEN<br>
               &bull; <b>Gemini AI Macro Shield:</b> Real-time Google Search news & black-swan scanning (Daily JSON Cached)<br>
-              &bull; <b>Strict Choppiness Filter:</b> Skip entries if Choppiness Index (CI) &gt; 62<br>
-              &bull; <b>Stagnation Rotation:</b> 24 Hours (48 Runs) max hold for ROE &lt; +1.5%<br>
               &bull; <b>Leverage Profile: Optimized 5x Safe Max Leverage</b>
             </div>
 
