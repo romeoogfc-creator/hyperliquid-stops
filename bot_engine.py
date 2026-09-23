@@ -193,29 +193,28 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
 
     leash_status = "Standard Sniper Stop"
     
-    # --- TIGHTENED TIGHT-LEASH TRAILING PEAK FOLLOWER (ONE-WAY STREET UP) ---
+    # --- BALANCED TRAILING PEAK FOLLOWER (0.5% Buffer to Prevent Premature Chops) ---
     if peak_roe >= 0.004:
         if vol_ratio < 0.8:
-            target_floor_roe = max(peak_roe - 0.001, 0.0)
-            leash_status = f"Volume Stall Lock (+0.1% Buffer)"
+            target_floor_roe = max(peak_roe - 0.002, 0.0)
+            leash_status = f"Volume Stall Lock (+0.2% Buffer)"
         else:
-            # Shrunk trailing buffer from 0.5% to 0.25% ROE
-            target_floor_roe = peak_roe - 0.0025
-            leash_status = f"Tight Peak Floor ({target_floor_roe*100:+.2f}%)"
+            # Restored to 0.5% ROE buffer for healthy breathing room
+            target_floor_roe = peak_roe - 0.005
+            leash_status = f"Balanced Peak Floor ({target_floor_roe*100:+.2f}%)"
     else:
         if roe >= 0.01:
-            # Snap to Break-Even at +1.0% ROE or higher
             target_floor_roe = 0.0
             leash_status = "Break-Even Lock (+1.0% Trigger)"
         elif choppiness_index > 58.0:
-            target_floor_roe = -0.010   # Tightened Choppy Stop to -1.0% ROE
-            leash_status = "Tight Choppy Defense Stop"
+            target_floor_roe = -0.012   # Balanced Choppy Stop to -1.2% ROE
+            leash_status = "Choppy Defense Stop"
         elif is_ballistic:
-            target_floor_roe = -0.015   # Tightened Ballistic Stop to -1.5% ROE
-            leash_status = "Tight Ballistic Stop"
+            target_floor_roe = -0.020   # Balanced Ballistic Stop to -2.0% ROE
+            leash_status = "Ballistic Stop"
         else:
-            target_floor_roe = -0.010   # Tightened Trend Stop to -1.0% ROE
-            leash_status = "Tight Trend Defense Stop"
+            target_floor_roe = -0.015   # Balanced Trend Stop to -1.5% ROE
+            leash_status = "Trend Defense Stop"
 
     if is_long:
         stop_px = entry_px * (1 + (target_floor_roe / leverage))
@@ -242,7 +241,7 @@ def check_btc_daily_candle(info):
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Confirmed Entry One-Way Street Sniper Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Balanced 0.5% Buffer Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -313,7 +312,7 @@ def execute_engine():
                 "coin": closed_coin,
                 "entry_price": entry_px,
                 "exit_price": exit_px,
-                "exit_reason": "Tight-Leash Profit Grab",
+                "exit_reason": "Balanced Buffer Profit Grab",
                 "timestamp": timestamp
             })
             state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
@@ -376,7 +375,6 @@ def execute_engine():
                 }
                 smart_queue_candidates.append(candidate_obj)
 
-                # ENTRY CONFIRMATION FILTER: Must be breakout AND green candle + upward continuation
                 is_green_candle = current_close > current_open
                 has_upward_continuation = current_close > prev_close
 
@@ -395,7 +393,6 @@ def execute_engine():
                 }
                 smart_queue_candidates.append(candidate_obj)
 
-                # ENTRY CONFIRMATION FILTER FOR SHORTS: Must be breakdown AND red candle + downward continuation
                 is_red_candle = current_close < current_open
                 has_downward_continuation = current_close < prev_close
 
@@ -608,7 +605,7 @@ def execute_engine():
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine - Confirmed Entry Sniper)</div>
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine - Balanced Buffer)</div>
         <div class="table-responsive" style="overflow-x: hidden;">
           <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
             <tbody>{audit_rows}</tbody>
@@ -708,7 +705,7 @@ def execute_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-            <p>Timestamp: {timestamp} (Confirmed Entry One-Way Street Sniper Active)</p>
+            <p>Timestamp: {timestamp} (Balanced 0.5% Buffer Active)</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -727,12 +724,12 @@ def execute_engine():
             </div>
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Guardrails (Confirmed Entry & Tight Leash)</div>
+              <div class="rules-title">&#9989; Active Guardrails (Balanced Buffer & Confirmed Entry)</div>
               &bull; <b>Execution Engine:</b> 30-Min 24/7 GitHub Cron &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
               &bull; <b>Entry Confirmation Filter:</b> Requires breakout + green confirmation candle & upward continuation<br>
-              &bull; <b>Razor-Thin Trailing Buffer:</b> 0.25% ROE on healthy peaks / Snaps to 0.1% ROE on volume stalls<br>
+              &bull; <b>Balanced Trailing Buffer:</b> 0.5% ROE buffer on healthy peaks to prevent premature chopping<br>
               &bull; <b>Break-Even Lock:</b> Automatically snaps to 0.0% loss at +1.0% ROE<br>
-              &bull; <b>Tight Initial Stops:</b> Max initial loss capped at -1.0% ROE<br>
+              &bull; <b>Tight Initial Stops:</b> Max initial loss capped at -1.5% ROE<br>
               &bull; <b>BTC Regime Shield:</b> Block LONGs if daily candle is RED; block SHORTs if daily candle is GREEN<br>
               &bull; <b>Gemini AI Macro Shield:</b> Real-time Google Search news & black-swan scanning (Daily JSON Cached)<br>
               &bull; <b>Leverage Profile: Optimized 5x Safe Max Leverage</b>
