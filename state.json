@@ -16,6 +16,20 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "INJ",
+      "entry_price": 7.9744,
+      "exit_price": 8.03655,
+      "exit_reason": "Tight-Leash Profit Grab",
+      "timestamp": "2026-09-23 09:05:13"
+    },
+    {
+      "coin": "YGG",
+      "entry_price": 0.027762,
+      "exit_price": 0.027953,
+      "exit_reason": "Tight-Leash Profit Grab",
+      "timestamp": "2026-09-23 09:05:13"
+    },
+    {
       "coin": "PYTH",
       "entry_price": 0.067479,
       "exit_price": 0.06642,
@@ -45,52 +59,38 @@
     }
   ],
   "active_position_cache": {
-    "INJ": {
-      "entry_px": 7.9744,
-      "current_px": 8.1019,
-      "szi": 9.2,
-      "peak_roe": 0.015988663723916583
-    },
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.8378,
+      "current_px": 0.8233,
       "szi": 83.66,
       "peak_roe": 0.08269913749365809
     },
-    "YGG": {
-      "entry_px": 0.027762,
-      "current_px": 0.028113,
-      "szi": 2426.0,
-      "peak_roe": 0.012643181326993755
-    },
     "BLUR": {
       "entry_px": 0.020334,
-      "current_px": 0.020782,
+      "current_px": 0.020673,
       "szi": 3393.0,
       "peak_roe": 0.023654962132389042
     },
     "MEME": {
       "entry_px": 0.000626,
-      "current_px": 0.000646,
+      "current_px": 0.000647,
       "szi": 140823.0,
-      "peak_roe": 0.03194888178913729
+      "peak_roe": 0.0335463258785942
     },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008845,
+      "current_px": 0.008748,
       "szi": 10173.0,
       "peak_roe": 0.07463592233009698
     }
   },
   "previous_active_coins": [
-    "MEME",
     "APT",
     "BLUR",
-    "GMT",
-    "INJ",
-    "YGG"
+    "MEME",
+    "GMT"
   ],
-  "last_run_timestamp": "2026-09-23 08:39:51",
+  "last_run_timestamp": "2026-09-23 09:06:05",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "MODERATE",
