@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-23 15:42:43",
+  "last_run_timestamp": "2026-09-23 16:14:13",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "MODERATE",
@@ -19,11 +19,9 @@
     "scan_date": "2026-09-23"
   },
   "previous_active_symbols": [
-    "PFE",
-    "XOM",
-    "LMT",
     "BA",
-    "ABBV"
+    "XOM",
+    "PFE"
   ],
   "closed_trades_ledger": [
     {
@@ -188,33 +186,21 @@
     }
   ],
   "active_position_cache": {
-    "ABBV": {
-      "entry_px": 269.0,
-      "current_px": 265.445,
-      "qty": 37.1969,
-      "peak_roe": -0.005613382899628219
-    },
     "BA": {
       "entry_px": 203.11,
-      "current_px": 202.45,
+      "current_px": 201.98,
       "qty": 49.347,
       "peak_roe": 0.0018216729850818575
     },
-    "LMT": {
-      "entry_px": 534.77,
-      "current_px": 527.24,
-      "qty": 18.7731,
-      "peak_roe": -0.0037025263197262718
-    },
     "PFE": {
       "entry_px": 28.14,
-      "current_px": 28.105,
+      "current_px": 28.07,
       "qty": 358.04,
       "peak_roe": -0.0012437810945273681
     },
     "XOM": {
       "entry_px": 162.07,
-      "current_px": 161.26,
+      "current_px": 161.28,
       "qty": 61.8846,
       "peak_roe": -0.00046276300364033216
     }
