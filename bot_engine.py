@@ -242,7 +242,7 @@ def check_btc_daily_candle(info):
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Tight-Leash One-Way Street Sniper Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Confirmed Entry One-Way Street Sniper Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -344,12 +344,15 @@ def execute_engine():
                 continue
             scanned_count += 1
             closes = [float(c["c"]) for c in candles]
+            opens = [float(c["o"]) for c in candles]
             highs = [float(c["h"]) for c in candles]
             lows = [float(c["l"]) for c in candles]
             volumes = [float(c.get("v", 0)) for c in candles]
 
             upper, lower, filter_band = calculate_gaussian_channel(closes)
             current_close = closes[-1]
+            current_open = opens[-1]
+            prev_close = closes[-2]
             
             ci = calculate_choppiness_index(highs, lows, closes)
             if ci > 62.0:
@@ -373,9 +376,13 @@ def execute_engine():
                 }
                 smart_queue_candidates.append(candidate_obj)
 
-                if current_close > upper and current_close <= upper * 1.04 and vol_ratio >= 0.7:
+                # ENTRY CONFIRMATION FILTER: Must be breakout AND green candle + upward continuation
+                is_green_candle = current_close > current_open
+                has_upward_continuation = current_close > prev_close
+
+                if current_close > upper and current_close <= upper * 1.04 and vol_ratio >= 0.7 and is_green_candle and has_upward_continuation:
                     market_candidates.append(candidate_obj)
-                    audit_logs.append(f"CRYPTO MATCH LONG: {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
+                    audit_logs.append(f"CRYPTO MATCH LONG (Confirmed): {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
             else:
                 is_ballistic = current_close < (lower - 1.5 * atr)
                 extension_score = max(0.0, (lower - current_close) / lower)
@@ -388,15 +395,19 @@ def execute_engine():
                 }
                 smart_queue_candidates.append(candidate_obj)
 
-                if current_close < lower and current_close >= lower * 0.96 and vol_ratio >= 0.7:
+                # ENTRY CONFIRMATION FILTER FOR SHORTS: Must be breakdown AND red candle + downward continuation
+                is_red_candle = current_close < current_open
+                has_downward_continuation = current_close < prev_close
+
+                if current_close < lower and current_close >= lower * 0.96 and vol_ratio >= 0.7 and is_red_candle and has_downward_continuation:
                     market_candidates.append(candidate_obj)
-                    audit_logs.append(f"CRYPTO MATCH SHORT: {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
+                    audit_logs.append(f"CRYPTO MATCH SHORT (Confirmed): {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
         except Exception:
             continue
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
     smart_queue_sorted = sorted(smart_queue_candidates, key=lambda x: x["score"], reverse=True)
-    audit_logs.append(f"Crypto Scan Complete (30m Interval): Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
+    audit_logs.append(f"Crypto Scan Complete (30m Interval): Evaluated {scanned_count} assets. Found {len(market_candidates)} confirmed breakouts.")
 
     spot_usdc = 0.0
     total_spot_net_worth = 0.0
@@ -597,7 +608,7 @@ def execute_engine():
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine - Volume-Aware Trailing Sniper)</div>
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine - Confirmed Entry Sniper)</div>
         <div class="table-responsive" style="overflow-x: hidden;">
           <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
             <tbody>{audit_rows}</tbody>
@@ -697,7 +708,7 @@ def execute_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-            <p>Timestamp: {timestamp} (Tight-Leash One-Way Street Sniper Active)</p>
+            <p>Timestamp: {timestamp} (Confirmed Entry One-Way Street Sniper Active)</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -716,8 +727,9 @@ def execute_engine():
             </div>
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Volume-Aware Guardrails (Tight Leash)</div>
+              <div class="rules-title">&#9989; Active Guardrails (Confirmed Entry & Tight Leash)</div>
               &bull; <b>Execution Engine:</b> 30-Min 24/7 GitHub Cron &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
+              &bull; <b>Entry Confirmation Filter:</b> Requires breakout + green confirmation candle & upward continuation<br>
               &bull; <b>Razor-Thin Trailing Buffer:</b> 0.25% ROE on healthy peaks / Snaps to 0.1% ROE on volume stalls<br>
               &bull; <b>Break-Even Lock:</b> Automatically snaps to 0.0% loss at +1.0% ROE<br>
               &bull; <b>Tight Initial Stops:</b> Max initial loss capped at -1.0% ROE<br>
