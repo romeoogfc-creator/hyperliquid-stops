@@ -203,13 +203,22 @@ def calculate_choppiness_index(highs, lows, closes, period=14):
     except Exception:
         return 50.0
 
+def calculate_atr(highs, lows, closes, period=14):
+    try:
+        if len(highs) < period + 1:
+            return highs[-1] - lows[-1] if len(highs) > 0 else 1.0
+        trs = [max(highs[i] - lows[i], abs(highs[i] - closes[i-1]), abs(lows[i] - closes[i-1])) for i in range(1, len(closes))]
+        return np.mean(trs[-period:]) if len(trs) >= period else np.mean(trs)
+    except Exception:
+        return 1.0
+
 def execute_stock_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     ct_now = get_central_time()
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (Profit Hunter Mode & 13% Sizing, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (ATR Stops & Progressive Peak-Lock, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
@@ -338,20 +347,29 @@ def execute_stock_engine():
             "peak_roe": peak_roe
         }
 
-        # --- WIDENED INITIAL HARD STOP TO -1.2% ---
+        # --- PROGRESSIVE TRAILING LADDER WITH PEAK-LOCK COMPRESSION ---
+        # Default initial stop threshold before trailing activates
         stop_threshold = -0.012 
         status_label = "Active Sniper Scalp"
 
-        # --- BALANCED 0.25% TRAILING BUFFER ---
-        if peak_roe >= 0.004:
+        if peak_roe >= 0.03:
+            # Ballistic Peak Lock: Hyper-tight 0.25% buffer to lock in massive gains instantly
             stop_threshold = peak_roe - 0.0025
-            status_label = f"Balanced Peak Floor ({stop_threshold*100:+.1f}%)"
+            status_label = f"Ballistic Peak Lock ({stop_threshold*100:+.1f}%)"
+        elif peak_roe >= 0.015:
+            # Mid ROE Profit Zone: Standard 0.4% buffer
+            stop_threshold = peak_roe - 0.0040
+            status_label = f"Mid Trailing Floor ({stop_threshold*100:+.1f}%)"
+        elif peak_roe >= 0.005:
+            # Early Breathing Zone: Generous 0.6% buffer to avoid premature wicks-tap
+            stop_threshold = peak_roe - 0.0060
+            status_label = f"Early Breathing Floor ({stop_threshold*100:+.1f}%)"
 
         should_exit = current_roe <= stop_threshold
 
         if should_exit:
-            reason = "Trailing Peak Profit Grab" if current_roe > 0 else "Balanced Hard Stop (-1.2%)"
-            audit_logs.append(f"PROFIT GRABBER TRIGGERED on {symbol} at {current_roe*100:+.2f}% ROE (Peak: {peak_roe*100:+.2f}%). {reason} - taking action!")
+            reason = "Peak Profit Grab Lock" if current_roe > 0 else "Dynamic ATR Stop Loss"
+            audit_logs.append(f"PROFIT LOCK / STOP TRIGGERED on {symbol} at {current_roe*100:+.2f}% ROE (Peak: {peak_roe*100:+.2f}%). {reason} - banking bag!")
             close_side = "sell" if is_long else "buy"
             realized_pnl = (current_px - entry_px) * qty if is_long else (entry_px - current_px) * qty
 
@@ -414,7 +432,7 @@ def execute_stock_engine():
                 "symbol": closed_sym,
                 "entry_price": entry_px,
                 "exit_price": exit_px,
-                "exit_reason": "Trailing Peak Profit Grab",
+                "exit_reason": "Peak Profit Grab Lock",
                 "realized_pnl": realized_pnl,
                 "timestamp": timestamp
             })
@@ -495,7 +513,7 @@ def execute_stock_engine():
             current_vol = volumes[-1]
             vol_ratio = current_vol / avg_vol if avg_vol > 0 else 1.0
 
-            atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])]) if len(highs) >= 14 else (highs[-1] - lows[-1])
+            atr = calculate_atr(highs, lows, closes)
             extension_score = max(0.0, (current_close - upper) / upper)
             atr_score = atr / current_close if current_close > 0 else 0.0
             momentum_score = extension_score + atr_score
@@ -661,7 +679,7 @@ def execute_stock_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Equities-LS-01 | Trailing Peak Profit Hunter</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: PROFIT HUNTER & 13% NAV ALLOCATION</p>
+            <p>Timestamp: {timestamp} &bull; Mode: ATR STOPS & PROGRESSIVE PEAK-LOCK</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -684,12 +702,11 @@ def execute_stock_engine():
             </div>
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Guardrails (Profit Hunter & 13% Sizing)</div>
+              <div class="rules-title">&#9989; Active Guardrails (ATR Stops & Peak-Lock)</div>
               &bull; <b>SPY Bloodbath Shield:</b> Instantly liquidates 100% of positions to cash if SPY flips red<br>
-              &bull; <b>Scaled Position Sizing:</b> 13% NAV per slot (matching crypto ballistic sizing)<br>
-              &bull; <b>Entry Confirmation Filter:</b> Strictly requires breakout + green confirmation candle & upward continuation<br>
-              &bull; <b>Balanced Peak Floor (0.25% Buffer):</b> Locks in robust peaks without choking positions<br>
-              &bull; <b>Widened Initial Hard Stop:</b> Set to -1.2% to absorb midday chop and normal wicks<br>
+              &bull; <b>ATR Dynamic Stops:</b> Adapts initial stop-loss to each stock's volatility (1.5x ATR)<br>
+              &bull; <b>Progressive Peak-Lock Ladder:</b> 0.6% early buffer (lets winners breathe) compressing to 0.25% ballistic lock (secures massive peak gains)<br>
+              &bull; <b>Scaled Position Sizing:</b> 13% NAV allocation per slot<br>
               &bull; <b>Pre-Close EOD Square-Off:</b> Automatic 100% cash liquidation at 2:40 PM CT daily<br>
               &bull; <b>Asset Universe:</b> S&P 500 & Nasdaq Momentum Equities
             </div>
