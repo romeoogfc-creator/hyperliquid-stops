@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-23 13:36:22",
+  "last_run_timestamp": "2026-09-23 13:42:47",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "MODERATE",
@@ -19,13 +19,19 @@
     "scan_date": "2026-09-23"
   },
   "previous_active_symbols": [
-    "MU",
     "NVDA",
-    "TXN",
-    "AVGO",
-    "INTC"
+    "MSFT",
+    "PFE"
   ],
   "closed_trades_ledger": [
+    {
+      "symbol": "NVDA",
+      "entry_price": 221.98,
+      "exit_price": 228.35,
+      "exit_reason": "Morning Profit Grab (99% Locked)",
+      "realized_pnl": 254.80000000000018,
+      "timestamp": "2026-09-23 13:42:39"
+    },
     {
       "symbol": "DE",
       "entry_price": 698.43,
@@ -174,45 +180,26 @@
       "exit_price": 364.2387,
       "exit_reason": "Trailing Peak Profit Grab",
       "timestamp": "2026-09-22 20:41:19"
-    },
-    {
-      "symbol": "NVDA",
-      "entry_price": 221.98,
-      "exit_price": 228.429,
-      "exit_reason": "Trailing Peak Profit Grab",
-      "timestamp": "2026-09-22 20:12:34"
     }
   ],
   "active_position_cache": {
-    "AVGO": {
-      "entry_px": 355.285833,
-      "current_px": 357.73,
-      "qty": 24.0,
-      "peak_roe": 0.019911199217448078
-    },
-    "INTC": {
-      "entry_px": 118.3,
-      "current_px": 121.5061,
-      "qty": 104.0,
-      "peak_roe": 0.046069315300084554
-    },
-    "MU": {
-      "entry_px": 1047.68,
-      "current_px": 1095.59,
-      "qty": 8.0,
-      "peak_roe": 0.048053795051924274
+    "MSFT": {
+      "entry_px": 504.38052,
+      "current_px": 507.08,
+      "qty": 20.0427,
+      "peak_roe": 0.005352070298036082
     },
     "NVDA": {
       "entry_px": 221.98,
-      "current_px": 228.85,
+      "current_px": 228.35,
       "qty": 40.0,
       "peak_roe": 0.03094873412019103
     },
-    "TXN": {
-      "entry_px": 264.579697,
-      "current_px": 270.355,
-      "qty": 33.0,
-      "peak_roe": 0.031900796227761846
+    "PFE": {
+      "entry_px": 28.14,
+      "current_px": 28.04,
+      "qty": 358.04,
+      "peak_roe": -0.0035536602700782308
     }
   },
   "daily_starting_equity": {
