@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-23 13:28:59",
+  "last_run_timestamp": "2026-09-23 13:36:22",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "MODERATE",
@@ -19,14 +19,53 @@
     "scan_date": "2026-09-23"
   },
   "previous_active_symbols": [
-    "INTC",
-    "TXN",
-    "DE",
+    "MU",
     "NVDA",
+    "TXN",
     "AVGO",
-    "MU"
+    "INTC"
   ],
   "closed_trades_ledger": [
+    {
+      "symbol": "DE",
+      "entry_price": 698.43,
+      "exit_price": 701.0,
+      "exit_reason": "Morning Profit Grab (99% Locked)",
+      "realized_pnl": 37.07045100000072,
+      "timestamp": "2026-09-23 13:36:13"
+    },
+    {
+      "symbol": "TXN",
+      "entry_price": 264.579697,
+      "exit_price": 270.355,
+      "exit_reason": "Morning Profit Grab (99% Locked)",
+      "realized_pnl": 190.58499900000027,
+      "timestamp": "2026-09-23 13:36:13"
+    },
+    {
+      "symbol": "MU",
+      "entry_price": 1047.68,
+      "exit_price": 1095.59,
+      "exit_reason": "Morning Profit Grab (99% Locked)",
+      "realized_pnl": 383.27999999999884,
+      "timestamp": "2026-09-23 13:36:13"
+    },
+    {
+      "symbol": "INTC",
+      "entry_price": 118.3,
+      "exit_price": 121.5061,
+      "exit_reason": "Morning Profit Grab (99% Locked)",
+      "realized_pnl": 333.43440000000066,
+      "timestamp": "2026-09-23 13:36:13"
+    },
+    {
+      "symbol": "AVGO",
+      "entry_price": 355.285833,
+      "exit_price": 357.73,
+      "exit_reason": "Morning Profit Grab (99% Locked)",
+      "realized_pnl": 58.660007999999834,
+      "timestamp": "2026-09-23 13:36:13"
+    },
     {
       "symbol": "MU",
       "entry_price": 1047.68,
@@ -142,63 +181,36 @@
       "exit_price": 228.429,
       "exit_reason": "Trailing Peak Profit Grab",
       "timestamp": "2026-09-22 20:12:34"
-    },
-    {
-      "symbol": "AVGO",
-      "entry_price": 355.285833,
-      "exit_price": 364.39,
-      "exit_reason": "Trailing Peak Profit Grab",
-      "timestamp": "2026-09-22 20:12:34"
-    },
-    {
-      "symbol": "DKNG",
-      "entry_price": 23.348938,
-      "exit_price": 22.435,
-      "exit_reason": "Intraday Momentum Exit / Target Reached",
-      "timestamp": "2026-09-22 17:17:23"
-    },
-    {
-      "symbol": "COIN",
-      "entry_price": 205.48,
-      "exit_price": 199.67,
-      "exit_reason": "Stop-Loss Trigger / Alpaca Execution",
-      "timestamp": "2026-09-22 13:42:06"
     }
   ],
   "active_position_cache": {
     "AVGO": {
       "entry_px": 355.285833,
-      "current_px": 362.36,
+      "current_px": 357.73,
       "qty": 24.0,
       "peak_roe": 0.019911199217448078
     },
-    "DE": {
-      "entry_px": 698.43,
-      "current_px": 701.0,
-      "qty": 14.4243,
-      "peak_roe": 0.0036796815715247773
-    },
     "INTC": {
       "entry_px": 118.3,
-      "current_px": 123.75,
+      "current_px": 121.5061,
       "qty": 104.0,
       "peak_roe": 0.046069315300084554
     },
     "MU": {
       "entry_px": 1047.68,
-      "current_px": 1098.025,
+      "current_px": 1095.59,
       "qty": 8.0,
       "peak_roe": 0.048053795051924274
     },
     "NVDA": {
       "entry_px": 221.98,
-      "current_px": 227.58,
+      "current_px": 228.85,
       "qty": 40.0,
-      "peak_roe": 0.02585818542211014
+      "peak_roe": 0.03094873412019103
     },
     "TXN": {
       "entry_px": 264.579697,
-      "current_px": 273.02,
+      "current_px": 270.355,
       "qty": 33.0,
       "peak_roe": 0.031900796227761846
     }
