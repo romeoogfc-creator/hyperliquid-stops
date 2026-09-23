@@ -61,36 +61,36 @@
   "active_position_cache": {
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.8233,
+      "current_px": 0.8284,
       "szi": 83.66,
       "peak_roe": 0.08269913749365809
     },
     "BLUR": {
       "entry_px": 0.020334,
-      "current_px": 0.020673,
+      "current_px": 0.020825,
       "szi": 3393.0,
-      "peak_roe": 0.023654962132389042
+      "peak_roe": 0.024146749286908544
     },
     "MEME": {
       "entry_px": 0.000626,
-      "current_px": 0.000647,
+      "current_px": 0.000648,
       "szi": 140823.0,
-      "peak_roe": 0.0335463258785942
+      "peak_roe": 0.0351437699680511
     },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008748,
+      "current_px": 0.008795,
       "szi": 10173.0,
       "peak_roe": 0.07463592233009698
     }
   },
   "previous_active_coins": [
     "APT",
-    "BLUR",
     "MEME",
+    "BLUR",
     "GMT"
   ],
-  "last_run_timestamp": "2026-09-23 09:06:05",
+  "last_run_timestamp": "2026-09-23 09:39:04",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "MODERATE",
