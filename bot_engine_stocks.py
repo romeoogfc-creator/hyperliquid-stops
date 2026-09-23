@@ -67,6 +67,20 @@ def save_state(state):
     with open(STATE_FILE, "w") as f:
         json.dump(state, f, indent=2)
 
+def check_market_macro_regime():
+    try:
+        url = "https://data.alpaca.markets/v2/stocks/bars?symbols=SPY&timeframe=1Day&limit=2"
+        res = requests.get(url, headers=HEADERS)
+        if res.status_code == 200:
+            bars = res.json().get("bars", {}).get("SPY", [])
+            if len(bars) >= 2:
+                latest_close = float(bars[-1]["c"])
+                prev_close = float(bars[-2]["c"])
+                return latest_close >= prev_close, prev_close, latest_close
+    except Exception:
+        pass
+    return True, 0.0, 0.0
+
 def run_gemini_stock_market_shield():
     state = load_state()
     cached_shield = state.get("ai_shield_cache", {})
@@ -193,7 +207,7 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (Balanced Buffer & Widened -1.2% Stop, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (Profit Hunter Mode & SPY Bloodbath Shield, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
@@ -203,6 +217,11 @@ def execute_stock_engine():
     ai_shield = run_gemini_stock_market_shield()
     ai_risk_status = "BLOCKED (High Risk)" if ai_shield.get("high_risk_detected") else "PASS (Normal Risk)"
     audit_logs.append(f"Gemini AI Shield: [{ai_shield.get('risk_level', 'UNKNOWN')}] {ai_shield.get('reason', '')} -> {ai_risk_status}")
+
+    # --- SPY MACRO TREND REGIME SHIELD ---
+    spy_green, spy_open_px, spy_close_px = check_market_macro_regime()
+    spy_regime_str = f"GREEN (Open: ${spy_open_px:.2f}, Close: ${spy_close_px:.2f}) -> Market Healthy" if spy_green else f"RED (Open: ${spy_open_px:.2f}, Close: ${spy_close_px:.2f}) -> MACRO BLOODBATH DETECTED"
+    audit_logs.append(f"SPY Macro Regime Shield: {spy_regime_str}")
 
     state = load_state()
 
@@ -239,8 +258,12 @@ def execute_stock_engine():
     # --- RULE 1: PRE-CLOSE EOD SQUARE-OFF (2:40 PM CT) ---
     is_eod_square_off = (ct_now.hour == 14 and ct_now.minute >= 40) or (ct_now.hour >= 15)
 
-    if is_eod_square_off and positions_list:
-        audit_logs.append("EOD SQUARE-OFF TRIGGERED (>= 2:40 PM CT): Liquidating all open positions for 100% cash flat.")
+    # --- RULE 2: MACRO BLOODBATH 100% CASH FLAT EXIT (If SPY turns RED) ---
+    is_macro_bloodbath = not spy_green
+
+    if (is_eod_square_off or is_macro_bloodbath) and positions_list:
+        reason_text = "EOD Square-Off (100% Cash Flat)" if is_eod_square_off else "Macro Bloodbath Shield (SPY Flipped Red - 100% Cash Flat)"
+        audit_logs.append(f"EMERGENCY EXIT TRIGGERED ({reason_text}): Liquidating all open positions to cash.")
         for pos in positions_list:
             sym = pos.get("symbol")
             qty = float(pos.get("qty", 0))
@@ -261,7 +284,7 @@ def execute_stock_engine():
             try:
                 close_res = requests.post(f"{BASE_URL}/v2/orders", json=close_payload, headers=HEADERS)
                 if close_res.status_code == 200:
-                    audit_logs.append(f"EOD FLAT SUCCESS: Closed {sym}")
+                    audit_logs.append(f"LIQUIDATION SUCCESS: Closed {sym}")
                     if "closed_trades_ledger" not in state:
                         state["closed_trades_ledger"] = []
                     
@@ -271,12 +294,12 @@ def execute_stock_engine():
                             "symbol": sym,
                             "entry_price": entry_px,
                             "exit_price": current_px,
-                            "exit_reason": "EOD Square-Off (100% Cash Flat)",
+                            "exit_reason": reason_text,
                             "realized_pnl": realized_pnl,
                             "timestamp": timestamp
                         })
             except Exception as e:
-                audit_logs.append(f"EOD FLAT ERROR on {sym}: {e}")
+                audit_logs.append(f"LIQUIDATION ERROR on {sym}: {e}")
         
         for order in open_orders:
             requests.delete(f"{BASE_URL}/v2/orders/{order.get('id')}", headers=HEADERS)
@@ -313,7 +336,7 @@ def execute_stock_engine():
             "peak_roe": peak_roe
         }
 
-        # --- WIDENED INITIAL HARD STOP TO -1.2% (Stops premature wicks) ---
+        # --- WIDENED INITIAL HARD STOP TO -1.2% ---
         stop_threshold = -0.012 
         status_label = "Active Sniper Scalp"
 
@@ -495,6 +518,8 @@ def execute_stock_engine():
 
     if ai_shield.get("high_risk_detected"):
         audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD. Reason: {ai_shield.get('reason')}")
+    elif not spy_green:
+        audit_logs.append(f"Execution Gate: BLOCKED BY SPY MACRO BLOODBATH SHIELD (SPY Daily Trend is RED). Staying out of the market.")
     elif not is_trading_window or is_eod_square_off:
         audit_logs.append("Execution Gate: Outside active trading hours or square-off window active.")
     elif active_count < MAX_STOCK_SLOTS and market_candidates:
@@ -633,7 +658,7 @@ def execute_stock_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Equities-LS-01 | Trailing Peak Profit Hunter</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: BALANCED BUFFER & -1.2% STOP</p>
+            <p>Timestamp: {timestamp} &bull; Mode: PROFIT HUNTER & SPY BLOODBATH SHIELD</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -656,7 +681,8 @@ def execute_stock_engine():
             </div>
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Guardrails (Balanced Buffer & Widened Stop)</div>
+              <div class="rules-title">&#9989; Active Guardrails (Profit Hunter & Bloodbath Shield)</div>
+              &bull; <b>SPY Bloodbath Shield:</b> Instantly liquidates 100% of positions to cash if SPY flips red<br>
               &bull; <b>Entry Confirmation Filter:</b> Strictly requires breakout + green confirmation candle & upward continuation<br>
               &bull; <b>Balanced Peak Floor (0.25% Buffer):</b> Locks in robust peaks without choking positions<br>
               &bull; <b>Widened Initial Hard Stop:</b> Set to -1.2% to absorb midday chop and normal wicks<br>
