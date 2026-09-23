@@ -1,174 +1,52 @@
 {
   "cooldown_blocklist": {},
   "stagnation_tracker": {
-    "BTC": 0,
-    "ETH": 0,
-    "ATOM": 0,
-    "ASTER": 0,
-    "STX": 3,
-    "RUNE": 0,
-    "kLUNC": 8,
-    "LDO": 7,
-    "COMP": 0,
-    "ZRO": 0,
-    "GMT": 0,
-    "IMX": 0,
-    "FET": 0,
-    "PYTH": 0,
-    "NEAR": 4,
-    "NEO": 1,
-    "DYDX": 1,
-    "SNX": 0,
-    "MINA": 2,
-    "JUP": 7,
-    "APE": 0,
-    "ARB": 5,
     "APT": 0,
-    "BSV": 0,
-    "JTO": 1,
-    "XRP": 0,
-    "SUPER": 1,
-    "ORDI": 2,
-    "SEI": 0,
-    "WLD": 0,
-    "PENDLE": 9,
-    "OP": 1,
-    "ZEN": 2,
-    "BLUR": 2,
-    "MEME": 2
+    "BLUR": 1,
+    "MEME": 1,
+    "GMT": 0
   },
-<<<<<<< Updated upstream
-  "last_run_timestamp": "2026-09-23 01:36:59",
-=======
-  "last_run_timestamp": "2026-09-23 01:37:27",
->>>>>>> Stashed changes
-  "ai_shield_cache": {
-    "high_risk_detected": false,
-    "risk_level": "LOW",
-    "reason": "While the BitMEX exchange is permanently ceasing operations today, September 23, 2026, at 04:00 UTC, this event has been long-scheduled and is widely anticipated, posing no systemic 'black-swan' threat to the broader market liquidity.",
-    "action": "ALLOW_TRADES",
-    "ai_market_brief": "The cryptocurrency market maintains a bullish tone as Bitcoin holds steady above $86,000, supported by robust institutional inflows and favorable macroeconomic shifts. Despite the final sunset of BitMEX, the event is orderly and lacks the potential to trigger market-wide volatility, allowing investors to focus on the current recovery momentum.",
-    "timestamp": "2026-09-23 00:07:24",
-    "scan_date": "2026-09-23"
-  },
-  "previous_active_coins": [
-    "BLUR",
-    "MEME",
-    "GMT",
-    "BLUR",
-    "APT",
-    "MEME"
-  ],
-  "closed_trades_ledger": [
-    {
-      "coin": "PENDLE",
-      "entry_price": 2.436216,
-      "exit_price": 2.456,
-      "exit_reason": "Volume-Aware Trailing Profit Grab",
-      "timestamp": "2026-09-22 20:38:47"
-    },
-    {
-      "coin": "BTC",
-      "entry_price": 78134.0,
-      "exit_price": 86245.5,
-      "exit_reason": "Volume-Aware Trailing Profit Grab",
-      "timestamp": "2026-09-22 20:00:04"
-    },
-    {
-      "coin": "LDO",
-      "entry_price": 0.40639,
-      "exit_price": 0.42223,
-      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
-      "timestamp": "2026-09-22 18:06:41"
-    },
-    {
-      "coin": "PENDLE",
-      "entry_price": 2.4627,
-      "exit_price": 2.42075,
-      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
-      "timestamp": "2026-09-22 07:37:41"
-    },
-    {
-      "coin": "SEI",
-      "entry_price": 0.059313,
-      "exit_price": 0.061411,
-      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
-      "timestamp": "2026-09-22 03:05:19"
-    },
-    {
-      "coin": "WLD",
-      "entry_price": 0.45726,
-      "exit_price": 0.4666,
-      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
-      "timestamp": "2026-09-22 01:04:38"
-    },
-    {
-      "coin": "ETH",
-      "entry_price": 2565.1,
-      "exit_price": 2743.25,
-      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
-      "timestamp": "2026-09-22 01:04:38"
-    },
-    {
-      "coin": "XRP",
-      "entry_price": 1.4969,
-      "exit_price": 1.5386,
-      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
-      "timestamp": "2026-09-21 23:36:04"
-    },
-    {
-      "coin": "ORDI",
-      "entry_price": 4.8993,
-      "exit_price": 4.8948,
-      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
-      "timestamp": "2026-09-21 19:51:46"
-    },
-    {
-      "coin": "SUPER",
-      "entry_price": 0.14872,
-      "exit_price": 0.148445,
-      "exit_reason": "Stop-Loss Trigger / Exchange Fill",
-      "timestamp": "2026-09-21 19:04:49"
-    }
-  ],
+  "closed_trades_ledger": [],
   "active_position_cache": {
     "APT": {
       "entry_px": 0.7884,
-<<<<<<< Updated upstream
-      "current_px": 0.8213,
-=======
-      "current_px": 0.8223,
->>>>>>> Stashed changes
+      "current_px": 0.8104,
       "szi": 83.66,
-      "peak_roe": 0.05618975139523086
+      "peak_roe": 0.027904616945712862
     },
     "BLUR": {
       "entry_px": 0.020334,
-      "current_px": 0.020366,
+      "current_px": 0.020206,
       "szi": 3393.0,
-      "peak_roe": 0.0015737188944623442
+      "peak_roe": -0.006294875577850059
     },
     "MEME": {
       "entry_px": 0.000626,
-<<<<<<< Updated upstream
-      "current_px": 0.000623,
+      "current_px": 0.000619,
       "szi": 140823.0,
-      "peak_roe": -0.004792332268370723
+      "peak_roe": -0.011182108626198181
     },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008705,
-=======
-      "current_px": 0.000624,
-      "szi": 140823.0,
-      "peak_roe": -0.0031948881789138155
-    },
-    "GMT": {
-      "entry_px": 0.00824,
-      "current_px": 0.008709,
->>>>>>> Stashed changes
+      "current_px": 0.008634,
       "szi": 10173.0,
-      "peak_roe": 0.06905339805825243
+      "peak_roe": 0.04781553398058234
     }
+  },
+  "previous_active_coins": [
+    "GMT",
+    "MEME",
+    "BLUR",
+    "APT"
+  ],
+  "last_run_timestamp": "2026-09-23 02:06:35",
+  "ai_shield_cache": {
+    "high_risk_detected": true,
+    "risk_level": "MODERATE",
+    "reason": "Market momentum is currently driven by a massive short squeeze and high derivatives leverage, with open interest exceeding $159 billion and significant recent liquidations creating a fragile foundation for the current $86,000+ price level.",
+    "action": "ALLOW_TRADES",
+    "ai_market_brief": "Bitcoin has surged to an eight-month high above $86,000, fueled by substantial ETF inflows and a reflexive short-squeeze rather than shifting macroeconomic fundamentals. While sentiment remains bullish, the market is exhibiting elevated leverage and sensitivity to volatility, requiring caution as traders monitor potential support retests and quarterly options expiry.",
+    "timestamp": "2026-09-23 02:05:41",
+    "scan_date": "2026-09-23"
   }
 }
