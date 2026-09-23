@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-23 14:08:09",
+  "last_run_timestamp": "2026-09-23 14:13:52",
   "ai_shield_cache": {
     "high_risk_detected": false,
     "risk_level": "MODERATE",
@@ -19,9 +19,9 @@
     "scan_date": "2026-09-23"
   },
   "previous_active_symbols": [
-    "PFE",
-    "MSFT",
-    "SNOW"
+    "GE",
+    "BA",
+    "PFE"
   ],
   "closed_trades_ledger": [
     {
@@ -185,23 +185,23 @@
     }
   ],
   "active_position_cache": {
-    "MSFT": {
-      "entry_px": 504.38052,
-      "current_px": 499.32,
-      "qty": 20.0427,
-      "peak_roe": 0.005352070298036082
+    "BA": {
+      "entry_px": 203.11,
+      "current_px": 202.78,
+      "qty": 49.347,
+      "peak_roe": -0.0016247353650731746
+    },
+    "GE": {
+      "entry_px": 325.71,
+      "current_px": 325.53,
+      "qty": 30.8023,
+      "peak_roe": -0.000552638850511212
     },
     "PFE": {
       "entry_px": 28.14,
-      "current_px": 28.0401,
+      "current_px": 28.045,
       "qty": 358.04,
-      "peak_roe": -0.003550106609808161
-    },
-    "SNOW": {
-      "entry_px": 343.17,
-      "current_px": 336.51,
-      "qty": 29.2152,
-      "peak_roe": -0.01940729084710209
+      "peak_roe": -0.003375977256574231
     }
   },
   "daily_starting_equity": {
