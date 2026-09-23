@@ -1,10 +1,10 @@
 {
   "cooldown_blocklist": {},
   "stagnation_tracker": {
-    "APT": 2,
+    "APT": 3,
     "BLUR": 0,
-    "MEME": 8,
-    "GMT": 1,
+    "MEME": 9,
+    "GMT": 0,
     "FIL": 5,
     "CAKE": 5,
     "FET": 1,
@@ -13,11 +13,18 @@
     "PYTH": 2,
     "INJ": 0,
     "YGG": 0,
-    "TRX": 6,
+    "TRX": 7,
     "AVAX": 2,
     "JTO": 2
   },
   "closed_trades_ledger": [
+    {
+      "coin": "AVAX",
+      "entry_price": 10.424,
+      "exit_price": 10.411,
+      "exit_reason": "Balanced Buffer Profit Grab",
+      "timestamp": "2026-09-23 14:39:17"
+    },
     {
       "coin": "BLUR",
       "entry_price": 0.020334,
@@ -69,45 +76,38 @@
     }
   ],
   "active_position_cache": {
-    "AVAX": {
-      "entry_px": 10.424,
-      "current_px": 10.3455,
-      "szi": -7.65,
-      "peak_roe": 0.007530698388334614
-    },
     "APT": {
       "entry_px": 0.7884,
-      "current_px": 0.7748,
+      "current_px": 0.7771,
       "szi": 83.66,
       "peak_roe": 0.08269913749365809
     },
     "TRX": {
       "entry_px": 0.3417,
-      "current_px": 0.340095,
+      "current_px": 0.34001,
       "szi": -193.0,
-      "peak_roe": 0.004697102721685757
+      "peak_roe": 0.004945858940591234
     },
     "MEME": {
       "entry_px": 0.000626,
-      "current_px": 0.000595,
+      "current_px": 0.000604,
       "szi": 140823.0,
       "peak_roe": 0.0351437699680511
     },
     "GMT": {
       "entry_px": 0.00824,
-      "current_px": 0.008284,
+      "current_px": 0.008355,
       "szi": 10173.0,
       "peak_roe": 0.07463592233009698
     }
   },
   "previous_active_coins": [
-    "MEME",
-    "GMT",
-    "AVAX",
     "APT",
+    "GMT",
+    "MEME",
     "TRX"
   ],
-  "last_run_timestamp": "2026-09-23 14:24:18",
+  "last_run_timestamp": "2026-09-23 14:40:09",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "MODERATE",
