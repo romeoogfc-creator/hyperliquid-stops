@@ -202,15 +202,12 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
     else:
         # --- CHOICE A: TIERED MEGA-RUNNER TRAILING PEAK FOLLOWER ---
         if peak_roe >= 0.15:
-            # Tier 3: Mega-Runner Zone (+15%+ ROE). Wider 1.0% buffer lets it fly while locking a massive +14%+ floor.
             target_floor_roe = peak_roe - 0.010
             leash_status = f"🚀 Mega-Runner Leash [{peak_roe*100:.1f}% Peak]"
         elif peak_roe >= 0.05:
-            # Tier 2: Mid-Runner Zone (+5% to +15% ROE). Balanced 0.5% buffer.
             target_floor_roe = peak_roe - 0.005
             leash_status = f"📈 Mid-Trend Peak Floor [{peak_roe*100:.1f}% Peak]"
         elif peak_roe >= 0.004:
-            # Tier 1: Early Green Zone (+0.4% to +5% ROE). Tight 0.3% buffer to lock quick profits.
             if vol_ratio < 0.8:
                 target_floor_roe = max(peak_roe - 0.001, 0.0)
                 leash_status = "⚡ Volume Stall Snap (+0.1% Buffer)"
@@ -222,13 +219,13 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
                 target_floor_roe = 0.0
                 leash_status = "Break-Even Lock (+1.0% Trigger)"
             elif choppiness_index > 58.0:
-                target_floor_roe = -0.010   # Tight Choppy Stop to -1.0% ROE
+                target_floor_roe = -0.010
                 leash_status = "Tight Choppy Defense Stop"
             elif is_ballistic:
-                target_floor_roe = -0.015   # Ballistic Stop to -1.5% ROE
+                target_floor_roe = -0.015
                 leash_status = "Ballistic Stop"
             else:
-                target_floor_roe = -0.010   # Tight Trend Stop to -1.0% ROE
+                target_floor_roe = -0.010
                 leash_status = "Tight Trend Defense Stop"
 
     if is_long:
@@ -256,7 +253,7 @@ def check_btc_daily_candle(info):
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Choice A Tiered Mega-Runner Sniper Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Instant Force-Close Blood-Bath Guard Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -284,27 +281,63 @@ def execute_engine():
         coin_name = asset.get("name")
         sz_decimals_map[coin_name] = asset.get("szDecimals", 4)
 
+    btc_green, btc_open, btc_close = check_btc_daily_candle(info)
+    regime_str = f"GREEN (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> LONGs Allowed" if btc_green else f"RED (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> SHORTs Allowed"
+    audit_logs.append(f"BTC Regime Check: {regime_str}")
+
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
+    positions_data = []
     active_coins = set()
+    total_margin_used = 0.0
     current_active_cache = state.get("active_position_cache", {})
     new_active_cache = {}
 
-    for pos_item in asset_positions:
-        pos = pos_item.get("position", {})
-        coin = pos.get("coin")
-        szi = float(pos.get("szi", 0))
-        if coin and szi != 0:
-            active_count += 1
-            active_coins.add(coin)
-            
+    if asset_positions:
+        for pos_item in asset_positions:
+            pos = pos_item.get("position", {})
+            coin = pos.get("coin")
+            szi = float(pos.get("szi", 0))
+            if not coin or szi == 0:
+                continue
+
             is_long = szi > 0
             entry_px = float(pos.get("entryPx", 0))
             current_px = float(all_mids.get(coin, entry_px))
+            margin_used = float(pos.get("marginUsed", 0))
+            unrealized_pnl = float(pos.get("unrealizedPnl", 0))
+            pos_equity = margin_used + unrealized_pnl
+
+            leverage_info = pos.get("leverage", {})
+            leverage = float(leverage_info.get("value", 1.0)) if isinstance(leverage_info, dict) else 1.0
+            if leverage <= 0:
+                leverage = 1.0
+
             current_roe = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
-            
             prev_peak = current_active_cache.get(coin, {}).get("peak_roe", current_roe)
             peak_roe = max(current_roe, prev_peak)
+
+            # --- INSTANT BLOOD-BATH FORCE-CLOSE GUARD ---
+            regime_mismatch = (is_long and not btc_green) or (not is_long and btc_green)
+            if regime_mismatch:
+                try:
+                    audit_logs.append(f"🚨 BLOOD-BATH DEFENSE: Forcing immediate market close on {coin} due to BTC regime flip!")
+                    exchange.market_close(coin)
+                    state["closed_trades_ledger"].insert(0, {
+                        "coin": coin,
+                        "entry_price": entry_px,
+                        "exit_price": current_px,
+                        "exit_reason": "🚨 Blood-Bath Regime Force Exit",
+                        "timestamp": timestamp
+                    })
+                    state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
+                    continue # Skip adding to active positions; closed instantly!
+                except Exception as e:
+                    audit_logs.append(f"Failed to force close {coin}: {e}")
+
+            active_count += 1
+            active_coins.add(coin)
+            total_margin_used += margin_used
 
             new_active_cache[coin] = {
                 "entry_px": entry_px,
@@ -312,6 +345,63 @@ def execute_engine():
                 "szi": szi,
                 "peak_roe": peak_roe
             }
+
+            try:
+                time.sleep(0.05)
+                c_candles = api_retry(info.candles_snapshot, name=coin, interval="30m", startTime=now_ms - 86400000 * 2, endTime=now_ms)
+                highs = [float(c["h"]) for c in c_candles]
+                lows = [float(c["l"]) for c in c_candles]
+                closes = [float(c["c"]) for c in c_candles]
+                vols = [float(c.get("v", 0)) for c in c_candles]
+                ci = calculate_choppiness_index(highs, lows, closes)
+                vol_ratio = (vols[-1] / np.mean(vols[-14:])) if len(vols) >= 14 and np.mean(vols[-14:]) > 0 else 1.0
+            except Exception:
+                ci = 50.0
+                vol_ratio = 1.0
+
+            stop_px_raw, current_roe, target_floor, is_buy_order, leash_status = calculate_crypto_stop_price(
+                entry_px, is_long, current_px, leverage, choppiness_index=ci, vol_ratio=vol_ratio, peak_roe=peak_roe, btc_regime_green=btc_green
+            )
+            px = round_sig_figs(stop_px_raw, 5)
+
+            initial_risk_ref = 0.01
+            r_multiple = current_roe / initial_risk_ref if initial_risk_ref > 0 else 0.0
+
+            if current_roe < 0.01:
+                state["stagnation_tracker"][coin] = state["stagnation_tracker"].get(coin, 0) + 1
+            else:
+                state["stagnation_tracker"][coin] = 0
+
+            stag_count = state["stagnation_tracker"].get(coin, 0)
+            audit_logs.append(f"Crypto Position: {coin} | ROE: {current_roe*100:+.2f}% (Peak: {peak_roe*100:+.2f}%) | Stop: ${px} | [{leash_status}] | Stg: {stag_count}/48")
+
+            for order in open_orders if 'open_orders' in locals() else []:
+                if order.get("coin") == coin and order.get("isTrigger"):
+                    exchange.cancel(coin, order["oid"])
+
+            exchange.order(
+                coin, is_buy_order, abs(szi), px,
+                {"trigger": {"triggerPx": px, "isMarket": True, "tpsl": "sl"}},
+                reduce_only=True
+            )
+
+            positions_data.append({
+                "bot_title": "TR-GC-Crypto-LS-23",
+                "coin": coin,
+                "side": "LONG" if is_long else "SHORT",
+                "sz": abs(szi),
+                "entry": entry_px,
+                "current": current_px,
+                "leverage": int(leverage),
+                "collateral": margin_used,
+                "position_usd": pos_equity,
+                "pnl": unrealized_pnl,
+                "roe": current_roe * 100,
+                "r_multiple": r_multiple,
+                "stop": px,
+                "floor": target_floor * 100,
+                "status": leash_status
+            })
 
     previous_cache = state.get("active_position_cache", {})
     closed_coins = set(previous_cache.keys()) - active_coins
@@ -334,10 +424,6 @@ def execute_engine():
 
     state["active_position_cache"] = new_active_cache
     state["previous_active_coins"] = list(active_coins)
-
-    btc_green, btc_open, btc_close = check_btc_daily_candle(info)
-    regime_str = f"GREEN (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> LONGs Allowed" if btc_green else f"RED (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> SHORTs Allowed"
-    audit_logs.append(f"BTC Regime Check: {regime_str}")
 
     universe = [asset["name"] for asset in meta.get("universe", [])][:100]
     market_candidates = []
@@ -475,120 +561,6 @@ def execute_engine():
     if trades_executed:
         time.sleep(2.5)
 
-    user_state = api_retry(info.user_state, ACCOUNT_ADDRESS)
-    spot_state = api_retry(info.spot_user_state, ACCOUNT_ADDRESS)
-    open_orders = api_retry(info.frontend_open_orders, ACCOUNT_ADDRESS)
-    all_mids = api_retry(info.all_mids)
-
-    asset_positions = user_state.get("assetPositions", [])
-    active_count = 0
-    positions_data = []
-    active_coins = set()
-    total_margin_used = 0.0
-
-    if asset_positions:
-        for pos_item in asset_positions:
-            pos = pos_item.get("position", {})
-            coin = pos.get("coin")
-            szi = float(pos.get("szi", 0))
-            if not coin or szi == 0:
-                continue
-
-            active_count += 1
-            active_coins.add(coin)
-            is_long = szi > 0
-            sz = abs(szi)
-            entry_px = float(pos.get("entryPx", 0))
-            current_px = float(all_mids.get(coin, entry_px))
-            margin_used = float(pos.get("marginUsed", 0))
-            total_margin_used += margin_used
-            unrealized_pnl = float(pos.get("unrealizedPnl", 0))
-            pos_equity = margin_used + unrealized_pnl
-
-            leverage_info = pos.get("leverage", {})
-            leverage = float(leverage_info.get("value", 1.0)) if isinstance(leverage_info, dict) else 1.0
-            if leverage <= 0:
-                leverage = 1.0
-
-            try:
-                time.sleep(0.05)
-                c_candles = api_retry(info.candles_snapshot, name=coin, interval="30m", startTime=now_ms - 86400000 * 2, endTime=now_ms)
-                highs = [float(c["h"]) for c in c_candles]
-                lows = [float(c["l"]) for c in c_candles]
-                closes = [float(c["c"]) for c in c_candles]
-                vols = [float(c.get("v", 0)) for c in c_candles]
-                ci = calculate_choppiness_index(highs, lows, closes)
-                
-                vol_ratio = (vols[-1] / np.mean(vols[-14:])) if len(vols) >= 14 and np.mean(vols[-14:]) > 0 else 1.0
-            except Exception:
-                ci = 50.0
-                vol_ratio = 1.0
-
-            current_roe = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
-            prev_peak = state.get("active_position_cache", {}).get(coin, {}).get("peak_roe", current_roe)
-            peak_roe = max(current_roe, prev_peak)
-
-            stop_px_raw, current_roe, target_floor, is_buy_order, leash_status = calculate_crypto_stop_price(
-                entry_px, is_long, current_px, leverage, choppiness_index=ci, vol_ratio=vol_ratio, peak_roe=peak_roe, btc_regime_green=btc_green
-            )
-            px = round_sig_figs(stop_px_raw, 5)
-
-            initial_risk_ref = 0.01
-            r_multiple = current_roe / initial_risk_ref if initial_risk_ref > 0 else 0.0
-
-            if current_roe < 0.01:
-                state["stagnation_tracker"][coin] = state["stagnation_tracker"].get(coin, 0) + 1
-            else:
-                state["stagnation_tracker"][coin] = 0
-
-            stag_count = state["stagnation_tracker"].get(coin, 0)
-            audit_logs.append(f"Crypto Position: {coin} | ROE: {current_roe*100:+.2f}% (Peak: {peak_roe*100:+.2f}%) | Stop: ${px} | [{leash_status}] | Stg: {stag_count}/48")
-
-            for order in open_orders:
-                if order.get("coin") == coin and order.get("isTrigger"):
-                    exchange.cancel(coin, order["oid"])
-
-            exchange.order(
-                coin, is_buy_order, sz, px,
-                {"trigger": {"triggerPx": px, "isMarket": True, "tpsl": "sl"}},
-                reduce_only=True
-            )
-
-            positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23",
-                "coin": coin,
-                "side": "LONG" if is_long else "SHORT",
-                "sz": sz,
-                "entry": entry_px,
-                "current": current_px,
-                "leverage": int(leverage),
-                "collateral": margin_used,
-                "position_usd": pos_equity,
-                "pnl": unrealized_pnl,
-                "roe": current_roe * 100,
-                "r_multiple": r_multiple,
-                "stop": px,
-                "floor": target_floor * 100,
-                "status": leash_status
-            })
-
-    spot_usdc = 0.0
-    total_spot_net_worth = 0.0
-    for b in spot_state.get("balances", []):
-        coin = b.get("coin", "").upper()
-        total_amt = float(b.get("total", 0.0))
-        if total_amt > 0:
-            if coin == "USDC":
-                spot_usdc = total_amt
-                total_spot_net_worth += total_amt
-            else:
-                px = float(all_mids.get(coin, 0.0))
-                total_spot_net_worth += (total_amt * px)
-
-    margin_summary = user_state.get("marginSummary", {})
-    fallback_val = float(margin_summary.get("accountValue", 0.0))
-    account_value = total_spot_net_worth if total_spot_net_worth > 0 else fallback_val
-
     static_usdc = max(0.0, account_value - total_margin_used)
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
@@ -620,7 +592,7 @@ def execute_engine():
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine - Choice A Tiered Sniper)</div>
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine - Instant Force-Close Guard)</div>
         <div class="table-responsive" style="overflow-x: hidden;">
           <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
             <tbody>{audit_rows}</tbody>
@@ -720,7 +692,7 @@ def execute_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-            <p>Timestamp: {timestamp} (Choice A Tiered Mega-Runner Sniper Active)</p>
+            <p>Timestamp: {timestamp} (Instant Force-Close Guard Active)</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -739,10 +711,10 @@ def execute_engine():
             </div>
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Guardrails (Choice A Tiered Mega-Runner Sniper)</div>
+              <div class="rules-title">&#9989; Active Guardrails (Instant Force-Close Blood-Bath Guard)</div>
               &bull; <b>Execution Engine:</b> 30-Min 24/7 GitHub Cron &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
-              &bull; <b>Tiered Trailing Leash:</b> 0.3% buffer for early green (+0.4% to +5%), 0.5% buffer for mid-trend (+5% to +15%), 1.0% buffer for mega-runners (+15%+)<br>
-              &bull; <b>Macro Regime Guard:</b> Instantly micro-locks legacy positions if trend flips against open side<br>
+              &bull; <b>Instant Blood-Bath Force-Close:</b> Instantly market-closes legacy positions if trend flips against open side (zero exchange trigger lag)<br>
+              &bull; <b>Tiered Trailing Leash:</b> 0.3% buffer for early green, 0.5% for mid-trend, 1.0% for mega-runners<br>
               &bull; <b>BTC Regime Shield:</b> Block LONGs if daily candle is RED; block SHORTs if daily candle is GREEN<br>
               &bull; <b>Leverage Profile: Optimized 5x Safe Max Leverage</b>
             </div>
