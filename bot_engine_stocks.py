@@ -218,7 +218,7 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (Bi-Directional Long/Short Mode, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (All-Weather Bi-Directional Mode, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
@@ -266,6 +266,35 @@ def execute_stock_engine():
     orders_res = requests.get(f"{BASE_URL}/v2/orders?status=open", headers=HEADERS)
     open_orders = orders_res.json() if orders_res.status_code == 200 else []
 
+    # --- NEW STOCK LAYER 1: PORTFOLIO DRAWDOWN CIRCUIT BREAKER (-3.5% Loss Check) ---
+    total_unrealized_pnl = sum([float(p.get("unrealized_pl", 0)) for p in positions_list])
+    portfolio_pnl_pct = (total_unrealized_pnl / equity) if equity > 0 else 0.0
+    if portfolio_pnl_pct <= -0.035 and positions_list:
+        audit_logs.append(f"🚨 PORTFOLIO CIRCUIT BREAKER TRIGGERED: Unrealized P&L at {portfolio_pnl_pct*100:.2f}%. Emergency flattening all equities to cash!")
+        for pos in positions_list:
+            sym = pos.get("symbol")
+            qty = float(pos.get("qty", 0))
+            side = pos.get("side")
+            close_side = "sell" if side == "long" else "buy"
+            try:
+                requests.post(f"{BASE_URL}/v2/orders", json={
+                    "symbol": sym, "qty": str(abs(qty)), "side": close_side, "type": "market", "time_in_force": "day"
+                }, headers=HEADERS)
+                if "closed_trades_ledger" not in state:
+                    state["closed_trades_ledger"] = []
+                state["closed_trades_ledger"].insert(0, {
+                    "symbol": sym, "entry_price": float(pos.get("avg_entry_price", 0)),
+                    "exit_price": float(pos.get("current_price", 0)),
+                    "exit_reason": "🚨 Portfolio Drawdown Circuit Breaker (-3.5%)",
+                    "realized_pnl": float(pos.get("unrealized_pl", 0)), "timestamp": timestamp
+                })
+            except Exception as e:
+                audit_logs.append(f"Circuit breaker close failed on {sym}: {e}")
+        for order in open_orders:
+            requests.delete(f"{BASE_URL}/v2/orders/{order.get('id')}", headers=HEADERS)
+        save_state(state)
+        positions_list = []
+
     # --- RULE 1: PRE-CLOSE EOD SQUARE-OFF (2:40 PM CT) ---
     is_eod_square_off = (ct_now.hour == 14 and ct_now.minute >= 40) or (ct_now.hour >= 15)
 
@@ -283,11 +312,7 @@ def execute_stock_engine():
             realized_pnl = (current_px - entry_px) * qty if side == "long" else (entry_px - current_px) * qty
 
             close_payload = {
-                "symbol": sym,
-                "qty": str(abs(qty)),
-                "side": close_side,
-                "type": "market",
-                "time_in_force": "day"
+                "symbol": sym, "qty": str(abs(qty)), "side": close_side, "type": "market", "time_in_force": "day"
             }
             try:
                 close_res = requests.post(f"{BASE_URL}/v2/orders", json=close_payload, headers=HEADERS)
@@ -299,12 +324,8 @@ def execute_stock_engine():
                     existing_symbols_today = [t['symbol'] for t in state["closed_trades_ledger"] if today_str in t.get("timestamp", "")]
                     if sym not in existing_symbols_today:
                         state["closed_trades_ledger"].insert(0, {
-                            "symbol": sym,
-                            "entry_price": entry_px,
-                            "exit_price": current_px,
-                            "exit_reason": reason_text,
-                            "realized_pnl": realized_pnl,
-                            "timestamp": timestamp
+                            "symbol": sym, "entry_price": entry_px, "exit_price": current_px,
+                            "exit_reason": reason_text, "realized_pnl": realized_pnl, "timestamp": timestamp
                         })
             except Exception as e:
                 audit_logs.append(f"LIQUIDATION ERROR on {sym}: {e}")
@@ -334,6 +355,28 @@ def execute_stock_engine():
         active_symbols.add(symbol)
         current_roe = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
 
+        # Fetch recent bars for CI calculation
+        try:
+            bar_res = requests.get(f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=30Min&limit=15&feed=iex&start={start_date}", headers=HEADERS)
+            if bar_res.status_code == 200:
+                b_list = bar_res.json().get("bars", {}).get(symbol, [])
+                if len(b_list) >= 14:
+                    highs_pos = [float(b["h"]) for b in b_list]
+                    lows_pos = [float(b["l"]) for b in b_list]
+                    closes_pos = [float(b["c"]) for b in b_list]
+                    volumes_pos = [float(b["v"]) for b in b_list]
+                    ci_pos = calculate_choppiness_index(highs_pos, lows_pos, closes_pos)
+                    vol_ratio = volumes_pos[-1] / np.mean(volumes_pos[:-1]) if np.mean(volumes_pos[:-1]) > 0 else 1.0
+                else:
+                    ci_pos = 50.0
+                    vol_ratio = 1.0
+            else:
+                ci_pos = 50.0
+                vol_ratio = 1.0
+        except Exception:
+            ci_pos = 50.0
+            vol_ratio = 1.0
+
         # --- REGIME MISMATCH GUARD (Blood-Bath / Trend Flip Defense) ---
         regime_mismatch = (is_long and not spy_green) or (not is_long and spy_green)
         if regime_mismatch:
@@ -352,22 +395,24 @@ def execute_stock_engine():
             except Exception as e:
                 audit_logs.append(f"Failed to force close {symbol}: {e}")
 
+        # --- NEW STOCK LAYER 2: ACTIVE POSITION CHOP PURGE (CI > 60.0 and Flat/Negative) ---
+        if ci_pos > 60.0 and current_roe < 0.005:
+            audit_logs.append(f"🚨 CHOP PURGE: Closing {symbol} immediately due to dead chop (CI: {ci_pos:.1f}, ROE: {current_roe*100:+.2f}%)")
+            close_side = "sell" if is_long else "buy"
+            try:
+                requests.post(f"{BASE_URL}/v2/orders", json={
+                    "symbol": symbol, "qty": str(abs(qty)), "side": close_side, "type": "market", "time_in_force": "day"
+                }, headers=HEADERS)
+                state["closed_trades_ledger"].insert(0, {
+                    "symbol": symbol, "entry_price": entry_px, "exit_price": current_px,
+                    "exit_reason": f"🚨 High Choppiness Chop Purge (CI: {ci_pos:.1f})", "realized_pnl": unrealized_pnl, "timestamp": timestamp
+                })
+                continue
+            except Exception as e:
+                audit_logs.append(f"Chop purge failed on {symbol}: {e}")
+
         prev_peak = current_active_cache.get(symbol, {}).get("peak_roe", current_roe)
         peak_roe = max(current_roe, prev_peak)
-
-        # --- SMART RUNNER VOLUME-ADAPTIVE TRAILING ---
-        vol_ratio = 1.0
-        try:
-            bar_res = requests.get(f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=30Min&limit=5&feed=iex&start={start_date}", headers=HEADERS)
-            if bar_res.status_code == 200:
-                b_list = bar_res.json().get("bars", {}).get(symbol, [])
-                if len(b_list) >= 2:
-                    volumes = [float(b["v"]) for b in b_list]
-                    avg_v = np.mean(volumes[:-1]) if len(volumes) > 1 else volumes[-1]
-                    curr_v = volumes[-1]
-                    vol_ratio = curr_v / avg_v if avg_v > 0 else 1.0
-        except Exception:
-            pass
 
         if vol_ratio >= 1.5:
             vol_multiplier = 1.6 
@@ -617,7 +662,7 @@ def execute_stock_engine():
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Trailing Peak Sniper Engine)</div>
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (All-Weather Sniper Engine)</div>
         <div class="table-responsive" style="overflow-x: hidden;">
           <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
             <tbody>{audit_rows}</tbody>
@@ -649,7 +694,7 @@ def execute_stock_engine():
         for t in closed_ledger[:5]
     ]) if closed_ledger else "<tr><td colspan='6' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
 
-    text_fallback = f"TR-GC-Equities-LS-01 | Bi-Directional Trailing Sniper\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Total Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
+    text_fallback = f"TR-GC-Equities-LS-01 | All-Weather Trailing Sniper\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Total Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
     positions_rows = "".join([
         f"<tr>"
@@ -719,8 +764,8 @@ def execute_stock_engine():
       <body>
         <div class="container">
           <div class="header">
-            <h2>TR-GC-Equities-LS-01 | Bi-Directional Trailing Peak Sniper</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: LONG/SHORT REGIME ADAPTIVE</p>
+            <h2>TR-GC-Equities-LS-01 | All-Weather Bi-Directional Sniper</h2>
+            <p>Timestamp: {timestamp} &bull; Mode: ALL-WEATHER REGIME ADAPTIVE</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -743,12 +788,14 @@ def execute_stock_engine():
             </div>
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Guardrails (Bi-Directional Long/Short Engine)</div>
+              <div class="rules-title">&#9989; Active Guardrails (All-Weather Bi-Directional Engine)</div>
               &bull; <b>SPY Regime Adaptability:</b> Automatically longs green markets and shorts red market breakdowns<br>
-              &bull; <b>Smart Runner Volume-Adaptation:</b> Heavy volume (>=1.5x) widens the trail for runners; stalling volume (<0.8x) locks profits instantly<br>
               &bull; <b>Regime Mismatch Guard:</b> Instantly closes positions if SPY trend flips against open exposure<br>
-              &bull; <b>Scaled Position Sizing:</b> 13% NAV allocation per slot with 5x safe limits<br>
+              &bull; <b>Portfolio Drawdown Circuit Breaker:</b> Instantly flattens 100% to cash if total open loss hits -3.5%<br>
+              &bull; <b>Active Chop Purge:</b> Automatically closes positions if market Choppiness Index (CI > 60.0) turns dead<br>
+              &bull; <b>Smart Runner Volume-Adaptation:</b> Heavy volume (>=1.5x) widens trail; stalling volume (<0.8x) locks profit<br>
               &bull; <b>Pre-Close EOD Square-Off:</b> Automatic 100% cash liquidation at 2:40 PM CT daily<br>
+              &bull; <b>Scaled Position Sizing:</b> 13% NAV allocation per slot with 5x safe limits<br>
               &bull; <b>Asset Universe:</b> S&P 500 & Nasdaq Momentum Equities
             </div>
 
@@ -770,20 +817,20 @@ def execute_stock_engine():
             {audit_section}
 
           </div>
-          <div class="footer">Alpaca Bi-Directional Sniper Engine &bull; Managed via GitHub Actions</div>
+          <div class="footer">Alpaca All-Weather Sniper Engine &bull; Managed via GitHub Actions</div>
         </div>
       </body>
     </html>
     """
 
-    send_html_dashboard_email(f"Alpaca Bi-Directional Report — USD ${equity:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] Bi-Directional Sniper telemetry report complete.")
+    send_html_dashboard_email(f"Alpaca All-Weather Report — USD ${equity:.2f}", html_content, text_fallback)
+    print(f"[{timestamp}] All-Weather Bi-Directional Sniper telemetry report complete.")
 
 if __name__ == "__main__":
     try:
         execute_stock_engine()
     except Exception as e:
-        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Bi-Directional Engine execution error: {e}"
+        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S']}] All-Weather Stock Engine execution error: {e}"
         print(err_msg)
         send_html_dashboard_email("Alpaca Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
         raise e
