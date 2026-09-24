@@ -27,6 +27,13 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "SNX",
+      "entry_price": 0.2558,
+      "exit_price": 0.2527,
+      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
+      "timestamp": "2026-09-24 22:35:58"
+    },
+    {
       "coin": "CAKE",
       "entry_price": 2.7436,
       "exit_price": 2.75225,
@@ -88,27 +95,11 @@
       "exit_price": 0.12711,
       "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
       "timestamp": "2026-09-24 00:07:12"
-    },
-    {
-      "coin": "FIL",
-      "entry_price": 0.91986,
-      "exit_price": 0.92542,
-      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
-      "timestamp": "2026-09-23 22:36:01"
     }
   ],
-  "active_position_cache": {
-    "SNX": {
-      "entry_px": 0.2558,
-      "current_px": 0.25431,
-      "szi": 327.0,
-      "peak_roe": -0.005824863174355147
-    }
-  },
-  "previous_active_coins": [
-    "SNX"
-  ],
-  "last_run_timestamp": "2026-09-24 22:06:16",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-09-24 22:36:49",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
