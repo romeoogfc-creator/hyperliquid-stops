@@ -69,9 +69,14 @@ def api_retry(func, *args, retries=5, delay=3.0, **kwargs):
 def run_gemini_market_shield():
     state = load_state()
     cached_shield = state.get("ai_shield_cache", {})
-    today_str = time.strftime('%Y-%m-%d')
+    current_time = time.time()
+    cache_epoch = cached_shield.get("cache_epoch", 0)
+    
+    # Adaptive TTL: Re-check every 2 hours if HIGH risk, or every 4 hours if LOW/MODERATE risk.
+    current_risk = cached_shield.get("risk_level", "UNKNOWN")
+    ttl_seconds = 7200 if current_risk == "HIGH" else 14400
 
-    if cached_shield.get("scan_date") == today_str and "risk_level" in cached_shield:
+    if cached_shield and (current_time - cache_epoch < ttl_seconds) and "risk_level" in cached_shield:
         return cached_shield
 
     if not GEMINI_API_KEY:
@@ -115,7 +120,7 @@ def run_gemini_market_shield():
                 )
                 result = json.loads(response.text)
                 result["timestamp"] = time.strftime('%Y-%m-%d %H:%M:%S')
-                result["scan_date"] = today_str
+                result["cache_epoch"] = time.time()
                 state["ai_shield_cache"] = result
                 save_state(state)
                 return result
