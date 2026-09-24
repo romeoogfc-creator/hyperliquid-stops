@@ -26,6 +26,20 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "CAKE",
+      "entry_price": 2.7436,
+      "exit_price": 2.75225,
+      "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
+      "timestamp": "2026-09-24 19:05:29"
+    },
+    {
+      "coin": "LINK",
+      "entry_price": 13.259,
+      "exit_price": 13.3445,
+      "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
+      "timestamp": "2026-09-24 19:05:29"
+    },
+    {
       "coin": "PYTH",
       "entry_price": 0.069038,
       "exit_price": 0.067898,
@@ -80,41 +94,11 @@
       "exit_price": 0.92542,
       "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
       "timestamp": "2026-09-23 22:36:01"
-    },
-    {
-      "coin": "ATOM",
-      "entry_price": 1.683,
-      "exit_price": 1.6936,
-      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
-      "timestamp": "2026-09-23 22:05:24"
-    },
-    {
-      "coin": "KAS",
-      "entry_price": 0.038779,
-      "exit_price": 0.038751,
-      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
-      "timestamp": "2026-09-23 21:36:13"
     }
   ],
-  "active_position_cache": {
-    "LINK": {
-      "entry_px": 13.259,
-      "current_px": 13.2105,
-      "szi": 4.7,
-      "peak_roe": -0.003657892752092967
-    },
-    "CAKE": {
-      "entry_px": 2.7436,
-      "current_px": 2.74675,
-      "szi": 30.8,
-      "peak_roe": 0.0011481265490597057
-    }
-  },
-  "previous_active_coins": [
-    "CAKE",
-    "LINK"
-  ],
-  "last_run_timestamp": "2026-09-24 18:41:09",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-09-24 19:06:26",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
