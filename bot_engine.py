@@ -600,7 +600,6 @@ def execute_engine():
         if unprotected_trades:
             stagnant_trade = max(unprotected_trades, key=lambda p: state["stagnation_tracker"].get(p["coin"], 0))
             coin_to_rotate = stagnant_trade["coin"]
-            # Accelerated to 6 runs (3 hours) instead of 48 runs (24 hours) for slow-bleed defense
             if state["stagnation_tracker"].get(coin_to_rotate, 0) >= 6:
                 try:
                     exchange.market_close(coin_to_rotate)
@@ -744,9 +743,12 @@ def execute_engine():
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Guardrails (All-Weather Resilient Engine)</div>
               &bull; <b>Execution Engine:</b> 30-Min 24/7 GitHub Cron &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
+              &bull; <b>Instant Blood-Bath Force-Close:</b> Instantly market-closes positions if trend flips against open side<br>
+              &bull; <b>BTC Regime Shield:</b> Block LONGs if daily candle is RED; block SHORTs if daily candle is GREEN<br>
               &bull; <b>Portfolio Drawdown Circuit Breaker:</b> Instantly flattens 100% to cash if total open loss hits -3.5%<br>
               &bull; <b>Active Chop Purge:</b> Automatically closes positions if market Choppiness Index (CI > 60.0) turns dead<br>
-              &bull; <b>Accelerated Stagnation Rotation:</b> Cuts dead or flat capital after 3 hours (6 runs) instead of 24 hours<br>
+              &bull; <b>Accelerated Stagnation Rotation:</b> Cuts dead or flat capital after 3 hours (6 runs)<br>
+              &bull; <b>Tiered Trailing Leash:</b> 0.3% buffer for early green, 0.5% for mid-trend, 1.0% for mega-runners<br>
               &bull; <b>Leverage Profile: Optimized 5x Safe Max Leverage</b>
             </div>
 
