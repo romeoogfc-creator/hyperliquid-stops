@@ -2,8 +2,8 @@ name: TR-GC-Equities-LS-01
 
 on:
   schedule:
-    # Runs every 30 minutes Monday-Friday during US Market hours (8 AM - 3 PM CT / 13:00 - 20:00 UTC)
-    - cron: '*/30 13-20 * * 1-5'
+    # Runs every 30 minutes Monday-Friday during active US Market hours (8 AM - 2 PM CT / 13:00 - 19:00 UTC)
+    - cron: '*/30 13-19 * * 1-5'
     # Dedicated pre-close square-off trigger at 2:50 PM CT (19:50 UTC)
     - cron: '50 19 * * 1-5'
   workflow_dispatch:
