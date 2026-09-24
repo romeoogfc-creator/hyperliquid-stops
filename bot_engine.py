@@ -200,7 +200,7 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
         target_floor_roe = max(peak_roe - 0.001, 0.0) if peak_roe > 0 else 0.0
         leash_status = "🚨 Macro Regime Micro-Lock (Blood-Bath Defense)"
     else:
-        # --- CHOICE A: TIERED MEGA-RUNNER TRAILING PEAK FOLLOWER ---
+        # --- TIERED MEGA-RUNNER TRAILING PEAK FOLLOWER ---
         if peak_roe >= 0.15:
             target_floor_roe = peak_roe - 0.010
             leash_status = f"🚀 Mega-Runner Leash [{peak_roe*100:.1f}% Peak]"
@@ -253,7 +253,7 @@ def check_btc_daily_candle(info):
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Instant Force-Close Blood-Bath Guard Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (All-Weather Resilient Guard Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -291,9 +291,57 @@ def execute_engine():
     positions_data = []
     active_coins = set()
     total_margin_used = 0.0
+    total_unrealized_pnl = 0.0
     current_active_cache = state.get("active_position_cache", {})
     new_active_cache = {}
 
+    # Pre-calculate account equity for circuit breaker check
+    spot_usdc = 0.0
+    total_spot_net_worth = 0.0
+    for b in spot_state.get("balances", []):
+        coin = b.get("coin", "").upper()
+        total_amt = float(b.get("total", 0.0))
+        if total_amt > 0:
+            if coin == "USDC":
+                spot_usdc = total_amt
+                total_spot_net_worth += total_amt
+            else:
+                px = float(all_mids.get(coin, 0.0))
+                total_spot_net_worth += (total_amt * px)
+
+    margin_summary = user_state.get("marginSummary", {})
+    fallback_val = float(margin_summary.get("accountValue", 0.0))
+    account_value = total_spot_net_worth if total_spot_net_worth > 0 else fallback_val
+
+    # --- NEW LAYER 1: GLOBAL PORTFOLIO DRAWDOWN CIRCUIT BREAKER (-3.5% Loss Check) ---
+    if asset_positions:
+        for pos_item in asset_positions:
+            pos = pos_item.get("position", {})
+            unrealized_pnl = float(pos.get("unrealizedPnl", 0))
+            total_unrealized_pnl += unrealized_pnl
+
+    portfolio_pnl_pct = (total_unrealized_pnl / account_value) if account_value > 0 else 0.0
+    if portfolio_pnl_pct <= -0.035:
+        audit_logs.append(f"🚨 PORTFOLIO CIRCUIT BREAKER TRIGGERED: Unrealized P&L at {portfolio_pnl_pct*100:.2f}%. Emergency flattening all positions to cash!")
+        for pos_item in asset_positions:
+            pos = pos_item.get("position", {})
+            coin = pos.get("coin")
+            szi = float(pos.get("szi", 0))
+            if coin and szi != 0:
+                try:
+                    exchange.market_close(coin)
+                    state["closed_trades_ledger"].insert(0, {
+                        "coin": coin, "entry_price": float(pos.get("entryPx", 0)),
+                        "exit_price": float(all_mids.get(coin, 0)),
+                        "exit_reason": "🚨 Portfolio Drawdown Circuit Breaker (-3.5%)",
+                        "timestamp": timestamp
+                    })
+                except Exception as e:
+                    audit_logs.append(f"Circuit breaker close failed on {coin}: {e}")
+        save_state(state)
+        return
+
+    # --- STANDARD POSITION PROCESSING & NEW LAYERS ---
     if asset_positions:
         for pos_item in asset_positions:
             pos = pos_item.get("position", {})
@@ -318,35 +366,7 @@ def execute_engine():
             prev_peak = current_active_cache.get(coin, {}).get("peak_roe", current_roe)
             peak_roe = max(current_roe, prev_peak)
 
-            # --- INSTANT BLOOD-BATH FORCE-CLOSE GUARD ---
-            regime_mismatch = (is_long and not btc_green) or (not is_long and btc_green)
-            if regime_mismatch:
-                try:
-                    audit_logs.append(f"🚨 BLOOD-BATH DEFENSE: Forcing immediate market close on {coin} due to BTC regime flip!")
-                    exchange.market_close(coin)
-                    state["closed_trades_ledger"].insert(0, {
-                        "coin": coin,
-                        "entry_price": entry_px,
-                        "exit_price": current_px,
-                        "exit_reason": "🚨 Blood-Bath Regime Force Exit",
-                        "timestamp": timestamp
-                    })
-                    state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
-                    continue 
-                except Exception as e:
-                    audit_logs.append(f"Failed to force close {coin}: {e}")
-
-            active_count += 1
-            active_coins.add(coin)
-            total_margin_used += margin_used
-
-            new_active_cache[coin] = {
-                "entry_px": entry_px,
-                "current_px": current_px,
-                "szi": szi,
-                "peak_roe": peak_roe
-            }
-
+            # --- FETCH TECHNICAL METRICS (CI & Volume) ---
             try:
                 time.sleep(0.05)
                 c_candles = api_retry(info.candles_snapshot, name=coin, interval="30m", startTime=now_ms - 86400000 * 2, endTime=now_ms)
@@ -359,6 +379,43 @@ def execute_engine():
             except Exception:
                 ci = 50.0
                 vol_ratio = 1.0
+
+            # --- INSTANT BLOOD-BATH FORCE-CLOSE GUARD ---
+            regime_mismatch = (is_long and not btc_green) or (not is_long and btc_green)
+            if regime_mismatch:
+                try:
+                    audit_logs.append(f"🚨 BLOOD-BATH DEFENSE: Forcing immediate market close on {coin} due to BTC regime flip!")
+                    exchange.market_close(coin)
+                    state["closed_trades_ledger"].insert(0, {
+                        "coin": coin, "entry_price": entry_px, "exit_price": current_px,
+                        "exit_reason": "🚨 Blood-Bath Regime Force Exit", "timestamp": timestamp
+                    })
+                    state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
+                    continue 
+                except Exception as e:
+                    audit_logs.append(f"Failed to force close {coin}: {e}")
+
+            # --- NEW LAYER 2: ACTIVE POSITION CHOP PURGE (CI > 60.0 and Flat/Negative) ---
+            if ci > 60.0 and current_roe < 0.005:
+                try:
+                    audit_logs.append(f"🚨 CHOP PURGE: Closing {coin} immediately due to dead chop (CI: {ci:.1f}, ROE: {current_roe*100:+.2f}%)")
+                    exchange.market_close(coin)
+                    state["closed_trades_ledger"].insert(0, {
+                        "coin": coin, "entry_price": entry_px, "exit_price": current_px,
+                        "exit_reason": f"🚨 High Choppiness Chop Purge (CI: {ci:.1f})", "timestamp": timestamp
+                    })
+                    state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
+                    continue
+                except Exception as e:
+                    audit_logs.append(f"Chop purge failed on {coin}: {e}")
+
+            active_count += 1
+            active_coins.add(coin)
+            total_margin_used += margin_used
+
+            new_active_cache[coin] = {
+                "entry_px": entry_px, "current_px": current_px, "szi": szi, "peak_roe": peak_roe
+            }
 
             stop_px_raw, current_roe, target_floor, is_buy_order, leash_status = calculate_crypto_stop_price(
                 entry_px, is_long, current_px, leverage, choppiness_index=ci, vol_ratio=vol_ratio, peak_roe=peak_roe, btc_regime_green=btc_green
@@ -387,20 +444,12 @@ def execute_engine():
             )
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23",
-                "coin": coin,
-                "side": "LONG" if is_long else "SHORT",
-                "sz": abs(szi),
-                "entry": entry_px,
-                "current": current_px,
-                "leverage": int(leverage),
-                "collateral": margin_used,
-                "position_usd": pos_equity,
-                "pnl": unrealized_pnl,
-                "roe": current_roe * 100,
-                "r_multiple": r_multiple,
-                "stop": px,
-                "floor": target_floor * 100,
+                "bot_title": "TR-GC-Crypto-LS-23", "coin": coin,
+                "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
+                "entry": entry_px, "current": current_px, "leverage": int(leverage),
+                "collateral": margin_used, "position_usd": pos_equity,
+                "pnl": unrealized_pnl, "roe": current_roe * 100,
+                "r_multiple": r_multiple, "stop": px, "floor": target_floor * 100,
                 "status": leash_status
             })
 
@@ -415,11 +464,8 @@ def execute_engine():
         already_logged = any(t["coin"] == closed_coin for t in state["closed_trades_ledger"][:2])
         if not already_logged:
             state["closed_trades_ledger"].insert(0, {
-                "coin": closed_coin,
-                "entry_price": entry_px,
-                "exit_price": exit_px,
-                "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
-                "timestamp": timestamp
+                "coin": closed_coin, "entry_price": entry_px, "exit_price": exit_px,
+                "exit_reason": "Tiered Profit Lock / Rinse & Repeat", "timestamp": timestamp
             })
             state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
 
@@ -508,23 +554,6 @@ def execute_engine():
     smart_queue_sorted = sorted(smart_queue_candidates, key=lambda x: x["score"], reverse=True)
     audit_logs.append(f"Crypto Scan Complete (30m Interval): Evaluated {scanned_count} assets. Found {len(market_candidates)} confirmed breakouts.")
 
-    spot_usdc = 0.0
-    total_spot_net_worth = 0.0
-    for b in spot_state.get("balances", []):
-        coin = b.get("coin", "").upper()
-        total_amt = float(b.get("total", 0.0))
-        if total_amt > 0:
-            if coin == "USDC":
-                spot_usdc = total_amt
-                total_spot_net_worth += total_amt
-            else:
-                px = float(all_mids.get(coin, 0.0))
-                total_spot_net_worth += (total_amt * px)
-
-    margin_summary = user_state.get("marginSummary", {})
-    fallback_val = float(margin_summary.get("accountValue", 0.0))
-    account_value = total_spot_net_worth if total_spot_net_worth > 0 else fallback_val
-
     trades_executed = False
     if is_high_risk:
         audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD (High Risk Detected).")
@@ -565,25 +594,26 @@ def execute_engine():
     static_usdc = max(0.0, account_value - total_margin_used)
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
+    # --- NEW LAYER 3: ACCELERATED STAGNATION ROTATION (Cut after 6 runs / 3 hours if flat) ---
     if active_count == 6:
         unprotected_trades = [p for p in positions_data if p["roe"] < 1.0]
         if unprotected_trades:
             stagnant_trade = max(unprotected_trades, key=lambda p: state["stagnation_tracker"].get(p["coin"], 0))
             coin_to_rotate = stagnant_trade["coin"]
-            if state["stagnation_tracker"].get(coin_to_rotate, 0) >= 48:
+            # Accelerated to 6 runs (3 hours) instead of 48 runs (24 hours) for slow-bleed defense
+            if state["stagnation_tracker"].get(coin_to_rotate, 0) >= 6:
                 try:
                     exchange.market_close(coin_to_rotate)
                     state["stagnation_tracker"][coin_to_rotate] = 0
                     state["closed_trades_ledger"].insert(0, {
-                        "coin": coin_to_rotate,
-                        "entry_price": stagnant_trade["entry"],
+                        "coin": coin_to_rotate, "entry_price": stagnant_trade["entry"],
                         "exit_price": stagnant_trade["current"],
-                        "exit_reason": "24h Stagnation Rotation (Low ROE)",
+                        "exit_reason": "⚡ Accelerated Stagnation Rotation (3h Dead Capital)",
                         "timestamp": timestamp
                     })
                     state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
                     active_count -= 1
-                    audit_logs.append(f"ROTATION TRIGGERED: Closed stagnant crypto {coin_to_rotate}")
+                    audit_logs.append(f"ROTATION TRIGGERED: Closed stagnant crypto {coin_to_rotate} after 3 hours of dead capital.")
                 except Exception as e:
                     audit_logs.append(f"Crypto Rotation Failed on {coin_to_rotate}: {e}")
 
@@ -593,7 +623,7 @@ def execute_engine():
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine - Single-Pass Force Close)</div>
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine - All-Weather Guard)</div>
         <div class="table-responsive" style="overflow-x: hidden;">
           <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
             <tbody>{audit_rows}</tbody>
@@ -693,7 +723,7 @@ def execute_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-            <p>Timestamp: {timestamp} (Instant Force-Close Guard Active)</p>
+            <p>Timestamp: {timestamp} (All-Weather Resilient Guard Active)</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -712,11 +742,11 @@ def execute_engine():
             </div>
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Guardrails (Instant Force-Close Blood-Bath Guard)</div>
+              <div class="rules-title">&#9989; Active Guardrails (All-Weather Resilient Engine)</div>
               &bull; <b>Execution Engine:</b> 30-Min 24/7 GitHub Cron &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
-              &bull; <b>Instant Blood-Bath Force-Close:</b> Instantly market-closes legacy positions if trend flips against open side (zero exchange trigger lag)<br>
-              &bull; <b>Tiered Trailing Leash:</b> 0.3% buffer for early green, 0.5% for mid-trend, 1.0% for mega-runners<br>
-              &bull; <b>BTC Regime Shield:</b> Block LONGs if daily candle is RED; block SHORTs if daily candle is GREEN<br>
+              &bull; <b>Portfolio Drawdown Circuit Breaker:</b> Instantly flattens 100% to cash if total open loss hits -3.5%<br>
+              &bull; <b>Active Chop Purge:</b> Automatically closes positions if market Choppiness Index (CI > 60.0) turns dead<br>
+              &bull; <b>Accelerated Stagnation Rotation:</b> Cuts dead or flat capital after 3 hours (6 runs) instead of 24 hours<br>
               &bull; <b>Leverage Profile: Optimized 5x Safe Max Leverage</b>
             </div>
 
