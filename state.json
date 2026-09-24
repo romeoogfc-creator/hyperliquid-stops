@@ -25,6 +25,41 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "DYDX",
+      "entry_price": 0.12878,
+      "exit_price": 0.12711,
+      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
+      "timestamp": "2026-09-24 00:07:12"
+    },
+    {
+      "coin": "RSR",
+      "entry_price": 0.001626,
+      "exit_price": 0.00163,
+      "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
+      "timestamp": "2026-09-24 00:07:12"
+    },
+    {
+      "coin": "BIGTIME",
+      "entry_price": 0.007985,
+      "exit_price": 0.008027,
+      "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
+      "timestamp": "2026-09-24 00:07:12"
+    },
+    {
+      "coin": "ARB",
+      "entry_price": 0.21479,
+      "exit_price": 0.21596,
+      "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
+      "timestamp": "2026-09-24 00:07:12"
+    },
+    {
+      "coin": "DYDX",
+      "entry_price": 0.12878,
+      "exit_price": 0.12711,
+      "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
+      "timestamp": "2026-09-24 00:07:12"
+    },
+    {
       "coin": "FIL",
       "entry_price": 0.91986,
       "exit_price": 0.92542,
@@ -58,76 +93,18 @@
       "exit_price": 3.9276,
       "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
       "timestamp": "2026-09-23 21:01:21"
-    },
-    {
-      "coin": "MEME",
-      "entry_price": 0.000626,
-      "exit_price": 0.000584,
-      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
-      "timestamp": "2026-09-23 20:26:01"
-    },
-    {
-      "coin": "APT",
-      "entry_price": 0.7884,
-      "exit_price": 0.7553,
-      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
-      "timestamp": "2026-09-23 20:26:01"
-    },
-    {
-      "coin": "GMT",
-      "entry_price": 0.00824,
-      "exit_price": 0.008141,
-      "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
-      "timestamp": "2026-09-23 20:26:01"
-    },
-    {
-      "coin": "MEME",
-      "entry_price": 0.000626,
-      "exit_price": 0.000584,
-      "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
-      "timestamp": "2026-09-23 20:26:01"
-    },
-    {
-      "coin": "APT",
-      "entry_price": 0.7884,
-      "exit_price": 0.7553,
-      "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
-      "timestamp": "2026-09-23 20:26:01"
     }
   ],
-  "active_position_cache": {
-    "DYDX": {
-      "entry_px": 0.12878,
-      "current_px": 0.12676,
-      "szi": -513.6,
-      "peak_roe": 0.021587202981829513
-    },
-    "BIGTIME": {
-      "entry_px": 0.007985,
-      "current_px": 0.008022,
-      "szi": -8853.0,
-      "peak_roe": -0.0003757044458358836
-    },
-    "RSR": {
-      "entry_px": 0.001626,
-      "current_px": 0.001625,
-      "szi": -40004.0,
-      "peak_roe": 0.0006150061500615823
-    }
-  },
-  "previous_active_coins": [
-    "RSR",
-    "DYDX",
-    "BIGTIME"
-  ],
-  "last_run_timestamp": "2026-09-23 23:34:53",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-09-24 00:08:11",
   "ai_shield_cache": {
     "high_risk_detected": true,
-    "risk_level": "MODERATE",
-    "reason": "Market momentum is currently driven by a massive short squeeze and high derivatives leverage, with open interest exceeding $159 billion and significant recent liquidations creating a fragile foundation for the current $86,000+ price level.",
-    "action": "ALLOW_TRADES",
-    "ai_market_brief": "Bitcoin has surged to an eight-month high above $86,000, fueled by substantial ETF inflows and a reflexive short-squeeze rather than shifting macroeconomic fundamentals. While sentiment remains bullish, the market is exhibiting elevated leverage and sensitivity to volatility, requiring caution as traders monitor potential support retests and quarterly options expiry.",
-    "timestamp": "2026-09-23 02:05:41",
-    "scan_date": "2026-09-23"
+    "risk_level": "HIGH",
+    "reason": "The market recently experienced a significant wave of forced long liquidations exceeding $425 million, triggered by stronger-than-expected U.S. economic data and rising Treasury yields. This environment of heightened macro sensitivity, combined with over-extended leverage and recent market volatility, creates substantial risk for sudden price swings in perp futures.",
+    "action": "BLOCK_ENTRIES",
+    "ai_market_brief": "Bitcoin sentiment remains cautious as the market digests a recent pullback from $87,000 levels amid rising concerns over Federal Reserve tightening and elevated bond yields. While institutional inflows remain a support pillar, the current environment is dominated by deleveraging and regulatory uncertainty, favoring a defensive stance until volatility stabilizes.",
+    "timestamp": "2026-09-24 00:07:15",
+    "scan_date": "2026-09-24"
   }
 }
