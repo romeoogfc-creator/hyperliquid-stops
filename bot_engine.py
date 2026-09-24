@@ -178,6 +178,47 @@ def check_btc_daily_candle(info):
         pass
     return True, 0.0, 0.0
 
+def verify_5m_micro_structure(info, coin, now_ms, is_long):
+    """Instant 5-Minute Micro-Confirmation Filter (20-30 min / 4-6 bar staircase validation)"""
+    try:
+        m5_candles = api_retry(info.candles_snapshot, name=coin, interval="5m", startTime=now_ms - 3600000 * 4, endTime=now_ms)
+        if not m5_candles or len(m5_candles) < 6:
+            return True
+        m_closes = [float(c["c"]) for c in m5_candles]
+        m_opens = [float(c["o"]) for c in m5_candles]
+        m_highs = [float(c["h"]) for c in m5_candles]
+        m_lows = [float(c["l"]) for c in m5_candles]
+        
+        recent_closes = m_closes[-5:]
+        recent_opens = m_opens[-5:]
+        
+        if is_long:
+            net_progress = recent_closes[-1] > recent_closes[0]
+            green_count = sum(1 for o, c in zip(recent_opens, recent_closes) if c >= o)
+            latest_high = m_highs[-1]
+            latest_low = m_lows[-1]
+            latest_close = recent_closes[-1]
+            candle_range = latest_high - latest_low
+            if candle_range > 0:
+                upper_wick_ratio = (latest_high - max(recent_opens[-1], latest_close)) / candle_range
+                if upper_wick_ratio > 0.6:
+                    return False
+            return net_progress and (green_count >= 2)
+        else:
+            net_progress = recent_closes[-1] < recent_closes[0]
+            red_count = sum(1 for o, c in zip(recent_opens, recent_closes) if c <= o)
+            latest_high = m_highs[-1]
+            latest_low = m_lows[-1]
+            latest_close = recent_closes[-1]
+            candle_range = latest_high - latest_low
+            if candle_range > 0:
+                lower_wick_ratio = (min(recent_opens[-1], latest_close) - latest_low) / candle_range
+                if lower_wick_ratio > 0.6:
+                    return False
+            return net_progress and (red_count >= 2)
+    except Exception:
+        return True
+
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
@@ -446,8 +487,11 @@ def execute_engine():
                 has_upward_continuation = current_close > prev_close
 
                 if current_close > upper and current_close <= upper * 1.04 and vol_ratio >= 0.7 and is_green_candle and has_upward_continuation:
-                    market_candidates.append(candidate_obj)
-                    audit_logs.append(f"CRYPTO MATCH LONG (Confirmed): {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
+                    if verify_5m_micro_structure(info, coin, now_ms, is_long=True):
+                        market_candidates.append(candidate_obj)
+                        audit_logs.append(f"CRYPTO MATCH LONG (Confirmed + 5m Micro-Verified): {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
+                    else:
+                        audit_logs.append(f"CRYPTO 5M WICK FILTER BLOCKED: {coin} failed micro-structure validation.")
             else:
                 is_ballistic = current_close < (lower - 1.5 * atr)
                 extension_score = max(0.0, (lower - current_close) / lower)
@@ -464,8 +508,11 @@ def execute_engine():
                 has_downward_continuation = current_close < prev_close
 
                 if current_close < lower and current_close >= lower * 0.96 and vol_ratio >= 0.7 and is_red_candle and has_downward_continuation:
-                    market_candidates.append(candidate_obj)
-                    audit_logs.append(f"CRYPTO MATCH SHORT (Confirmed): {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
+                    if verify_5m_micro_structure(info, coin, now_ms, is_long=False):
+                        market_candidates.append(candidate_obj)
+                        audit_logs.append(f"CRYPTO MATCH SHORT (Confirmed + 5m Micro-Verified): {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
+                    else:
+                        audit_logs.append(f"CRYPTO 5M WICK FILTER BLOCKED: {coin} failed micro-structure validation.")
         except Exception:
             continue
 
