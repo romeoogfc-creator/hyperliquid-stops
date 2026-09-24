@@ -113,7 +113,7 @@ def calculate_choppiness_index(highs, lows, closes, period=14):
     except Exception:
         return 50.0
 
-def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, choppiness_index=50.0, is_ballistic=False, vol_ratio=1.0, peak_roe=0.0, btc_regime_green=True):
+def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, choppiness_index=50.0, is_ballistic=False, vol_ratio=1.0, peak_roe=0.0):
     if is_long:
         roe = ((current_px - entry_px) / entry_px) * leverage
     else:
@@ -121,40 +121,33 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
 
     leash_status = "Tiered Sniper Stop"
     
-    # --- MACRO REGIME MISMATCH GUARD (Blood-Bath Protection) ---
-    regime_mismatch = (is_long and not btc_regime_green) or (not is_long and btc_regime_green)
-
-    if regime_mismatch:
-        target_floor_roe = max(peak_roe - 0.001, 0.0) if peak_roe > 0 else 0.0
-        leash_status = "🚨 Macro Regime Micro-Lock (Blood-Bath Defense)"
-    else:
-        # --- TIERED MEGA-RUNNER TRAILING PEAK FOLLOWER ---
-        if peak_roe >= 0.15:
-            target_floor_roe = peak_roe - 0.010
-            leash_status = f"🚀 Mega-Runner Leash [{peak_roe*100:.1f}% Peak]"
-        elif peak_roe >= 0.05:
-            target_floor_roe = peak_roe - 0.005
-            leash_status = f"📈 Mid-Trend Peak Floor [{peak_roe*100:.1f}% Peak]"
-        elif peak_roe >= 0.004:
-            if vol_ratio < 0.8:
-                target_floor_roe = max(peak_roe - 0.001, 0.0)
-                leash_status = "⚡ Volume Stall Snap (+0.1% Buffer)"
-            else:
-                target_floor_roe = peak_roe - 0.003
-                leash_status = f"🎯 Quick Profit Lock [{peak_roe*100:.1f}% Peak]"
+    # --- TIERED MEGA-RUNNER TRAILING PEAK FOLLOWER ---
+    if peak_roe >= 0.15:
+        target_floor_roe = peak_roe - 0.010
+        leash_status = f"🚀 Mega-Runner Leash [{peak_roe*100:.1f}% Peak]"
+    elif peak_roe >= 0.05:
+        target_floor_roe = peak_roe - 0.005
+        leash_status = f"📈 Mid-Trend Peak Floor [{peak_roe*100:.1f}% Peak]"
+    elif peak_roe >= 0.004:
+        if vol_ratio < 0.8:
+            target_floor_roe = max(peak_roe - 0.001, 0.0)
+            leash_status = "⚡ Volume Stall Snap (+0.1% Buffer)"
         else:
-            if roe >= 0.01:
-                target_floor_roe = 0.0
-                leash_status = "Break-Even Lock (+1.0% Trigger)"
-            elif choppiness_index > 58.0:
-                target_floor_roe = -0.010
-                leash_status = "Tight Choppy Defense Stop"
-            elif is_ballistic:
-                target_floor_roe = -0.015
-                leash_status = "Ballistic Stop"
-            else:
-                target_floor_roe = -0.010
-                leash_status = "Tight Trend Defense Stop"
+            target_floor_roe = peak_roe - 0.003
+            leash_status = f"🎯 Quick Profit Lock [{peak_roe*100:.1f}% Peak]"
+    else:
+        if roe >= 0.01:
+            target_floor_roe = 0.0
+            leash_status = "Break-Even Lock (+1.0% Trigger)"
+        elif choppiness_index > 58.0:
+            target_floor_roe = -0.010
+            leash_status = "Tight Choppy Defense Stop"
+        elif is_ballistic:
+            target_floor_roe = -0.015
+            leash_status = "Ballistic Stop"
+        else:
+            target_floor_roe = -0.010
+            leash_status = "Tight Trend Defense Stop"
 
     if is_long:
         stop_px = entry_px * (1 + (target_floor_roe / leverage))
@@ -340,21 +333,6 @@ def execute_engine():
                 ci = 50.0
                 vol_ratio = 1.0
 
-            # --- INSTANT BLOOD-BATH FORCE-CLOSE GUARD ---
-            regime_mismatch = (is_long and not btc_green) or (not is_long and btc_green)
-            if regime_mismatch:
-                try:
-                    audit_logs.append(f"🚨 BLOOD-BATH DEFENSE: Forcing immediate market close on {coin} due to BTC regime flip!")
-                    exchange.market_close(coin)
-                    state["closed_trades_ledger"].insert(0, {
-                        "coin": coin, "entry_price": entry_px, "exit_price": current_px,
-                        "exit_reason": "🚨 Blood-Bath Regime Force Exit", "timestamp": timestamp
-                    })
-                    state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
-                    continue 
-                except Exception as e:
-                    audit_logs.append(f"Failed to force close {coin}: {e}")
-
             # --- ACTIVE POSITION CHOP PURGE (CI > 60.0 and Flat/Negative) ---
             if ci > 60.0 and current_roe < 0.005:
                 try:
@@ -378,7 +356,7 @@ def execute_engine():
             }
 
             stop_px_raw, current_roe, target_floor, is_buy_order, leash_status = calculate_crypto_stop_price(
-                entry_px, is_long, current_px, leverage, choppiness_index=ci, vol_ratio=vol_ratio, peak_roe=peak_roe, btc_regime_green=btc_green
+                entry_px, is_long, current_px, leverage, choppiness_index=ci, vol_ratio=vol_ratio, peak_roe=peak_roe
             )
             px = round_sig_figs(stop_px_raw, 5)
 
@@ -693,7 +671,7 @@ def execute_engine():
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Guardrails (Pure Quantitative Engine)</div>
               &bull; <b>Execution Engine:</b> 30-Min 24/7 GitHub Cron &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
-              &bull; <b>Instant Blood-Bath Force-Close:</b> Instantly market-closes positions if trend flips against open side<br>
+              &bull; <b>Macro Regime Gatekeeper:</b> Blocks new entries on trend mismatch; allows open runners to ride via trailing leashes<br>
               &bull; <b>BTC Regime Shield:</b> Block LONGs if daily candle is RED; block SHORTs if daily candle is GREEN<br>
               &bull; <b>Portfolio Drawdown Circuit Breaker:</b> Instantly flattens 100% to cash if total open loss hits -3.5%<br>
               &bull; <b>Active Chop Purge:</b> Automatically closes positions if market Choppiness Index (CI > 60.0) turns dead<br>
