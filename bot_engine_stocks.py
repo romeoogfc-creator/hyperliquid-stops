@@ -10,13 +10,8 @@ import requests
 import pandas as pd
 import numpy as np
 
-# Google GenAI SDK Imports
-from google import genai
-from google.genai import types
-
 API_KEY = os.getenv("APAL_API_KEY_ID")
 SECRET_KEY = os.getenv("APAL_SECRET_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 BASE_URL = os.getenv("APAL_BASE_URL", "https://paper-api.alpaca.markets")
 STATE_FILE = "stock_state.json"
 
@@ -47,7 +42,6 @@ def load_state():
         "active_position_cache": {},
         "previous_active_symbols": [],
         "last_run_timestamp": "", 
-        "ai_shield_cache": {},
         "daily_starting_equity": {}
     }
     if os.path.exists(STATE_FILE):
@@ -82,72 +76,6 @@ def check_market_macro_regime():
     except Exception as e:
         print(f"Error checking SPY macro regime: {e}")
     return True, 0.0, 0.0
-
-def run_gemini_stock_market_shield():
-    state = load_state()
-    cached_shield = state.get("ai_shield_cache", {})
-    today_str = datetime.now().strftime("%Y-%m-%d")
-
-    if cached_shield.get("scan_date") == today_str and "high_risk_detected" in cached_shield:
-        return cached_shield
-
-    if not GEMINI_API_KEY:
-        return {
-            "high_risk_detected": False, 
-            "risk_level": "UNKNOWN", 
-            "reason": "API Key Missing", 
-            "action": "ALLOW_TRADES",
-            "ai_market_brief": "AI Shield offline (Missing GEMINI_API_KEY secret)."
-        }
-
-    try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        prompt = """
-        Perform a live real-time web search for breaking US stock market news, SPY/QQQ market trends, Federal Reserve macro economic updates, 
-        unexpected earnings shocks, or geopolitical events from the last 1-2 hours.
-        Determine if there is extreme high-risk volatility or black-swan risk that could cause sudden crashes in equities.
-        Provide a 2-sentence executive summary of current US stock market sentiment and key catalysts for the email dashboard.
-        """
-        models = ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.6-flash"]
-        for model_name in models:
-            try:
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        tools=[types.Tool(google_search=types.GoogleSearch())],
-                        response_mime_type="application/json",
-                        response_schema={
-                            "type": "OBJECT",
-                            "properties": {
-                                "high_risk_detected": {"type": "BOOLEAN"},
-                                "risk_level": {"type": "STRING", "enum": ["LOW", "MODERATE", "HIGH"]},
-                                "reason": {"type": "STRING"},
-                                "action": {"type": "STRING", "enum": ["ALLOW_TRADES", "BLOCK_ENTRIES"]},
-                                "ai_market_brief": {"type": "STRING"}
-                            },
-                            "required": ["high_risk_detected", "risk_level", "reason", "action", "ai_market_brief"]
-                        }
-                    )
-                )
-                result = json.loads(response.text)
-                result["timestamp"] = time.strftime('%Y-%m-%d %H:%M:%S')
-                result["scan_date"] = today_str
-                state["ai_shield_cache"] = result
-                save_state(state)
-                return result
-            except Exception:
-                continue
-    except Exception:
-        pass
-
-    return cached_shield if cached_shield else {
-        "high_risk_detected": False, 
-        "risk_level": "UNKNOWN", 
-        "reason": "AI Shield Bypass on Error", 
-        "action": "ALLOW_TRADES",
-        "ai_market_brief": "Stock market scanning operating normally under standard quantitative rules."
-    }
 
 def send_html_dashboard_email(subject, html_content, text_fallback):
     sender_email = os.getenv("SENDER_EMAIL")
@@ -218,16 +146,12 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (All-Weather Bi-Directional Mode, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (Pure Quantitative Mode, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
 
     start_date = (datetime.now() - timedelta(days=14)).strftime('%Y-%m-%d')
-
-    ai_shield = run_gemini_stock_market_shield()
-    ai_risk_status = "BLOCKED (High Risk)" if ai_shield.get("high_risk_detected") else "PASS (Normal Risk)"
-    audit_logs.append(f"Gemini AI Shield: [{ai_shield.get('risk_level', 'UNKNOWN')}] {ai_shield.get('reason', '')} -> {ai_risk_status}")
 
     # --- SPY MACRO TREND REGIME SHIELD ---
     spy_green, spy_open_px, spy_close_px = check_market_macro_regime()
@@ -266,7 +190,7 @@ def execute_stock_engine():
     orders_res = requests.get(f"{BASE_URL}/v2/orders?status=open", headers=HEADERS)
     open_orders = orders_res.json() if orders_res.status_code == 200 else []
 
-    # --- NEW STOCK LAYER 1: PORTFOLIO DRAWDOWN CIRCUIT BREAKER (-3.5% Loss Check) ---
+    # --- PORTFOLIO DRAWDOWN CIRCUIT BREAKER (-3.5% Loss Check) ---
     total_unrealized_pnl = sum([float(p.get("unrealized_pl", 0)) for p in positions_list])
     portfolio_pnl_pct = (total_unrealized_pnl / equity) if equity > 0 else 0.0
     if portfolio_pnl_pct <= -0.035 and positions_list:
@@ -355,7 +279,6 @@ def execute_stock_engine():
         active_symbols.add(symbol)
         current_roe = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
 
-        # Fetch recent bars for CI calculation
         try:
             bar_res = requests.get(f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=30Min&limit=15&feed=iex&start={start_date}", headers=HEADERS)
             if bar_res.status_code == 200:
@@ -395,7 +318,7 @@ def execute_stock_engine():
             except Exception as e:
                 audit_logs.append(f"Failed to force close {symbol}: {e}")
 
-        # --- NEW STOCK LAYER 2: ACTIVE POSITION CHOP PURGE (CI > 60.0 and Flat/Negative) ---
+        # --- ACTIVE POSITION CHOP PURGE (CI > 60.0 and Flat/Negative) ---
         if ci_pos > 60.0 and current_roe < 0.005:
             audit_logs.append(f"🚨 CHOP PURGE: Closing {symbol} immediately due to dead chop (CI: {ci_pos:.1f}, ROE: {current_roe*100:+.2f}%)")
             close_side = "sell" if is_long else "buy"
@@ -624,9 +547,7 @@ def execute_stock_engine():
     smart_queue_sorted = sorted(smart_queue_candidates, key=lambda x: x["score"], reverse=True)
     audit_logs.append(f"Trailing Sniper Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} validated triggers.")
 
-    if ai_shield.get("high_risk_detected"):
-        audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD. Reason: {ai_shield.get('reason')}")
-    elif not is_trading_window or is_eod_square_off:
+    if not is_trading_window or is_eod_square_off:
         audit_logs.append("Execution Gate: Outside active trading hours or square-off window active.")
     elif active_count < MAX_STOCK_SLOTS and market_candidates:
         for candidate in market_candidates[: (MAX_STOCK_SLOTS - active_count)]:
@@ -662,7 +583,7 @@ def execute_stock_engine():
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (All-Weather Sniper Engine)</div>
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Pure Quantitative Sniper Engine)</div>
         <div class="table-responsive" style="overflow-x: hidden;">
           <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
             <tbody>{audit_rows}</tbody>
@@ -694,7 +615,7 @@ def execute_stock_engine():
         for t in closed_ledger[:5]
     ]) if closed_ledger else "<tr><td colspan='6' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
 
-    text_fallback = f"TR-GC-Equities-LS-01 | All-Weather Trailing Sniper\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Total Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
+    text_fallback = f"TR-GC-Equities-LS-01 | Pure Quantitative Sniper\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Total Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
     positions_rows = "".join([
         f"<tr>"
@@ -726,9 +647,6 @@ def execute_stock_engine():
     else:
         positions_rows = "<tr><td colspan='8' style='padding: 15px; text-align: center; color: #666;'>No active positions (100% Cash Flat).</td></tr>"
 
-    ai_risk_color = "#c62828" if ai_shield.get("high_risk_detected") else "#2e7d32"
-    ai_badge = f"<span style='background: {ai_risk_color}; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 10px;'>Risk Level: {ai_shield.get('risk_level', 'UNKNOWN')}</span>"
-
     html_content = f"""
     <html>
       <head>
@@ -748,9 +666,6 @@ def execute_stock_engine():
           .pnl-badge {{ background: {'#e6f4ea' if today_total_gain >= 0 else '#fce8e6'}; color: {'#137333' if today_total_gain >= 0 else '#c5221f'}; padding: 4px 8px; border-radius: 4px; font-weight: bold; }}
           .lifetime-badge {{ background: #f1f5f9; color: #0f172a; padding: 4px 8px; border-radius: 4px; font-weight: bold; }}
 
-          .ai-brief-card {{ background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; font-size: 11px; color: #166534; line-height: 1.6; }}
-          .ai-brief-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 12px; color: #15803d; display: flex; align-items: center; justify-content: space-between; }}
-          
           .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; font-size: 11px; color: #334155; line-height: 1.6; }}
           .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 12px; color: #0f172a; }}
           .section-title {{ font-size: 13px; text-transform: uppercase; color: #475569; margin: 20px 0 8px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; font-weight: 600; }}
@@ -764,8 +679,8 @@ def execute_stock_engine():
       <body>
         <div class="container">
           <div class="header">
-            <h2>TR-GC-Equities-LS-01 | All-Weather Bi-Directional Sniper</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: ALL-WEATHER REGIME ADAPTIVE</p>
+            <h2>TR-GC-Equities-LS-01 | Pure Quantitative Sniper</h2>
+            <p>Timestamp: {timestamp} &bull; Mode: PURE QUANTITATIVE ADAPTIVE</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -778,17 +693,8 @@ def execute_stock_engine():
               </div>
             </div>
 
-            <div class="ai-brief-card">
-              <div class="ai-brief-title">
-                <span>🤖 GEMINI AI EXECUTIVE STOCK MARKET BRIEFING</span>
-                {ai_badge}
-              </div>
-              <b>Live Market Assessment:</b> {ai_shield.get('ai_market_brief', 'Normal conditions.')}<br>
-              <b>Execution Recommendation:</b> {ai_shield.get('reason', 'Standard scan active.')}
-            </div>
-
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Guardrails (All-Weather Bi-Directional Engine)</div>
+              <div class="rules-title">&#9989; Active Guardrails (Pure Quantitative Engine)</div>
               &bull; <b>SPY Regime Adaptability:</b> Automatically longs green markets and shorts red market breakdowns<br>
               &bull; <b>Regime Mismatch Guard:</b> Instantly closes positions if SPY trend flips against open exposure<br>
               &bull; <b>Portfolio Drawdown Circuit Breaker:</b> Instantly flattens 100% to cash if total open loss hits -3.5%<br>
@@ -817,20 +723,20 @@ def execute_stock_engine():
             {audit_section}
 
           </div>
-          <div class="footer">Alpaca All-Weather Sniper Engine &bull; Managed via GitHub Actions</div>
+          <div class="footer">Alpaca Pure Quantitative Sniper Engine &bull; Managed via GitHub Actions</div>
         </div>
       </body>
     </html>
     """
 
-    send_html_dashboard_email(f"Alpaca All-Weather Report — USD ${equity:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] All-Weather Bi-Directional Sniper telemetry report complete.")
+    send_html_dashboard_email(f"Alpaca Quantitative Report — USD ${equity:.2f}", html_content, text_fallback)
+    print(f"[{timestamp}] Pure Quantitative Sniper telemetry report complete.")
 
 if __name__ == "__main__":
     try:
         execute_stock_engine()
     except Exception as e:
-        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] All-Weather Stock Engine execution error: {e}"
+        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Pure Quantitative Stock Engine execution error: {e}"
         print(err_msg)
         send_html_dashboard_email("Alpaca Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
         raise e
