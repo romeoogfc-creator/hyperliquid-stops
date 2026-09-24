@@ -25,6 +25,20 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "PYTH",
+      "entry_price": 0.069038,
+      "exit_price": 0.067898,
+      "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
+      "timestamp": "2026-09-24 17:36:05"
+    },
+    {
+      "coin": "NEO",
+      "entry_price": 2.6265,
+      "exit_price": 2.6371,
+      "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
+      "timestamp": "2026-09-24 17:36:05"
+    },
+    {
       "coin": "DYDX",
       "entry_price": 0.12878,
       "exit_price": 0.12711,
@@ -79,25 +93,11 @@
       "exit_price": 0.038751,
       "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
       "timestamp": "2026-09-23 21:36:13"
-    },
-    {
-      "coin": "SUSHI",
-      "entry_price": 0.24549,
-      "exit_price": 0.24723,
-      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
-      "timestamp": "2026-09-23 21:36:13"
-    },
-    {
-      "coin": "BANANA",
-      "entry_price": 3.92784,
-      "exit_price": 3.9276,
-      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
-      "timestamp": "2026-09-23 21:01:21"
     }
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-09-24 17:05:48",
+  "last_run_timestamp": "2026-09-24 17:37:02",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
