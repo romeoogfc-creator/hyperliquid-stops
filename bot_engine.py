@@ -9,17 +9,12 @@ import eth_account
 import pandas as pd
 import numpy as np
 
-# Google GenAI SDK Imports
-from google import genai
-from google.genai import types
-
 from hyperliquid.info import Info
 from hyperliquid.exchange import Exchange
 from hyperliquid.utils import constants
 
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
 SECRET_KEY = os.getenv("HL_SECRET_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 STATE_FILE = "state.json"
 
 VERBOSE_TEST_MODE = True
@@ -31,8 +26,7 @@ def load_state():
         "closed_trades_ledger": [], 
         "active_position_cache": {},
         "previous_active_coins": [],
-        "last_run_timestamp": "", 
-        "ai_shield_cache": {}
+        "last_run_timestamp": ""
     }
     if os.path.exists(STATE_FILE):
         try:
@@ -65,77 +59,6 @@ def api_retry(func, *args, retries=5, delay=3.0, **kwargs):
                     raise e
             else:
                 raise e
-
-def run_gemini_market_shield():
-    state = load_state()
-    cached_shield = state.get("ai_shield_cache", {})
-    current_time = time.time()
-    cache_epoch = cached_shield.get("cache_epoch", 0)
-    
-    # Adaptive TTL: Re-check every 2 hours if HIGH risk, or every 4 hours if LOW/MODERATE risk.
-    current_risk = cached_shield.get("risk_level", "UNKNOWN")
-    ttl_seconds = 7200 if current_risk == "HIGH" else 14400
-
-    if cached_shield and (current_time - cache_epoch < ttl_seconds) and "risk_level" in cached_shield:
-        return cached_shield
-
-    if not GEMINI_API_KEY:
-        return {
-            "high_risk_detected": False, 
-            "risk_level": "UNKNOWN", 
-            "reason": "API Key Missing", 
-            "action": "ALLOW_TRADES",
-            "ai_market_brief": "AI Shield offline (Missing GEMINI_API_KEY secret)."
-        }
-
-    try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        prompt = """
-        Perform a live real-time web search for breaking cryptocurrency market news, BTC price momentum, regulatory actions, 
-        FOMC/interest rate updates, or sudden exchange incidents from the last 1-2 hours.
-        Determine if there is extreme high-risk volatility or black-swan risk that could cause sudden whipsaws in perp futures.
-        Provide a 2-sentence executive summary of current market sentiment and key catalysts for the email dashboard.
-        """
-        models = ["gemini-3.1-flash-lite", "gemini-3.5-flash-lite", "gemini-3.6-flash"]
-        for model_name in models:
-            try:
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents=prompt,
-                    config=types.GenerateContentConfig(
-                        tools=[types.Tool(google_search=types.GoogleSearch())],
-                        response_mime_type="application/json",
-                        response_schema={
-                            "type": "OBJECT",
-                            "properties": {
-                                "high_risk_detected": {"type": "BOOLEAN"},
-                                "risk_level": {"type": "STRING", "enum": ["LOW", "MODERATE", "HIGH"]},
-                                "reason": {"type": "STRING"},
-                                "action": {"type": "STRING", "enum": ["ALLOW_TRADES", "BLOCK_ENTRIES"]},
-                                "ai_market_brief": {"type": "STRING"}
-                            },
-                            "required": ["high_risk_detected", "risk_level", "reason", "action", "ai_market_brief"]
-                        }
-                    )
-                )
-                result = json.loads(response.text)
-                result["timestamp"] = time.strftime('%Y-%m-%d %H:%M:%S')
-                result["cache_epoch"] = time.time()
-                state["ai_shield_cache"] = result
-                save_state(state)
-                return result
-            except Exception:
-                continue
-    except Exception:
-        pass
-
-    return cached_shield if cached_shield else {
-        "high_risk_detected": False, 
-        "risk_level": "UNKNOWN", 
-        "reason": "AI Shield Bypass on Error", 
-        "action": "ALLOW_TRADES",
-        "ai_market_brief": "Market scanning operating normally under standard quantitative rules."
-    }
 
 def send_html_dashboard_email(subject, html_content, text_fallback):
     sender_email = os.getenv("SENDER_EMAIL")
@@ -258,17 +181,10 @@ def check_btc_daily_candle(info):
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (All-Weather Resilient Guard Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Pure Quantitative Mode).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
-
-    ai_shield = run_gemini_market_shield()
-    risk_level = ai_shield.get("risk_level", "UNKNOWN")
-    
-    is_high_risk = (risk_level == "HIGH")
-    ai_risk_status = f"BLOCKED (High Risk)" if is_high_risk else f"PASS ({risk_level} Risk - Trading Active)"
-    audit_logs.append(f"Gemini AI Shield: [{risk_level}] {ai_shield.get('reason', '')} -> {ai_risk_status}")
 
     state = load_state()
     wallet = eth_account.Account.from_key(SECRET_KEY)
@@ -300,7 +216,6 @@ def execute_engine():
     current_active_cache = state.get("active_position_cache", {})
     new_active_cache = {}
 
-    # Pre-calculate account equity for circuit breaker check
     spot_usdc = 0.0
     total_spot_net_worth = 0.0
     for b in spot_state.get("balances", []):
@@ -318,7 +233,7 @@ def execute_engine():
     fallback_val = float(margin_summary.get("accountValue", 0.0))
     account_value = total_spot_net_worth if total_spot_net_worth > 0 else fallback_val
 
-    # --- NEW LAYER 1: GLOBAL PORTFOLIO DRAWDOWN CIRCUIT BREAKER (-3.5% Loss Check) ---
+    # --- PORTFOLIO DRAWDOWN CIRCUIT BREAKER (-3.5% Loss Check) ---
     if asset_positions:
         for pos_item in asset_positions:
             pos = pos_item.get("position", {})
@@ -371,7 +286,6 @@ def execute_engine():
             prev_peak = current_active_cache.get(coin, {}).get("peak_roe", current_roe)
             peak_roe = max(current_roe, prev_peak)
 
-            # --- FETCH TECHNICAL METRICS (CI & Volume) ---
             try:
                 time.sleep(0.05)
                 c_candles = api_retry(info.candles_snapshot, name=coin, interval="30m", startTime=now_ms - 86400000 * 2, endTime=now_ms)
@@ -400,7 +314,7 @@ def execute_engine():
                 except Exception as e:
                     audit_logs.append(f"Failed to force close {coin}: {e}")
 
-            # --- NEW LAYER 2: ACTIVE POSITION CHOP PURGE (CI > 60.0 and Flat/Negative) ---
+            # --- ACTIVE POSITION CHOP PURGE (CI > 60.0 and Flat/Negative) ---
             if ci > 60.0 and current_roe < 0.005:
                 try:
                     audit_logs.append(f"🚨 CHOP PURGE: Closing {coin} immediately due to dead chop (CI: {ci:.1f}, ROE: {current_roe*100:+.2f}%)")
@@ -560,9 +474,7 @@ def execute_engine():
     audit_logs.append(f"Crypto Scan Complete (30m Interval): Evaluated {scanned_count} assets. Found {len(market_candidates)} confirmed breakouts.")
 
     trades_executed = False
-    if is_high_risk:
-        audit_logs.append(f"Execution Gate: BLOCKED BY GEMINI AI SHIELD (High Risk Detected).")
-    elif active_count < 6 and market_candidates:
+    if active_count < 6 and market_candidates:
         for candidate in market_candidates[: (6 - active_count)]:
             coin = candidate["coin"]
             px = candidate["close"]
@@ -599,7 +511,7 @@ def execute_engine():
     static_usdc = max(0.0, account_value - total_margin_used)
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
-    # --- NEW LAYER 3: ACCELERATED STAGNATION ROTATION (Cut after 6 runs / 3 hours if flat) ---
+    # --- ACCELERATED STAGNATION ROTATION (Cut after 6 runs / 3 hours if flat) ---
     if active_count == 6:
         unprotected_trades = [p for p in positions_data if p["roe"] < 1.0]
         if unprotected_trades:
@@ -627,7 +539,7 @@ def execute_engine():
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine - All-Weather Guard)</div>
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine - Pure Quantitative)</div>
         <div class="table-responsive" style="overflow-x: hidden;">
           <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
             <tbody>{audit_rows}</tbody>
@@ -693,9 +605,6 @@ def execute_engine():
     else:
         positions_rows = "<tr><td colspan='10' style='padding: 15px; text-align: center; color: #666;'>No active positions found.</td></tr>"
 
-    ai_risk_color = "#c62828" if is_high_risk else "#2e7d32"
-    ai_badge = f"<span style='background: {ai_risk_color}; color: #ffffff; padding: 2px 8px; border-radius: 4px; font-weight: bold; font-size: 10px;'>Risk Level: {risk_level}</span>"
-
     html_content = f"""
     <html>
       <head>
@@ -711,8 +620,6 @@ def execute_engine():
           .net-worth-title {{ font-size: 12px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 6px; }}
           .net-worth-value {{ font-size: 24px; font-weight: 700; color: #0f172a; }}
           .net-worth-subtitle {{ font-size: 11px; color: #64748b; margin-top: 4px; }}
-          .ai-brief-card {{ background: #f0fdf4; border: 1px solid #86efac; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; font-size: 11px; color: #166534; line-height: 1.6; }}
-          .ai-brief-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 12px; color: #15803d; display: flex; align-items: center; justify-content: space-between; }}
           .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; font-size: 11px; color: #334155; line-height: 1.6; }}
           .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 12px; color: #0f172a; }}
           .section-title {{ font-size: 13px; text-transform: uppercase; color: #475569; margin: 20px 0 8px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; font-weight: 600; }}
@@ -727,7 +634,7 @@ def execute_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-            <p>Timestamp: {timestamp} (All-Weather Resilient Guard Active)</p>
+            <p>Timestamp: {timestamp} (Pure Quantitative Mode)</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -736,17 +643,8 @@ def execute_engine():
               <div class="net-worth-subtitle">Static Unallocated USDC Reserve: <b>${static_usdc:.2f}</b> &bull; Margin Utilization: <b>{margin_util_pct:.1f}%</b></div>
             </div>
 
-            <div class="ai-brief-card">
-              <div class="ai-brief-title">
-                <span>🤖 GEMINI AI EXECUTIVE MARKET BRIEFING</span>
-                {ai_badge}
-              </div>
-              <b>Live Market Assessment:</b> {ai_shield.get('ai_market_brief', 'Normal conditions.')}<br>
-              <b>Execution Recommendation:</b> {ai_shield.get('reason', 'Standard scan active.')}
-            </div>
-
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Guardrails (All-Weather Resilient Engine)</div>
+              <div class="rules-title">&#9989; Active Guardrails (Pure Quantitative Engine)</div>
               &bull; <b>Execution Engine:</b> 30-Min 24/7 GitHub Cron &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
               &bull; <b>Instant Blood-Bath Force-Close:</b> Instantly market-closes positions if trend flips against open side<br>
               &bull; <b>BTC Regime Shield:</b> Block LONGs if daily candle is RED; block SHORTs if daily candle is GREEN<br>
