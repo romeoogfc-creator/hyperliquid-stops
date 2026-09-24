@@ -140,6 +140,52 @@ def calculate_atr(highs, lows, closes, period=14):
     except Exception:
         return 1.0
 
+def verify_5m_stock_micro_structure(symbol, is_long):
+    """Instant 5-Minute Micro-Confirmation Filter for Equities (20-30 min / 4-6 bar staircase validation)"""
+    try:
+        start_date = (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%d')
+        url = f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=5Min&limit=50&feed=iex&start={start_date}"
+        res = requests.get(url, headers=HEADERS)
+        if res.status_code != 200:
+            return True
+        bars_data = res.json().get("bars", {}).get(symbol, [])
+        if not bars_data or len(bars_data) < 6:
+            return True
+        m_closes = [float(b["c"]) for b in bars_data]
+        m_opens = [float(b["o"]) for b in bars_data]
+        m_highs = [float(b["h"]) for b in bars_data]
+        m_lows = [float(b["l"]) for b in bars_data]
+        
+        recent_closes = m_closes[-5:]
+        recent_opens = m_opens[-5:]
+        
+        if is_long:
+            net_progress = recent_closes[-1] > recent_closes[0]
+            green_count = sum(1 for o, c in zip(recent_opens, recent_closes) if c >= o)
+            latest_high = m_highs[-1]
+            latest_low = m_lows[-1]
+            latest_close = recent_closes[-1]
+            candle_range = latest_high - latest_low
+            if candle_range > 0:
+                upper_wick_ratio = (latest_high - max(recent_opens[-1], latest_close)) / candle_range
+                if upper_wick_ratio > 0.6:
+                    return False
+            return net_progress and (green_count >= 2)
+        else:
+            net_progress = recent_closes[-1] < recent_closes[0]
+            red_count = sum(1 for o, c in zip(recent_opens, recent_closes) if c <= o)
+            latest_high = m_highs[-1]
+            latest_low = m_lows[-1]
+            latest_close = recent_closes[-1]
+            candle_range = latest_high - latest_low
+            if candle_range > 0:
+                lower_wick_ratio = (min(recent_opens[-1], latest_close) - latest_low) / candle_range
+                if lower_wick_ratio > 0.6:
+                    return False
+            return net_progress and (red_count >= 2)
+    except Exception:
+        return True
+
 def execute_stock_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     ct_now = get_central_time()
@@ -523,8 +569,11 @@ def execute_stock_engine():
                 has_upward_continuation = current_close > prev_close
 
                 if current_close > upper and current_close <= upper * 1.02 and vol_ratio >= 0.8 and is_green_candle and has_upward_continuation:
-                    market_candidates.append(candidate_obj)
-                    audit_logs.append(f"TRAILING SNIPER BREAKOUT MATCH (Confirmed Long): {symbol} @ ${current_close:.2f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
+                    if verify_5m_stock_micro_structure(symbol, is_long=True):
+                        market_candidates.append(candidate_obj)
+                        audit_logs.append(f"TRAILING SNIPER BREAKOUT MATCH (Confirmed Long + 5m Micro-Verified): {symbol} @ ${current_close:.2f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
+                    else:
+                        audit_logs.append(f"EQUITY 5M WICK FILTER BLOCKED: {symbol} failed micro-structure validation.")
             else:
                 extension_score = max(0.0, (lower - current_close) / lower)
                 atr_score = atr / current_close if current_close > 0 else 0.0
@@ -540,8 +589,11 @@ def execute_stock_engine():
                 has_downward_continuation = current_close < prev_close
 
                 if current_close < lower and current_close >= lower * 0.98 and vol_ratio >= 0.8 and is_red_candle and has_downward_continuation:
-                    market_candidates.append(candidate_obj)
-                    audit_logs.append(f"TRAILING SNIPER BREAKOUT MATCH (Confirmed Short): {symbol} @ ${current_close:.2f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
+                    if verify_5m_stock_micro_structure(symbol, is_long=False):
+                        market_candidates.append(candidate_obj)
+                        audit_logs.append(f"TRAILING SNIPER BREAKOUT MATCH (Confirmed Short + 5m Micro-Verified): {symbol} @ ${current_close:.2f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
+                    else:
+                        audit_logs.append(f"EQUITY 5M WICK FILTER BLOCKED: {symbol} failed micro-structure validation.")
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
     smart_queue_sorted = sorted(smart_queue_candidates, key=lambda x: x["score"], reverse=True)
