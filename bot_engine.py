@@ -422,7 +422,6 @@ def execute_engine():
 
     universe = [asset["name"] for asset in meta.get("universe", [])][:100]
     market_candidates = []
-    smart_queue_candidates = []
     scanned_count = 0
 
     for coin in universe:
@@ -466,12 +465,6 @@ def execute_engine():
                 extension_score = max(0.0, (current_close - upper) / upper)
                 atr_score = atr / current_close
                 momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
-                
-                if current_close >= upper * 0.985 and vol_ratio >= 1.0:
-                    smart_queue_candidates.append({
-                        "coin": coin, "close": current_close, "is_long": True, "is_ballistic": is_ballistic,
-                        "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
-                    })
 
                 is_green_candle = current_close > current_open
                 has_upward_continuation = current_close > prev_close
@@ -498,12 +491,6 @@ def execute_engine():
                 atr_score = atr / current_close
                 momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
 
-                if current_close <= lower * 1.015 and vol_ratio >= 1.0:
-                    smart_queue_candidates.append({
-                        "coin": coin, "close": current_close, "is_long": False, "is_ballistic": is_ballistic,
-                        "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
-                    })
-
                 is_red_candle = current_close < current_open
                 has_downward_continuation = current_close < prev_close
                 candle_range = current_high - current_low
@@ -527,7 +514,6 @@ def execute_engine():
             continue
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
-    smart_queue_sorted = sorted(smart_queue_candidates, key=lambda x: x["score"], reverse=True)
     audit_logs.append(f"Crypto Scan Complete (30m Interval): Evaluated {scanned_count} assets. Found {len(market_candidates)} confirmed breakouts.")
 
     trades_executed = False
@@ -605,17 +591,6 @@ def execute_engine():
           </table>
         </div>
         """
-
-    remaining_candidates = [c for c in smart_queue_sorted if c["coin"] not in active_coins]
-    ondeck_rows = "".join([
-        f"<tr>"
-        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>#{i+1}</td>"
-        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold; color: #0f172a;'>{c['coin']}</td>"
-        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-family: monospace;'>${c['close']:.4f}</td>"
-        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: #b45309; font-weight: 600;'>VolRatio: {c['vol_ratio']:.2f} | Score: {c['score']:.4f}</td>"
-        f"</tr>"
-        for i, c in enumerate(remaining_candidates[:3])
-    ]) if remaining_candidates else "<tr><td colspan='4' style='padding: 10px; text-align: center; color: #666;'>No momentum candidates currently breaking out.</td></tr>"
 
     closed_ledger = state.get("closed_trades_ledger", [])
     
@@ -755,11 +730,6 @@ def execute_engine():
             <div class="section-title">Recently Closed Trades & Exit Telemetry</div>
             <div class="table-responsive">
               <table><thead><tr><th>Asset</th><th>Entry Price</th><th>Exit Price</th><th>Realized P&L USD ($)</th><th>Exit Reason / Catalyst</th><th>Timestamp</th></tr></thead><tbody>{closed_rows}</tbody></table>
-            </div>
-
-            <div class="section-title">On-Deck Smart Queue (Top 3 Waiting Runners)</div>
-            <div class="table-responsive">
-              <table><thead><tr><th>Rank</th><th>Asset</th><th>Current Price</th><th>Breakout Metrics</th></tr></thead><tbody>{ondeck_rows}</tbody></table>
             </div>
 
             {audit_section}
