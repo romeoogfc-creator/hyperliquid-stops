@@ -353,7 +353,7 @@ def execute_engine():
             total_margin_used += margin_used
 
             new_active_cache[coin] = {
-                "entry_px": entry_px, "current_px": current_px, "szi": szi, "peak_roe": peak_roe, "margin": margin_used, "side": "LONG" if is_long else "SHORT"
+                "entry_px": entry_px, "current_px": current_px, "szi": szi, "peak_roe": peak_roe, "margin": margin_used, "leverage": leverage, "side": "LONG" if is_long else "SHORT"
             }
 
             stop_px_raw, current_roe, target_floor, is_buy_order, leash_status = calculate_crypto_stop_price(
@@ -400,10 +400,11 @@ def execute_engine():
         entry_px = old_data.get("entry_px", 0.0)
         exit_px = float(all_mids.get(closed_coin, entry_px))
         margin = old_data.get("margin", 50.0)
+        lev = old_data.get("leverage", 5.0)  # Dynamic Leverage Fix
         szi = old_data.get("szi", 1.0)
         is_long = szi > 0 if isinstance(szi, (int, float)) else True
         
-        raw_pnl = ((exit_px - entry_px) / entry_px * margin * 5.0) if is_long else ((entry_px - exit_px) / entry_px * margin * 5.0)
+        raw_pnl = ((exit_px - entry_px) / entry_px * margin * lev) if is_long else ((entry_px - exit_px) / entry_px * margin * lev)
         roe_pct = (raw_pnl / margin * 100) if margin > 0 else 0.0
 
         already_logged = any(t["coin"] == closed_coin for t in state["closed_trades_ledger"][:2])
@@ -481,7 +482,6 @@ def execute_engine():
                     if upper_wick > 0.35:
                         upper_wick_ok = False
 
-                # Dynamic Volume Ratio Filter updated to 1.25
                 if current_close > upper and current_close <= upper * 1.04 and vol_ratio >= 1.25 and is_green_candle and has_upward_continuation and upper_wick_ok:
                     candidate_obj = {
                         "coin": coin, "close": current_close, "is_long": True, "is_ballistic": is_ballistic,
@@ -513,7 +513,6 @@ def execute_engine():
                     if lower_wick > 0.35:
                         lower_wick_ok = False
 
-                # Dynamic Volume Ratio Filter updated to 1.25
                 if current_close < lower and current_close >= lower * 0.96 and vol_ratio >= 1.25 and is_red_candle and has_downward_continuation and lower_wick_ok:
                     candidate_obj = {
                         "coin": coin, "close": current_close, "is_long": False, "is_ballistic": is_ballistic,
@@ -620,7 +619,6 @@ def execute_engine():
 
     closed_ledger = state.get("closed_trades_ledger", [])
     
-    # DYNAMIC PARSING FIX: Compute PnL and ROE dynamically for legacy trades lacking pre-calculated keys
     parsed_closed_rows = []
     total_realized_pnl = 0.0
 
@@ -633,7 +631,6 @@ def execute_engine():
             pnl_val = float(t["pnl_usd"])
             roe_val = float(t.get("roe_pct", 0.0))
         else:
-            # Fallback calculation for historical items using standard $50 collateral baseline @ 5x leverage
             if entry_p > 0:
                 pnl_val = ((exit_p - entry_p) / entry_p * 50.0 * 5.0) if side == "LONG" else ((entry_p - exit_p) / entry_p * 50.0 * 5.0)
                 roe_val = (pnl_val / 50.0) * 100
