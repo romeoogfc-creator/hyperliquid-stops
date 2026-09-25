@@ -218,8 +218,10 @@ def execute_engine():
 
     state = load_state()
     wallet = eth_account.Account.from_key(SECRET_KEY)
-    exchange = Exchange(wallet, constants.MAINNET_API_URL, account_address=ACCOUNT_ADDRESS)
-    info = Info(constants.MAINNET_API_URL, skip_ws=True)
+    
+    # Protected SDK initialization against 429 rate limits
+    exchange = api_retry(Exchange, wallet, constants.MAINNET_API_URL, account_address=ACCOUNT_ADDRESS)
+    info = api_retry(Info, constants.MAINNET_API_URL, skip_ws=True)
 
     user_state = api_retry(info.user_state, ACCOUNT_ADDRESS)
     spot_state = api_retry(info.spot_user_state, ACCOUNT_ADDRESS)
@@ -400,7 +402,7 @@ def execute_engine():
         entry_px = old_data.get("entry_px", 0.0)
         exit_px = float(all_mids.get(closed_coin, entry_px))
         margin = old_data.get("margin", 50.0)
-        lev = old_data.get("leverage", 5.0)  # Dynamic Leverage Fix
+        lev = old_data.get("leverage", 5.0)
         szi = old_data.get("szi", 1.0)
         is_long = szi > 0 if isinstance(szi, (int, float)) else True
         
