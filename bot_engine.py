@@ -194,7 +194,7 @@ def verify_5m_micro_structure(info, coin, now_ms, is_long):
             candle_range = latest_high - latest_low
             if candle_range > 0:
                 upper_wick_ratio = (latest_high - max(recent_opens[-1], latest_close)) / candle_range
-                if upper_wick_ratio > 0.6:
+                if upper_wick_ratio > 0.5:
                     return False
             return net_progress and (green_count >= 2)
         else:
@@ -206,7 +206,7 @@ def verify_5m_micro_structure(info, coin, now_ms, is_long):
             candle_range = latest_high - latest_low
             if candle_range > 0:
                 lower_wick_ratio = (min(recent_opens[-1], latest_close) - latest_low) / candle_range
-                if lower_wick_ratio > 0.6:
+                if lower_wick_ratio > 0.5:
                     return False
             return net_progress and (red_count >= 2)
     except Exception:
@@ -438,6 +438,8 @@ def execute_engine():
             current_close = closes[-1]
             current_open = opens[-1]
             prev_close = closes[-2]
+            current_high = highs[-1]
+            current_low = lows[-1]
             
             ci = calculate_choppiness_index(highs, lows, closes)
             if ci > 62.0:
@@ -463,8 +465,14 @@ def execute_engine():
 
                 is_green_candle = current_close > current_open
                 has_upward_continuation = current_close > prev_close
+                candle_range = current_high - current_low
+                upper_wick_ok = True
+                if candle_range > 0:
+                    upper_wick = (current_high - current_close) / candle_range
+                    if upper_wick > 0.35:
+                        upper_wick_ok = False
 
-                if current_close > upper and current_close <= upper * 1.04 and vol_ratio >= 0.7 and is_green_candle and has_upward_continuation:
+                if current_close > upper and current_close <= upper * 1.04 and vol_ratio >= 1.05 and is_green_candle and has_upward_continuation and upper_wick_ok:
                     if verify_5m_micro_structure(info, coin, now_ms, is_long=True):
                         market_candidates.append(candidate_obj)
                         audit_logs.append(f"CRYPTO MATCH LONG (Confirmed + 5m Micro-Verified): {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
@@ -484,8 +492,14 @@ def execute_engine():
 
                 is_red_candle = current_close < current_open
                 has_downward_continuation = current_close < prev_close
+                candle_range = current_high - current_low
+                lower_wick_ok = True
+                if candle_range > 0:
+                    lower_wick = (current_close - current_low) / candle_range
+                    if lower_wick > 0.35:
+                        lower_wick_ok = False
 
-                if current_close < lower and current_close >= lower * 0.96 and vol_ratio >= 0.7 and is_red_candle and has_downward_continuation:
+                if current_close < lower and current_close >= lower * 0.96 and vol_ratio >= 1.05 and is_red_candle and has_downward_continuation and lower_wick_ok:
                     if verify_5m_micro_structure(info, coin, now_ms, is_long=False):
                         market_candidates.append(candidate_obj)
                         audit_logs.append(f"CRYPTO MATCH SHORT (Confirmed + 5m Micro-Verified): {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
