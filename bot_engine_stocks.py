@@ -141,7 +141,7 @@ def calculate_atr(highs, lows, closes, period=14):
         return 1.0
 
 def verify_5m_stock_micro_structure(symbol, is_long):
-    """Instant 5-Minute Micro-Confirmation Filter for Equities (20-30 min / 4-6 bar staircase validation)"""
+    """Instant 5-Minute Micro-Confirmation Filter for Equities"""
     try:
         start_date = (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%d')
         url = f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=5Min&limit=50&feed=iex&start={start_date}"
@@ -248,7 +248,7 @@ def execute_stock_engine():
             close_side = "sell" if side == "long" else "buy"
             try:
                 requests.post(f"{BASE_URL}/v2/orders", json={
-                    "symbol": sym, "qty": str(abs(qty)), "side": close_side, "type": "market", "time_in_force": "day"
+                    "symbol": sym, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"
                 }, headers=HEADERS)
                 if "closed_trades_ledger" not in state:
                     state["closed_trades_ledger"] = []
@@ -282,7 +282,7 @@ def execute_stock_engine():
             realized_pnl = (current_px - entry_px) * qty if side == "long" else (entry_px - current_px) * qty
 
             close_payload = {
-                "symbol": sym, "qty": str(abs(qty)), "side": close_side, "type": "market", "time_in_force": "day"
+                "symbol": sym, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"
             }
             try:
                 close_res = requests.post(f"{BASE_URL}/v2/orders", json=close_payload, headers=HEADERS)
@@ -352,7 +352,7 @@ def execute_stock_engine():
             audit_logs.append(f"🚨 REGIME DEFENSE: Forcing immediate market close on {symbol} due to SPY regime flip!")
             close_side = "sell" if is_long else "buy"
             close_payload = {
-                "symbol": symbol, "qty": str(abs(qty)), "side": close_side, "type": "market", "time_in_force": "day"
+                "symbol": symbol, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"
             }
             try:
                 requests.post(f"{BASE_URL}/v2/orders", json=close_payload, headers=HEADERS)
@@ -370,7 +370,7 @@ def execute_stock_engine():
             close_side = "sell" if is_long else "buy"
             try:
                 requests.post(f"{BASE_URL}/v2/orders", json={
-                    "symbol": symbol, "qty": str(abs(qty)), "side": close_side, "type": "market", "time_in_force": "day"
+                    "symbol": symbol, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"
                 }, headers=HEADERS)
                 state["closed_trades_ledger"].insert(0, {
                     "symbol": symbol, "entry_price": entry_px, "exit_price": current_px,
@@ -425,7 +425,7 @@ def execute_stock_engine():
             realized_pnl = (current_px - entry_px) * qty if is_long else (entry_px - current_px) * qty
 
             close_payload = {
-                "symbol": symbol, "qty": str(abs(qty)), "side": close_side, "type": "market", "time_in_force": "day"
+                "symbol": symbol, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"
             }
             try:
                 requests.post(f"{BASE_URL}/v2/orders", json=close_payload, headers=HEADERS)
@@ -496,7 +496,6 @@ def execute_stock_engine():
 
     symbols_to_scan = [s for s in watchlist if s not in active_symbols]
     market_candidates = []
-    smart_queue_candidates = []
     scanned_count = 0
 
     chunk_size = 20
@@ -563,7 +562,6 @@ def execute_stock_engine():
                     "symbol": symbol, "close": current_close, "is_long": True,
                     "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
                 }
-                smart_queue_candidates.append(candidate_obj)
 
                 is_green_candle = current_close > current_open
                 has_upward_continuation = current_close > prev_close
@@ -583,7 +581,6 @@ def execute_stock_engine():
                     "symbol": symbol, "close": current_close, "is_long": False,
                     "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
                 }
-                smart_queue_candidates.append(candidate_obj)
 
                 is_red_candle = current_close < current_open
                 has_downward_continuation = current_close < prev_close
@@ -596,7 +593,6 @@ def execute_stock_engine():
                         audit_logs.append(f"EQUITY 5M WICK FILTER BLOCKED: {symbol} failed micro-structure validation.")
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
-    smart_queue_sorted = sorted(smart_queue_candidates, key=lambda x: x["score"], reverse=True)
     audit_logs.append(f"Trailing Sniper Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} validated triggers.")
 
     if not is_trading_window or is_eod_square_off:
@@ -608,7 +604,9 @@ def execute_stock_engine():
             is_long = candidate["is_long"]
 
             target_usd = max(50.0, equity * 0.13)
-            qty = round(target_usd / px, 4)
+            # Enforce integer whole shares for 100% Alpaca shorting compliance
+            raw_qty = target_usd / px
+            qty = max(1, int(raw_qty))
             order_side = "buy" if is_long else "sell"
 
             order_payload = {
@@ -623,7 +621,9 @@ def execute_stock_engine():
                 if order_res.status_code == 200:
                     active_count += 1
                     active_symbols.add(symbol)
-                    audit_logs.append(f"TRAILING SNIPER ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} (~${target_usd:.2f})")
+                    audit_logs.append(f"TRAILING SNIPER ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} (~${(qty * px):.2f})")
+                else:
+                    audit_logs.append(f"ORDER REJECTED BY ALPACA [{order_res.status_code}] on {symbol}: {order_res.text}")
             except Exception as e:
                 audit_logs.append(f"ORDER EXCEPTION on {symbol}: {e}")
     else:
@@ -642,17 +642,6 @@ def execute_stock_engine():
           </table>
         </div>
         """
-
-    remaining_candidates = [c for c in smart_queue_sorted if c["symbol"] not in active_symbols]
-    ondeck_rows = "".join([
-        f"<tr>"
-        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>#{i+1}</td>"
-        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold; color: #0f172a;'>{c['symbol']}</td>"
-        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-family: monospace;'>${c['close']:.2f}</td>"
-        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: #b45309; font-weight: 600;'>Score: {c['score']:.4f}</td>"
-        f"</tr>"
-        for i, c in enumerate(remaining_candidates[:3])
-    ]) if remaining_candidates else "<tr><td colspan='4' style='padding: 10px; text-align: center; color: #666;'>No momentum candidates currently detected.</td></tr>"
 
     closed_ledger = state.get("closed_trades_ledger", [])
     closed_rows = "".join([
@@ -765,11 +754,6 @@ def execute_stock_engine():
             <div class="section-title">Recently Closed Trades & Exit Telemetry</div>
             <div class="table-responsive">
               <table><thead><tr><th>Symbol</th><th>Entry Price</th><th>Exit Price</th><th>Exit Reason / Catalyst</th><th>Realized P&L</th><th>Timestamp</th></tr></thead><tbody>{closed_rows}</tbody></table>
-            </div>
-
-            <div class="section-title">On-Deck Momentum Queue</div>
-            <div class="table-responsive">
-              <table><thead><tr><th>Rank</th><th>Symbol</th><th>Current Price</th><th>Momentum Score</th></tr></thead><tbody>{ondeck_rows}</tbody></table>
             </div>
 
             {audit_section}
