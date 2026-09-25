@@ -13,7 +13,7 @@
     "PYTH": 2,
     "INJ": 0,
     "YGG": 0,
-    "TRX": 19,
+    "TRX": 20,
     "AVAX": 2,
     "JTO": 2,
     "KAS": 8,
@@ -102,15 +102,15 @@
   "active_position_cache": {
     "TRX": {
       "entry_px": 0.33808,
-      "current_px": 0.338295,
+      "current_px": 0.338135,
       "szi": -182.0,
-      "peak_roe": -0.0006359441552295928
+      "peak_roe": -0.00016268338854717005
     }
   },
   "previous_active_coins": [
     "TRX"
   ],
-  "last_run_timestamp": "2026-09-25 07:39:13",
+  "last_run_timestamp": "2026-09-25 08:06:27",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
