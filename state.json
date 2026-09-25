@@ -25,9 +25,18 @@
     "LINK": 0,
     "SNX": 2,
     "TRB": 1,
-    "JUP": 1
+    "JUP": 1,
+    "AAVE": 1,
+    "UNI": 1
   },
   "closed_trades_ledger": [
+    {
+      "coin": "FIL",
+      "entry_price": 1.0259,
+      "exit_price": 1.0324,
+      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
+      "timestamp": "2026-09-25 12:06:44"
+    },
     {
       "coin": "TRX",
       "entry_price": 0.33808,
@@ -90,34 +99,34 @@
       "exit_price": 0.2527,
       "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
       "timestamp": "2026-09-24 22:35:58"
-    },
-    {
-      "coin": "CAKE",
-      "entry_price": 2.7436,
-      "exit_price": 2.75225,
-      "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
-      "timestamp": "2026-09-24 19:05:29"
     }
   ],
   "active_position_cache": {
-    "FIL": {
-      "entry_px": 1.0259,
-      "current_px": 1.03525,
-      "szi": 62.4,
-      "peak_roe": 0.009113948727946164
+    "AAVE": {
+      "entry_px": 149.44,
+      "current_px": 148.545,
+      "szi": 0.48,
+      "peak_roe": -0.005989025695931546
+    },
+    "UNI": {
+      "entry_px": 9.869,
+      "current_px": 9.8151,
+      "szi": 7.8,
+      "peak_roe": -0.005461546255953035
     },
     "JTO": {
       "entry_px": 0.52877,
-      "current_px": 0.544195,
+      "current_px": 0.54173,
       "szi": 156.0,
       "peak_roe": 0.03788036386330539
     }
   },
   "previous_active_coins": [
-    "JTO",
-    "FIL"
+    "AAVE",
+    "UNI",
+    "JTO"
   ],
-  "last_run_timestamp": "2026-09-25 11:39:46",
+  "last_run_timestamp": "2026-09-25 12:07:30",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
