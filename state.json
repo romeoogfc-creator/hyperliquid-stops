@@ -22,11 +22,25 @@
     "SUSHI": 3,
     "BIGTIME": 7,
     "RSR": 5,
-    "LINK": 2,
+    "LINK": 3,
     "SNX": 1,
     "TRB": 1
   },
   "closed_trades_ledger": [
+    {
+      "coin": "TRB",
+      "entry_price": 20.461,
+      "exit_price": 20.318,
+      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
+      "timestamp": "2026-09-25 01:05:27"
+    },
+    {
+      "coin": "POLYX",
+      "entry_price": 0.04429,
+      "exit_price": 0.04434,
+      "exit_reason": "\ud83d\udea8 High Choppiness Chop Purge (CI: 76.9)",
+      "timestamp": "2026-09-25 01:05:27"
+    },
     {
       "coin": "SNX",
       "entry_price": 0.2558,
@@ -82,41 +96,20 @@
       "exit_price": 0.008027,
       "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
       "timestamp": "2026-09-24 00:07:12"
-    },
-    {
-      "coin": "ARB",
-      "entry_price": 0.21479,
-      "exit_price": 0.21596,
-      "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
-      "timestamp": "2026-09-24 00:07:12"
-    },
-    {
-      "coin": "DYDX",
-      "entry_price": 0.12878,
-      "exit_price": 0.12711,
-      "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
-      "timestamp": "2026-09-24 00:07:12"
     }
   ],
   "active_position_cache": {
     "LINK": {
       "entry_px": 13.324,
-      "current_px": 13.3085,
+      "current_px": 13.3365,
       "szi": 5.0,
-      "peak_roe": -0.001163314320023972
-    },
-    "TRB": {
-      "entry_px": 20.461,
-      "current_px": 20.31,
-      "szi": 3.09,
-      "peak_roe": -0.007379893455842813
+      "peak_roe": 0.0009381567096967344
     }
   },
   "previous_active_coins": [
-    "TRB",
     "LINK"
   ],
-  "last_run_timestamp": "2026-09-25 00:42:54",
+  "last_run_timestamp": "2026-09-25 01:06:23",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
