@@ -22,12 +22,26 @@
     "SUSHI": 3,
     "BIGTIME": 7,
     "RSR": 5,
-    "LINK": 4,
+    "LINK": 5,
     "SNX": 2,
     "TRB": 1,
     "JUP": 1
   },
   "closed_trades_ledger": [
+    {
+      "coin": "JUP",
+      "entry_price": 0.31176,
+      "exit_price": 0.308305,
+      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
+      "timestamp": "2026-09-25 01:39:04"
+    },
+    {
+      "coin": "SNX",
+      "entry_price": 0.26193,
+      "exit_price": 0.25766,
+      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
+      "timestamp": "2026-09-25 01:39:04"
+    },
     {
       "coin": "TRB",
       "entry_price": 20.461,
@@ -83,48 +97,20 @@
       "exit_price": 0.12711,
       "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
       "timestamp": "2026-09-24 00:07:12"
-    },
-    {
-      "coin": "RSR",
-      "entry_price": 0.001626,
-      "exit_price": 0.00163,
-      "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
-      "timestamp": "2026-09-24 00:07:12"
-    },
-    {
-      "coin": "BIGTIME",
-      "entry_price": 0.007985,
-      "exit_price": 0.008027,
-      "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
-      "timestamp": "2026-09-24 00:07:12"
     }
   ],
   "active_position_cache": {
     "LINK": {
       "entry_px": 13.324,
-      "current_px": 13.343,
+      "current_px": 13.271,
       "szi": 5.0,
       "peak_roe": 0.001425998198739127
-    },
-    "SNX": {
-      "entry_px": 0.26193,
-      "current_px": 0.25756,
-      "szi": 317.7,
-      "peak_roe": -0.016683846829305484
-    },
-    "JUP": {
-      "entry_px": 0.31176,
-      "current_px": 0.30876,
-      "szi": 274.0,
-      "peak_roe": -0.009622786759045428
     }
   },
   "previous_active_coins": [
-    "SNX",
-    "LINK",
-    "JUP"
+    "LINK"
   ],
-  "last_run_timestamp": "2026-09-25 01:36:08",
+  "last_run_timestamp": "2026-09-25 01:39:56",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
