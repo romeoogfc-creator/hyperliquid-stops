@@ -22,8 +22,9 @@
     "SUSHI": 3,
     "BIGTIME": 7,
     "RSR": 5,
-    "LINK": 1,
-    "SNX": 1
+    "LINK": 2,
+    "SNX": 1,
+    "TRB": 1
   },
   "closed_trades_ledger": [
     {
@@ -97,9 +98,25 @@
       "timestamp": "2026-09-24 00:07:12"
     }
   ],
-  "active_position_cache": {},
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-09-25 00:08:25",
+  "active_position_cache": {
+    "LINK": {
+      "entry_px": 13.324,
+      "current_px": 13.3085,
+      "szi": 5.0,
+      "peak_roe": -0.001163314320023972
+    },
+    "TRB": {
+      "entry_px": 20.461,
+      "current_px": 20.31,
+      "szi": 3.09,
+      "peak_roe": -0.007379893455842813
+    }
+  },
+  "previous_active_coins": [
+    "TRB",
+    "LINK"
+  ],
+  "last_run_timestamp": "2026-09-25 00:42:54",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
