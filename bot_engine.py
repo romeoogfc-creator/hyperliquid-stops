@@ -121,19 +121,19 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
 
     leash_status = "Tiered Sniper Stop"
     
-    # --- PROPER LEVERAGED ROE TRAILING PROFIT LOCK LADDER ---
-    if peak_roe >= 0.12:
-        target_floor_roe = max(peak_roe - 0.025, 0.08)
-        leash_status = f"🚀 Mega-Runner Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif peak_roe >= 0.06:
-        target_floor_roe = max(peak_roe - 0.020, 0.035)
-        leash_status = f"📈 Mid-Trend Floor [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
+    # --- PROPORTIONAL PEAK RETENTION TRAILING ENGINE (90%-95% PROFIT LOCK) ---
+    if peak_roe >= 0.10:
+        target_floor_roe = peak_roe * 0.90  # Retain 90% of peak gains
+        leash_status = f"🚀 Mega-Runner 90% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
+    elif peak_roe >= 0.04:
+        target_floor_roe = peak_roe * 0.85  # Retain 85% of peak gains
+        leash_status = f"📈 Mid-Runner 85% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
     elif peak_roe >= 0.02:
-        target_floor_roe = 0.010
-        leash_status = f"🎯 Quick Profit Lock [{peak_roe*100:.1f}% Peak -> +1.0% Floor]"
+        target_floor_roe = peak_roe * 0.75  # Retain 75% of peak gains
+        leash_status = f"🎯 Early Winner 75% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
     elif peak_roe >= 0.01:
-        target_floor_roe = 0.0
-        leash_status = "Break-Even Lock (+1.0% Trigger)"
+        target_floor_roe = 0.005  # Lock +0.5% Break-Even
+        leash_status = "Break-Even Lock (+0.5% Floor)"
     else:
         if choppiness_index > 58.0:
             target_floor_roe = -0.010
@@ -316,7 +316,6 @@ def execute_engine():
             if leverage <= 0:
                 leverage = 1.0
 
-            # Properly calculate leveraged ROE for accurate Peak ROE tracking
             current_roe = (((current_px - entry_px) / entry_px) * leverage) if is_long else (((entry_px - current_px) / entry_px) * leverage)
             prev_peak = current_active_cache.get(coin, {}).get("peak_roe", current_roe)
             peak_roe = max(current_roe, prev_peak)
@@ -467,7 +466,6 @@ def execute_engine():
                 atr_score = atr / current_close
                 momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
                 
-                # Dynamic On-Deck queue filtering: require volume ratio >= 1.0 and close near upper band
                 if current_close >= upper * 0.985 and vol_ratio >= 1.0:
                     smart_queue_candidates.append({
                         "coin": coin, "close": current_close, "is_long": True, "is_ballistic": is_ballistic,
