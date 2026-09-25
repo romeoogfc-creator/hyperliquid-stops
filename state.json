@@ -29,9 +29,29 @@
     "AAVE": 1,
     "UNI": 1,
     "OP": 0,
-    "DOT": 2
+    "DOT": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "JTO",
+      "entry_price": 0.52877,
+      "exit_price": 0.53935,
+      "pnl_usd": 1.692961670291437,
+      "roe_pct": 10.004349717268413,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Tiered Profit Lock (+10.0%)",
+      "timestamp": "2026-09-25 13:23:16"
+    },
+    {
+      "coin": "OP",
+      "entry_price": 0.13939,
+      "exit_price": 0.13992,
+      "pnl_usd": 0.3310568441064655,
+      "roe_pct": 1.901140684410656,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Tiered Profit Lock (+1.9%)",
+      "timestamp": "2026-09-25 13:23:16"
+    },
     {
       "coin": "PENDLE",
       "entry_price": 2.6348,
@@ -87,54 +107,22 @@
       "exit_price": 117.995,
       "exit_reason": "\ud83d\udea8 High Choppiness Chop Purge (CI: 69.5)",
       "timestamp": "2026-09-25 10:05:37"
-    },
-    {
-      "coin": "LINK",
-      "entry_price": 13.324,
-      "exit_price": 13.325,
-      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
-      "timestamp": "2026-09-25 02:37:16"
-    },
-    {
-      "coin": "JUP",
-      "entry_price": 0.31176,
-      "exit_price": 0.308305,
-      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
-      "timestamp": "2026-09-25 01:39:04"
     }
   ],
   "active_position_cache": {
-    "OP": {
-      "entry_px": 0.13939,
-      "current_px": 0.14075,
-      "szi": 618.6,
-      "peak_roe": 0.048783987373556215,
-      "margin": 17.41359,
-      "side": "LONG"
-    },
     "DOT": {
       "entry_px": 1.1962,
-      "current_px": 1.19125,
+      "current_px": 1.18865,
       "szi": 55.7,
       "peak_roe": -0.0015047650894499448,
-      "margin": 66.34427,
-      "side": "LONG"
-    },
-    "JTO": {
-      "entry_px": 0.52877,
-      "current_px": 0.542465,
-      "szi": 156.0,
-      "peak_roe": 0.12949864780528408,
-      "margin": 16.922256,
+      "margin": 66.22173,
       "side": "LONG"
     }
   },
   "previous_active_coins": [
-    "JTO",
-    "OP",
     "DOT"
   ],
-  "last_run_timestamp": "2026-09-25 13:15:24",
+  "last_run_timestamp": "2026-09-25 13:24:11",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
