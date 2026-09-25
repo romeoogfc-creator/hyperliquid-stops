@@ -121,25 +121,21 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
 
     leash_status = "Tiered Sniper Stop"
     
-    # --- TIERED MEGA-RUNNER TRAILING PEAK FOLLOWER ---
-    if peak_roe >= 0.15:
-        target_floor_roe = peak_roe - 0.010
-        leash_status = f"🚀 Mega-Runner Leash [{peak_roe*100:.1f}% Peak]"
-    elif peak_roe >= 0.05:
-        target_floor_roe = peak_roe - 0.005
-        leash_status = f"📈 Mid-Trend Peak Floor [{peak_roe*100:.1f}% Peak]"
-    elif peak_roe >= 0.004:
-        if vol_ratio < 0.8:
-            target_floor_roe = max(peak_roe - 0.001, 0.0)
-            leash_status = "⚡ Volume Stall Snap (+0.1% Buffer)"
-        else:
-            target_floor_roe = peak_roe - 0.003
-            leash_status = f"🎯 Quick Profit Lock [{peak_roe*100:.1f}% Peak]"
+    # --- PROPER LEVERAGED ROE TRAILING PROFIT LOCK LADDER ---
+    if peak_roe >= 0.12:
+        target_floor_roe = max(peak_roe - 0.025, 0.08)
+        leash_status = f"🚀 Mega-Runner Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
+    elif peak_roe >= 0.06:
+        target_floor_roe = max(peak_roe - 0.020, 0.035)
+        leash_status = f"📈 Mid-Trend Floor [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
+    elif peak_roe >= 0.02:
+        target_floor_roe = 0.010
+        leash_status = f"🎯 Quick Profit Lock [{peak_roe*100:.1f}% Peak -> +1.0% Floor]"
+    elif peak_roe >= 0.01:
+        target_floor_roe = 0.0
+        leash_status = "Break-Even Lock (+1.0% Trigger)"
     else:
-        if roe >= 0.01:
-            target_floor_roe = 0.0
-            leash_status = "Break-Even Lock (+1.0% Trigger)"
-        elif choppiness_index > 58.0:
+        if choppiness_index > 58.0:
             target_floor_roe = -0.010
             leash_status = "Tight Choppy Defense Stop"
         elif is_ballistic:
@@ -283,12 +279,16 @@ def execute_engine():
             szi = float(pos.get("szi", 0))
             if coin and szi != 0:
                 try:
+                    entry_px = float(pos.get("entryPx", 0))
+                    exit_px = float(all_mids.get(coin, 0))
+                    collateral = float(pos.get("marginUsed", 0))
+                    pnl = float(pos.get("unrealizedPnl", 0))
+                    roe = (pnl / collateral * 100) if collateral > 0 else 0.0
                     exchange.market_close(coin)
                     state["closed_trades_ledger"].insert(0, {
-                        "coin": coin, "entry_price": float(pos.get("entryPx", 0)),
-                        "exit_price": float(all_mids.get(coin, 0)),
-                        "exit_reason": "🚨 Portfolio Drawdown Circuit Breaker (-3.5%)",
-                        "timestamp": timestamp
+                        "coin": coin, "entry_price": entry_px, "exit_price": exit_px,
+                        "pnl_usd": pnl, "roe_pct": roe, "side": "LONG" if szi > 0 else "SHORT",
+                        "exit_reason": "🚨 Portfolio Circuit Breaker (-3.5%)", "timestamp": timestamp
                     })
                 except Exception as e:
                     audit_logs.append(f"Circuit breaker close failed on {coin}: {e}")
@@ -316,7 +316,8 @@ def execute_engine():
             if leverage <= 0:
                 leverage = 1.0
 
-            current_roe = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
+            # Properly calculate leveraged ROE for accurate Peak ROE tracking
+            current_roe = (((current_px - entry_px) / entry_px) * leverage) if is_long else (((entry_px - current_px) / entry_px) * leverage)
             prev_peak = current_active_cache.get(coin, {}).get("peak_roe", current_roe)
             peak_roe = max(current_roe, prev_peak)
 
@@ -340,6 +341,7 @@ def execute_engine():
                     exchange.market_close(coin)
                     state["closed_trades_ledger"].insert(0, {
                         "coin": coin, "entry_price": entry_px, "exit_price": current_px,
+                        "pnl_usd": unrealized_pnl, "roe_pct": current_roe * 100, "side": "LONG" if is_long else "SHORT",
                         "exit_reason": f"🚨 High Choppiness Chop Purge (CI: {ci:.1f})", "timestamp": timestamp
                     })
                     state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
@@ -352,7 +354,7 @@ def execute_engine():
             total_margin_used += margin_used
 
             new_active_cache[coin] = {
-                "entry_px": entry_px, "current_px": current_px, "szi": szi, "peak_roe": peak_roe
+                "entry_px": entry_px, "current_px": current_px, "szi": szi, "peak_roe": peak_roe, "margin": margin_used, "side": "LONG" if is_long else "SHORT"
             }
 
             stop_px_raw, current_roe, target_floor, is_buy_order, leash_status = calculate_crypto_stop_price(
@@ -398,12 +400,20 @@ def execute_engine():
         old_data = previous_cache.get(closed_coin, {})
         entry_px = old_data.get("entry_px", 0.0)
         exit_px = float(all_mids.get(closed_coin, entry_px))
+        margin = old_data.get("margin", 50.0)
+        szi = old_data.get("szi", 1.0)
+        is_long = szi > 0 if isinstance(szi, (int, float)) else True
         
+        raw_pnl = ((exit_px - entry_px) / entry_px * margin * 5.0) if is_long else ((entry_px - exit_px) / entry_px * margin * 5.0)
+        roe_pct = (raw_pnl / margin * 100) if margin > 0 else 0.0
+
         already_logged = any(t["coin"] == closed_coin for t in state["closed_trades_ledger"][:2])
         if not already_logged:
+            reason = f"🎯 Tiered Profit Lock (+{roe_pct:.1f}%)" if raw_pnl >= 0 else f"🛡️ Tight Stop Loss ({roe_pct:.1f}%)"
             state["closed_trades_ledger"].insert(0, {
                 "coin": closed_coin, "entry_price": entry_px, "exit_price": exit_px,
-                "exit_reason": "Tiered Profit Lock / Rinse & Repeat", "timestamp": timestamp
+                "pnl_usd": raw_pnl, "roe_pct": roe_pct, "side": "LONG" if is_long else "SHORT",
+                "exit_reason": reason, "timestamp": timestamp
             })
             state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
 
@@ -457,11 +467,12 @@ def execute_engine():
                 atr_score = atr / current_close
                 momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
                 
-                candidate_obj = {
-                    "coin": coin, "close": current_close, "is_long": True, "is_ballistic": is_ballistic,
-                    "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
-                }
-                smart_queue_candidates.append(candidate_obj)
+                # Dynamic On-Deck queue filtering: require volume ratio >= 1.0 and close near upper band
+                if current_close >= upper * 0.985 and vol_ratio >= 1.0:
+                    smart_queue_candidates.append({
+                        "coin": coin, "close": current_close, "is_long": True, "is_ballistic": is_ballistic,
+                        "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
+                    })
 
                 is_green_candle = current_close > current_open
                 has_upward_continuation = current_close > prev_close
@@ -473,6 +484,10 @@ def execute_engine():
                         upper_wick_ok = False
 
                 if current_close > upper and current_close <= upper * 1.04 and vol_ratio >= 1.15 and is_green_candle and has_upward_continuation and upper_wick_ok:
+                    candidate_obj = {
+                        "coin": coin, "close": current_close, "is_long": True, "is_ballistic": is_ballistic,
+                        "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
+                    }
                     if verify_5m_micro_structure(info, coin, now_ms, is_long=True):
                         market_candidates.append(candidate_obj)
                         audit_logs.append(f"CRYPTO MATCH LONG (Confirmed + 5m Micro-Verified): {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
@@ -484,11 +499,11 @@ def execute_engine():
                 atr_score = atr / current_close
                 momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
 
-                candidate_obj = {
-                    "coin": coin, "close": current_close, "is_long": False, "is_ballistic": is_ballistic,
-                    "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
-                }
-                smart_queue_candidates.append(candidate_obj)
+                if current_close <= lower * 1.015 and vol_ratio >= 1.0:
+                    smart_queue_candidates.append({
+                        "coin": coin, "close": current_close, "is_long": False, "is_ballistic": is_ballistic,
+                        "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
+                    })
 
                 is_red_candle = current_close < current_open
                 has_downward_continuation = current_close < prev_close
@@ -500,6 +515,10 @@ def execute_engine():
                         lower_wick_ok = False
 
                 if current_close < lower and current_close >= lower * 0.96 and vol_ratio >= 1.15 and is_red_candle and has_downward_continuation and lower_wick_ok:
+                    candidate_obj = {
+                        "coin": coin, "close": current_close, "is_long": False, "is_ballistic": is_ballistic,
+                        "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
+                    }
                     if verify_5m_micro_structure(info, coin, now_ms, is_long=False):
                         market_candidates.append(candidate_obj)
                         audit_logs.append(f"CRYPTO MATCH SHORT (Confirmed + 5m Micro-Verified): {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
@@ -563,6 +582,8 @@ def execute_engine():
                     state["closed_trades_ledger"].insert(0, {
                         "coin": coin_to_rotate, "entry_price": stagnant_trade["entry"],
                         "exit_price": stagnant_trade["current"],
+                        "pnl_usd": stagnant_trade["pnl"], "roe_pct": stagnant_trade["roe"],
+                        "side": stagnant_trade["side"],
                         "exit_reason": "⚡ Accelerated Stagnation Rotation (3h Dead Capital)",
                         "timestamp": timestamp
                     })
@@ -592,22 +613,34 @@ def execute_engine():
         f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>#{i+1}</td>"
         f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold; color: #0f172a;'>{c['coin']}</td>"
         f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-family: monospace;'>${c['close']:.4f}</td>"
-        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: #b45309; font-weight: 600;'>Score: {c['score']:.4f}</td>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: #b45309; font-weight: 600;'>VolRatio: {c['vol_ratio']:.2f} | Score: {c['score']:.4f}</td>"
         f"</tr>"
         for i, c in enumerate(remaining_candidates[:3])
-    ]) if remaining_candidates else "<tr><td colspan='4' style='padding: 10px; text-align: center; color: #666;'>No momentum candidates currently detected.</td></tr>"
+    ]) if remaining_candidates else "<tr><td colspan='4' style='padding: 10px; text-align: center; color: #666;'>No momentum candidates currently breaking out.</td></tr>"
 
     closed_ledger = state.get("closed_trades_ledger", [])
+    total_realized_pnl = sum(t.get("pnl_usd", 0.0) for t in closed_ledger)
+    
     closed_rows = "".join([
         f"<tr>"
         f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['coin']}</td>"
         f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(t.get('entry_price', 0), 5)}</td>"
         f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(t.get('exit_price', 0), 5)}</td>"
+        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: bold; color: {'#2e7d32' if t.get('pnl_usd', 0) >= 0 else '#c62828'};'>${t.get('pnl_usd', 0.0):+.2f} ({t.get('roe_pct', 0.0):+.2f}%)</td>"
         f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: #b45309;'>{t['exit_reason']}</td>"
         f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 10px;'>{t['timestamp']}</td>"
         f"</tr>"
-        for t in closed_ledger[:5]
-    ]) if closed_ledger else "<tr><td colspan='5' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
+        for t in closed_ledger[:10]
+    ]) if closed_ledger else "<tr><td colspan='6' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
+
+    if closed_ledger:
+        closed_rows += f"""
+        <tr style="background: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
+            <td colspan="3" style="padding: 9px 10px; text-align: right;">TOTAL REALIZED P&L:</td>
+            <td style="padding: 9px 10px; color: {'#2e7d32' if total_realized_pnl >= 0 else '#c62828'};">${total_realized_pnl:+.2f}</td>
+            <td colspan="2"></td>
+        </tr>
+        """
 
     text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/6"
 
@@ -634,7 +667,7 @@ def execute_engine():
         total_roe_avg = (total_pnl_sum / total_collateral_sum * 100) if total_collateral_sum > 0 else 0.0
         positions_rows += f"""
         <tr style="background: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
-            <td colspan="4" style="padding: 9px 10px; text-align: right;">TOTAL:</td>
+            <td colspan="4" style="padding: 9px 10px; text-align: right;">TOTAL UNREALIZED:</td>
             <td style="padding: 9px 10px;">${total_collateral_sum:.2f}</td>
             <td style="padding: 9px 10px;">${total_position_usd_sum:.2f}</td>
             <td style="padding: 9px 10px; color: {'#2e7d32' if total_pnl_sum >= 0 else '#c62828'};">${total_pnl_sum:+.2f} ({total_roe_avg:+.2f}%)</td>
@@ -701,12 +734,12 @@ def execute_engine():
 
             <div class="section-title">Recently Closed Trades & Exit Telemetry</div>
             <div class="table-responsive">
-              <table><thead><tr><th>Asset</th><th>Entry Price</th><th>Exit Price</th><th>Exit Reason / Catalyst</th><th>Timestamp</th></tr></thead><tbody>{closed_rows}</tbody></table>
+              <table><thead><tr><th>Asset</th><th>Entry Price</th><th>Exit Price</th><th>Realized P&L USD ($)</th><th>Exit Reason / Catalyst</th><th>Timestamp</th></tr></thead><tbody>{closed_rows}</tbody></table>
             </div>
 
             <div class="section-title">On-Deck Smart Queue (Top 3 Waiting Runners)</div>
             <div class="table-responsive">
-              <table><thead><tr><th>Rank</th><th>Asset</th><th>Current Price</th><th>Momentum Score</th></tr></thead><tbody>{ondeck_rows}</tbody></table>
+              <table><thead><tr><th>Rank</th><th>Asset</th><th>Current Price</th><th>Breakout Metrics</th></tr></thead><tbody>{ondeck_rows}</tbody></table>
             </div>
 
             {audit_section}
