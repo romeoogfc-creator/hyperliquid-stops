@@ -13,9 +13,9 @@
     "PYTH": 2,
     "INJ": 0,
     "YGG": 0,
-    "TRX": 23,
+    "TRX": 24,
     "AVAX": 2,
-    "JTO": 2,
+    "JTO": 0,
     "KAS": 8,
     "DYDX": 0,
     "ATOM": 4,
@@ -28,6 +28,13 @@
     "JUP": 1
   },
   "closed_trades_ledger": [
+    {
+      "coin": "SOL",
+      "entry_price": 118.6,
+      "exit_price": 117.995,
+      "exit_reason": "\ud83d\udea8 High Choppiness Chop Purge (CI: 69.5)",
+      "timestamp": "2026-09-25 10:05:37"
+    },
     {
       "coin": "LINK",
       "entry_price": 13.324,
@@ -90,27 +97,27 @@
       "exit_price": 0.067898,
       "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
       "timestamp": "2026-09-24 17:36:05"
-    },
-    {
-      "coin": "NEO",
-      "entry_price": 2.6265,
-      "exit_price": 2.6371,
-      "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
-      "timestamp": "2026-09-24 17:36:05"
     }
   ],
   "active_position_cache": {
     "TRX": {
       "entry_px": 0.33808,
-      "current_px": 0.336905,
+      "current_px": 0.336685,
       "szi": -182.0,
-      "peak_roe": 0.003475508755324129
+      "peak_roe": 0.004126242309512481
+    },
+    "JTO": {
+      "entry_px": 0.52877,
+      "current_px": 0.534375,
+      "szi": 156.0,
+      "peak_roe": 0.010600071864894155
     }
   },
   "previous_active_coins": [
-    "TRX"
+    "TRX",
+    "JTO"
   ],
-  "last_run_timestamp": "2026-09-25 09:39:46",
+  "last_run_timestamp": "2026-09-25 10:06:36",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
