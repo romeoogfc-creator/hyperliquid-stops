@@ -29,6 +29,13 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "LINK",
+      "entry_price": 13.324,
+      "exit_price": 13.325,
+      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
+      "timestamp": "2026-09-25 02:37:16"
+    },
+    {
       "coin": "JUP",
       "entry_price": 0.31176,
       "exit_price": 0.308305,
@@ -90,27 +97,11 @@
       "exit_price": 2.6371,
       "exit_reason": "\ud83d\udea8 Blood-Bath Regime Force Exit",
       "timestamp": "2026-09-24 17:36:05"
-    },
-    {
-      "coin": "DYDX",
-      "entry_price": 0.12878,
-      "exit_price": 0.12711,
-      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
-      "timestamp": "2026-09-24 00:07:12"
     }
   ],
-  "active_position_cache": {
-    "LINK": {
-      "entry_px": 13.324,
-      "current_px": 13.483,
-      "szi": 5.0,
-      "peak_roe": 0.011933353347343193
-    }
-  },
-  "previous_active_coins": [
-    "LINK"
-  ],
-  "last_run_timestamp": "2026-09-25 02:06:40",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-09-25 02:38:00",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
