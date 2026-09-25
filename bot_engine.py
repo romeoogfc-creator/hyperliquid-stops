@@ -121,7 +121,7 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
 
     leash_status = "Tiered Sniper Stop"
     
-    # --- PROPORTIONAL PEAK RETENTION TRAILING ENGINE (90%-95% PROFIT LOCK) ---
+    # --- PROPORTIONAL PEAK RETENTION TRAILING ENGINE (90% PROFIT LOCK) ---
     if peak_roe >= 0.10:
         target_floor_roe = peak_roe * 0.90  # Retain 90% of peak gains
         leash_status = f"🚀 Mega-Runner 90% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
@@ -168,7 +168,7 @@ def check_btc_daily_candle(info):
     return True, 0.0, 0.0
 
 def verify_5m_micro_structure(info, coin, now_ms, is_long):
-    """Instant 5-Minute Micro-Confirmation Filter (20-30 min / 4-6 bar staircase validation)"""
+    """Instant 5-Minute Micro-Confirmation Filter"""
     try:
         m5_candles = api_retry(info.candles_snapshot, name=coin, interval="5m", startTime=now_ms - 3600000 * 4, endTime=now_ms)
         if not m5_candles or len(m5_candles) < 6:
@@ -295,7 +295,7 @@ def execute_engine():
         save_state(state)
         return
 
-    # --- STANDARD POSITION PROCESSING & NEW LAYERS ---
+    # --- STANDARD POSITION PROCESSING ---
     if asset_positions:
         for pos_item in asset_positions:
             pos = pos_item.get("position", {})
@@ -333,7 +333,7 @@ def execute_engine():
                 ci = 50.0
                 vol_ratio = 1.0
 
-            # --- ACTIVE POSITION CHOP PURGE (CI > 60.0 and Flat/Negative) ---
+            # --- ACTIVE POSITION CHOP PURGE ---
             if ci > 60.0 and current_roe < 0.005:
                 try:
                     audit_logs.append(f"🚨 CHOP PURGE: Closing {coin} immediately due to dead chop (CI: {ci:.1f}, ROE: {current_roe*100:+.2f}%)")
@@ -481,7 +481,8 @@ def execute_engine():
                     if upper_wick > 0.35:
                         upper_wick_ok = False
 
-                if current_close > upper and current_close <= upper * 1.04 and vol_ratio >= 1.15 and is_green_candle and has_upward_continuation and upper_wick_ok:
+                # Dynamic Volume Ratio Filter updated to 1.25
+                if current_close > upper and current_close <= upper * 1.04 and vol_ratio >= 1.25 and is_green_candle and has_upward_continuation and upper_wick_ok:
                     candidate_obj = {
                         "coin": coin, "close": current_close, "is_long": True, "is_ballistic": is_ballistic,
                         "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
@@ -512,7 +513,8 @@ def execute_engine():
                     if lower_wick > 0.35:
                         lower_wick_ok = False
 
-                if current_close < lower and current_close >= lower * 0.96 and vol_ratio >= 1.15 and is_red_candle and has_downward_continuation and lower_wick_ok:
+                # Dynamic Volume Ratio Filter updated to 1.25
+                if current_close < lower and current_close >= lower * 0.96 and vol_ratio >= 1.25 and is_red_candle and has_downward_continuation and lower_wick_ok:
                     candidate_obj = {
                         "coin": coin, "close": current_close, "is_long": False, "is_ballistic": is_ballistic,
                         "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
@@ -567,7 +569,7 @@ def execute_engine():
     static_usdc = max(0.0, account_value - total_margin_used)
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
-    # --- ACCELERATED STAGNATION ROTATION (Cut after 6 runs / 3 hours if flat) ---
+    # --- ACCELERATED STAGNATION ROTATION ---
     if active_count == 6:
         unprotected_trades = [p for p in positions_data if p["roe"] < 1.0]
         if unprotected_trades:
@@ -617,21 +619,44 @@ def execute_engine():
     ]) if remaining_candidates else "<tr><td colspan='4' style='padding: 10px; text-align: center; color: #666;'>No momentum candidates currently breaking out.</td></tr>"
 
     closed_ledger = state.get("closed_trades_ledger", [])
-    total_realized_pnl = sum(t.get("pnl_usd", 0.0) for t in closed_ledger)
     
-    closed_rows = "".join([
-        f"<tr>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['coin']}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(t.get('entry_price', 0), 5)}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(t.get('exit_price', 0), 5)}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: bold; color: {'#2e7d32' if t.get('pnl_usd', 0) >= 0 else '#c62828'};'>${t.get('pnl_usd', 0.0):+.2f} ({t.get('roe_pct', 0.0):+.2f}%)</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: #b45309;'>{t['exit_reason']}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 10px;'>{t['timestamp']}</td>"
-        f"</tr>"
-        for t in closed_ledger[:10]
-    ]) if closed_ledger else "<tr><td colspan='6' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
+    # DYNAMIC PARSING FIX: Compute PnL and ROE dynamically for legacy trades lacking pre-calculated keys
+    parsed_closed_rows = []
+    total_realized_pnl = 0.0
 
-    if closed_ledger:
+    for t in closed_ledger[:10]:
+        entry_p = float(t.get("entry_price", 0.0))
+        exit_p = float(t.get("exit_price", 0.0))
+        side = t.get("side", "LONG")
+        
+        if "pnl_usd" in t:
+            pnl_val = float(t["pnl_usd"])
+            roe_val = float(t.get("roe_pct", 0.0))
+        else:
+            # Fallback calculation for historical items using standard $50 collateral baseline @ 5x leverage
+            if entry_p > 0:
+                pnl_val = ((exit_p - entry_p) / entry_p * 50.0 * 5.0) if side == "LONG" else ((entry_p - exit_p) / entry_p * 50.0 * 5.0)
+                roe_val = (pnl_val / 50.0) * 100
+            else:
+                pnl_val = 0.0
+                roe_val = 0.0
+        
+        total_realized_pnl += pnl_val
+
+        parsed_closed_rows.append(
+            f"<tr>"
+            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['coin']}</td>"
+            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(entry_p, 5)}</td>"
+            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(exit_p, 5)}</td>"
+            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: bold; color: {'#2e7d32' if pnl_val >= 0 else '#c62828'};'>${pnl_val:+.2f} ({roe_val:+.2f}%)</td>"
+            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: #b45309;'>{t['exit_reason']}</td>"
+            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 10px;'>{t['timestamp']}</td>"
+            f"</tr>"
+        )
+
+    closed_rows = "".join(parsed_closed_rows) if parsed_closed_rows else "<tr><td colspan='6' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
+
+    if parsed_closed_rows:
         closed_rows += f"""
         <tr style="background: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
             <td colspan="3" style="padding: 9px 10px; text-align: right;">TOTAL REALIZED P&L:</td>
