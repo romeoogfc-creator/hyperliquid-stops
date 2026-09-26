@@ -3,7 +3,7 @@
   "stagnation_tracker": {
     "APT": 16,
     "BLUR": 0,
-    "MEME": 22,
+    "MEME": 23,
     "GMT": 6,
     "FIL": 12,
     "CAKE": 6,
@@ -31,10 +31,20 @@
     "OP": 0,
     "DOT": 3,
     "SEI": 0,
-    "SOL": 1,
+    "SOL": 2,
     "LDO": 1
   },
   "closed_trades_ledger": [
+    {
+      "coin": "LDO",
+      "entry_price": 0.49912,
+      "exit_price": 0.50049,
+      "pnl_usd": 0.16598583154351446,
+      "roe_pct": 0.2744830902388168,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Tiered Profit Lock (+0.3%)",
+      "timestamp": "2026-09-26 16:37:42"
+    },
     {
       "coin": "SEI",
       "entry_price": 0.072624,
@@ -112,40 +122,33 @@
       "exit_price": 148.965,
       "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
       "timestamp": "2026-09-25 12:42:12"
-    },
-    {
-      "coin": "FIL",
-      "entry_price": 1.0259,
-      "exit_price": 1.0324,
-      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
-      "timestamp": "2026-09-25 12:06:44"
     }
   ],
   "active_position_cache": {
     "SOL": {
       "entry_px": 121.75,
-      "current_px": 121.795,
+      "current_px": 121.595,
       "szi": 0.54,
       "peak_roe": 0.0003696098562628477,
-      "margin": 65.7666,
+      "margin": 65.664,
       "leverage": 1.0,
       "side": "LONG"
     },
-    "LDO": {
-      "entry_px": 0.49912,
-      "current_px": 0.49609,
-      "szi": 121.9,
-      "peak_roe": -0.0060706844045520765,
-      "margin": 60.472152,
-      "leverage": 1.0,
+    "MEME": {
+      "entry_px": 0.000656,
+      "current_px": 0.000655,
+      "szi": 100881.0,
+      "peak_roe": -0.004573170731707429,
+      "margin": 22.059312,
+      "leverage": 3.0,
       "side": "LONG"
     }
   },
   "previous_active_coins": [
-    "LDO",
-    "SOL"
+    "SOL",
+    "MEME"
   ],
-  "last_run_timestamp": "2026-09-26 16:06:34",
+  "last_run_timestamp": "2026-09-26 16:38:29",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
