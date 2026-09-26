@@ -30,9 +30,19 @@
     "UNI": 1,
     "OP": 0,
     "DOT": 3,
-    "SEI": 1
+    "SEI": 2
   },
   "closed_trades_ledger": [
+    {
+      "coin": "FIL",
+      "entry_price": 1.0895,
+      "exit_price": 1.0797,
+      "pnl_usd": -0.7138829294171499,
+      "roe_pct": -0.8994951812757971,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-0.9%)",
+      "timestamp": "2026-09-26 09:36:21"
+    },
     {
       "coin": "DOT",
       "entry_price": 1.1962,
@@ -104,40 +114,23 @@
       "exit_price": 0.336875,
       "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
       "timestamp": "2026-09-25 11:38:49"
-    },
-    {
-      "coin": "NEO",
-      "entry_price": 2.6449,
-      "exit_price": 2.649,
-      "exit_reason": "\ud83d\udea8 High Choppiness Chop Purge (CI: 71.6)",
-      "timestamp": "2026-09-25 11:05:10"
     }
   ],
   "active_position_cache": {
     "SEI": {
       "entry_px": 0.072624,
-      "current_px": 0.072751,
+      "current_px": 0.072579,
       "szi": 840.0,
       "peak_roe": 0.001748733201145656,
-      "margin": 61.10664,
-      "leverage": 1.0,
-      "side": "LONG"
-    },
-    "FIL": {
-      "entry_px": 1.0895,
-      "current_px": 1.08265,
-      "szi": 73.3,
-      "peak_roe": -0.006287287746672807,
-      "margin": 79.364842,
+      "margin": 60.96468,
       "leverage": 1.0,
       "side": "LONG"
     }
   },
   "previous_active_coins": [
-    "FIL",
     "SEI"
   ],
-  "last_run_timestamp": "2026-09-26 09:05:47",
+  "last_run_timestamp": "2026-09-26 09:37:10",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
