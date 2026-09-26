@@ -319,6 +319,23 @@ def execute_engine():
                 leverage = 1.0
 
             current_roe = (((current_px - entry_px) / entry_px) * leverage) if is_long else (((entry_px - current_px) / entry_px) * leverage)
+
+            # --- REGIME MISMATCH GUARD (Macro Trend Flip Defense) ---
+            regime_mismatch = (is_long and not btc_green) or (not is_long and btc_green)
+            if regime_mismatch:
+                try:
+                    audit_logs.append(f"🚨 REGIME MISMATCH GUARD: Forcing immediate market close on {coin} ({'LONG' if is_long else 'SHORT'}) due to BTC daily candle flip to {'RED' if not btc_green else 'GREEN'}!")
+                    exchange.market_close(coin)
+                    state["closed_trades_ledger"].insert(0, {
+                        "coin": coin, "entry_price": entry_px, "exit_price": current_px,
+                        "pnl_usd": unrealized_pnl, "roe_pct": current_roe * 100, "side": "LONG" if is_long else "SHORT",
+                        "exit_reason": f"🚨 Macro Regime Force Exit (BTC Flipped {'RED' if not btc_green else 'GREEN'})", "timestamp": timestamp
+                    })
+                    state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
+                    continue
+                except Exception as e:
+                    audit_logs.append(f"Regime mismatch force close failed on {coin}: {e}")
+
             prev_peak = current_active_cache.get(coin, {}).get("peak_roe", current_roe)
             peak_roe = max(current_roe, prev_peak)
 
@@ -715,7 +732,7 @@ def execute_engine():
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Guardrails (Pure Quantitative Engine)</div>
               &bull; <b>Execution Engine:</b> 30-Min 24/7 GitHub Cron &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
-              &bull; <b>Macro Regime Gatekeeper:</b> Blocks new entries on trend mismatch; allows open runners to ride via trailing leashes<br>
+              &bull; <b>Regime Mismatch Guard:</b> Instantly flattens positions if BTC daily candle flips against open exposure<br>
               &bull; <b>BTC Regime Shield:</b> Block LONGs if daily candle is RED; block SHORTs if daily candle is GREEN<br>
               &bull; <b>Portfolio Drawdown Circuit Breaker:</b> Instantly flattens 100% to cash if total open loss hits -3.5%<br>
               &bull; <b>Active Chop Purge:</b> Automatically closes positions if market Choppiness Index (CI > 60.0) turns dead<br>
