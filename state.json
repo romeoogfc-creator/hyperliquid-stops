@@ -119,10 +119,10 @@
   "active_position_cache": {
     "SEI": {
       "entry_px": 0.072624,
-      "current_px": 0.073698,
+      "current_px": 0.074418,
       "szi": 840.0,
-      "peak_roe": 0.014788499669530811,
-      "margin": 61.89456,
+      "peak_roe": 0.024702577660277652,
+      "margin": 62.51952,
       "leverage": 1.0,
       "side": "LONG"
     }
@@ -130,7 +130,7 @@
   "previous_active_coins": [
     "SEI"
   ],
-  "last_run_timestamp": "2026-09-26 10:37:34",
+  "last_run_timestamp": "2026-09-26 11:05:56",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
