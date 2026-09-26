@@ -30,7 +30,7 @@
     "UNI": 1,
     "OP": 0,
     "DOT": 3,
-    "SEI": 2
+    "SEI": 3
   },
   "closed_trades_ledger": [
     {
@@ -119,10 +119,10 @@
   "active_position_cache": {
     "SEI": {
       "entry_px": 0.072624,
-      "current_px": 0.072579,
+      "current_px": 0.073022,
       "szi": 840.0,
-      "peak_roe": 0.001748733201145656,
-      "margin": 60.96468,
+      "peak_roe": 0.005480282000440756,
+      "margin": 61.3536,
       "leverage": 1.0,
       "side": "LONG"
     }
@@ -130,7 +130,7 @@
   "previous_active_coins": [
     "SEI"
   ],
-  "last_run_timestamp": "2026-09-26 09:37:10",
+  "last_run_timestamp": "2026-09-26 10:06:04",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
