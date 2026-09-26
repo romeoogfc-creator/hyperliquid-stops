@@ -36,6 +36,26 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "MEME",
+      "entry_price": 0.000656,
+      "exit_price": 0.000652,
+      "pnl_usd": -0.504405,
+      "roe_pct": -1.8292682926829216,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udea8 Macro Regime Force Exit (BTC Flipped RED)",
+      "timestamp": "2026-09-26 17:25:31"
+    },
+    {
+      "coin": "SOL",
+      "entry_price": 121.75,
+      "exit_price": 121.215,
+      "pnl_usd": -0.2916,
+      "roe_pct": -0.4394250513346995,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udea8 Macro Regime Force Exit (BTC Flipped RED)",
+      "timestamp": "2026-09-26 17:25:31"
+    },
+    {
       "coin": "LDO",
       "entry_price": 0.49912,
       "exit_price": 0.50049,
@@ -108,47 +128,11 @@
       "exit_price": 1.8246,
       "exit_reason": "\ud83d\udea8 High Choppiness Chop Purge (CI: 68.0)",
       "timestamp": "2026-09-25 13:07:27"
-    },
-    {
-      "coin": "UNI",
-      "entry_price": 9.869,
-      "exit_price": 9.8436,
-      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
-      "timestamp": "2026-09-25 12:42:12"
-    },
-    {
-      "coin": "AAVE",
-      "entry_price": 149.44,
-      "exit_price": 148.965,
-      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
-      "timestamp": "2026-09-25 12:42:12"
     }
   ],
-  "active_position_cache": {
-    "SOL": {
-      "entry_px": 121.75,
-      "current_px": 121.415,
-      "szi": 0.54,
-      "peak_roe": 0.0003696098562628477,
-      "margin": 65.5614,
-      "leverage": 1.0,
-      "side": "LONG"
-    },
-    "MEME": {
-      "entry_px": 0.000656,
-      "current_px": 0.000653,
-      "szi": 100881.0,
-      "peak_roe": -0.004573170731707429,
-      "margin": 21.958431,
-      "leverage": 3.0,
-      "side": "LONG"
-    }
-  },
-  "previous_active_coins": [
-    "MEME",
-    "SOL"
-  ],
-  "last_run_timestamp": "2026-09-26 17:05:31",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-09-26 17:26:22",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
