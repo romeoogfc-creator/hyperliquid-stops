@@ -34,6 +34,16 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "SEI",
+      "entry_price": 0.072624,
+      "exit_price": 0.073704,
+      "pnl_usd": 0.9297350958360973,
+      "roe_pct": 1.4871116986120452,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Tiered Profit Lock (+1.5%)",
+      "timestamp": "2026-09-26 11:36:05"
+    },
+    {
       "coin": "FIL",
       "entry_price": 1.0895,
       "exit_price": 1.0797,
@@ -107,30 +117,11 @@
       "exit_price": 1.0324,
       "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
       "timestamp": "2026-09-25 12:06:44"
-    },
-    {
-      "coin": "TRX",
-      "entry_price": 0.33808,
-      "exit_price": 0.336875,
-      "exit_reason": "Tiered Profit Lock / Rinse & Repeat",
-      "timestamp": "2026-09-25 11:38:49"
     }
   ],
-  "active_position_cache": {
-    "SEI": {
-      "entry_px": 0.072624,
-      "current_px": 0.074418,
-      "szi": 840.0,
-      "peak_roe": 0.024702577660277652,
-      "margin": 62.51952,
-      "leverage": 1.0,
-      "side": "LONG"
-    }
-  },
-  "previous_active_coins": [
-    "SEI"
-  ],
-  "last_run_timestamp": "2026-09-26 11:05:56",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-09-26 11:36:49",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
