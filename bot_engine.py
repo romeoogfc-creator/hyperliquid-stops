@@ -26,7 +26,8 @@ def load_state():
         "closed_trades_ledger": [], 
         "active_position_cache": {},
         "previous_active_coins": [],
-        "last_run_timestamp": ""
+        "last_run_timestamp": "",
+        "last_email_timestamp": 0
     }
     if os.path.exists(STATE_FILE):
         try:
@@ -236,7 +237,7 @@ def verify_5m_micro_structure(info, coin, now_ms, is_long):
 
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    current_minute = time.localtime().tm_min
+    now_ts = time.time()
     audit_logs = []
     audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Pure Quantitative Mode).")
 
@@ -255,7 +256,7 @@ def execute_engine():
     all_mids = api_retry(info.all_mids)
     meta = api_retry(info.meta)
     open_orders = api_retry(info.frontend_open_orders, ACCOUNT_ADDRESS)
-    now_ms = int(time.time() * 1000)
+    now_ms = int(now_ts * 1000)
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -629,13 +630,18 @@ def execute_engine():
                 except Exception as e:
                     audit_logs.append(f"Crypto Rotation Failed on {coin_to_rotate}: {e}")
 
-    save_state(state)
-
-    # --- SMART EMAIL DISPATCHER (QUIET INBOX) ---
-    is_30m_schedule = (current_minute % 30) < 5
-    should_send_email = is_30m_schedule or trades_executed or trade_closed_this_run
+    # --- GUARANTEED 30-MINUTE TIMESTAMP EMAIL DISPATCHER ---
+    last_email_ts = float(state.get("last_email_timestamp", 0))
+    elapsed_minutes = (now_ts - last_email_ts) / 60.0
+    
+    # Trigger email if 25+ minutes elapsed OR a trade event occurred
+    is_time_for_periodic_email = (elapsed_minutes >= 25.0)
+    should_send_email = is_time_for_periodic_email or trades_executed or trade_closed_this_run
 
     if should_send_email:
+        state["last_email_timestamp"] = now_ts
+        save_state(state)
+
         audit_section = ""
         if VERBOSE_TEST_MODE:
             audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
@@ -796,7 +802,8 @@ def execute_engine():
 
         send_html_dashboard_email(f"Hyperliquid Report — USD ${account_value:.2f}", html_content, text_fallback)
     else:
-        print(f"[{timestamp}] 5-Minute background execution complete. Skipping email dispatch (30m schedule active).")
+        save_state(state)
+        print(f"[{timestamp}] 5-Minute background execution complete ({elapsed_minutes:.1f}m since last report). Skipping email dispatch.")
 
 if __name__ == "__main__":
     try:
@@ -804,5 +811,5 @@ if __name__ == "__main__":
     except Exception as e:
         err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Engine execution error: {e}"
         print(err_msg)
-        send_html_dashboard_email("Hyperliquid Bot ERROR Alert", f"3<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
+        send_html_dashboard_email("Hyperliquid Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
         raise e
