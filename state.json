@@ -38,10 +38,40 @@
     "GMX": 1,
     "TIA": 1,
     "ZRO": 1,
-    "SUI": 7,
-    "ETH": 6
+    "SUI": 8,
+    "ETH": 9
   },
   "closed_trades_ledger": [
+    {
+      "coin": "YGG",
+      "entry_price": 0.027812,
+      "exit_price": 0.027792,
+      "pnl_usd": -0.04509126420250068,
+      "roe_pct": -0.21573421544656105,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-0.2%)",
+      "timestamp": "2026-09-27 23:10:09"
+    },
+    {
+      "coin": "SUI",
+      "entry_price": 1.2772,
+      "exit_price": 1.25775,
+      "pnl_usd": -1.04064,
+      "roe_pct": -1.5228625117444385,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udea8 High Choppiness Chop Purge (CI: 63.8)",
+      "timestamp": "2026-09-27 23:10:09"
+    },
+    {
+      "coin": "CAKE",
+      "entry_price": 2.8329,
+      "exit_price": 2.8272,
+      "pnl_usd": -0.15794,
+      "roe_pct": -0.20120724346076596,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udea8 High Choppiness Chop Purge (CI: 58.0)",
+      "timestamp": "2026-09-27 23:04:14"
+    },
     {
       "coin": "JUP",
       "entry_price": 0.36332,
@@ -111,83 +141,23 @@
       "side": "LONG",
       "exit_reason": "\ud83d\udea8 High Choppiness Chop Purge (CI: 60.7)",
       "timestamp": "2026-09-27 18:28:37"
-    },
-    {
-      "coin": "SUI",
-      "entry_price": 1.2796,
-      "exit_price": 1.27025,
-      "pnl_usd": -0.5115,
-      "roe_pct": -0.7306970928415105,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udea8 High Choppiness Chop Purge (CI: 63.3)",
-      "timestamp": "2026-09-27 18:28:37"
-    },
-    {
-      "coin": "GMX",
-      "entry_price": 8.4053,
-      "exit_price": 8.3608,
-      "pnl_usd": -0.3247099027994321,
-      "roe_pct": -1.5882835829774462,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-1.6%)",
-      "timestamp": "2026-09-27 13:36:23"
-    },
-    {
-      "coin": "BIGTIME",
-      "entry_price": 0.009522,
-      "exit_price": 0.009806,
-      "pnl_usd": 2.5173268771266653,
-      "roe_pct": 8.947700063012011,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Tiered Profit Lock (+8.9%)",
-      "timestamp": "2026-09-27 10:36:56"
     }
   ],
   "active_position_cache": {
     "ETH": {
       "entry_px": 2676.2,
-      "current_px": 2669.75,
+      "current_px": 2675.45,
       "szi": -0.0251,
       "peak_roe": 0.002410133771765869,
-      "margin": 67.008717,
+      "margin": 67.15254,
       "leverage": 1.0,
       "side": "SHORT"
-    },
-    "SUI": {
-      "entry_px": 1.2772,
-      "current_px": 1.25105,
-      "szi": 54.2,
-      "peak_roe": -0.004188850610710904,
-      "margin": 67.8042,
-      "leverage": 1.0,
-      "side": "LONG"
-    },
-    "YGG": {
-      "entry_px": 0.027812,
-      "current_px": 0.027965,
-      "szi": 2234.0,
-      "peak_roe": 0.016503667481662633,
-      "margin": 20.821624,
-      "leverage": 3.0,
-      "side": "LONG"
-    },
-    "CAKE": {
-      "entry_px": 2.8329,
-      "current_px": 2.8139,
-      "szi": 29.8,
-      "peak_roe": -0.004959582053725905,
-      "margin": 83.8423,
-      "leverage": 1.0,
-      "side": "LONG"
     }
   },
   "previous_active_coins": [
-    "SUI",
-    "CAKE",
-    "ETH",
-    "YGG"
+    "ETH"
   ],
-  "last_run_timestamp": "2026-09-27 22:49:50",
+  "last_run_timestamp": "2026-09-27 23:16:49",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -197,5 +167,5 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790548013.0975306
+  "last_email_timestamp": 1790550609.9044907
 }
