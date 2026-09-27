@@ -1,7 +1,7 @@
 {
   "cooldown_blocklist": {},
   "stagnation_tracker": {
-    "APT": 21,
+    "APT": 24,
     "BLUR": 0,
     "MEME": 24,
     "GMT": 6,
@@ -144,10 +144,10 @@
   "active_position_cache": {
     "APT": {
       "entry_px": 0.866,
-      "current_px": 0.855,
+      "current_px": 0.8605,
       "szi": 79.72,
       "peak_roe": -0.00023094688221706464,
-      "margin": 68.1606,
+      "margin": 68.607032,
       "leverage": 1.0,
       "side": "LONG"
     }
@@ -155,7 +155,7 @@
   "previous_active_coins": [
     "APT"
   ],
-  "last_run_timestamp": "2026-09-27 20:57:50",
+  "last_run_timestamp": "2026-09-27 21:17:13",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -165,5 +165,5 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790541932.5292528
+  "last_email_timestamp": 1790543434.786679
 }
