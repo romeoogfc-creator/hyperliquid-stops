@@ -122,27 +122,26 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
 
     leash_status = "Tiered Sniper Stop"
     
-    # --- STAIRCASE CAPITAL PRESERVATION RETENTION ENGINE ---
     if peak_roe >= 0.15:
-        target_floor_roe = peak_roe * 0.95  # Retain 95% of peak gains on ultra-runners
+        target_floor_roe = peak_roe * 0.95
         leash_status = f"⚡ Ultra-Runner 95% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
     elif peak_roe >= 0.08:
-        target_floor_roe = peak_roe * 0.925 # Retain 92.5% of peak gains (Slippage Shield)
+        target_floor_roe = peak_roe * 0.925
         leash_status = f"🚀 Mega-Runner 92.5% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
     elif peak_roe >= 0.04:
-        target_floor_roe = peak_roe * 0.85  # Retain 85% of peak gains
+        target_floor_roe = peak_roe * 0.85
         leash_status = f"📈 Mid-Runner 85% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
     elif peak_roe >= 0.02:
-        target_floor_roe = 0.015  # Lock +1.5% Floor
+        target_floor_roe = 0.015
         leash_status = "🎯 Early Winner Lock (+1.5% Floor)"
     elif peak_roe >= 0.01:
-        target_floor_roe = 0.005  # Lock +0.5% Floor
+        target_floor_roe = 0.005
         leash_status = "Break-Even Lock (+0.5% Floor)"
     elif peak_roe >= 0.006:
-        target_floor_roe = 0.002  # Lock +0.2% Micro-Profit Floor
+        target_floor_roe = 0.002
         leash_status = "🎯 Micro-Profit Lock (+0.2% Floor)"
     elif peak_roe >= 0.003:
-        target_floor_roe = 0.000  # Soft Break-Even Floor (0.0% ROE)
+        target_floor_roe = 0.000
         leash_status = "🛡️ Early Soft Break-Even (0.0% Floor)"
     else:
         if choppiness_index > 58.0:
@@ -165,7 +164,6 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
     return stop_px, roe, target_floor_roe, is_buy_order, leash_status
 
 def verify_5m_micro_structure(info, coin, now_ms, is_long):
-    """Instant 5-Minute Micro-Confirmation Filter (Red-to-Green / Green-to-Red Shift)"""
     try:
         m5_candles = api_retry(info.candles_snapshot, name=coin, interval="5m", startTime=now_ms - 3600000 * 4, endTime=now_ms)
         if not m5_candles or len(m5_candles) < 6:
@@ -179,7 +177,6 @@ def verify_5m_micro_structure(info, coin, now_ms, is_long):
         recent_opens = m_opens[-5:]
         
         if is_long:
-            # Check for red-to-green transition or upward momentum
             net_progress = recent_closes[-1] > recent_closes[0]
             green_count = sum(1 for o, c in zip(recent_opens, recent_closes) if c >= o)
             latest_high = m_highs[-1]
@@ -188,11 +185,10 @@ def verify_5m_micro_structure(info, coin, now_ms, is_long):
             candle_range = latest_high - latest_low
             if candle_range > 0:
                 upper_wick_ratio = (latest_high - max(recent_opens[-1], latest_close)) / candle_range
-                if upper_wick_ratio > 0.5:
+                if upper_wick_ratio > 0.4:
                     return False
-            return net_progress and (green_count >= 2)
+            return net_progress and (green_count >= 3)
         else:
-            # Check for green-to-red transition or downward momentum
             net_progress = recent_closes[-1] < recent_closes[0]
             red_count = sum(1 for o, c in zip(recent_opens, recent_closes) if c <= o)
             latest_high = m_highs[-1]
@@ -201,9 +197,9 @@ def verify_5m_micro_structure(info, coin, now_ms, is_long):
             candle_range = latest_high - latest_low
             if candle_range > 0:
                 lower_wick_ratio = (min(recent_opens[-1], latest_close) - latest_low) / candle_range
-                if lower_wick_ratio > 0.5:
+                if lower_wick_ratio > 0.4:
                     return False
-            return net_progress and (red_count >= 2)
+            return net_progress and (red_count >= 3)
     except Exception:
         return True
 
@@ -211,7 +207,7 @@ def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     now_ts = time.time()
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Independent Coin Momentum Mode).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (High-Conviction Anti-Bleed Mode).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -234,7 +230,7 @@ def execute_engine():
         coin_name = asset.get("name")
         sz_decimals_map[coin_name] = asset.get("szDecimals", 4)
 
-    audit_logs.append("BTC Macro Regime Shield Bypassed: Evaluating each coin independently on its own local history.")
+    audit_logs.append("High-Conviction Mode: Requiring volume expansion (>=1.6x) and strict candle confirmation.")
 
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
@@ -272,7 +268,7 @@ def execute_engine():
 
     portfolio_pnl_pct = (total_unrealized_pnl / account_value) if account_value > 0 else 0.0
     if portfolio_pnl_pct <= -0.035:
-        audit_logs.append(f"🚨 PORTFOLIO CIRCUIT BREAKER TRIGGERED: Unrealized P&L at {portfolio_pnl_pct*100:.2f}%. Emergency flattening all positions to cash!")
+        audit_logs.append(f"🚨 PORTFOLIO CIRCUIT BREAKER TRIGGERED: Unrealized P&L at {portfolio_pnl_pct*100:.2f}%. Flattening all positions to cash!")
         for pos_item in asset_positions:
             pos = pos_item.get("position", {})
             coin = pos.get("coin")
@@ -335,7 +331,7 @@ def execute_engine():
                 vol_ratio = 1.0
 
             # --- ACTIVE POSITION CHOP PURGE ---
-            if ci > 60.0 and current_roe < 0.005:
+            if ci > 58.0 and current_roe < 0.005:
                 try:
                     audit_logs.append(f"🚨 CHOP PURGE: Closing {coin} immediately due to dead chop (CI: {ci:.1f}, ROE: {current_roe*100:+.2f}%)")
                     exchange.market_close(coin)
@@ -455,7 +451,7 @@ def execute_engine():
             current_low = lows[-1]
             
             ci = calculate_choppiness_index(highs, lows, closes)
-            if ci > 62.0:
+            if ci > 58.0:
                 continue
 
             avg_vol = np.mean(volumes[-10:]) if len(volumes) >= 10 else volumes[-1]
@@ -464,11 +460,8 @@ def execute_engine():
 
             atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])])
 
-            # --- INDEPENDENT COIN MOMENTUM EVALUATION (Red-to-Green & Green-to-Red) ---
-            
-            # 1. LONG Check: Red-to-Green Transition / Upper Channel Breakout
             is_green_candle = current_close > current_open
-            recent_red_to_green = (prev_close <= prev_open) and is_green_candle  # Flipped from red/flat to green
+            recent_red_to_green = (prev_close <= prev_open) and is_green_candle
             has_upward_continuation = current_close > prev_close
             candle_range = current_high - current_low
             upper_wick_ok = True
@@ -477,7 +470,7 @@ def execute_engine():
                 if upper_wick > 0.35:
                     upper_wick_ok = False
 
-            if current_close > upper and current_close <= upper * 1.04 and vol_ratio >= 1.25 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
+            if current_close > upper and current_close <= upper * 1.04 and vol_ratio >= 1.6 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
                 is_ballistic = current_close > (upper + 1.5 * atr)
                 extension_score = max(0.0, (current_close - upper) / upper)
                 atr_score = atr / current_close
@@ -489,11 +482,10 @@ def execute_engine():
                 }
                 if verify_5m_micro_structure(info, coin, now_ms, is_long=True):
                     market_candidates.append(candidate_obj)
-                    audit_logs.append(f"INDEPENDENT LONG MATCH (Red-to-Green Verified): {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
+                    audit_logs.append(f"HIGH-CONVICTION LONG MATCH: {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
 
-            # 2. SHORT Check: Green-to-Red Transition / Lower Channel Breakdown
             is_red_candle = current_close < current_open
-            recent_green_to_red = (prev_close >= prev_open) and is_red_candle  # Flipped from green/flat to red
+            recent_green_to_red = (prev_close >= prev_open) and is_red_candle
             has_downward_continuation = current_close < prev_close
             lower_wick_ok = True
             if candle_range > 0:
@@ -501,7 +493,7 @@ def execute_engine():
                 if lower_wick > 0.35:
                     lower_wick_ok = False
 
-            if current_close < lower and current_close >= lower * 0.96 and vol_ratio >= 1.25 and (recent_green_to_red or has_downward_continuation) and lower_wick_ok:
+            if current_close < lower and current_close >= lower * 0.96 and vol_ratio >= 1.6 and (recent_green_to_red or has_downward_continuation) and lower_wick_ok:
                 is_ballistic = current_close < (lower - 1.5 * atr)
                 extension_score = max(0.0, (lower - current_close) / lower)
                 atr_score = atr / current_close
@@ -513,13 +505,13 @@ def execute_engine():
                 }
                 if verify_5m_micro_structure(info, coin, now_ms, is_long=False):
                     market_candidates.append(candidate_obj)
-                    audit_logs.append(f"INDEPENDENT SHORT MATCH (Green-to-Red Verified): {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
+                    audit_logs.append(f"HIGH-CONVICTION SHORT MATCH: {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
 
         except Exception:
             continue
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
-    audit_logs.append(f"Independent Crypto Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
+    audit_logs.append(f"High-Conviction Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
 
     trades_executed = False
     available_slots = 6 - active_count
@@ -574,7 +566,6 @@ def execute_engine():
     static_usdc = max(0.0, account_value - total_margin_used)
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
-    # --- ACCELERATED STAGNATION ROTATION ---
     if active_count == 6:
         unprotected_trades = [p for p in positions_data if p["roe"] < 1.0]
         if unprotected_trades:
@@ -599,7 +590,6 @@ def execute_engine():
                 except Exception as e:
                     audit_logs.append(f"Crypto Rotation Failed on {coin_to_rotate}: {e}")
 
-    # --- GUARANTEED 30-MINUTE TIMESTAMP EMAIL DISPATCHER ---
     last_email_ts = float(state.get("last_email_timestamp", 0))
     elapsed_minutes = (now_ts - last_email_ts) / 60.0
     
@@ -614,7 +604,7 @@ def execute_engine():
         if VERBOSE_TEST_MODE:
             audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
             audit_section = f"""
-            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine - Independent Coin Mode)</div>
+            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (High-Conviction Mode)</div>
             <div class="table-responsive" style="overflow-x: hidden;">
               <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
                 <tbody>{audit_rows}</tbody>
@@ -731,7 +721,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Independent Coin Momentum Mode)</p>
+                <p>Timestamp: {timestamp} (High-Conviction Anti-Bleed Mode)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -741,15 +731,14 @@ def execute_engine():
                 </div>
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (Independent Momentum Engine)</div>
-                  &bull; <b>Execution Engine:</b> 5-Min Exact Precision Loop (6x/Run) &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
-                  &bull; <b>Coin Independence:</b> Bypasses BTC macro checks; trades each coin purely on its own red-to-green / green-to-red momentum<br>
+                  <div class="rules-title">&#9989; Active Guardrails (High-Conviction Mode)</div>
+                  &bull; <b>Execution Engine:</b> 5-Min Exact Precision Loop (3x/Run - 15 Mins) &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
+                  &bull; <b>Volume Threshold:</b> Stricter Vol Ratio >= 1.6x to filter fake breakouts<br>
                   &bull; <b>Pre-Placed Limit TP Target:</b> Zero-Slippage Limit Take-Profit Resting Target (+3.5% ROE)<br>
                   &bull; <b>Staircase Retention Engine:</b> Soft BE at +0.3% ROE, +1.5% Lock at +2.0% ROE, 92.5% Lock at +8% ROE, 95% Lock at +15% ROE<br>
                   &bull; <b>Leverage Profile: Optimized 5x Safe Max Leverage</b>
                 </div>
 
-.net-worth-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin-bottom: 20px; }}
                 <div class="section-title">Positions per Bot (USD)</div>
                 <div class="table-responsive">
                   <table><thead><tr><th>Bot Title</th><th>Asset</th><th>Leverage</th><th>Side</th><th>Collateral USD</th><th>Position USD</th><th>Unrealized P&L USD</th><th>Buy Price</th><th>Stop Price</th><th>Bot Status</th></tr></thead><tbody>{positions_rows}</tbody></table>
@@ -775,10 +764,10 @@ def execute_engine():
         print(f"[{timestamp}] Background execution cycle complete ({elapsed_minutes:.1f}m since last report). Skipping email dispatch.", flush=True)
 
 if __name__ == "__main__":
-    total_cycles = 6          # Run 6 cycles per 30-minute GitHub Action execution
+    total_cycles = 3          # Reduced to 3 cycles (15 mins) so every run finishes and turns GREEN before the next cron
     cycle_interval_sec = 300  # 300 seconds = 5 minutes exact precision
 
-    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Launching 30-Minute Continuous 5-Min Execution Loop ({total_cycles} Cycles)...", flush=True)
+    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Launching 15-Minute Continuous 5-Min Execution Loop ({total_cycles} Cycles)...", flush=True)
 
     for cycle in range(1, total_cycles + 1):
         print(f"\n--- EXECUTION CYCLE {cycle}/{total_cycles} STARTING ---", flush=True)
