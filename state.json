@@ -29,7 +29,7 @@
     "AAVE": 1,
     "UNI": 2,
     "OP": 0,
-    "DOT": 5,
+    "DOT": 6,
     "SEI": 0,
     "SOL": 3,
     "LDO": 1,
@@ -140,19 +140,19 @@
   "active_position_cache": {
     "DOT": {
       "entry_px": 1.2688,
-      "current_px": 1.2689,
+      "current_px": 1.2731,
       "szi": 54.9,
-      "peak_roe": 7.881462799494719e-05,
-      "margin": 69.65712,
+      "peak_roe": 0.003389029003783079,
+      "margin": 69.89319,
       "leverage": 1.0,
       "side": "LONG"
     },
     "BIGTIME": {
       "entry_px": 0.009522,
-      "current_px": 0.009981,
+      "current_px": 0.009762,
       "szi": 8331.0,
       "peak_roe": 0.14461247637051072,
-      "margin": 27.708906,
+      "margin": 27.139621,
       "leverage": 3.0,
       "side": "LONG"
     }
@@ -161,7 +161,7 @@
     "DOT",
     "BIGTIME"
   ],
-  "last_run_timestamp": "2026-09-27 07:37:45",
+  "last_run_timestamp": "2026-09-27 08:06:21",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
