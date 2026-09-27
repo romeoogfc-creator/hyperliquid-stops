@@ -141,10 +141,10 @@
   "active_position_cache": {
     "BIGTIME": {
       "entry_px": 0.009522,
-      "current_px": 0.009835,
+      "current_px": 0.010024,
       "szi": 8331.0,
-      "peak_roe": 0.14461247637051072,
-      "margin": 27.320126,
+      "peak_roe": 0.15816005040957806,
+      "margin": 27.79777,
       "leverage": 3.0,
       "side": "LONG"
     }
@@ -152,7 +152,7 @@
   "previous_active_coins": [
     "BIGTIME"
   ],
-  "last_run_timestamp": "2026-09-27 09:05:53",
+  "last_run_timestamp": "2026-09-27 09:38:23",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
