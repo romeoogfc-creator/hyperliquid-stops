@@ -35,9 +35,41 @@
     "LDO": 1,
     "PENDLE": 0,
     "NEO": 1,
-    "GMX": 1
+    "GMX": 1,
+    "TIA": 1,
+    "ZRO": 1
   },
   "closed_trades_ledger": [
+    {
+      "coin": "TIA",
+      "entry_price": 0.50693,
+      "exit_price": 0.50392,
+      "pnl_usd": -0.3829969827195022,
+      "roe_pct": -2.9688517152269127,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-3.0%)",
+      "timestamp": "2026-09-27 18:34:33"
+    },
+    {
+      "coin": "ZRO",
+      "entry_price": 1.6729,
+      "exit_price": 1.67165,
+      "pnl_usd": -0.05213,
+      "roe_pct": -0.37360272580547954,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udea8 High Choppiness Chop Purge (CI: 60.7)",
+      "timestamp": "2026-09-27 18:28:37"
+    },
+    {
+      "coin": "SUI",
+      "entry_price": 1.2796,
+      "exit_price": 1.27025,
+      "pnl_usd": -0.5115,
+      "roe_pct": -0.7306970928415105,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udea8 High Choppiness Chop Purge (CI: 63.3)",
+      "timestamp": "2026-09-27 18:28:37"
+    },
     {
       "coin": "GMX",
       "entry_price": 8.4053,
@@ -107,41 +139,23 @@
       "side": "SHORT",
       "exit_reason": "\ud83d\udea8 Macro Regime Force Exit (BTC Flipped GREEN)",
       "timestamp": "2026-09-27 02:05:16"
-    },
-    {
-      "coin": "MEME",
-      "entry_price": 0.000656,
-      "exit_price": 0.000652,
-      "pnl_usd": -0.504405,
-      "roe_pct": -1.8292682926829216,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udea8 Macro Regime Force Exit (BTC Flipped RED)",
-      "timestamp": "2026-09-26 17:25:31"
-    },
-    {
-      "coin": "SOL",
-      "entry_price": 121.75,
-      "exit_price": 121.215,
-      "pnl_usd": -0.2916,
-      "roe_pct": -0.4394250513346995,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udea8 Macro Regime Force Exit (BTC Flipped RED)",
-      "timestamp": "2026-09-26 17:25:31"
-    },
-    {
-      "coin": "LDO",
-      "entry_price": 0.49912,
-      "exit_price": 0.50049,
-      "pnl_usd": 0.16598583154351446,
-      "roe_pct": 0.2744830902388168,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Tiered Profit Lock (+0.3%)",
-      "timestamp": "2026-09-26 16:37:42"
     }
   ],
-  "active_position_cache": {},
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-09-27 17:21:19",
+  "active_position_cache": {
+    "ZRO": {
+      "entry_px": 1.67,
+      "current_px": 1.66735,
+      "szi": 40.8,
+      "peak_roe": -0.007934131736526405,
+      "margin": 13.604352,
+      "leverage": 5.0,
+      "side": "LONG"
+    }
+  },
+  "previous_active_coins": [
+    "ZRO"
+  ],
+  "last_run_timestamp": "2026-09-27 18:35:20",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -151,5 +165,5 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790529275.0741467
+  "last_email_timestamp": 1790534073.3452604
 }
