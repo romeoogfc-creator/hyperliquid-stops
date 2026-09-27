@@ -38,6 +38,16 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "BIGTIME",
+      "entry_price": 0.009522,
+      "exit_price": 0.009806,
+      "pnl_usd": 2.5173268771266653,
+      "roe_pct": 8.947700063012011,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Tiered Profit Lock (+8.9%)",
+      "timestamp": "2026-09-27 10:36:56"
+    },
+    {
       "coin": "NEO",
       "entry_price": 2.7272,
       "exit_price": 2.7083,
@@ -126,33 +136,11 @@
       "side": "LONG",
       "exit_reason": "\ud83c\udfaf Tiered Profit Lock (+1.5%)",
       "timestamp": "2026-09-26 11:36:05"
-    },
-    {
-      "coin": "FIL",
-      "entry_price": 1.0895,
-      "exit_price": 1.0797,
-      "pnl_usd": -0.7138829294171499,
-      "roe_pct": -0.8994951812757971,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-0.9%)",
-      "timestamp": "2026-09-26 09:36:21"
     }
   ],
-  "active_position_cache": {
-    "BIGTIME": {
-      "entry_px": 0.009522,
-      "current_px": 0.010135,
-      "szi": 8331.0,
-      "peak_roe": 0.1931316950220544,
-      "margin": 28.133787,
-      "leverage": 3.0,
-      "side": "LONG"
-    }
-  },
-  "previous_active_coins": [
-    "BIGTIME"
-  ],
-  "last_run_timestamp": "2026-09-27 10:06:16",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-09-27 10:37:46",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
