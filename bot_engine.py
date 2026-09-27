@@ -114,6 +114,25 @@ def calculate_choppiness_index(highs, lows, closes, period=14):
     except Exception:
         return 50.0
 
+def get_btc_regime(info, now_ms):
+    """Fetches BTC daily candle to enforce BTC Regime Shield."""
+    try:
+        btc_candles = api_retry(info.candles_snapshot, name="BTC", interval="1d", startTime=now_ms - 86400000 * 5, endTime=now_ms)
+        if not btc_candles or len(btc_candles) < 2:
+            return "NEUTRAL", 0.0
+        latest = btc_candles[-1]
+        o_px = float(latest["o"])
+        c_px = float(latest["c"])
+        pct_change = ((c_px - o_px) / o_px) * 100
+        if c_px > o_px:
+            return "GREEN", pct_change
+        elif c_px < o_px:
+            return "RED", pct_change
+        return "NEUTRAL", pct_change
+    except Exception as e:
+        print(f"[WARN] Failed to fetch BTC daily regime: {e}", flush=True)
+        return "NEUTRAL", 0.0
+
 def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, choppiness_index=50.0, is_ballistic=False, vol_ratio=1.0, peak_roe=0.0):
     if is_long:
         roe = ((current_px - entry_px) / entry_px) * leverage
@@ -122,24 +141,27 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
 
     leash_status = "Tiered Sniper Stop"
     
+    # Gradual Staircase Ratchet Ladder
     if peak_roe >= 0.15:
         target_floor_roe = peak_roe * 0.95
         leash_status = f"⚡ Ultra-Runner 95% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
     elif peak_roe >= 0.08:
         target_floor_roe = peak_roe * 0.925
         leash_status = f"🚀 Mega-Runner 92.5% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif peak_roe >= 0.04:
+    elif peak_roe >= 0.05:
         target_floor_roe = peak_roe * 0.85
         leash_status = f"📈 Mid-Runner 85% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif peak_roe >= 0.025:
-        target_floor_roe = 0.015
-        leash_status = "🎯 Early Winner Lock (+1.5% Floor)"
+    elif peak_roe >= 0.035:
+        target_floor_roe = 0.020
+        leash_status = "🎯 Tier 2 Winner Lock (+2.0% Floor)"
+    elif peak_roe >= 0.020:
+        target_floor_roe = 0.005
+        leash_status = "🛡️ Tier 1 Winner Lock (+0.5% Net Floor)"
     elif peak_roe >= 0.012:
-        # Buffer +0.3% ROE floor covers exchange taker fees + spread on exit so BE never ends in a loss
-        target_floor_roe = 0.003
-        leash_status = "🛡️ Net Break-Even Lock (+0.3% Fee-Covered Floor)"
+        target_floor_roe = -0.005
+        leash_status = "🛡️ Soft Defense Floor (-0.5% ROE)"
     else:
-        # --- FULL BREATHING ROOM UNTIL PEAK ROE EXCEEDS +1.2% ---
+        # Full initial breathing room (-2.5% ROE) until peak ROE > +1.2%
         if choppiness_index > 58.0:
             target_floor_roe = -0.015  # -1.5% ROE
             leash_status = "Choppy Defense Stop"
@@ -171,33 +193,31 @@ def verify_5m_micro_structure(info, coin, now_ms, is_long):
         
         ci_5m = calculate_choppiness_index(m_highs, m_lows, m_closes)
 
-        recent_closes = m_closes[-5:]
-        recent_opens = m_opens[-5:]
+        # Ensure no extreme upper wick on the last completed 5m candle
+        last_completed_high = m_highs[-2]
+        last_completed_low = m_lows[-2]
+        last_completed_close = m_closes[-2]
+        last_completed_open = m_opens[-2]
         
+        candle_range = last_completed_high - last_completed_low
+        if candle_range > 0:
+            if is_long:
+                upper_wick_ratio = (last_completed_high - max(last_completed_open, last_completed_close)) / candle_range
+                if upper_wick_ratio > 0.40:
+                    return False, ci_5m
+            else:
+                lower_wick_ratio = (min(last_completed_open, last_completed_close) - last_completed_low) / candle_range
+                if lower_wick_ratio > 0.40:
+                    return False, ci_5m
+
+        # Verify net micro-trend direction across last 3 completed candles
         if is_long:
-            net_progress = recent_closes[-1] > recent_closes[0]
-            green_count = sum(1 for o, c in zip(recent_opens, recent_closes) if c >= o)
-            latest_high = m_highs[-1]
-            latest_low = m_lows[-1]
-            latest_close = recent_closes[-1]
-            candle_range = latest_high - latest_low
-            if candle_range > 0:
-                upper_wick_ratio = (latest_high - max(recent_opens[-1], latest_close)) / candle_range
-                if upper_wick_ratio > 0.4:
-                    return False, ci_5m
-            return (net_progress and (green_count >= 3)), ci_5m
+            net_progress = m_closes[-2] >= m_closes[-5]
+            return net_progress, ci_5m
         else:
-            net_progress = recent_closes[-1] < recent_closes[0]
-            red_count = sum(1 for o, c in zip(recent_opens, recent_closes) if c <= o)
-            latest_high = m_highs[-1]
-            latest_low = m_lows[-1]
-            latest_close = recent_closes[-1]
-            candle_range = latest_high - latest_low
-            if candle_range > 0:
-                lower_wick_ratio = (min(recent_opens[-1], latest_close) - latest_low) / candle_range
-                if lower_wick_ratio > 0.4:
-                    return False, ci_5m
-            return (net_progress and (red_count >= 3)), ci_5m
+            net_progress = m_closes[-2] <= m_closes[-5]
+            return net_progress, ci_5m
+
     except Exception:
         return True, 50.0
 
@@ -205,7 +225,7 @@ def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     now_ts = time.time()
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Fee-Covered Break-Even Mode).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (BTC-Shield & Patched-Scanner Mode).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -223,12 +243,18 @@ def execute_engine():
     open_orders = api_retry(info.frontend_open_orders, ACCOUNT_ADDRESS)
     now_ms = int(now_ts * 1000)
 
+    # --- BTC REGIME SHIELD EVALUATION ---
+    btc_regime, btc_change_pct = get_btc_regime(info, now_ms)
+    audit_logs.append(f"BTC Regime Shield Active: BTC 1D Candle is {btc_regime} ({btc_change_pct:+.2f}%).")
+    if btc_regime == "RED":
+        audit_logs.append("⚠️ BTC Daily is RED: All LONG breakout entries strictly BLOCKED.")
+    elif btc_regime == "GREEN":
+        audit_logs.append("⚠️ BTC Daily is GREEN: All SHORT breakout entries strictly BLOCKED.")
+
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
         coin_name = asset.get("name")
         sz_decimals_map[coin_name] = asset.get("szDecimals", 4)
-
-    audit_logs.append("Fee-Covered Mode: Break-even lock threshold raised to +1.2% ROE peak with +0.3% floor buffer.")
 
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
@@ -437,78 +463,85 @@ def execute_engine():
             if not candles or len(candles) < 50:
                 continue
             scanned_count += 1
+
+            # Use STRICTLY COMPLETED candles to avoid live candle repainting/fakeouts
             closes = [float(c["c"]) for c in candles]
             opens = [float(c["o"]) for c in candles]
             highs = [float(c["h"]) for c in candles]
             lows = [float(c["l"]) for c in candles]
             volumes = [float(c.get("v", 0)) for c in candles]
 
-            upper, lower, filter_band = calculate_gaussian_channel(closes)
-            current_close = closes[-1]
-            current_open = opens[-1]
-            prev_close = closes[-2]
-            prev_open = opens[-2]
-            current_high = highs[-1]
-            current_low = lows[-1]
+            upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
+            comp_close = closes[-2]
+            comp_open = opens[-2]
+            prev_comp_close = closes[-3]
+            prev_comp_open = opens[-3]
+            comp_high = highs[-2]
+            comp_low = lows[-2]
             
-            ci_30m = calculate_choppiness_index(highs, lows, closes)
+            ci_30m = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
             if ci_30m > 58.0:
                 continue
 
-            avg_vol = np.mean(volumes[-11:-1]) if len(volumes) >= 11 else volumes[-2]
-            current_vol = volumes[-2] if len(volumes) >= 2 else volumes[-1]
-            vol_ratio = current_vol / avg_vol if avg_vol > 0 else 1.0
+            # Volume ratio on completed candles
+            avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else volumes[-3]
+            comp_vol = volumes[-2]
+            vol_ratio = comp_vol / avg_vol if avg_vol > 0 else 1.0
 
-            atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])])
+            atr = np.mean([h - l for h, l in zip(highs[-15:-1], lows[-15:-1])])
 
-            is_green_candle = current_close > current_open
-            recent_red_to_green = (prev_close <= prev_open) and is_green_candle
-            has_upward_continuation = current_close > prev_close
-            candle_range = current_high - current_low
+            is_green_candle = comp_close > comp_open
+            recent_red_to_green = (prev_comp_close <= prev_comp_open) and is_green_candle
+            has_upward_continuation = comp_close > prev_comp_close
+            candle_range = comp_high - comp_low
             upper_wick_ok = True
             if candle_range > 0:
-                upper_wick = (current_high - current_close) / candle_range
+                upper_wick = (comp_high - comp_close) / candle_range
                 if upper_wick > 0.35:
                     upper_wick_ok = False
 
-            if current_close > upper and current_close <= upper * 1.04 and vol_ratio >= 1.8 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
-                is_ballistic = current_close > (upper + 1.5 * atr)
-                extension_score = max(0.0, (current_close - upper) / upper)
-                atr_score = atr / current_close
-                momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
+            # Evaluate LONG setup (Blocked if BTC Regime is RED)
+            if btc_regime != "RED":
+                if comp_close > upper and comp_close <= upper * 1.04 and vol_ratio >= 1.8 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
+                    is_ballistic = comp_close > (upper + 1.5 * atr)
+                    extension_score = max(0.0, (comp_close - upper) / upper)
+                    atr_score = atr / comp_close
+                    momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
 
-                pass_5m, ci_5m = verify_5m_micro_structure(info, coin, now_ms, is_long=True)
-                if pass_5m and ci_5m <= 58.0:
-                    candidate_obj = {
-                        "coin": coin, "close": current_close, "is_long": True, "is_ballistic": is_ballistic,
-                        "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio
-                    }
-                    market_candidates.append(candidate_obj)
-                    audit_logs.append(f"HIGH-CONVICTION LONG MATCH: {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, 30m CI: {ci_30m:.1f}, 5m CI: {ci_5m:.1f})")
+                    pass_5m, ci_5m = verify_5m_micro_structure(info, coin, now_ms, is_long=True)
+                    if pass_5m and ci_5m <= 58.0:
+                        candidate_obj = {
+                            "coin": coin, "close": comp_close, "is_long": True, "is_ballistic": is_ballistic,
+                            "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio
+                        }
+                        market_candidates.append(candidate_obj)
+                        audit_logs.append(f"HIGH-CONVICTION LONG MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, 30m CI: {ci_30m:.1f}, 5m CI: {ci_5m:.1f})")
 
-            is_red_candle = current_close < current_open
-            recent_green_to_red = (prev_close >= prev_open) and is_red_candle
-            has_downward_continuation = current_close < prev_close
+            # Evaluate SHORT setup (Blocked if BTC Regime is GREEN)
+            is_red_candle = comp_close < comp_open
+            recent_green_to_red = (prev_comp_close >= prev_comp_open) and is_red_candle
+            has_downward_continuation = comp_close < prev_comp_close
             lower_wick_ok = True
             if candle_range > 0:
-                lower_wick = (current_close - current_low) / candle_range
+                lower_wick = (comp_close - comp_low) / candle_range
                 if lower_wick > 0.35:
                     lower_wick_ok = False
 
-            if current_close < lower and current_close >= lower * 0.96 and vol_ratio >= 1.8 and (recent_green_to_red or has_downward_continuation) and lower_wick_ok:
-                is_ballistic = current_close < (lower - 1.5 * atr)
-                extension_score = max(0.0, (lower - current_close) / lower)
-                atr_score = atr / current_close
-                momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
+            if btc_regime != "GREEN":
+                if comp_close < lower and comp_close >= lower * 0.96 and vol_ratio >= 1.8 and (recent_green_to_red or has_downward_continuation) and lower_wick_ok:
+                    is_ballistic = comp_close < (lower - 1.5 * atr)
+                    extension_score = max(0.0, (lower - comp_close) / lower)
+                    atr_score = atr / comp_close
+                    momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
 
-                pass_5m, ci_5m = verify_5m_micro_structure(info, coin, now_ms, is_long=False)
-                if pass_5m and ci_5m <= 58.0:
-                    candidate_obj = {
-                        "coin": coin, "close": current_close, "is_long": False, "is_ballistic": is_ballistic,
-                        "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio
-                    }
-                    market_candidates.append(candidate_obj)
-                    audit_logs.append(f"HIGH-CONVICTION SHORT MATCH: {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, 30m CI: {ci_30m:.1f}, 5m CI: {ci_5m:.1f})")
+                    pass_5m, ci_5m = verify_5m_micro_structure(info, coin, now_ms, is_long=False)
+                    if pass_5m and ci_5m <= 58.0:
+                        candidate_obj = {
+                            "coin": coin, "close": comp_close, "is_long": False, "is_ballistic": is_ballistic,
+                            "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio
+                        }
+                        market_candidates.append(candidate_obj)
+                        audit_logs.append(f"HIGH-CONVICTION SHORT MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, 30m CI: {ci_30m:.1f}, 5m CI: {ci_5m:.1f})")
 
         except Exception:
             continue
@@ -595,7 +628,7 @@ def execute_engine():
         if VERBOSE_TEST_MODE:
             audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
             audit_section = f"""
-            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Fee-Covered Mode)</div>
+            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (BTC-Shield & Patched-Scanner Mode)</div>
             <div class="table-responsive" style="overflow-x: hidden;">
               <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
                 <tbody>{audit_rows}</tbody>
@@ -712,7 +745,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Fee-Covered Mode)</p>
+                <p>Timestamp: {timestamp} (BTC-Shield & Patched-Scanner Mode)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -722,12 +755,11 @@ def execute_engine():
                 </div>
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (Fee-Covered Engine)</div>
+                  <div class="rules-title">&#9989; Active Guardrails (BTC-Shield Engine)</div>
+                  &bull; <b>BTC Regime Shield:</b> Evaluates BTC daily candle. Blocks LONGs if BTC is Red; Blocks SHORTs if BTC is Green.<br>
+                  &bull; <b>Completed Candle Alignment:</b> Gaussian breakout & volume checks strictly run on completed 30m candles.<br>
+                  &bull; <b>Gradual Stop Ratchet:</b> Initial -2.5% ROE stop retained until peak ROE exceeds +2.0% to prevent slippage chokes.<br>
                   &bull; <b>Execution Engine:</b> 5-Min Exact Precision Loop (3x/Run - 15 Mins) &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
-                  &bull; <b>Fee-Covered Break-Even:</b> Activates at +1.2% ROE peak with +0.3% floor buffer to cover spread & fees<br>
-                  &bull; <b>Chop Purge Grace Period:</b> 20-minute (4-cycle) immunity window on fresh entries to prevent immediate purges<br>
-                  &bull; <b>Dual-Timeframe Scanner:</b> Enforces CI &le; 58.0 on BOTH 30m and 5m charts before opening trades<br>
-                  &bull; <b>Volume Threshold:</b> Elevated to &ge; 1.8x on completed candle volumes<br>
                   &bull; <b>Leverage Profile: Optimized 5x Safe Max Leverage</b>
                 </div>
 
