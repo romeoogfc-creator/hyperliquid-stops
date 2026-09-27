@@ -38,6 +38,26 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "NEO",
+      "entry_price": 2.7272,
+      "exit_price": 2.7083,
+      "pnl_usd": -0.42067441478439244,
+      "roe_pct": -3.4650924024640504,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-3.5%)",
+      "timestamp": "2026-09-27 09:04:59"
+    },
+    {
+      "coin": "DOT",
+      "entry_price": 1.2688,
+      "exit_price": 1.25055,
+      "pnl_usd": -0.9938309495192242,
+      "roe_pct": -1.438366960907935,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-1.4%)",
+      "timestamp": "2026-09-27 09:04:59"
+    },
+    {
       "coin": "PENDLE",
       "entry_price": 2.6345,
       "exit_price": 2.6363,
@@ -116,63 +136,23 @@
       "side": "LONG",
       "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-0.9%)",
       "timestamp": "2026-09-26 09:36:21"
-    },
-    {
-      "coin": "DOT",
-      "entry_price": 1.1962,
-      "exit_price": 1.18955,
-      "pnl_usd": -1.8407227240427533,
-      "roe_pct": -2.7796355124560375,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-2.8%)",
-      "timestamp": "2026-09-25 13:38:34"
-    },
-    {
-      "coin": "JTO",
-      "entry_price": 0.52877,
-      "exit_price": 0.53935,
-      "pnl_usd": 1.692961670291437,
-      "roe_pct": 10.004349717268413,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Tiered Profit Lock (+10.0%)",
-      "timestamp": "2026-09-25 13:23:16"
     }
   ],
   "active_position_cache": {
-    "DOT": {
-      "entry_px": 1.2688,
-      "current_px": 1.25855,
-      "szi": 54.9,
-      "peak_roe": 0.003389029003783079,
-      "margin": 69.094395,
-      "leverage": 1.0,
-      "side": "LONG"
-    },
     "BIGTIME": {
       "entry_px": 0.009522,
-      "current_px": 0.009781,
+      "current_px": 0.009835,
       "szi": 8331.0,
       "peak_roe": 0.14461247637051072,
-      "margin": 27.150729,
+      "margin": 27.320126,
       "leverage": 3.0,
-      "side": "LONG"
-    },
-    "NEO": {
-      "entry_px": 2.7272,
-      "current_px": 2.7102,
-      "szi": 22.4,
-      "peak_roe": -0.031167497799941157,
-      "margin": 12.140352,
-      "leverage": 5.0,
       "side": "LONG"
     }
   },
   "previous_active_coins": [
-    "BIGTIME",
-    "NEO",
-    "DOT"
+    "BIGTIME"
   ],
-  "last_run_timestamp": "2026-09-27 08:38:55",
+  "last_run_timestamp": "2026-09-27 09:05:53",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
