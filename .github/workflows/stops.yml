@@ -2,7 +2,7 @@ name: TR-GC-Crypto-LS-23
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # Launches 1 job every 30 minutes (Runs 6 continuous 5-min cycles internally)
+    - cron: '*/30 * * * *'  # Launches 1 job every 30 minutes
   workflow_dispatch:
 
 concurrency:
