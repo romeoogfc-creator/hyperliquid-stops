@@ -20,7 +20,7 @@
     "DYDX": 0,
     "ATOM": 4,
     "SUSHI": 3,
-    "BIGTIME": 7,
+    "BIGTIME": 0,
     "RSR": 5,
     "LINK": 0,
     "SNX": 2,
@@ -29,13 +29,23 @@
     "AAVE": 1,
     "UNI": 2,
     "OP": 0,
-    "DOT": 3,
+    "DOT": 4,
     "SEI": 0,
     "SOL": 3,
     "LDO": 1,
-    "PENDLE": 1
+    "PENDLE": 0
   },
   "closed_trades_ledger": [
+    {
+      "coin": "UNI",
+      "entry_price": 10.171,
+      "exit_price": 9.98805,
+      "pnl_usd": -1.4798552271163108,
+      "roe_pct": -1.7987415200078651,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-1.8%)",
+      "timestamp": "2026-09-27 07:05:26"
+    },
     {
       "coin": "TRX",
       "entry_price": 0.33294,
@@ -125,40 +135,43 @@
       "side": "LONG",
       "exit_reason": "\ud83c\udfaf Tiered Profit Lock (+1.9%)",
       "timestamp": "2026-09-25 13:23:16"
-    },
-    {
-      "coin": "PENDLE",
-      "entry_price": 2.6348,
-      "exit_price": 2.6292,
-      "exit_reason": "\ud83d\udea8 High Choppiness Chop Purge (CI: 71.3)",
-      "timestamp": "2026-09-25 13:07:27"
     }
   ],
   "active_position_cache": {
-    "UNI": {
-      "entry_px": 10.171,
-      "current_px": 10.1565,
-      "szi": 8.1,
-      "peak_roe": -0.0014256218660898593,
-      "margin": 82.2717,
+    "DOT": {
+      "entry_px": 1.2688,
+      "current_px": 1.2579,
+      "szi": 54.9,
+      "peak_roe": -0.00859079445145012,
+      "margin": 69.0642,
       "leverage": 1.0,
+      "side": "LONG"
+    },
+    "BIGTIME": {
+      "entry_px": 0.009522,
+      "current_px": 0.009864,
+      "szi": 8331.0,
+      "peak_roe": 0.10775047258979215,
+      "margin": 27.389551,
+      "leverage": 3.0,
       "side": "LONG"
     },
     "PENDLE": {
       "entry_px": 2.6345,
-      "current_px": 2.63915,
+      "current_px": 2.65095,
       "szi": 25.0,
-      "peak_roe": 0.008825204023533538,
-      "margin": 13.1955,
+      "peak_roe": 0.03122034541658731,
+      "margin": 13.254,
       "leverage": 5.0,
       "side": "LONG"
     }
   },
   "previous_active_coins": [
+    "BIGTIME",
     "PENDLE",
-    "UNI"
+    "DOT"
   ],
-  "last_run_timestamp": "2026-09-27 06:42:45",
+  "last_run_timestamp": "2026-09-27 07:06:20",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
