@@ -29,11 +29,12 @@
     "AAVE": 1,
     "UNI": 2,
     "OP": 0,
-    "DOT": 6,
+    "DOT": 7,
     "SEI": 0,
     "SOL": 3,
     "LDO": 1,
-    "PENDLE": 0
+    "PENDLE": 0,
+    "NEO": 1
   },
   "closed_trades_ledger": [
     {
@@ -140,28 +141,38 @@
   "active_position_cache": {
     "DOT": {
       "entry_px": 1.2688,
-      "current_px": 1.2731,
+      "current_px": 1.25855,
       "szi": 54.9,
       "peak_roe": 0.003389029003783079,
-      "margin": 69.89319,
+      "margin": 69.094395,
       "leverage": 1.0,
       "side": "LONG"
     },
     "BIGTIME": {
       "entry_px": 0.009522,
-      "current_px": 0.009762,
+      "current_px": 0.009781,
       "szi": 8331.0,
       "peak_roe": 0.14461247637051072,
-      "margin": 27.139621,
+      "margin": 27.150729,
       "leverage": 3.0,
+      "side": "LONG"
+    },
+    "NEO": {
+      "entry_px": 2.7272,
+      "current_px": 2.7102,
+      "szi": 22.4,
+      "peak_roe": -0.031167497799941157,
+      "margin": 12.140352,
+      "leverage": 5.0,
       "side": "LONG"
     }
   },
   "previous_active_coins": [
-    "DOT",
-    "BIGTIME"
+    "BIGTIME",
+    "NEO",
+    "DOT"
   ],
-  "last_run_timestamp": "2026-09-27 08:06:21",
+  "last_run_timestamp": "2026-09-27 08:38:55",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
