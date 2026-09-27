@@ -774,7 +774,7 @@ def execute_engine():
 
                 <div class="rules-card">
                   <div class="rules-title">&#9989; Active Guardrails (Pure Quantitative Engine)</div>
-                  &bull; <b>Execution Engine:</b> 5-Min 24/7 GitHub Cron &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
+                  &bull; <b>Execution Engine:</b> 5-Min Exact Precision Loop (6x/Run) &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
                   &bull; <b>BTC Entry Regime Shield:</b> 2-Candle confirmed alignment for new entries; active runners ride native trailing leashes<br>
                   &bull; <b>Pre-Placed Limit TP Target:</b> Zero-Slippage Limit Take-Profit Resting Target (+3.5% ROE)<br>
                   &bull; <b>Staircase Retention Engine:</b> Soft BE at +0.3% ROE, +1.5% Lock at +2.0% ROE, 92.5% Lock at +8% ROE, 95% Lock at +15% ROE<br>
@@ -803,13 +803,26 @@ def execute_engine():
         send_html_dashboard_email(f"Hyperliquid Report — USD ${account_value:.2f}", html_content, text_fallback)
     else:
         save_state(state)
-        print(f"[{timestamp}] 5-Minute background execution complete ({elapsed_minutes:.1f}m since last report). Skipping email dispatch.")
+        print(f"[{timestamp}] Background execution cycle complete ({elapsed_minutes:.1f}m since last report). Skipping email dispatch.")
 
 if __name__ == "__main__":
-    try:
-        execute_engine()
-    except Exception as e:
-        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Engine execution error: {e}"
-        print(err_msg)
-        send_html_dashboard_email("Hyperliquid Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
-        raise e
+    total_cycles = 6          # Run 6 cycles per 30-minute GitHub Action execution
+    cycle_interval_sec = 300  # 300 seconds = 5 minutes exact precision
+
+    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Launching 30-Minute Continuous 5-Min Execution Loop ({total_cycles} Cycles)...")
+
+    for cycle in range(1, total_cycles + 1):
+        print(f"\n--- EXECUTION CYCLE {cycle}/{total_cycles} STARTING ---")
+        try:
+            execute_engine()
+        except Exception as e:
+            err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Engine execution error on cycle {cycle}: {e}"
+            print(err_msg)
+            send_html_dashboard_email("Hyperliquid Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
+        
+        # Pause for 300 seconds between cycles (except on the final cycle)
+        if cycle < total_cycles:
+            print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Cycle {cycle} complete. Sleeping 300 seconds until next 5-min check...")
+            time.sleep(cycle_interval_sec)
+
+    print(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] All {total_cycles} continuous 5-minute cycles completed successfully.")
