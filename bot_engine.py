@@ -345,7 +345,7 @@ def execute_engine():
                         "pnl_usd": unrealized_pnl, "roe_pct": current_roe * 100, "side": "LONG" if is_long else "SHORT",
                         "exit_reason": "⚡ Instant Reversal Bailout (Saved from Bleed)", "timestamp": timestamp
                     })
-                    state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
+                    state["closed_trades_ledger"] = sorted(state["closed_trades_ledger"], key=lambda x: x.get("timestamp", ""), reverse=True)[:10]
                     trade_closed_this_run = True
                     continue
                 except Exception as e:
@@ -361,7 +361,7 @@ def execute_engine():
                         "pnl_usd": unrealized_pnl, "roe_pct": current_roe * 100, "side": "LONG" if is_long else "SHORT",
                         "exit_reason": f"🚨 High Choppiness Chop Purge (CI: {ci:.1f})", "timestamp": timestamp
                     })
-                    state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
+                    state["closed_trades_ledger"] = sorted(state["closed_trades_ledger"], key=lambda x: x.get("timestamp", ""), reverse=True)[:10]
                     trade_closed_this_run = True
                     continue
                 except Exception as e:
@@ -434,7 +434,7 @@ def execute_engine():
                 "pnl_usd": raw_pnl, "roe_pct": roe_pct, "side": "LONG" if is_long else "SHORT",
                 "exit_reason": reason, "timestamp": timestamp
             })
-            state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
+            state["closed_trades_ledger"] = sorted(state["closed_trades_ledger"], key=lambda x: x.get("timestamp", ""), reverse=True)[:10]
             trade_closed_this_run = True
 
     state["active_position_cache"] = new_active_cache
@@ -592,7 +592,7 @@ def execute_engine():
                         "exit_reason": "⚡ Accelerated Stagnation Rotation (3h Dead Capital)",
                         "timestamp": timestamp
                     })
-                    state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
+                    state["closed_trades_ledger"] = sorted(state["closed_trades_ledger"], key=lambda x: x.get("timestamp", ""), reverse=True)[:10]
                     active_count -= 1
                     trade_closed_this_run = True
                     audit_logs.append(f"ROTATION TRIGGERED: Closed stagnant crypto {coin_to_rotate} after 3 hours of dead capital.")
@@ -621,7 +621,7 @@ def execute_engine():
             </div>
             """
 
-        closed_ledger = state.get("closed_trades_ledger", [])
+        closed_ledger = sorted(state.get("closed_trades_ledger", []), key=lambda x: x.get("timestamp", ""), reverse=True)
         
         parsed_closed_rows = []
         total_realized_pnl = 0.0
