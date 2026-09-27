@@ -155,14 +155,32 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
     return stop_px, roe, target_floor_roe, is_buy_order, leash_status
 
 def check_btc_daily_candle(info):
+    """2-Candle Confirmed BTC Macro Regime Shield"""
     try:
         now_ms = int(time.time() * 1000)
-        candles = api_retry(info.candles_snapshot, name="BTC", interval="1d", startTime=now_ms - 86400000 * 5, endTime=now_ms)
-        if candles and len(candles) > 0:
-            latest = candles[-1]
+        candles_1d = api_retry(info.candles_snapshot, name="BTC", interval="1d", startTime=now_ms - 86400000 * 5, endTime=now_ms)
+        candles_30m = api_retry(info.candles_snapshot, name="BTC", interval="30m", startTime=now_ms - 3600000 * 4, endTime=now_ms)
+        
+        if candles_1d and len(candles_1d) > 0:
+            latest = candles_1d[-1]
             o = float(latest.get("o", 0))
             c = float(latest.get("c", 0))
-            return c >= o, o, c
+            daily_is_green = (c >= o)
+
+            # Multi-candle 30m alignment confirmation to filter micro-whipsaws near open line
+            if candles_30m and len(candles_30m) >= 2:
+                recent_closes = [float(item.get("c", 0)) for item in candles_30m[-2:]]
+                recent_opens = [float(item.get("o", 0)) for item in candles_30m[-2:]]
+                m30_confirmed_green = all(rc >= ro for rc, ro in zip(recent_closes, recent_opens))
+                m30_confirmed_red = all(rc <= ro for rc, ro in zip(recent_closes, recent_opens))
+
+                if daily_is_green and m30_confirmed_green:
+                    return True, o, c
+                elif not daily_is_green and m30_confirmed_red:
+                    return False, o, c
+                else:
+                    return daily_is_green, o, c
+            return daily_is_green, o, c
     except Exception:
         pass
     return True, 0.0, 0.0
@@ -319,23 +337,6 @@ def execute_engine():
                 leverage = 1.0
 
             current_roe = (((current_px - entry_px) / entry_px) * leverage) if is_long else (((entry_px - current_px) / entry_px) * leverage)
-
-            # --- REGIME MISMATCH GUARD (Macro Trend Flip Defense) ---
-            regime_mismatch = (is_long and not btc_green) or (not is_long and btc_green)
-            if regime_mismatch:
-                try:
-                    audit_logs.append(f"🚨 REGIME MISMATCH GUARD: Forcing immediate market close on {coin} ({'LONG' if is_long else 'SHORT'}) due to BTC daily candle flip to {'RED' if not btc_green else 'GREEN'}!")
-                    exchange.market_close(coin)
-                    state["closed_trades_ledger"].insert(0, {
-                        "coin": coin, "entry_price": entry_px, "exit_price": current_px,
-                        "pnl_usd": unrealized_pnl, "roe_pct": current_roe * 100, "side": "LONG" if is_long else "SHORT",
-                        "exit_reason": f"🚨 Macro Regime Force Exit (BTC Flipped {'RED' if not btc_green else 'GREEN'})", "timestamp": timestamp
-                    })
-                    state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
-                    continue
-                except Exception as e:
-                    audit_logs.append(f"Regime mismatch force close failed on {coin}: {e}")
-
             prev_peak = current_active_cache.get(coin, {}).get("peak_roe", current_roe)
             peak_roe = max(current_roe, prev_peak)
 
@@ -732,8 +733,7 @@ def execute_engine():
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Guardrails (Pure Quantitative Engine)</div>
               &bull; <b>Execution Engine:</b> 30-Min 24/7 GitHub Cron &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
-              &bull; <b>Regime Mismatch Guard:</b> Instantly flattens positions if BTC daily candle flips against open exposure<br>
-              &bull; <b>BTC Regime Shield:</b> Block LONGs if daily candle is RED; block SHORTs if daily candle is GREEN<br>
+              &bull; <b>BTC Entry Regime Shield:</b> 2-Candle confirmed alignment for new entries; active runners ride native trailing leashes<br>
               &bull; <b>Portfolio Drawdown Circuit Breaker:</b> Instantly flattens 100% to cash if total open loss hits -3.5%<br>
               &bull; <b>Active Chop Purge:</b> Automatically closes positions if market Choppiness Index (CI > 60.0) turns dead<br>
               &bull; <b>Accelerated Stagnation Rotation:</b> Cuts dead or flat capital after 3 hours (6 runs)<br>
