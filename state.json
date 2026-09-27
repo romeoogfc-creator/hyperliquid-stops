@@ -38,9 +38,20 @@
     "GMX": 1,
     "TIA": 1,
     "ZRO": 1,
-    "SUI": 1
+    "SUI": 4,
+    "ETH": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "JUP",
+      "entry_price": 0.36332,
+      "exit_price": 0.357355,
+      "pnl_usd": -1.4207189481724094,
+      "roe_pct": -1.6418033689309695,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-1.6%)",
+      "timestamp": "2026-09-27 22:15:08"
+    },
     {
       "coin": "YGG",
       "entry_price": 0.028097,
@@ -130,43 +141,33 @@
       "side": "LONG",
       "exit_reason": "\ud83c\udfaf Tiered Profit Lock (+8.9%)",
       "timestamp": "2026-09-27 10:36:56"
-    },
-    {
-      "coin": "NEO",
-      "entry_price": 2.7272,
-      "exit_price": 2.7083,
-      "pnl_usd": -0.42067441478439244,
-      "roe_pct": -3.4650924024640504,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-3.5%)",
-      "timestamp": "2026-09-27 09:04:59"
     }
   ],
   "active_position_cache": {
+    "ETH": {
+      "entry_px": 2676.2,
+      "current_px": 2683.15,
+      "szi": -0.0251,
+      "peak_roe": 0.001326507734847817,
+      "margin": 67.337025,
+      "leverage": 1.0,
+      "side": "SHORT"
+    },
     "SUI": {
       "entry_px": 1.2772,
-      "current_px": 1.27185,
+      "current_px": 1.26175,
       "szi": 54.2,
       "peak_roe": -0.004188850610710904,
-      "margin": 68.93698,
-      "leverage": 1.0,
-      "side": "LONG"
-    },
-    "JUP": {
-      "entry_px": 0.36332,
-      "current_px": 0.36873,
-      "szi": 235.0,
-      "peak_roe": 0.014890454695585231,
-      "margin": 86.53405,
+      "margin": 68.38956,
       "leverage": 1.0,
       "side": "LONG"
     }
   },
   "previous_active_coins": [
-    "SUI",
-    "JUP"
+    "ETH",
+    "SUI"
   ],
-  "last_run_timestamp": "2026-09-27 21:56:46",
+  "last_run_timestamp": "2026-09-27 22:27:49",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -176,5 +177,5 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790545804.2506452
+  "last_email_timestamp": 1790548013.0975306
 }
