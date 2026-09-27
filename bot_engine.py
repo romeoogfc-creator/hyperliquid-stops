@@ -38,7 +38,7 @@ def load_state():
                         data[k] = v
                 return data
         except Exception as e:
-            print(f"Error loading state.json: {e}")
+            print(f"Error loading state.json: {e}", flush=True)
     return default_state
 
 def save_state(state):
@@ -53,7 +53,7 @@ def api_retry(func, *args, retries=5, delay=3.0, **kwargs):
         except Exception as e:
             if "429" in str(e) or "Rate limit" in str(e) or "Timeout" in str(e):
                 if attempt < retries - 1:
-                    print(f"[WARN] Hyperliquid API rate limit hit. Pausing {delay}s before retry ({attempt+1}/{retries})...")
+                    print(f"[WARN] Hyperliquid API rate limit hit. Pausing {delay}s before retry ({attempt+1}/{retries})...", flush=True)
                     time.sleep(delay)
                     delay *= 2.0
                 else:
@@ -82,7 +82,7 @@ def send_html_dashboard_email(subject, html_content, text_fallback):
             server.login(sender_email, sender_password)
             server.sendmail(sender_email, receiver_email, msg.as_string())
     except Exception as e:
-        print(f"Failed to send email: {e}")
+        print(f"Failed to send email: {e}", flush=True)
 
 def round_sig_figs(val, sig_figs=5):
     if val == 0:
@@ -803,26 +803,26 @@ def execute_engine():
         send_html_dashboard_email(f"Hyperliquid Report — USD ${account_value:.2f}", html_content, text_fallback)
     else:
         save_state(state)
-        print(f"[{timestamp}] Background execution cycle complete ({elapsed_minutes:.1f}m since last report). Skipping email dispatch.")
+        print(f"[{timestamp}] Background execution cycle complete ({elapsed_minutes:.1f}m since last report). Skipping email dispatch.", flush=True)
 
 if __name__ == "__main__":
     total_cycles = 6          # Run 6 cycles per 30-minute GitHub Action execution
     cycle_interval_sec = 300  # 300 seconds = 5 minutes exact precision
 
-    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Launching 30-Minute Continuous 5-Min Execution Loop ({total_cycles} Cycles)...")
+    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Launching 30-Minute Continuous 5-Min Execution Loop ({total_cycles} Cycles)...", flush=True)
 
     for cycle in range(1, total_cycles + 1):
-        print(f"\n--- EXECUTION CYCLE {cycle}/{total_cycles} STARTING ---")
+        print(f"\n--- EXECUTION CYCLE {cycle}/{total_cycles} STARTING ---", flush=True)
         try:
             execute_engine()
         except Exception as e:
             err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Engine execution error on cycle {cycle}: {e}"
-            print(err_msg)
-            send_html_dashboard_email("Hyperliquid Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
+            print(err_msg, flush=True)
+            send_html_dashboard_email("Hyperliquid Bot ERROR Alert", f"3<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
         
         # Pause for 300 seconds between cycles (except on the final cycle)
         if cycle < total_cycles:
-            print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Cycle {cycle} complete. Sleeping 300 seconds until next 5-min check...")
+            print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Cycle {cycle} complete. Sleeping 300 seconds until next 5-min check...", flush=True)
             time.sleep(cycle_interval_sec)
 
-    print(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] All {total_cycles} continuous 5-minute cycles completed successfully.")
+    print(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] All {total_cycles} continuous 5-minute cycles completed successfully.", flush=True)
