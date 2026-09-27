@@ -121,10 +121,13 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
 
     leash_status = "Tiered Sniper Stop"
     
-    # --- PROPORTIONAL PEAK RETENTION TRAILING ENGINE (90% PROFIT LOCK) ---
-    if peak_roe >= 0.10:
-        target_floor_roe = peak_roe * 0.90  # Retain 90% of peak gains
-        leash_status = f"🚀 Mega-Runner 90% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
+    # --- HIGH-PRECISION RETENTION ENGINE (PROTECTS SLIPPAGE & EARLY GREEN) ---
+    if peak_roe >= 0.15:
+        target_floor_roe = peak_roe * 0.95  # Retain 95% of peak gains on ultra-runners
+        leash_status = f"⚡ Ultra-Runner 95% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
+    elif peak_roe >= 0.08:
+        target_floor_roe = peak_roe * 0.925 # Retain 92.5% of peak gains (Slippage Shield)
+        leash_status = f"🚀 Mega-Runner 92.5% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
     elif peak_roe >= 0.04:
         target_floor_roe = peak_roe * 0.85  # Retain 85% of peak gains
         leash_status = f"📈 Mid-Runner 85% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
@@ -132,8 +135,14 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
         target_floor_roe = peak_roe * 0.75  # Retain 75% of peak gains
         leash_status = f"🎯 Early Winner 75% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
     elif peak_roe >= 0.01:
-        target_floor_roe = 0.005  # Lock +0.5% Break-Even
+        target_floor_roe = 0.005  # Lock +0.5% Floor
         leash_status = "Break-Even Lock (+0.5% Floor)"
+    elif peak_roe >= 0.006:
+        target_floor_roe = 0.002  # Lock +0.2% Micro-Profit Floor
+        leash_status = "🎯 Micro-Profit Lock (+0.2% Floor)"
+    elif peak_roe >= 0.003:
+        target_floor_roe = 0.000  # Soft Break-Even Floor (0.0% ROE)
+        leash_status = "🛡️ Early Soft Break-Even (0.0% Floor)"
     else:
         if choppiness_index > 58.0:
             target_floor_roe = -0.010
@@ -167,7 +176,6 @@ def check_btc_daily_candle(info):
             c = float(latest.get("c", 0))
             daily_is_green = (c >= o)
 
-            # Multi-candle 30m alignment confirmation to filter micro-whipsaws near open line
             if candles_30m and len(candles_30m) >= 2:
                 recent_closes = [float(item.get("c", 0)) for item in candles_30m[-2:]]
                 recent_opens = [float(item.get("o", 0)) for item in candles_30m[-2:]]
@@ -737,7 +745,7 @@ def execute_engine():
               &bull; <b>Portfolio Drawdown Circuit Breaker:</b> Instantly flattens 100% to cash if total open loss hits -3.5%<br>
               &bull; <b>Active Chop Purge:</b> Automatically closes positions if market Choppiness Index (CI > 60.0) turns dead<br>
               &bull; <b>Accelerated Stagnation Rotation:</b> Cuts dead or flat capital after 3 hours (6 runs)<br>
-              &bull; <b>Tiered Trailing Leash:</b> 0.3% buffer for early green, 0.5% for mid-trend, 1.0% for mega-runners<br>
+              &bull; <b>High-Precision Retention Engine:</b> Soft BE at +0.3% ROE, 92.5% lock at +8% ROE, 95% lock at +15% ROE<br>
               &bull; <b>Leverage Profile: Optimized 5x Safe Max Leverage</b>
             </div>
 
