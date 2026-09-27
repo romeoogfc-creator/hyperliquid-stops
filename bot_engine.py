@@ -144,7 +144,7 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
         target_floor_roe = 0.000
         leash_status = "🛡️ Early Soft Break-Even (0.0% Floor)"
     else:
-        # --- WIDENED INITIAL STOP BUFFERS FOR 5X LEVERAGE (Prevents Noise Shakeouts) ---
+        # --- WIDENED INITIAL STOP BUFFERS FOR 5X LEVERAGE ---
         if choppiness_index > 58.0:
             target_floor_roe = -0.015  # -1.5% ROE (0.3% price tolerance)
             leash_status = "Choppy Defense Stop"
@@ -168,12 +168,14 @@ def verify_5m_micro_structure(info, coin, now_ms, is_long):
     try:
         m5_candles = api_retry(info.candles_snapshot, name=coin, interval="5m", startTime=now_ms - 3600000 * 4, endTime=now_ms)
         if not m5_candles or len(m5_candles) < 6:
-            return True
+            return True, 50.0
         m_closes = [float(c["c"]) for c in m5_candles]
         m_opens = [float(c["o"]) for c in m5_candles]
         m_highs = [float(c["h"]) for c in m5_candles]
         m_lows = [float(c["l"]) for c in m5_candles]
         
+        ci_5m = calculate_choppiness_index(m_highs, m_lows, m_closes)
+
         recent_closes = m_closes[-5:]
         recent_opens = m_opens[-5:]
         
@@ -187,8 +189,8 @@ def verify_5m_micro_structure(info, coin, now_ms, is_long):
             if candle_range > 0:
                 upper_wick_ratio = (latest_high - max(recent_opens[-1], latest_close)) / candle_range
                 if upper_wick_ratio > 0.4:
-                    return False
-            return net_progress and (green_count >= 3)
+                    return False, ci_5m
+            return (net_progress and (green_count >= 3)), ci_5m
         else:
             net_progress = recent_closes[-1] < recent_closes[0]
             red_count = sum(1 for o, c in zip(recent_opens, recent_closes) if c <= o)
@@ -199,16 +201,16 @@ def verify_5m_micro_structure(info, coin, now_ms, is_long):
             if candle_range > 0:
                 lower_wick_ratio = (min(recent_opens[-1], latest_close) - latest_low) / candle_range
                 if lower_wick_ratio > 0.4:
-                    return False
-            return net_progress and (red_count >= 3)
+                    return False, ci_5m
+            return (net_progress and (red_count >= 3)), ci_5m
     except Exception:
-        return True
+        return True, 50.0
 
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     now_ts = time.time()
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Breathing-Room Anti-Shakeout Mode).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Grace-Period & Dual-CI Mode).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -231,7 +233,7 @@ def execute_engine():
         coin_name = asset.get("name")
         sz_decimals_map[coin_name] = asset.get("szDecimals", 4)
 
-    audit_logs.append("Breathing-Room Mode: Initial ROE stop widened to -2.5%/-3.0% to prevent premature wick shakeouts while retaining infinite runners.")
+    audit_logs.append("Grace-Period Active: Chop Purges locked for the first 20 minutes of trade life. Volume threshold elevated to 1.8x.")
 
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
@@ -294,7 +296,7 @@ def execute_engine():
         save_state(state)
         return
 
-    # --- STANDARD POSITION PROCESSING & INSTANT REVERSAL BAILOUT ---
+    # --- STANDARD POSITION PROCESSING ---
     if asset_positions:
         for pos_item in asset_positions:
             pos = pos_item.get("position", {})
@@ -325,7 +327,6 @@ def execute_engine():
                 highs = [float(c["h"]) for c in c_candles]
                 lows = [float(c["l"]) for c in c_candles]
                 closes = [float(c["c"]) for c in c_candles]
-                opens = [float(c["o"]) for c in c_candles]
                 vols = [float(c.get("v", 0)) for c in c_candles]
                 ci = calculate_choppiness_index(highs, lows, closes)
                 vol_ratio = (vols[-1] / np.mean(vols[-14:])) if len(vols) >= 14 and np.mean(vols[-14:]) > 0 else 1.0
@@ -333,30 +334,13 @@ def execute_engine():
                 ci = 50.0
                 vol_ratio = 1.0
 
-            # --- INSTANT REVERSAL BAILOUT ---
             stg_count = state["stagnation_tracker"].get(coin, 0)
-            is_immediate_red_reversal = is_long and (closes[-1] < opens[-1]) and (current_roe < 0.002) and (stg_count <= 2)
-            is_immediate_green_reversal = (not is_long) and (closes[-1] > opens[-1]) and (current_roe < 0.002) and (stg_count <= 2)
 
-            if is_immediate_red_reversal or is_immediate_green_reversal:
+            # --- ACTIVE POSITION CHOP PURGE (WITH 20-MINUTE GRACE PERIOD) ---
+            # Requires stg_count >= 4 (at least 20 minutes since entry) before Chop Purge can fire.
+            if ci > 58.0 and current_roe < 0.005 and stg_count >= 4:
                 try:
-                    audit_logs.append(f"⚡ INSTANT REVERSAL BAILOUT: Closing {coin} immediately because breakout reversed into a red candle (ROE: {current_roe*100:+.2f}%)")
-                    exchange.market_close(coin)
-                    state["closed_trades_ledger"].insert(0, {
-                        "coin": coin, "entry_price": entry_px, "exit_price": current_px,
-                        "pnl_usd": unrealized_pnl, "roe_pct": current_roe * 100, "side": "LONG" if is_long else "SHORT",
-                        "exit_reason": "⚡ Instant Reversal Bailout (Saved from Bleed)", "timestamp": timestamp
-                    })
-                    state["closed_trades_ledger"] = sorted(state["closed_trades_ledger"], key=lambda x: x.get("timestamp", ""), reverse=True)[:10]
-                    trade_closed_this_run = True
-                    continue
-                except Exception as e:
-                    audit_logs.append(f"Instant reversal bailout failed on {coin}: {e}")
-
-            # --- ACTIVE POSITION CHOP PURGE ---
-            if ci > 58.0 and current_roe < 0.005:
-                try:
-                    audit_logs.append(f"🚨 CHOP PURGE: Closing {coin} immediately due to dead chop (CI: {ci:.1f}, ROE: {current_roe*100:+.2f}%)")
+                    audit_logs.append(f"🚨 CHOP PURGE: Closing {coin} after 20m grace period due to dead chop (CI: {ci:.1f}, ROE: {current_roe*100:+.2f}%)")
                     exchange.market_close(coin)
                     state["closed_trades_ledger"].insert(0, {
                         "coin": coin, "entry_price": entry_px, "exit_price": current_px,
@@ -473,12 +457,13 @@ def execute_engine():
             current_high = highs[-1]
             current_low = lows[-1]
             
-            ci = calculate_choppiness_index(highs, lows, closes)
-            if ci > 58.0:
+            ci_30m = calculate_choppiness_index(highs, lows, closes)
+            if ci_30m > 58.0:
                 continue
 
-            avg_vol = np.mean(volumes[-10:]) if len(volumes) >= 10 else volumes[-1]
-            current_vol = volumes[-1]
+            # Check completed volume ratio (elevated to >= 1.8x)
+            avg_vol = np.mean(volumes[-11:-1]) if len(volumes) >= 11 else volumes[-2]
+            current_vol = volumes[-2] if len(volumes) >= 2 else volumes[-1]
             vol_ratio = current_vol / avg_vol if avg_vol > 0 else 1.0
 
             atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])])
@@ -493,19 +478,20 @@ def execute_engine():
                 if upper_wick > 0.35:
                     upper_wick_ok = False
 
-            if current_close > upper and current_close <= upper * 1.04 and vol_ratio >= 1.6 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
+            if current_close > upper and current_close <= upper * 1.04 and vol_ratio >= 1.8 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
                 is_ballistic = current_close > (upper + 1.5 * atr)
                 extension_score = max(0.0, (current_close - upper) / upper)
                 atr_score = atr / current_close
                 momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
 
-                candidate_obj = {
-                    "coin": coin, "close": current_close, "is_long": True, "is_ballistic": is_ballistic,
-                    "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
-                }
-                if verify_5m_micro_structure(info, coin, now_ms, is_long=True):
+                pass_5m, ci_5m = verify_5m_micro_structure(info, coin, now_ms, is_long=True)
+                if pass_5m and ci_5m <= 58.0:
+                    candidate_obj = {
+                        "coin": coin, "close": current_close, "is_long": True, "is_ballistic": is_ballistic,
+                        "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio
+                    }
                     market_candidates.append(candidate_obj)
-                    audit_logs.append(f"HIGH-CONVICTION LONG MATCH: {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
+                    audit_logs.append(f"HIGH-CONVICTION LONG MATCH: {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, 30m CI: {ci_30m:.1f}, 5m CI: {ci_5m:.1f})")
 
             is_red_candle = current_close < current_open
             recent_green_to_red = (prev_close >= prev_open) and is_red_candle
@@ -516,19 +502,20 @@ def execute_engine():
                 if lower_wick > 0.35:
                     lower_wick_ok = False
 
-            if current_close < lower and current_close >= lower * 0.96 and vol_ratio >= 1.6 and (recent_green_to_red or has_downward_continuation) and lower_wick_ok:
+            if current_close < lower and current_close >= lower * 0.96 and vol_ratio >= 1.8 and (recent_green_to_red or has_downward_continuation) and lower_wick_ok:
                 is_ballistic = current_close < (lower - 1.5 * atr)
                 extension_score = max(0.0, (lower - current_close) / lower)
                 atr_score = atr / current_close
                 momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
 
-                candidate_obj = {
-                    "coin": coin, "close": current_close, "is_long": False, "is_ballistic": is_ballistic,
-                    "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
-                }
-                if verify_5m_micro_structure(info, coin, now_ms, is_long=False):
+                pass_5m, ci_5m = verify_5m_micro_structure(info, coin, now_ms, is_long=False)
+                if pass_5m and ci_5m <= 58.0:
+                    candidate_obj = {
+                        "coin": coin, "close": current_close, "is_long": False, "is_ballistic": is_ballistic,
+                        "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio
+                    }
                     market_candidates.append(candidate_obj)
-                    audit_logs.append(f"HIGH-CONVICTION SHORT MATCH: {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
+                    audit_logs.append(f"HIGH-CONVICTION SHORT MATCH: {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, 30m CI: {ci_30m:.1f}, 5m CI: {ci_5m:.1f})")
 
         except Exception:
             continue
@@ -615,7 +602,7 @@ def execute_engine():
         if VERBOSE_TEST_MODE:
             audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
             audit_section = f"""
-            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Breathing-Room Mode)</div>
+            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Grace-Period & Dual-CI Mode)</div>
             <div class="table-responsive" style="overflow-x: hidden;">
               <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
                 <tbody>{audit_rows}</tbody>
@@ -732,7 +719,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Breathing-Room Anti-Shakeout Mode)</p>
+                <p>Timestamp: {timestamp} (Grace-Period & Dual-CI Mode)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -742,11 +729,12 @@ def execute_engine():
                 </div>
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (Breathing-Room Engine)</div>
+                  <div class="rules-title">&#9989; Active Guardrails (Grace-Period Engine)</div>
                   &bull; <b>Execution Engine:</b> 5-Min Exact Precision Loop (3x/Run - 15 Mins) &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
+                  &bull; <b>Chop Purge Grace Period:</b> 20-minute (4-cycle) immunity window on fresh entries to prevent immediate purges<br>
+                  &bull; <b>Dual-Timeframe Scanner:</b> Enforces CI &le; 58.0 on BOTH 30m and 5m charts before opening trades<br>
+                  &bull; <b>Volume Threshold:</b> Elevated to &ge; 1.8x on completed candle volumes<br>
                   &bull; <b>Breathing-Room Stop:</b> Initial stop widened to -2.5%/-3.0% ROE (0.5%–0.6% price tolerance) to stop wick shakeouts<br>
-                  &bull; <b>Infinite Runner Rule:</b> Fixed TP limit removed so winning trades can run infinitely higher<br>
-                  &bull; <b>Staircase Retention Engine:</b> Soft BE at +0.3% ROE, +1.5% Lock at +2.0% ROE, 92.5% Lock at +8% ROE, 95% Lock at +15% ROE<br>
                   &bull; <b>Leverage Profile: Optimized 5x Safe Max Leverage</b>
                 </div>
 
