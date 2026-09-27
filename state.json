@@ -28,8 +28,8 @@
     "JUP": 1,
     "AAVE": 1,
     "UNI": 2,
-    "OP": 0,
-    "DOT": 7,
+    "OP": 1,
+    "DOT": 9,
     "SEI": 0,
     "SOL": 3,
     "LDO": 1,
@@ -40,6 +40,16 @@
     "ZRO": 1
   },
   "closed_trades_ledger": [
+    {
+      "coin": "OP",
+      "entry_price": 0.14851,
+      "exit_price": 0.14718,
+      "pnl_usd": -0.6098492855699943,
+      "roe_pct": -4.477812941889428,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-4.5%)",
+      "timestamp": "2026-09-27 19:33:25"
+    },
     {
       "coin": "TIA",
       "entry_price": 0.50693,
@@ -129,33 +139,23 @@
       "side": "LONG",
       "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-1.8%)",
       "timestamp": "2026-09-27 07:05:26"
-    },
-    {
-      "coin": "TRX",
-      "entry_price": 0.33294,
-      "exit_price": 0.332995,
-      "pnl_usd": -0.01832,
-      "roe_pct": -0.016519493001733568,
-      "side": "SHORT",
-      "exit_reason": "\ud83d\udea8 Macro Regime Force Exit (BTC Flipped GREEN)",
-      "timestamp": "2026-09-27 02:05:16"
     }
   ],
   "active_position_cache": {
-    "ZRO": {
-      "entry_px": 1.67,
-      "current_px": 1.66735,
-      "szi": 40.8,
-      "peak_roe": -0.007934131736526405,
-      "margin": 13.604352,
-      "leverage": 5.0,
+    "DOT": {
+      "entry_px": 1.2608,
+      "current_px": 1.26185,
+      "szi": 54.9,
+      "peak_roe": 0.0008328045685279152,
+      "margin": 69.26733,
+      "leverage": 1.0,
       "side": "LONG"
     }
   },
   "previous_active_coins": [
-    "ZRO"
+    "DOT"
   ],
-  "last_run_timestamp": "2026-09-27 18:35:20",
+  "last_run_timestamp": "2026-09-27 19:34:15",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -165,5 +165,5 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790534073.3452604
+  "last_email_timestamp": 1790537605.695029
 }
