@@ -207,7 +207,7 @@ def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     now_ts = time.time()
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (High-Conviction Anti-Bleed Mode).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Infinite Runner & Anti-Reversal Mode).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -230,7 +230,7 @@ def execute_engine():
         coin_name = asset.get("name")
         sz_decimals_map[coin_name] = asset.get("szDecimals", 4)
 
-    audit_logs.append("High-Conviction Mode: Requiring volume expansion (>=1.6x) and strict candle confirmation.")
+    audit_logs.append("Infinite Runner Mode: Fixed TP limit removed. Staircase trails winners infinitely. Instant reversal bailouts active.")
 
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
@@ -292,7 +292,7 @@ def execute_engine():
         save_state(state)
         return
 
-    # --- STANDARD POSITION PROCESSING ---
+    # --- STANDARD POSITION PROCESSING & INSTANT REVERSAL BAILOUT ---
     if asset_positions:
         for pos_item in asset_positions:
             pos = pos_item.get("position", {})
@@ -319,16 +319,37 @@ def execute_engine():
 
             try:
                 time.sleep(0.05)
-                c_candles = api_retry(info.candles_snapshot, name=coin, interval="30m", startTime=now_ms - 86400000 * 2, endTime=now_ms)
+                c_candles = api_retry(info.candles_snapshot, name=coin, interval="5m", startTime=now_ms - 3600000 * 2, endTime=now_ms)
                 highs = [float(c["h"]) for c in c_candles]
                 lows = [float(c["l"]) for c in c_candles]
                 closes = [float(c["c"]) for c in c_candles]
+                opens = [float(c["o"]) for c in c_candles]
                 vols = [float(c.get("v", 0)) for c in c_candles]
                 ci = calculate_choppiness_index(highs, lows, closes)
                 vol_ratio = (vols[-1] / np.mean(vols[-14:])) if len(vols) >= 14 and np.mean(vols[-14:]) > 0 else 1.0
             except Exception:
                 ci = 50.0
                 vol_ratio = 1.0
+
+            # --- INSTANT REVERSAL BAILOUT (Exit immediately if breakout turns red right away) ---
+            stg_count = state["stagnation_tracker"].get(coin, 0)
+            is_immediate_red_reversal = is_long and (closes[-1] < opens[-1]) and (current_roe < 0.002) and (stg_count <= 2)
+            is_immediate_green_reversal = (not is_long) and (closes[-1] > opens[-1]) and (current_roe < 0.002) and (stg_count <= 2)
+
+            if is_immediate_red_reversal or is_immediate_green_reversal:
+                try:
+                    audit_logs.append(f"⚡ INSTANT REVERSAL BAILOUT: Closing {coin} immediately because breakout reversed into a red candle (ROE: {current_roe*100:+.2f}%)")
+                    exchange.market_close(coin)
+                    state["closed_trades_ledger"].insert(0, {
+                        "coin": coin, "entry_price": entry_px, "exit_price": current_px,
+                        "pnl_usd": unrealized_pnl, "roe_pct": current_roe * 100, "side": "LONG" if is_long else "SHORT",
+                        "exit_reason": "⚡ Instant Reversal Bailout (Saved from Bleed)", "timestamp": timestamp
+                    })
+                    state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
+                    trade_closed_this_run = True
+                    continue
+                except Exception as e:
+                    audit_logs.append(f"Instant reversal bailout failed on {coin}: {e}")
 
             # --- ACTIVE POSITION CHOP PURGE ---
             if ci > 58.0 and current_roe < 0.005:
@@ -543,19 +564,7 @@ def execute_engine():
                     active_coins.add(coin)
                     trades_executed = True
                     audit_logs.append(f"EXECUTION SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {coin} (Size: {sz})")
-
-                    tp_roe_target = 0.035
-                    tp_px_raw = px * (1 + (tp_roe_target / 5.0)) if is_long else px * (1 - (tp_roe_target / 5.0))
-                    tp_px = round_sig_figs(tp_px_raw, 5)
-                    try:
-                        exchange.order(
-                            coin, not is_long, sz, tp_px,
-                            {"trigger": {"triggerPx": tp_px, "isMarket": False, "tpsl": "tp"}},
-                            reduce_only=True
-                        )
-                        audit_logs.append(f"PRE-PLACED LIMIT TP ORDER RESTING: {coin} @ ${tp_px} (+3.5% ROE / Zero Slippage)")
-                    except Exception as tp_err:
-                        audit_logs.append(f"Limit TP order setup note for {coin}: {tp_err}")
+                    audit_logs.append(f"INFINITE RUNNER MODE: No TP limit. Staircase retention engine managing {coin} extension.")
 
             except Exception as e:
                 audit_logs.append(f"EXECUTION FAILED on {coin}: {e}")
@@ -604,7 +613,7 @@ def execute_engine():
         if VERBOSE_TEST_MODE:
             audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
             audit_section = f"""
-            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (High-Conviction Mode)</div>
+            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Infinite Runner Mode)</div>
             <div class="table-responsive" style="overflow-x: hidden;">
               <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
                 <tbody>{audit_rows}</tbody>
@@ -721,7 +730,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (High-Conviction Anti-Bleed Mode)</p>
+                <p>Timestamp: {timestamp} (Infinite Runner Mode)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -731,10 +740,10 @@ def execute_engine():
                 </div>
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (High-Conviction Mode)</div>
+                  <div class="rules-title">&#9989; Active Guardrails (Infinite Runner Engine)</div>
                   &bull; <b>Execution Engine:</b> 5-Min Exact Precision Loop (3x/Run - 15 Mins) &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
-                  &bull; <b>Volume Threshold:</b> Stricter Vol Ratio >= 1.6x to filter fake breakouts<br>
-                  &bull; <b>Pre-Placed Limit TP Target:</b> Zero-Slippage Limit Take-Profit Resting Target (+3.5% ROE)<br>
+                  &bull; <b>Infinite Runner Rule:</b> Fixed TP limit removed so winning trades can run infinitely higher<br>
+                  &bull; <b>Instant Reversal Bailout:</b> Closes failed breakouts immediately if candles turn red right away<br>
                   &bull; <b>Staircase Retention Engine:</b> Soft BE at +0.3% ROE, +1.5% Lock at +2.0% ROE, 92.5% Lock at +8% ROE, 95% Lock at +15% ROE<br>
                   &bull; <b>Leverage Profile: Optimized 5x Safe Max Leverage</b>
                 </div>
@@ -764,7 +773,7 @@ def execute_engine():
         print(f"[{timestamp}] Background execution cycle complete ({elapsed_minutes:.1f}m since last report). Skipping email dispatch.", flush=True)
 
 if __name__ == "__main__":
-    total_cycles = 3          # Reduced to 3 cycles (15 mins) so every run finishes and turns GREEN before the next cron
+    total_cycles = 3          # 3 cycles (15 mins) to guarantee green checkmarks every run
     cycle_interval_sec = 300  # 300 seconds = 5 minutes exact precision
 
     print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Launching 15-Minute Continuous 5-Min Execution Loop ({total_cycles} Cycles)...", flush=True)
