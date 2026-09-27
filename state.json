@@ -34,7 +34,8 @@
     "SOL": 3,
     "LDO": 1,
     "PENDLE": 0,
-    "NEO": 1
+    "NEO": 1,
+    "GMX": 1
   },
   "closed_trades_ledger": [
     {
@@ -138,9 +139,21 @@
       "timestamp": "2026-09-26 11:36:05"
     }
   ],
-  "active_position_cache": {},
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-09-27 12:42:09",
+  "active_position_cache": {
+    "GMX": {
+      "entry_px": 8.4053,
+      "current_px": 8.3117,
+      "szi": 7.38,
+      "peak_roe": -0.03340749289139008,
+      "margin": 20.444076,
+      "leverage": 3.0,
+      "side": "LONG"
+    }
+  },
+  "previous_active_coins": [
+    "GMX"
+  ],
+  "last_run_timestamp": "2026-09-27 13:05:38",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
