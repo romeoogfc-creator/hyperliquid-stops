@@ -331,7 +331,7 @@ def execute_engine():
                 ci = 50.0
                 vol_ratio = 1.0
 
-            # --- INSTANT REVERSAL BAILOUT (Exit immediately if breakout turns red right away) ---
+            # --- INSTANT REVERSAL BAILOUT ---
             stg_count = state["stagnation_tracker"].get(coin, 0)
             is_immediate_red_reversal = is_long and (closes[-1] < opens[-1]) and (current_roe < 0.002) and (stg_count <= 2)
             is_immediate_green_reversal = (not is_long) and (closes[-1] > opens[-1]) and (current_roe < 0.002) and (stg_count <= 2)
@@ -773,8 +773,8 @@ def execute_engine():
         print(f"[{timestamp}] Background execution cycle complete ({elapsed_minutes:.1f}m since last report). Skipping email dispatch.", flush=True)
 
 if __name__ == "__main__":
-    total_cycles = 3          # 3 cycles (15 mins) to guarantee green checkmarks every run
-    cycle_interval_sec = 300  # 300 seconds = 5 minutes exact precision
+    total_cycles = 3
+    cycle_interval_sec = 300
 
     print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Launching 15-Minute Continuous 5-Min Execution Loop ({total_cycles} Cycles)...", flush=True)
 
