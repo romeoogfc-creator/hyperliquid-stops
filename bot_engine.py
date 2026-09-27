@@ -131,28 +131,23 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
     elif peak_roe >= 0.04:
         target_floor_roe = peak_roe * 0.85
         leash_status = f"📈 Mid-Runner 85% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif peak_roe >= 0.02:
+    elif peak_roe >= 0.025:
         target_floor_roe = 0.015
         leash_status = "🎯 Early Winner Lock (+1.5% Floor)"
-    elif peak_roe >= 0.01:
-        target_floor_roe = 0.005
-        leash_status = "Break-Even Lock (+0.5% Floor)"
-    elif peak_roe >= 0.006:
-        target_floor_roe = 0.002
-        leash_status = "🎯 Micro-Profit Lock (+0.2% Floor)"
-    elif peak_roe >= 0.003:
-        target_floor_roe = 0.000
-        leash_status = "🛡️ Early Soft Break-Even (0.0% Floor)"
+    elif peak_roe >= 0.012:
+        # Buffer +0.3% ROE floor covers exchange taker fees + spread on exit so BE never ends in a loss
+        target_floor_roe = 0.003
+        leash_status = "🛡️ Net Break-Even Lock (+0.3% Fee-Covered Floor)"
     else:
-        # --- WIDENED INITIAL STOP BUFFERS FOR 5X LEVERAGE ---
+        # --- FULL BREATHING ROOM UNTIL PEAK ROE EXCEEDS +1.2% ---
         if choppiness_index > 58.0:
-            target_floor_roe = -0.015  # -1.5% ROE (0.3% price tolerance)
+            target_floor_roe = -0.015  # -1.5% ROE
             leash_status = "Choppy Defense Stop"
         elif is_ballistic:
-            target_floor_roe = -0.030  # -3.0% ROE (0.6% price tolerance)
+            target_floor_roe = -0.030  # -3.0% ROE
             leash_status = "Ballistic Room-to-Run Stop"
         else:
-            target_floor_roe = -0.025  # -2.5% ROE (0.5% price tolerance)
+            target_floor_roe = -0.025  # -2.5% ROE
             leash_status = "Trend Breathing-Room Stop"
 
     if is_long:
@@ -210,7 +205,7 @@ def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     now_ts = time.time()
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Grace-Period & Dual-CI Mode).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Fee-Covered Break-Even Mode).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -233,7 +228,7 @@ def execute_engine():
         coin_name = asset.get("name")
         sz_decimals_map[coin_name] = asset.get("szDecimals", 4)
 
-    audit_logs.append("Grace-Period Active: Chop Purges locked for the first 20 minutes of trade life. Volume threshold elevated to 1.8x.")
+    audit_logs.append("Fee-Covered Mode: Break-even lock threshold raised to +1.2% ROE peak with +0.3% floor buffer.")
 
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
@@ -337,7 +332,6 @@ def execute_engine():
             stg_count = state["stagnation_tracker"].get(coin, 0)
 
             # --- ACTIVE POSITION CHOP PURGE (WITH 20-MINUTE GRACE PERIOD) ---
-            # Requires stg_count >= 4 (at least 20 minutes since entry) before Chop Purge can fire.
             if ci > 58.0 and current_roe < 0.005 and stg_count >= 4:
                 try:
                     audit_logs.append(f"🚨 CHOP PURGE: Closing {coin} after 20m grace period due to dead chop (CI: {ci:.1f}, ROE: {current_roe*100:+.2f}%)")
@@ -461,7 +455,6 @@ def execute_engine():
             if ci_30m > 58.0:
                 continue
 
-            # Check completed volume ratio (elevated to >= 1.8x)
             avg_vol = np.mean(volumes[-11:-1]) if len(volumes) >= 11 else volumes[-2]
             current_vol = volumes[-2] if len(volumes) >= 2 else volumes[-1]
             vol_ratio = current_vol / avg_vol if avg_vol > 0 else 1.0
@@ -602,7 +595,7 @@ def execute_engine():
         if VERBOSE_TEST_MODE:
             audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
             audit_section = f"""
-            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Grace-Period & Dual-CI Mode)</div>
+            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Fee-Covered Mode)</div>
             <div class="table-responsive" style="overflow-x: hidden;">
               <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
                 <tbody>{audit_rows}</tbody>
@@ -719,7 +712,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Grace-Period & Dual-CI Mode)</p>
+                <p>Timestamp: {timestamp} (Fee-Covered Mode)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -729,12 +722,12 @@ def execute_engine():
                 </div>
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (Grace-Period Engine)</div>
+                  <div class="rules-title">&#9989; Active Guardrails (Fee-Covered Engine)</div>
                   &bull; <b>Execution Engine:</b> 5-Min Exact Precision Loop (3x/Run - 15 Mins) &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
+                  &bull; <b>Fee-Covered Break-Even:</b> Activates at +1.2% ROE peak with +0.3% floor buffer to cover spread & fees<br>
                   &bull; <b>Chop Purge Grace Period:</b> 20-minute (4-cycle) immunity window on fresh entries to prevent immediate purges<br>
                   &bull; <b>Dual-Timeframe Scanner:</b> Enforces CI &le; 58.0 on BOTH 30m and 5m charts before opening trades<br>
                   &bull; <b>Volume Threshold:</b> Elevated to &ge; 1.8x on completed candle volumes<br>
-                  &bull; <b>Breathing-Room Stop:</b> Initial stop widened to -2.5%/-3.0% ROE (0.5%–0.6% price tolerance) to stop wick shakeouts<br>
                   &bull; <b>Leverage Profile: Optimized 5x Safe Max Leverage</b>
                 </div>
 
