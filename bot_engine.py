@@ -164,38 +164,8 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
 
     return stop_px, roe, target_floor_roe, is_buy_order, leash_status
 
-def check_btc_daily_candle(info):
-    """2-Candle Confirmed BTC Macro Regime Shield"""
-    try:
-        now_ms = int(time.time() * 1000)
-        candles_1d = api_retry(info.candles_snapshot, name="BTC", interval="1d", startTime=now_ms - 86400000 * 5, endTime=now_ms)
-        candles_30m = api_retry(info.candles_snapshot, name="BTC", interval="30m", startTime=now_ms - 3600000 * 4, endTime=now_ms)
-        
-        if candles_1d and len(candles_1d) > 0:
-            latest = candles_1d[-1]
-            o = float(latest.get("o", 0))
-            c = float(latest.get("c", 0))
-            daily_is_green = (c >= o)
-
-            if candles_30m and len(candles_30m) >= 2:
-                recent_closes = [float(item.get("c", 0)) for item in candles_30m[-2:]]
-                recent_opens = [float(item.get("o", 0)) for item in candles_30m[-2:]]
-                m30_confirmed_green = all(rc >= ro for rc, ro in zip(recent_closes, recent_opens))
-                m30_confirmed_red = all(rc <= ro for rc, ro in zip(recent_closes, recent_opens))
-
-                if daily_is_green and m30_confirmed_green:
-                    return True, o, c
-                elif not daily_is_green and m30_confirmed_red:
-                    return False, o, c
-                else:
-                    return daily_is_green, o, c
-            return daily_is_green, o, c
-    except Exception:
-        pass
-    return True, 0.0, 0.0
-
 def verify_5m_micro_structure(info, coin, now_ms, is_long):
-    """Instant 5-Minute Micro-Confirmation Filter"""
+    """Instant 5-Minute Micro-Confirmation Filter (Red-to-Green / Green-to-Red Shift)"""
     try:
         m5_candles = api_retry(info.candles_snapshot, name=coin, interval="5m", startTime=now_ms - 3600000 * 4, endTime=now_ms)
         if not m5_candles or len(m5_candles) < 6:
@@ -209,6 +179,7 @@ def verify_5m_micro_structure(info, coin, now_ms, is_long):
         recent_opens = m_opens[-5:]
         
         if is_long:
+            # Check for red-to-green transition or upward momentum
             net_progress = recent_closes[-1] > recent_closes[0]
             green_count = sum(1 for o, c in zip(recent_opens, recent_closes) if c >= o)
             latest_high = m_highs[-1]
@@ -221,6 +192,7 @@ def verify_5m_micro_structure(info, coin, now_ms, is_long):
                     return False
             return net_progress and (green_count >= 2)
         else:
+            # Check for green-to-red transition or downward momentum
             net_progress = recent_closes[-1] < recent_closes[0]
             red_count = sum(1 for o, c in zip(recent_opens, recent_closes) if c <= o)
             latest_high = m_highs[-1]
@@ -239,7 +211,7 @@ def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     now_ts = time.time()
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Pure Quantitative Mode).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Independent Coin Momentum Mode).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -247,7 +219,6 @@ def execute_engine():
     state = load_state()
     wallet = eth_account.Account.from_key(SECRET_KEY)
     
-    # Protected SDK initialization against 429 rate limits
     exchange = api_retry(Exchange, wallet, constants.MAINNET_API_URL, account_address=ACCOUNT_ADDRESS)
     info = api_retry(Info, constants.MAINNET_API_URL, skip_ws=True)
 
@@ -263,9 +234,7 @@ def execute_engine():
         coin_name = asset.get("name")
         sz_decimals_map[coin_name] = asset.get("szDecimals", 4)
 
-    btc_green, btc_open, btc_close = check_btc_daily_candle(info)
-    regime_str = f"GREEN (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> LONGs Allowed" if btc_green else f"RED (Open: ${btc_open:.2f}, Close: ${btc_close:.2f}) -> SHORTs Allowed"
-    audit_logs.append(f"BTC Regime Check: {regime_str}")
+    audit_logs.append("BTC Macro Regime Shield Bypassed: Evaluating each coin independently on its own local history.")
 
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
@@ -405,7 +374,6 @@ def execute_engine():
             stag_count = state["stagnation_tracker"].get(coin, 0)
             audit_logs.append(f"Crypto Position: {coin} | ROE: {current_roe*100:+.2f}% (Peak: {peak_roe*100:+.2f}%) | Stop: ${px} | [{leash_status}] | Stg: {stag_count}/48")
 
-            # Update resting L1 trigger SL order
             for order in open_orders:
                 if order.get("coin") == coin and order.get("isTrigger"):
                     exchange.cancel(coin, order["oid"])
@@ -482,6 +450,7 @@ def execute_engine():
             current_close = closes[-1]
             current_open = opens[-1]
             prev_close = closes[-2]
+            prev_open = opens[-2]
             current_high = highs[-1]
             current_low = lows[-1]
             
@@ -495,65 +464,67 @@ def execute_engine():
 
             atr = np.mean([h - l for h, l in zip(highs[-14:], lows[-14:])])
 
-            if btc_green:
+            # --- INDEPENDENT COIN MOMENTUM EVALUATION (Red-to-Green & Green-to-Red) ---
+            
+            # 1. LONG Check: Red-to-Green Transition / Upper Channel Breakout
+            is_green_candle = current_close > current_open
+            recent_red_to_green = (prev_close <= prev_open) and is_green_candle  # Flipped from red/flat to green
+            has_upward_continuation = current_close > prev_close
+            candle_range = current_high - current_low
+            upper_wick_ok = True
+            if candle_range > 0:
+                upper_wick = (current_high - current_close) / candle_range
+                if upper_wick > 0.35:
+                    upper_wick_ok = False
+
+            if current_close > upper and current_close <= upper * 1.04 and vol_ratio >= 1.25 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
                 is_ballistic = current_close > (upper + 1.5 * atr)
                 extension_score = max(0.0, (current_close - upper) / upper)
                 atr_score = atr / current_close
                 momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
 
-                is_green_candle = current_close > current_open
-                has_upward_continuation = current_close > prev_close
-                candle_range = current_high - current_low
-                upper_wick_ok = True
-                if candle_range > 0:
-                    upper_wick = (current_high - current_close) / candle_range
-                    if upper_wick > 0.35:
-                        upper_wick_ok = False
+                candidate_obj = {
+                    "coin": coin, "close": current_close, "is_long": True, "is_ballistic": is_ballistic,
+                    "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
+                }
+                if verify_5m_micro_structure(info, coin, now_ms, is_long=True):
+                    market_candidates.append(candidate_obj)
+                    audit_logs.append(f"INDEPENDENT LONG MATCH (Red-to-Green Verified): {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
 
-                if current_close > upper and current_close <= upper * 1.04 and vol_ratio >= 1.25 and is_green_candle and has_upward_continuation and upper_wick_ok:
-                    candidate_obj = {
-                        "coin": coin, "close": current_close, "is_long": True, "is_ballistic": is_ballistic,
-                        "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
-                    }
-                    if verify_5m_micro_structure(info, coin, now_ms, is_long=True):
-                        market_candidates.append(candidate_obj)
-                        audit_logs.append(f"CRYPTO MATCH LONG (Confirmed + 5m Micro-Verified): {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
-                    else:
-                        audit_logs.append(f"CRYPTO 5M WICK FILTER BLOCKED: {coin} failed micro-structure validation.")
-            else:
+            # 2. SHORT Check: Green-to-Red Transition / Lower Channel Breakdown
+            is_red_candle = current_close < current_open
+            recent_green_to_red = (prev_close >= prev_open) and is_red_candle  # Flipped from green/flat to red
+            has_downward_continuation = current_close < prev_close
+            lower_wick_ok = True
+            if candle_range > 0:
+                lower_wick = (current_close - current_low) / candle_range
+                if lower_wick > 0.35:
+                    lower_wick_ok = False
+
+            if current_close < lower and current_close >= lower * 0.96 and vol_ratio >= 1.25 and (recent_green_to_red or has_downward_continuation) and lower_wick_ok:
                 is_ballistic = current_close < (lower - 1.5 * atr)
                 extension_score = max(0.0, (lower - current_close) / lower)
                 atr_score = atr / current_close
                 momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
 
-                is_red_candle = current_close < current_open
-                has_downward_continuation = current_close < prev_close
-                candle_range = current_high - current_low
-                lower_wick_ok = True
-                if candle_range > 0:
-                    lower_wick = (current_close - current_low) / candle_range
-                    if lower_wick > 0.35:
-                        lower_wick_ok = False
+                candidate_obj = {
+                    "coin": coin, "close": current_close, "is_long": False, "is_ballistic": is_ballistic,
+                    "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
+                }
+                if verify_5m_micro_structure(info, coin, now_ms, is_long=False):
+                    market_candidates.append(candidate_obj)
+                    audit_logs.append(f"INDEPENDENT SHORT MATCH (Green-to-Red Verified): {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
 
-                if current_close < lower and current_close >= lower * 0.96 and vol_ratio >= 1.25 and is_red_candle and has_downward_continuation and lower_wick_ok:
-                    candidate_obj = {
-                        "coin": coin, "close": current_close, "is_long": False, "is_ballistic": is_ballistic,
-                        "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
-                    }
-                    if verify_5m_micro_structure(info, coin, now_ms, is_long=False):
-                        market_candidates.append(candidate_obj)
-                        audit_logs.append(f"CRYPTO MATCH SHORT (Confirmed + 5m Micro-Verified): {coin} @ ${current_close:.4f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
-                    else:
-                        audit_logs.append(f"CRYPTO 5M WICK FILTER BLOCKED: {coin} failed micro-structure validation.")
         except Exception:
             continue
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
-    audit_logs.append(f"Crypto Scan Complete (5m Check / 30m Interval): Evaluated {scanned_count} assets. Found {len(market_candidates)} confirmed breakouts.")
+    audit_logs.append(f"Independent Crypto Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
 
     trades_executed = False
-    if active_count < 6 and market_candidates:
-        for candidate in market_candidates[: (6 - active_count)]:
+    available_slots = 6 - active_count
+    if available_slots > 0 and market_candidates:
+        for candidate in market_candidates[:available_slots]:
             coin = candidate["coin"]
             px = candidate["close"]
             is_long = candidate["is_long"]
@@ -574,7 +545,6 @@ def execute_engine():
                 except Exception:
                     pass
 
-                # Open position via market order
                 res = exchange.market_open(coin, is_long, sz, px * (1.01 if is_long else 0.99))
                 if res.get("status") == "ok":
                     active_count += 1
@@ -582,7 +552,6 @@ def execute_engine():
                     trades_executed = True
                     audit_logs.append(f"EXECUTION SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {coin} (Size: {sz})")
 
-                    # Place Pre-Placed Native Limit Take Profit target at +3.5% ROE (+0.7% price move)
                     tp_roe_target = 0.035
                     tp_px_raw = px * (1 + (tp_roe_target / 5.0)) if is_long else px * (1 - (tp_roe_target / 5.0))
                     tp_px = round_sig_figs(tp_px_raw, 5)
@@ -634,7 +603,6 @@ def execute_engine():
     last_email_ts = float(state.get("last_email_timestamp", 0))
     elapsed_minutes = (now_ts - last_email_ts) / 60.0
     
-    # Trigger email if 25+ minutes elapsed OR a trade event occurred
     is_time_for_periodic_email = (elapsed_minutes >= 25.0)
     should_send_email = is_time_for_periodic_email or trades_executed or trade_closed_this_run
 
@@ -646,7 +614,7 @@ def execute_engine():
         if VERBOSE_TEST_MODE:
             audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
             audit_section = f"""
-            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine - Pure Quantitative)</div>
+            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Crypto Engine - Independent Coin Mode)</div>
             <div class="table-responsive" style="overflow-x: hidden;">
               <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
                 <tbody>{audit_rows}</tbody>
@@ -763,7 +731,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Pure Quantitative Mode)</p>
+                <p>Timestamp: {timestamp} (Independent Coin Momentum Mode)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -773,14 +741,15 @@ def execute_engine():
                 </div>
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (Pure Quantitative Engine)</div>
+                  <div class="rules-title">&#9989; Active Guardrails (Independent Momentum Engine)</div>
                   &bull; <b>Execution Engine:</b> 5-Min Exact Precision Loop (6x/Run) &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
-                  &bull; <b>BTC Entry Regime Shield:</b> 2-Candle confirmed alignment for new entries; active runners ride native trailing leashes<br>
+                  &bull; <b>Coin Independence:</b> Bypasses BTC macro checks; trades each coin purely on its own red-to-green / green-to-red momentum<br>
                   &bull; <b>Pre-Placed Limit TP Target:</b> Zero-Slippage Limit Take-Profit Resting Target (+3.5% ROE)<br>
                   &bull; <b>Staircase Retention Engine:</b> Soft BE at +0.3% ROE, +1.5% Lock at +2.0% ROE, 92.5% Lock at +8% ROE, 95% Lock at +15% ROE<br>
                   &bull; <b>Leverage Profile: Optimized 5x Safe Max Leverage</b>
                 </div>
 
+.net-worth-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin-bottom: 20px; }}
                 <div class="section-title">Positions per Bot (USD)</div>
                 <div class="table-responsive">
                   <table><thead><tr><th>Bot Title</th><th>Asset</th><th>Leverage</th><th>Side</th><th>Collateral USD</th><th>Position USD</th><th>Unrealized P&L USD</th><th>Buy Price</th><th>Stop Price</th><th>Bot Status</th></tr></thead><tbody>{positions_rows}</tbody></table>
@@ -820,7 +789,6 @@ if __name__ == "__main__":
             print(err_msg, flush=True)
             send_html_dashboard_email("Hyperliquid Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
         
-        # Pause for 300 seconds between cycles (except on the final cycle)
         if cycle < total_cycles:
             print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Cycle {cycle} complete. Sleeping 300 seconds until next 5-min check...", flush=True)
             time.sleep(cycle_interval_sec)
