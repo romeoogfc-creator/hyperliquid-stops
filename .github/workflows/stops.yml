@@ -5,6 +5,11 @@ on:
     - cron: '*/30 * * * *'  # Launches 1 job every 30 minutes (Runs 6 continuous 5-min cycles internally)
   workflow_dispatch:
 
+# PREVENT OVERLAPPING BOTS (Enforces strictly 1 active bot instance at a time)
+concurrency:
+  group: crypto-trading-bot-engine
+  cancel-in-progress: false
+
 jobs:
   run-bot:
     runs-on: ubuntu-latest
