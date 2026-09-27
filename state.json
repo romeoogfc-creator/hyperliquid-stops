@@ -12,7 +12,7 @@
     "BANANA": 9,
     "PYTH": 2,
     "INJ": 0,
-    "YGG": 0,
+    "YGG": 1,
     "TRX": 27,
     "AVAX": 2,
     "JTO": 0,
@@ -25,7 +25,7 @@
     "LINK": 0,
     "SNX": 2,
     "TRB": 1,
-    "JUP": 1,
+    "JUP": 0,
     "AAVE": 1,
     "UNI": 2,
     "OP": 1,
@@ -37,9 +37,30 @@
     "NEO": 1,
     "GMX": 1,
     "TIA": 1,
-    "ZRO": 1
+    "ZRO": 1,
+    "SUI": 1
   },
   "closed_trades_ledger": [
+    {
+      "coin": "YGG",
+      "entry_price": 0.028097,
+      "exit_price": 0.028064,
+      "pnl_usd": -0.08196232797096216,
+      "roe_pct": -0.3523507847813123,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-0.4%)",
+      "timestamp": "2026-09-27 21:50:04"
+    },
+    {
+      "coin": "APT",
+      "entry_price": 0.866,
+      "exit_price": 0.8536,
+      "pnl_usd": -0.9823639685912214,
+      "roe_pct": -1.4318706697459544,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-1.4%)",
+      "timestamp": "2026-09-27 21:44:13"
+    },
     {
       "coin": "DOT",
       "entry_price": 1.2608,
@@ -119,43 +140,33 @@
       "side": "LONG",
       "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-3.5%)",
       "timestamp": "2026-09-27 09:04:59"
-    },
-    {
-      "coin": "DOT",
-      "entry_price": 1.2688,
-      "exit_price": 1.25055,
-      "pnl_usd": -0.9938309495192242,
-      "roe_pct": -1.438366960907935,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-1.4%)",
-      "timestamp": "2026-09-27 09:04:59"
-    },
-    {
-      "coin": "PENDLE",
-      "entry_price": 2.6345,
-      "exit_price": 2.6363,
-      "pnl_usd": 0.04527842095273746,
-      "roe_pct": 0.3416208009109511,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Tiered Profit Lock (+0.3%)",
-      "timestamp": "2026-09-27 07:36:53"
     }
   ],
   "active_position_cache": {
-    "APT": {
-      "entry_px": 0.866,
-      "current_px": 0.8605,
-      "szi": 79.72,
-      "peak_roe": -0.00023094688221706464,
-      "margin": 68.607032,
+    "SUI": {
+      "entry_px": 1.2772,
+      "current_px": 1.27185,
+      "szi": 54.2,
+      "peak_roe": -0.004188850610710904,
+      "margin": 68.93698,
+      "leverage": 1.0,
+      "side": "LONG"
+    },
+    "JUP": {
+      "entry_px": 0.36332,
+      "current_px": 0.36873,
+      "szi": 235.0,
+      "peak_roe": 0.014890454695585231,
+      "margin": 86.53405,
       "leverage": 1.0,
       "side": "LONG"
     }
   },
   "previous_active_coins": [
-    "APT"
+    "SUI",
+    "JUP"
   ],
-  "last_run_timestamp": "2026-09-27 21:17:13",
+  "last_run_timestamp": "2026-09-27 21:56:46",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -165,5 +176,5 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790543434.786679
+  "last_email_timestamp": 1790545804.2506452
 }
