@@ -23,6 +23,7 @@ jobs:
 
       - name: Run Trading Engine
         env:
+          PYTHONUNBUFFERED: "1"  # Forces live, unbuffered terminal log streaming
           HL_ACCOUNT_ADDRESS: ${{ secrets.HL_ACCOUNT_ADDRESS }}
           HL_SECRET_KEY: ${{ secrets.HL_SECRET_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
