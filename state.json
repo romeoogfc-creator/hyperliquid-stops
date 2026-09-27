@@ -39,6 +39,16 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "GMX",
+      "entry_price": 8.4053,
+      "exit_price": 8.3608,
+      "pnl_usd": -0.3247099027994321,
+      "roe_pct": -1.5882835829774462,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-1.6%)",
+      "timestamp": "2026-09-27 13:36:23"
+    },
+    {
       "coin": "BIGTIME",
       "entry_price": 0.009522,
       "exit_price": 0.009806,
@@ -127,33 +137,11 @@
       "side": "LONG",
       "exit_reason": "\ud83c\udfaf Tiered Profit Lock (+0.3%)",
       "timestamp": "2026-09-26 16:37:42"
-    },
-    {
-      "coin": "SEI",
-      "entry_price": 0.072624,
-      "exit_price": 0.073704,
-      "pnl_usd": 0.9297350958360973,
-      "roe_pct": 1.4871116986120452,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Tiered Profit Lock (+1.5%)",
-      "timestamp": "2026-09-26 11:36:05"
     }
   ],
-  "active_position_cache": {
-    "GMX": {
-      "entry_px": 8.4053,
-      "current_px": 8.3117,
-      "szi": 7.38,
-      "peak_roe": -0.03340749289139008,
-      "margin": 20.444076,
-      "leverage": 3.0,
-      "side": "LONG"
-    }
-  },
-  "previous_active_coins": [
-    "GMX"
-  ],
-  "last_run_timestamp": "2026-09-27 13:05:38",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-09-27 13:37:12",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
