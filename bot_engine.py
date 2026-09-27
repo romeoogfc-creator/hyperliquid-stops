@@ -144,15 +144,16 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
         target_floor_roe = 0.000
         leash_status = "🛡️ Early Soft Break-Even (0.0% Floor)"
     else:
+        # --- WIDENED INITIAL STOP BUFFERS FOR 5X LEVERAGE (Prevents Noise Shakeouts) ---
         if choppiness_index > 58.0:
-            target_floor_roe = -0.010
-            leash_status = "Tight Choppy Defense Stop"
+            target_floor_roe = -0.015  # -1.5% ROE (0.3% price tolerance)
+            leash_status = "Choppy Defense Stop"
         elif is_ballistic:
-            target_floor_roe = -0.015
-            leash_status = "Ballistic Stop"
+            target_floor_roe = -0.030  # -3.0% ROE (0.6% price tolerance)
+            leash_status = "Ballistic Room-to-Run Stop"
         else:
-            target_floor_roe = -0.010
-            leash_status = "Tight Trend Defense Stop"
+            target_floor_roe = -0.025  # -2.5% ROE (0.5% price tolerance)
+            leash_status = "Trend Breathing-Room Stop"
 
     if is_long:
         stop_px = entry_px * (1 + (target_floor_roe / leverage))
@@ -207,7 +208,7 @@ def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     now_ts = time.time()
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Infinite Runner & Anti-Reversal Mode).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Breathing-Room Anti-Shakeout Mode).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -230,7 +231,7 @@ def execute_engine():
         coin_name = asset.get("name")
         sz_decimals_map[coin_name] = asset.get("szDecimals", 4)
 
-    audit_logs.append("Infinite Runner Mode: Fixed TP limit removed. Staircase trails winners infinitely. Instant reversal bailouts active.")
+    audit_logs.append("Breathing-Room Mode: Initial ROE stop widened to -2.5%/-3.0% to prevent premature wick shakeouts while retaining infinite runners.")
 
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
@@ -289,6 +290,7 @@ def execute_engine():
                     trade_closed_this_run = True
                 except Exception as e:
                     audit_logs.append(f"Circuit breaker close failed on {coin}: {e}")
+        state["closed_trades_ledger"] = sorted(state["closed_trades_ledger"], key=lambda x: x.get("timestamp", ""), reverse=True)[:10]
         save_state(state)
         return
 
@@ -613,7 +615,7 @@ def execute_engine():
         if VERBOSE_TEST_MODE:
             audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
             audit_section = f"""
-            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Infinite Runner Mode)</div>
+            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Breathing-Room Mode)</div>
             <div class="table-responsive" style="overflow-x: hidden;">
               <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
                 <tbody>{audit_rows}</tbody>
@@ -730,7 +732,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Infinite Runner Mode)</p>
+                <p>Timestamp: {timestamp} (Breathing-Room Anti-Shakeout Mode)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -740,10 +742,10 @@ def execute_engine():
                 </div>
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (Infinite Runner Engine)</div>
+                  <div class="rules-title">&#9989; Active Guardrails (Breathing-Room Engine)</div>
                   &bull; <b>Execution Engine:</b> 5-Min Exact Precision Loop (3x/Run - 15 Mins) &bull; <b>Max Slots:</b> {active_count}/6 Active<br>
+                  &bull; <b>Breathing-Room Stop:</b> Initial stop widened to -2.5%/-3.0% ROE (0.5%–0.6% price tolerance) to stop wick shakeouts<br>
                   &bull; <b>Infinite Runner Rule:</b> Fixed TP limit removed so winning trades can run infinitely higher<br>
-                  &bull; <b>Instant Reversal Bailout:</b> Closes failed breakouts immediately if candles turn red right away<br>
                   &bull; <b>Staircase Retention Engine:</b> Soft BE at +0.3% ROE, +1.5% Lock at +2.0% ROE, 92.5% Lock at +8% ROE, 95% Lock at +15% ROE<br>
                   &bull; <b>Leverage Profile: Optimized 5x Safe Max Leverage</b>
                 </div>
