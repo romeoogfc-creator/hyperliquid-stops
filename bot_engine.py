@@ -818,7 +818,7 @@ if __name__ == "__main__":
         except Exception as e:
             err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Engine execution error on cycle {cycle}: {e}"
             print(err_msg, flush=True)
-            send_html_dashboard_email("Hyperliquid Bot ERROR Alert", f"3<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
+            send_html_dashboard_email("Hyperliquid Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
         
         # Pause for 300 seconds between cycles (except on the final cycle)
         if cycle < total_cycles:
