@@ -141,7 +141,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-09-27 17:08:26",
+  "last_run_timestamp": "2026-09-27 17:15:23",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -150,5 +150,6 @@
     "ai_market_brief": "Bitcoin sentiment remains cautious as the market digests a recent pullback from $87,000 levels amid rising concerns over Federal Reserve tightening and elevated bond yields. While institutional inflows remain a support pillar, the current environment is dominated by deleveraging and regulatory uncertainty, favoring a defensive stance until volatility stabilizes.",
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
-  }
+  },
+  "last_email_timestamp": 1790529275.0741467
 }
