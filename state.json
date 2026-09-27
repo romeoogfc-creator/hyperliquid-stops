@@ -6,13 +6,13 @@
     "MEME": 24,
     "GMT": 6,
     "FIL": 12,
-    "CAKE": 6,
+    "CAKE": 9,
     "FET": 1,
     "ZEN": 1,
     "BANANA": 9,
     "PYTH": 2,
     "INJ": 0,
-    "YGG": 1,
+    "YGG": 0,
     "TRX": 27,
     "AVAX": 2,
     "JTO": 0,
@@ -38,8 +38,8 @@
     "GMX": 1,
     "TIA": 1,
     "ZRO": 1,
-    "SUI": 4,
-    "ETH": 3
+    "SUI": 7,
+    "ETH": 6
   },
   "closed_trades_ledger": [
     {
@@ -146,28 +146,48 @@
   "active_position_cache": {
     "ETH": {
       "entry_px": 2676.2,
-      "current_px": 2683.15,
+      "current_px": 2669.75,
       "szi": -0.0251,
-      "peak_roe": 0.001326507734847817,
-      "margin": 67.337025,
+      "peak_roe": 0.002410133771765869,
+      "margin": 67.008717,
       "leverage": 1.0,
       "side": "SHORT"
     },
     "SUI": {
       "entry_px": 1.2772,
-      "current_px": 1.26175,
+      "current_px": 1.25105,
       "szi": 54.2,
       "peak_roe": -0.004188850610710904,
-      "margin": 68.38956,
+      "margin": 67.8042,
+      "leverage": 1.0,
+      "side": "LONG"
+    },
+    "YGG": {
+      "entry_px": 0.027812,
+      "current_px": 0.027965,
+      "szi": 2234.0,
+      "peak_roe": 0.016503667481662633,
+      "margin": 20.821624,
+      "leverage": 3.0,
+      "side": "LONG"
+    },
+    "CAKE": {
+      "entry_px": 2.8329,
+      "current_px": 2.8139,
+      "szi": 29.8,
+      "peak_roe": -0.004959582053725905,
+      "margin": 83.8423,
       "leverage": 1.0,
       "side": "LONG"
     }
   },
   "previous_active_coins": [
+    "SUI",
+    "CAKE",
     "ETH",
-    "SUI"
+    "YGG"
   ],
-  "last_run_timestamp": "2026-09-27 22:27:49",
+  "last_run_timestamp": "2026-09-27 22:49:50",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
