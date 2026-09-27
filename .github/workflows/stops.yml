@@ -5,10 +5,10 @@ on:
     - cron: '*/30 * * * *'  # Launches 1 job every 30 minutes (Runs 6 continuous 5-min cycles internally)
   workflow_dispatch:
 
-# PREVENT OVERLAPPING BOTS (Enforces strictly 1 active bot instance at a time)
+# AUTO-CANCEL OLD RUNS WHEN A NEW RUN STARTS
 concurrency:
   group: crypto-trading-bot-engine
-  cancel-in-progress: false
+  cancel-in-progress: true  # Automatically cancels any running old bot when a new run starts
 
 jobs:
   run-bot:
