@@ -115,7 +115,7 @@ def calculate_choppiness_index(highs, lows, closes, period=14):
         return 50.0
 
 def get_btc_regime(info, now_ms):
-    """Fetches BTC daily candle to enforce strict Directional Unison."""
+    """Fetches BTC daily candle with a 0.10% deadband buffer to prevent micro-flips."""
     try:
         btc_candles = api_retry(info.candles_snapshot, name="BTC", interval="1d", startTime=now_ms - 86400000 * 5, endTime=now_ms)
         if not btc_candles or len(btc_candles) < 2:
@@ -124,9 +124,11 @@ def get_btc_regime(info, now_ms):
         o_px = float(latest["o"])
         c_px = float(latest["c"])
         pct_change = ((c_px - o_px) / o_px) * 100
-        if c_px > o_px:
+        
+        # Deadband buffer of 0.10% prevents whiplash on flat candles
+        if pct_change >= 0.10:
             return "GREEN", pct_change
-        elif c_px < o_px:
+        elif pct_change <= -0.10:
             return "RED", pct_change
         return "NEUTRAL", pct_change
     except Exception as e:
@@ -141,7 +143,6 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
 
     leash_status = "Tiered Sniper Stop"
     
-    # Robust Slippage-Protected Ratchet Ladder
     if peak_roe >= 0.15:
         target_floor_roe = peak_roe * 0.95
         leash_status = f"⚡ Ultra-Runner 95% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
@@ -155,7 +156,6 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
         target_floor_roe = 0.010
         leash_status = "🎯 Winner Lock (+1.0% Net Floor)"
     else:
-        # Full initial breathing room (-2.5% ROE) retained until peak ROE exceeds +3.0%
         if is_ballistic:
             target_floor_roe = -0.030  # -3.0% ROE
             leash_status = "Ballistic Room-to-Run Stop"
@@ -214,7 +214,7 @@ def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     now_ts = time.time()
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Directional Unison Mode).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Hysteresis Buffer Mode).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -232,13 +232,15 @@ def execute_engine():
     open_orders = api_retry(info.frontend_open_orders, ACCOUNT_ADDRESS)
     now_ms = int(now_ts * 1000)
 
-    # --- BTC REGIME SHIELD & DIRECTIONAL UNISON ---
+    # --- BTC REGIME SHIELD WITH HYSTERESIS BUFFER ---
     btc_regime, btc_change_pct = get_btc_regime(info, now_ms)
     audit_logs.append(f"BTC Directional Shield: Daily Candle is {btc_regime} ({btc_change_pct:+.2f}%).")
     if btc_regime == "RED":
         audit_logs.append("🛑 MACRO BEAR REGIME: ALL LONG entries strictly BLOCKED. Existing LONGs will be purged.")
     elif btc_regime == "GREEN":
         audit_logs.append("🟢 MACRO BULL REGIME: ALL SHORT entries strictly BLOCKED. Existing SHORTs will be purged.")
+    else:
+        audit_logs.append("⚖️ MACRO NEUTRAL ZONE: Standard scanning active with zero forced purges.")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -322,7 +324,7 @@ def execute_engine():
             unrealized_pnl = float(pos.get("unrealizedPnl", 0))
             pos_equity = margin_used + unrealized_pnl
 
-            # STRICT DIRECTIONAL PURGE: Close opposing trades if BTC daily flips direction
+            # STRICT DIRECTIONAL PURGE: Triggered only if regime is strictly RED or GREEN
             if btc_regime == "RED" and is_long:
                 try:
                     audit_logs.append(f"🛑 DIRECTIONAL PURGE: Closing LONG on {coin} because BTC Daily is RED.")
@@ -482,14 +484,12 @@ def execute_engine():
             if ci_30m > 58.0:
                 continue
 
-            # Elevated Volume Ratio filter (>= 2.2x)
             avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else volumes[-3]
             comp_vol = volumes[-2]
             vol_ratio = comp_vol / avg_vol if avg_vol > 0 else 1.0
 
             atr = np.mean([h - l for h, l in zip(highs[-15:-1], lows[-15:-1])])
 
-            # Trend Alignment: EMA20 > EMA50 for Longs, EMA20 < EMA50 for Shorts
             s_closes = pd.Series(closes[:-1])
             ema20 = s_closes.ewm(span=20, adjust=False).mean().iloc[-1]
             ema50 = s_closes.ewm(span=50, adjust=False).mean().iloc[-1]
@@ -504,7 +504,7 @@ def execute_engine():
                 if upper_wick > 0.35:
                     upper_wick_ok = False
 
-            # LONG SCAN: ONLY ALLOWED IF BTC IS NOT RED
+            # LONG SCAN: ALLOWED IF BTC IS NOT RED
             if btc_regime != "RED" and ema20 > ema50:
                 if comp_close > upper and comp_close <= upper * 1.04 and vol_ratio >= 2.2 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
                     is_ballistic = comp_close > (upper + 1.5 * atr)
@@ -521,7 +521,7 @@ def execute_engine():
                         market_candidates.append(candidate_obj)
                         audit_logs.append(f"HIGH-CONVICTION LONG MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, 30m CI: {ci_30m:.1f}, 5m CI: {ci_5m:.1f})")
 
-            # SHORT SCAN: ONLY ALLOWED IF BTC IS NOT GREEN
+            # SHORT SCAN: ALLOWED IF BTC IS NOT GREEN
             is_red_candle = comp_close < comp_open
             recent_green_to_red = (prev_comp_close >= prev_comp_open) and is_red_candle
             has_downward_continuation = comp_close < prev_comp_close
@@ -608,7 +608,7 @@ def execute_engine():
         if VERBOSE_TEST_MODE:
             audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
             audit_section = f"""
-            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Directional Unison Mode)</div>
+            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Hysteresis Buffer Mode)</div>
             <div class="table-responsive" style="overflow-x: hidden;">
               <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
                 <tbody>{audit_rows}</tbody>
@@ -725,7 +725,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Directional Unison Mode)</p>
+                <p>Timestamp: {timestamp} (Hysteresis Buffer Mode)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -735,8 +735,8 @@ def execute_engine():
                 </div>
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (Directional Unison Engine)</div>
-                  &bull; <b>Directional Unison:</b> Strictly 100% SHORT when BTC Daily is Red; 100% LONG when BTC Daily is Green. Zero opposing trades.<br>
+                  <div class="rules-title">&#9989; Active Guardrails (Hysteresis Engine)</div>
+                  &bull; <b>Directional Unison + 0.10% Buffer:</b> Requires BTC Daily &ge; +0.10% for BULL / &le; -0.10% for BEAR to avoid 0% whiplash.<br>
                   &bull; <b>Chop Purge Exit Disabled:</b> Active trades will NEVER be forced-closed on CI. Exits handled purely by hard/trailing stops.<br>
                   &bull; <b>High-Conviction Scan:</b> Requires Volume &ge; 2.2x AND EMA20 &gt; EMA50 trend alignment.<br>
                   &bull; <b>Slippage-Protected Ratchet:</b> Winner locks hold wide buffers to prevent market order slippage below breakeven.<br>
