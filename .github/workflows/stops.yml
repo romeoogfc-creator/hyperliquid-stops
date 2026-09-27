@@ -5,10 +5,9 @@ on:
     - cron: '*/30 * * * *'  # Launches 1 job every 30 minutes (Runs 6 continuous 5-min cycles internally)
   workflow_dispatch:
 
-# AUTO-CANCEL OLD RUNS WHEN A NEW RUN STARTS
 concurrency:
   group: crypto-trading-bot-engine
-  cancel-in-progress: true  # Automatically cancels any running old bot when a new run starts
+  cancel-in-progress: true
 
 jobs:
   run-bot:
@@ -28,7 +27,7 @@ jobs:
 
       - name: Run Trading Engine
         env:
-          PYTHONUNBUFFERED: "1"  # Forces live, unbuffered terminal log streaming
+          PYTHONUNBUFFERED: "1"
           HL_ACCOUNT_ADDRESS: ${{ secrets.HL_ACCOUNT_ADDRESS }}
           HL_SECRET_KEY: ${{ secrets.HL_SECRET_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -45,7 +44,6 @@ jobs:
           git add state.json
           git commit -m "Auto-update bot state and telemetry [skip ci]" || exit 0
           
-          # Retry loop with rebase to handle concurrent cron job race conditions safely
           for i in {1..3}; do
             git pull origin main --rebase && git push origin main && break
             echo "Push failed due to concurrent run, retrying..."
