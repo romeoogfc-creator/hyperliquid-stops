@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-28 17:14:58",
+  "last_run_timestamp": "2026-09-28 17:44:05",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -187,14 +187,14 @@
   "active_position_cache": {
     "PFE": {
       "entry_px": 28.504867,
-      "current_px": 28.755,
+      "current_px": 28.675,
       "qty": 452.0,
       "peak_roe": 0.008775097950816544,
       "vol_ratio": 2.1114100118709542
     },
     "V": {
       "entry_px": 369.23,
-      "current_px": 369.69,
+      "current_px": 369.45,
       "qty": 35.0,
       "peak_roe": 0.0012458359288247962,
       "vol_ratio": 0.8466495112359784
