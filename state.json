@@ -45,6 +45,26 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "BSV",
+      "entry_price": 20.648,
+      "exit_price": 20.4825,
+      "pnl_usd": 0.6237754954474934,
+      "roe_pct": 2.4045912437039614,
+      "side": "SHORT",
+      "exit_reason": "\ud83c\udfaf Profit Lock (+2.4%)",
+      "timestamp": "2026-09-28 03:49:08"
+    },
+    {
+      "coin": "YGG",
+      "entry_price": 0.026684,
+      "exit_price": 0.026672,
+      "pnl_usd": 0.030269391995198385,
+      "roe_pct": 0.1349123070004286,
+      "side": "SHORT",
+      "exit_reason": "\ud83c\udfaf Profit Lock (+0.1%)",
+      "timestamp": "2026-09-28 03:49:08"
+    },
+    {
       "coin": "BCH",
       "entry_price": 325.25,
       "exit_price": 327.16,
@@ -123,53 +143,11 @@
       "side": "LONG",
       "exit_reason": "\ud83d\udea8 High Choppiness Chop Purge (CI: 63.8)",
       "timestamp": "2026-09-27 23:10:09"
-    },
-    {
-      "coin": "CAKE",
-      "entry_price": 2.8329,
-      "exit_price": 2.8272,
-      "pnl_usd": -0.15794,
-      "roe_pct": -0.20120724346076596,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udea8 High Choppiness Chop Purge (CI: 58.0)",
-      "timestamp": "2026-09-27 23:04:14"
-    },
-    {
-      "coin": "JUP",
-      "entry_price": 0.36332,
-      "exit_price": 0.357355,
-      "pnl_usd": -1.4207189481724094,
-      "roe_pct": -1.6418033689309695,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-1.6%)",
-      "timestamp": "2026-09-27 22:15:08"
     }
   ],
-  "active_position_cache": {
-    "YGG": {
-      "entry_px": 0.026684,
-      "current_px": 0.026797,
-      "szi": -2512.0,
-      "peak_roe": -0.01270424224254257,
-      "margin": 22.436346,
-      "leverage": 3.0,
-      "side": "SHORT"
-    },
-    "BSV": {
-      "entry_px": 20.648,
-      "current_px": 20.4125,
-      "szi": -3.81,
-      "peak_roe": 0.034216388996512734,
-      "margin": 25.94102,
-      "leverage": 3.0,
-      "side": "SHORT"
-    }
-  },
-  "previous_active_coins": [
-    "BSV",
-    "YGG"
-  ],
-  "last_run_timestamp": "2026-09-28 03:41:12",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-09-28 03:49:11",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -179,5 +157,6 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790566228.8379526
+  "last_email_timestamp": 1790567348.0714834,
+  "last_scan_timestamp": 0
 }
