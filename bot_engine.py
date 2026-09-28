@@ -145,19 +145,30 @@ def calculate_adx(highs, lows, closes, period=14):
         return 15.0
 
 def check_gemini_macro_shield():
-    """Runs a quick macro assessment check via Gemini SDK if configured."""
+    """Runs a quick macro assessment check via Gemini SDK with model fallback cascade."""
     if not GEMINI_API_KEY:
         return "LOW", "Gemini API key not set — Macro shield bypassed."
     try:
         from google import genai
         client = genai.Client(api_key=GEMINI_API_KEY)
-        response = client.models.generate_content(
-            model='gemini-2.5-flash',
-            contents='Perform a 1-sentence risk assessment for crypto markets today. State Risk Level as LOW, MODERATE, or HIGH.'
-        )
-        text = response.text if response and response.text else "LOW Risk"
-        risk_level = "HIGH" if "HIGH" in text.upper() else ("MODERATE" if "MODERATE" in text.upper() else "LOW")
-        return risk_level, text.strip()
+        
+        model_cascade = ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.8-flash']
+        
+        for model_name in model_cascade:
+            try:
+                response = client.models.generate_content(
+                    model=model_name,
+                    contents='Perform a 1-sentence risk assessment for crypto markets today. State Risk Level as LOW, MODERATE, or HIGH.'
+                )
+                text = response.text if response and response.text else "LOW Risk"
+                risk_level = "HIGH" if "HIGH" in text.upper() else ("MODERATE" if "MODERATE" in text.upper() else "LOW")
+                return risk_level, text.strip()
+            except Exception as m_err:
+                if "404" in str(m_err) or "NOT_FOUND" in str(m_err):
+                    continue
+                raise m_err
+
+        return "LOW", "Gemini Shield active — default PASS"
     except Exception as e:
         return "LOW", f"Gemini Shield active — default PASS ({e})"
 
@@ -189,20 +200,15 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=3.0, cho
 
     leash_status = "Tight Initial Stop (-1.0% ROE)"
     
-    # 1. TOP-LOCK 95% AND 90% PROFIT RETENTION
     if peak_roe >= 0.15:
         target_floor_roe = peak_roe * 0.95
         leash_status = f"⚡ Ultra-Runner 95% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
     elif peak_roe >= 0.08:
         target_floor_roe = peak_roe * 0.90
         leash_status = f"🚀 Mega-Runner 90% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    
-    # 2. VOLUME STALL LOCK: Volume fading on positive ROE -> Snaps tight 0.1% buffer
     elif vol_ratio < 0.85 and roe >= 0.010:
         target_floor_roe = max(0.001, roe - 0.001)
         leash_status = f"🔒 Volume Stall Lock (+0.1% Buffer) [{roe*100:.1f}% ROE]"
-        
-    # 3. TIERED FLOOR RETENTION
     elif peak_roe >= 0.05:
         target_floor_roe = 0.030
         leash_status = "📈 Mid-Runner Lock (+3.0% Floor)"
@@ -213,7 +219,7 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=3.0, cho
         target_floor_roe = 0.000
         leash_status = "🛡️ Break-Even Lock (0.0% Floor)"
     else:
-        target_floor_roe = -0.010  # Tight Sept 23 Initial Stop (-1.0% ROE Max Loss)
+        target_floor_roe = -0.010
 
     if is_long:
         stop_px = entry_px * (1 + (target_floor_roe / leverage))
@@ -510,7 +516,6 @@ def execute_engine():
     market_candidates = []
     scanned_count = 0
 
-    # SCANNING RUNS IF BTC IS GREEN OR RED AND GEMINI IS NOT HIGH RISK
     if btc_regime in ["GREEN", "RED"] and gemini_risk != "HIGH":
         for coin in universe:
             if coin in active_coins or coin in ["USDC", "USDT"]:
@@ -568,7 +573,6 @@ def execute_engine():
                     if upper_wick > 0.35:
                         upper_wick_ok = False
 
-                # LONG SCAN
                 if btc_regime == "GREEN" and ema20 > ema50:
                     if comp_close > upper and comp_close <= upper * 1.04 and vol_ratio >= 2.2 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
                         is_ballistic = comp_close > (upper + 1.5 * atr)
@@ -585,7 +589,6 @@ def execute_engine():
                             market_candidates.append(candidate_obj)
                             audit_logs.append(f"HIGH-CONVICTION LONG MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, ADX: {adx_30m:.1f}, 30m CI: {ci_30m:.1f})")
 
-                # SHORT SCAN
                 is_red_candle = comp_close < comp_open
                 recent_green_to_red = (prev_comp_close >= prev_comp_open) and is_red_candle
                 has_downward_continuation = comp_close < prev_comp_close
@@ -626,7 +629,6 @@ def execute_engine():
             is_long = candidate["is_long"]
             is_ballistic = candidate["is_ballistic"]
             
-            # Dynamic Leverage Selection: 1x for Large-Caps, 3x for Altcoin Runners
             assigned_leverage = 1 if coin in LARGE_CAP_COINS else 3
 
             target_pct = np.random.uniform(0.15, 0.17) if is_ballistic else np.random.uniform(0.12, 0.14)
