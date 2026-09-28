@@ -114,8 +114,36 @@ def calculate_choppiness_index(highs, lows, closes, period=14):
     except Exception:
         return 50.0
 
+def calculate_adx(highs, lows, closes, period=14):
+    """Calculates Average Directional Index (ADX) to filter out rangebound markets."""
+    try:
+        df = pd.DataFrame({'high': highs, 'low': lows, 'close': closes})
+        df['tr0'] = df['high'] - df['low']
+        df['tr1'] = (df['high'] - df['close'].shift(1)).abs()
+        df['tr2'] = (df['low'] - df['close'].shift(1)).abs()
+        df['tr'] = df[['tr0', 'tr1', 'tr2']].max(axis=1)
+
+        df['up'] = df['high'] - df['high'].shift(1)
+        df['down'] = df['low'].shift(1) - df['low']
+
+        df['pos_dm'] = np.where((df['up'] > df['down']) & (df['up'] > 0), df['up'], 0.0)
+        df['neg_dm'] = np.where((df['down'] > df['up']) & (df['down'] > 0), df['down'], 0.0)
+
+        tr_smooth = df['tr'].ewm(alpha=1/period, adjust=False).mean()
+        pos_dm_smooth = df['pos_dm'].ewm(alpha=1/period, adjust=False).mean()
+        neg_dm_smooth = df['neg_dm'].ewm(alpha=1/period, adjust=False).mean()
+
+        pos_di = 100 * (pos_dm_smooth / tr_smooth)
+        neg_di = 100 * (neg_dm_smooth / tr_smooth)
+        
+        dx = 100 * (pos_di - neg_di).abs() / (pos_di + neg_di)
+        adx = dx.ewm(alpha=1/period, adjust=False).mean().iloc[-1]
+        return adx if not np.isnan(adx) else 15.0
+    except Exception:
+        return 15.0
+
 def get_btc_regime(info, now_ms):
-    """Fetches BTC daily candle with a 0.10% deadband buffer to prevent micro-flips."""
+    """Fetches BTC daily candle with a 0.15% hysteresis buffer."""
     try:
         btc_candles = api_retry(info.candles_snapshot, name="BTC", interval="1d", startTime=now_ms - 86400000 * 5, endTime=now_ms)
         if not btc_candles or len(btc_candles) < 2:
@@ -125,10 +153,9 @@ def get_btc_regime(info, now_ms):
         c_px = float(latest["c"])
         pct_change = ((c_px - o_px) / o_px) * 100
         
-        # Deadband buffer of 0.10% prevents whiplash on flat candles
-        if pct_change >= 0.10:
+        if pct_change >= 0.15:
             return "GREEN", pct_change
-        elif pct_change <= -0.10:
+        elif pct_change <= -0.15:
             return "RED", pct_change
         return "NEUTRAL", pct_change
     except Exception as e:
@@ -152,9 +179,9 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, cho
     elif peak_roe >= 0.05:
         target_floor_roe = 0.030
         leash_status = f"📈 Mid-Runner Lock (+3.0% Floor)"
-    elif peak_roe >= 0.030:
-        target_floor_roe = 0.010
-        leash_status = "🎯 Winner Lock (+1.0% Net Floor)"
+    elif peak_roe >= 0.035:
+        target_floor_roe = 0.015
+        leash_status = "🎯 Winner Lock (+1.5% Net Floor)"
     else:
         if is_ballistic:
             target_floor_roe = -0.030  # -3.0% ROE
@@ -214,7 +241,7 @@ def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     now_ts = time.time()
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Hysteresis Buffer Mode).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Native 5-Min Trigger Mode).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -324,7 +351,7 @@ def execute_engine():
             unrealized_pnl = float(pos.get("unrealizedPnl", 0))
             pos_equity = margin_used + unrealized_pnl
 
-            # STRICT DIRECTIONAL PURGE: Triggered only if regime is strictly RED or GREEN
+            # STRICT DIRECTIONAL PURGE
             if btc_regime == "RED" and is_long:
                 try:
                     audit_logs.append(f"🛑 DIRECTIONAL PURGE: Closing LONG on {coin} because BTC Daily is RED.")
@@ -472,6 +499,10 @@ def execute_engine():
             lows = [float(c["l"]) for c in candles]
             volumes = [float(c.get("v", 0)) for c in candles]
 
+            adx_30m = calculate_adx(highs[:-1], lows[:-1], closes[:-1])
+            if adx_30m < 22.0:
+                continue
+
             upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
             comp_close = closes[-2]
             comp_open = opens[-2]
@@ -481,7 +512,7 @@ def execute_engine():
             comp_low = lows[-2]
             
             ci_30m = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
-            if ci_30m > 58.0:
+            if ci_30m > 55.0:
                 continue
 
             avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else volumes[-3]
@@ -504,24 +535,24 @@ def execute_engine():
                 if upper_wick > 0.35:
                     upper_wick_ok = False
 
-            # LONG SCAN: ALLOWED IF BTC IS NOT RED
+            # LONG SCAN: ALLOWED IF BTC IS NOT RED & ADX >= 22
             if btc_regime != "RED" and ema20 > ema50:
-                if comp_close > upper and comp_close <= upper * 1.04 and vol_ratio >= 2.2 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
+                if comp_close > upper and comp_close <= upper * 1.04 and vol_ratio >= 2.5 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
                     is_ballistic = comp_close > (upper + 1.5 * atr)
                     extension_score = max(0.0, (comp_close - upper) / upper)
                     atr_score = atr / comp_close
                     momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
 
                     pass_5m, ci_5m = verify_5m_micro_structure(info, coin, now_ms, is_long=True)
-                    if pass_5m and ci_5m <= 58.0:
+                    if pass_5m and ci_5m <= 55.0:
                         candidate_obj = {
                             "coin": coin, "close": comp_close, "is_long": True, "is_ballistic": is_ballistic,
-                            "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio
+                            "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio, "adx": adx_30m
                         }
                         market_candidates.append(candidate_obj)
-                        audit_logs.append(f"HIGH-CONVICTION LONG MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, 30m CI: {ci_30m:.1f}, 5m CI: {ci_5m:.1f})")
+                        audit_logs.append(f"HIGH-CONVICTION LONG MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, ADX: {adx_30m:.1f}, 30m CI: {ci_30m:.1f})")
 
-            # SHORT SCAN: ALLOWED IF BTC IS NOT GREEN
+            # SHORT SCAN: ALLOWED IF BTC IS NOT GREEN & ADX >= 22
             is_red_candle = comp_close < comp_open
             recent_green_to_red = (prev_comp_close >= prev_comp_open) and is_red_candle
             has_downward_continuation = comp_close < prev_comp_close
@@ -532,20 +563,20 @@ def execute_engine():
                     lower_wick_ok = False
 
             if btc_regime != "GREEN" and ema20 < ema50:
-                if comp_close < lower and comp_close >= lower * 0.96 and vol_ratio >= 2.2 and (recent_green_to_red or has_downward_continuation) and lower_wick_ok:
+                if comp_close < lower and comp_close >= lower * 0.96 and vol_ratio >= 2.5 and (recent_green_to_red or has_downward_continuation) and lower_wick_ok:
                     is_ballistic = comp_close < (lower - 1.5 * atr)
                     extension_score = max(0.0, (lower - comp_close) / lower)
                     atr_score = atr / comp_close
                     momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
 
                     pass_5m, ci_5m = verify_5m_micro_structure(info, coin, now_ms, is_long=False)
-                    if pass_5m and ci_5m <= 58.0:
+                    if pass_5m and ci_5m <= 55.0:
                         candidate_obj = {
                             "coin": coin, "close": comp_close, "is_long": False, "is_ballistic": is_ballistic,
-                            "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio
+                            "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio, "adx": adx_30m
                         }
                         market_candidates.append(candidate_obj)
-                        audit_logs.append(f"HIGH-CONVICTION SHORT MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, 30m CI: {ci_30m:.1f}, 5m CI: {ci_5m:.1f})")
+                        audit_logs.append(f"HIGH-CONVICTION SHORT MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, ADX: {adx_30m:.1f}, 30m CI: {ci_30m:.1f})")
 
         except Exception:
             continue
@@ -608,7 +639,7 @@ def execute_engine():
         if VERBOSE_TEST_MODE:
             audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
             audit_section = f"""
-            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Hysteresis Buffer Mode)</div>
+            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (5-Min Native Trigger)</div>
             <div class="table-responsive" style="overflow-x: hidden;">
               <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
                 <tbody>{audit_rows}</tbody>
@@ -725,7 +756,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Hysteresis Buffer Mode)</p>
+                <p>Timestamp: {timestamp} (Native 5-Min Trigger Mode)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -735,10 +766,10 @@ def execute_engine():
                 </div>
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (Hysteresis Engine)</div>
-                  &bull; <b>Directional Unison + 0.10% Buffer:</b> Requires BTC Daily &ge; +0.10% for BULL / &le; -0.10% for BEAR to avoid 0% whiplash.<br>
+                  <div class="rules-title">&#9989; Active Guardrails (5-Min Native Engine)</div>
+                  &bull; <b>ADX Trend Strength Filter:</b> Banned entries when ADX &lt; 22.0. Forces 100% cash in rangebound markets.<br>
                   &bull; <b>Chop Purge Exit Disabled:</b> Active trades will NEVER be forced-closed on CI. Exits handled purely by hard/trailing stops.<br>
-                  &bull; <b>High-Conviction Scan:</b> Requires Volume &ge; 2.2x AND EMA20 &gt; EMA50 trend alignment.<br>
+                  &bull; <b>Volume Threshold:</b> Elevated to &ge; 2.5x volume expansion on completed 30m candles.<br>
                   &bull; <b>Slippage-Protected Ratchet:</b> Winner locks hold wide buffers to prevent market order slippage below breakeven.<br>
                   &bull; <b>Leverage Profile: Optimized 5x Safe Max Leverage</b>
                 </div>
@@ -765,25 +796,15 @@ def execute_engine():
         send_html_dashboard_email(f"Hyperliquid Report — USD ${account_value:.2f}", html_content, text_fallback)
     else:
         save_state(state)
-        print(f"[{timestamp}] Background execution cycle complete ({elapsed_minutes:.1f}m since last report). Skipping email dispatch.", flush=True)
+        print(f"[{timestamp}] Single precision cycle complete ({elapsed_minutes:.1f}m since last report). Skipping email dispatch.", flush=True)
 
 if __name__ == "__main__":
-    total_cycles = 3
-    cycle_interval_sec = 300
-
-    print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Launching 15-Minute Continuous 5-Min Execution Loop ({total_cycles} Cycles)...", flush=True)
-
-    for cycle in range(1, total_cycles + 1):
-        print(f"\n--- EXECUTION CYCLE {cycle}/{total_cycles} STARTING ---", flush=True)
-        try:
-            execute_engine()
-        except Exception as e:
-            err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Engine execution error on cycle {cycle}: {e}"
-            print(err_msg, flush=True)
-            send_html_dashboard_email("Hyperliquid Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
-        
-        if cycle < total_cycles:
-            print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Cycle {cycle} complete. Sleeping 300 seconds until next 5-min check...", flush=True)
-            time.sleep(cycle_interval_sec)
-
-    print(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] All {total_cycles} continuous 5-minute cycles completed successfully.", flush=True)
+    timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+    print(f"[{timestamp}] Executing single-run 5-minute precision cycle...", flush=True)
+    try:
+        execute_engine()
+        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Cycle execution completed successfully.", flush=True)
+    except Exception as e:
+        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Engine execution error: {e}"
+        print(err_msg, flush=True)
+        send_html_dashboard_email("Hyperliquid Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
