@@ -43,6 +43,36 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "GMT",
+      "entry_price": 0.009008,
+      "exit_price": 0.008945,
+      "pnl_usd": -0.475904,
+      "roe_pct": -3.4968916518650395,
+      "side": "LONG",
+      "exit_reason": "\ud83d\uded1 BTC Bearish Flip Directional Purge",
+      "timestamp": "2026-09-28 00:56:23"
+    },
+    {
+      "coin": "ADA",
+      "entry_price": 0.25787,
+      "exit_price": 0.255665,
+      "pnl_usd": -0.53688,
+      "roe_pct": -4.27541009035563,
+      "side": "LONG",
+      "exit_reason": "\ud83d\uded1 BTC Bearish Flip Directional Purge",
+      "timestamp": "2026-09-28 00:56:23"
+    },
+    {
+      "coin": "BNB",
+      "entry_price": 782.64,
+      "exit_price": 779.905,
+      "pnl_usd": -0.268618,
+      "roe_pct": -1.7472912194623416,
+      "side": "LONG",
+      "exit_reason": "\ud83d\uded1 BTC Bearish Flip Directional Purge",
+      "timestamp": "2026-09-28 00:56:23"
+    },
+    {
       "coin": "OP",
       "entry_price": 0.14924,
       "exit_price": 0.14934,
@@ -155,7 +185,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-09-28 00:18:53",
+  "last_run_timestamp": "2026-09-28 00:57:16",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -165,5 +195,5 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790554333.2256427
+  "last_email_timestamp": 1790556983.7510695
 }
