@@ -140,6 +140,42 @@ def calculate_atr(highs, lows, closes, period=14):
     except Exception:
         return 1.0
 
+def calculate_stock_stop_price(entry_px, is_long, current_px, vol_ratio=1.0, peak_roe=0.0):
+    """
+    Crypto-Grade Multi-Tiered Peak Profit Lock Ratchet Ladder for Equities (1x Leverage)
+    """
+    if is_long:
+        roe = (current_px - entry_px) / entry_px
+    else:
+        roe = (entry_px - current_px) / entry_px
+
+    leash_status = "Tight Initial Stop (-1.0%)"
+    
+    if peak_roe >= 0.030:  # +3.0% Peak (Ultra-Runner)
+        target_floor_roe = peak_roe * 0.95
+        leash_status = f"⚡ Ultra-Runner 95% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+    elif peak_roe >= 0.015:  # +1.5% Peak (Mega-Runner)
+        target_floor_roe = peak_roe * 0.90
+        leash_status = f"🚀 Mega-Runner 90% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+    elif vol_ratio < 0.85 and roe >= 0.005:  # Stalling volume while up +0.5%
+        target_floor_roe = max(0.001, roe - 0.001)
+        leash_status = f"🔒 Volume Stall Lock (+0.1% Buffer) [{roe*100:.2f}% ROE]"
+    elif peak_roe >= 0.010:  # +1.0% Peak
+        target_floor_roe = 0.005
+        leash_status = "🎯 Winner Lock (+0.5% Net Floor)"
+    elif peak_roe >= 0.005:  # +0.5% Peak
+        target_floor_roe = 0.000  # Strict Break-Even Lock (0% Loss Allowed)
+        leash_status = "🛡️ Break-Even Lock (0.0% Floor)"
+    else:
+        target_floor_roe = -0.010  # -1.0% Initial Risk Cap
+
+    if is_long:
+        stop_px = entry_px * (1 + target_floor_roe)
+    else:
+        stop_px = entry_px * (1 - target_floor_roe)
+
+    return stop_px, roe, target_floor_roe, leash_status
+
 def verify_5m_stock_micro_structure(symbol, is_long):
     """Instant 5-Minute Micro-Confirmation Filter for Equities"""
     try:
@@ -383,43 +419,19 @@ def execute_stock_engine():
         prev_peak = current_active_cache.get(symbol, {}).get("peak_roe", current_roe)
         peak_roe = max(current_roe, prev_peak)
 
-        if vol_ratio >= 1.5:
-            vol_multiplier = 1.6 
-            runner_tag = "🚀 Smart Runner (High Vol)"
-        elif vol_ratio < 0.8:
-            vol_multiplier = 0.7 
-            runner_tag = "⚠️ Volume Stall Lock"
-        else:
-            vol_multiplier = 1.0
-            runner_tag = "Active Scalp"
-
         new_active_cache[symbol] = {
             "entry_px": entry_px, "current_px": current_px, "qty": qty, "peak_roe": peak_roe, "vol_ratio": vol_ratio
         }
 
-        stop_threshold = -0.012 
-        status_label = runner_tag
+        # --- CRYPTO-GRADE STOP RATCHET EVALUATION ---
+        stop_px_calc, current_roe, target_floor_roe, leash_status = calculate_stock_stop_price(
+            entry_px, is_long, current_px, vol_ratio=vol_ratio, peak_roe=peak_roe
+        )
 
-        if peak_roe >= 0.03:
-            base_buffer = 0.0025
-            adjusted_buffer = base_buffer * vol_multiplier
-            stop_threshold = peak_roe - adjusted_buffer
-            status_label = f"Ballistic Peak Lock [{vol_ratio:.1f}x Vol] ({stop_threshold*100:+.1f}%)"
-        elif peak_roe >= 0.015:
-            base_buffer = 0.0040
-            adjusted_buffer = base_buffer * vol_multiplier
-            stop_threshold = peak_roe - adjusted_buffer
-            status_label = f"Mid Trailing Floor [{vol_ratio:.1f}x Vol] ({stop_threshold*100:+.1f}%)"
-        elif peak_roe >= 0.005:
-            base_buffer = 0.0060
-            adjusted_buffer = base_buffer * vol_multiplier
-            stop_threshold = peak_roe - adjusted_buffer
-            status_label = f"Early Breathing Floor [{vol_ratio:.1f}x Vol] ({stop_threshold*100:+.1f}%)"
-
-        should_exit = current_roe <= stop_threshold
+        should_exit = current_roe <= target_floor_roe
 
         if should_exit:
-            reason = "Smart Runner Profit Lock" if current_roe > 0 else "Dynamic Stop Loss"
+            reason = f"🎯 Profit Lock (+{current_roe*100:.2f}%)" if current_roe >= 0 else f"🛡️ Dynamic Stop Loss ({current_roe*100:.2f}%)"
             audit_logs.append(f"EXIT TRIGGERED on {symbol} at {current_roe*100:+.2f}% ROE (Peak: {peak_roe*100:+.2f}%, VolRatio: {vol_ratio:.2f}). {reason} - securing bag!")
             close_side = "sell" if is_long else "buy"
             realized_pnl = (current_px - entry_px) * qty if is_long else (entry_px - current_px) * qty
@@ -444,7 +456,6 @@ def execute_stock_engine():
             except Exception as e:
                 audit_logs.append(f"Execution Failed on {symbol}: {e}")
 
-        stop_px_calc = entry_px * (1 + stop_threshold) if is_long else entry_px * (1 - stop_threshold)
         positions_data.append({
             "bot_title": "TR-GC-Equities-LS-01",
             "symbol": symbol,
@@ -456,8 +467,8 @@ def execute_stock_engine():
             "pnl": unrealized_pnl,
             "roe": current_roe * 100,
             "stop": round_sig_figs(stop_px_calc, 5),
-            "floor": stop_threshold * 100,
-            "status": status_label
+            "floor": target_floor_roe * 100,
+            "status": leash_status
         })
 
     closed_symbols = set(current_active_cache.keys()) - active_symbols
@@ -604,7 +615,6 @@ def execute_stock_engine():
             is_long = candidate["is_long"]
 
             target_usd = max(50.0, equity * 0.13)
-            # Enforce integer whole shares for 100% Alpaca shorting compliance
             raw_qty = target_usd / px
             qty = max(1, int(raw_qty))
             order_side = "buy" if is_long else "sell"
