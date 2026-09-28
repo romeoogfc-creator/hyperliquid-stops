@@ -2,7 +2,7 @@ name: TR-GC-Crypto-LS-23
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # Launches 1 job every 30 minutes
+    - cron: '*/5 * * * *'  # Runs every 5 minutes to guard active trailing stops
   workflow_dispatch:
 
 concurrency:
