@@ -15,9 +15,12 @@ from hyperliquid.utils import constants
 
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
 SECRET_KEY = os.getenv("HL_SECRET_KEY")
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 STATE_FILE = "state.json"
 
 VERBOSE_TEST_MODE = True
+
+LARGE_CAP_COINS = {"BTC", "ETH", "SOL", "BNB", "XRP", "ADA", "AVAX", "DOT", "LINK", "SUI", "NEAR", "APT"}
 
 def load_state():
     default_state = {
@@ -115,7 +118,6 @@ def calculate_choppiness_index(highs, lows, closes, period=14):
         return 50.0
 
 def calculate_adx(highs, lows, closes, period=14):
-    """Calculates Average Directional Index (ADX) to filter out rangebound markets."""
     try:
         df = pd.DataFrame({'high': highs, 'low': lows, 'close': closes})
         df['tr0'] = df['high'] - df['low']
@@ -142,8 +144,25 @@ def calculate_adx(highs, lows, closes, period=14):
     except Exception:
         return 15.0
 
+def check_gemini_macro_shield():
+    """Runs a quick macro assessment check via Gemini SDK if configured."""
+    if not GEMINI_API_KEY:
+        return "LOW", "Gemini API key not set — Macro shield bypassed."
+    try:
+        from google import genai
+        client = genai.Client(api_key=GEMINI_API_KEY)
+        response = client.models.generate_content(
+            model='gemini-2.5-flash',
+            contents='Perform a 1-sentence risk assessment for crypto markets today. State Risk Level as LOW, MODERATE, or HIGH.'
+        )
+        text = response.text if response and response.text else "LOW Risk"
+        risk_level = "HIGH" if "HIGH" in text.upper() else ("MODERATE" if "MODERATE" in text.upper() else "LOW")
+        return risk_level, text.strip()
+    except Exception as e:
+        return "LOW", f"Gemini Shield active — default PASS ({e})"
+
 def get_btc_regime(info, now_ms):
-    """Fetches BTC daily candle with a strict 0.15% threshold."""
+    """Fetches BTC daily candle with a 0.15% threshold."""
     try:
         btc_candles = api_retry(info.candles_snapshot, name="BTC", interval="1d", startTime=now_ms - 86400000 * 5, endTime=now_ms)
         if not btc_candles or len(btc_candles) < 2:
@@ -162,33 +181,39 @@ def get_btc_regime(info, now_ms):
         print(f"[WARN] Failed to fetch BTC daily regime: {e}", flush=True)
         return "NEUTRAL", 0.0
 
-def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=5.0, choppiness_index=50.0, is_ballistic=False, vol_ratio=1.0, peak_roe=0.0):
+def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=3.0, choppiness_index=50.0, is_ballistic=False, vol_ratio=1.0, peak_roe=0.0):
     if is_long:
         roe = ((current_px - entry_px) / entry_px) * leverage
     else:
         roe = ((entry_px - current_px) / entry_px) * leverage
 
-    leash_status = "Tiered Sniper Stop"
+    leash_status = "Tight Initial Stop (-1.0% ROE)"
     
+    # 1. TOP-LOCK 95% AND 90% PROFIT RETENTION
     if peak_roe >= 0.15:
         target_floor_roe = peak_roe * 0.95
         leash_status = f"⚡ Ultra-Runner 95% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
     elif peak_roe >= 0.08:
         target_floor_roe = peak_roe * 0.90
         leash_status = f"🚀 Mega-Runner 90% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
+    
+    # 2. VOLUME STALL LOCK: Volume fading on positive ROE -> Snaps tight 0.1% buffer
+    elif vol_ratio < 0.85 and roe >= 0.010:
+        target_floor_roe = max(0.001, roe - 0.001)
+        leash_status = f"🔒 Volume Stall Lock (+0.1% Buffer) [{roe*100:.1f}% ROE]"
+        
+    # 3. TIERED FLOOR RETENTION
     elif peak_roe >= 0.05:
         target_floor_roe = 0.030
-        leash_status = f"📈 Mid-Runner Lock (+3.0% Floor)"
+        leash_status = "📈 Mid-Runner Lock (+3.0% Floor)"
     elif peak_roe >= 0.035:
         target_floor_roe = 0.015
         leash_status = "🎯 Winner Lock (+1.5% Net Floor)"
+    elif peak_roe >= 0.010:
+        target_floor_roe = 0.000
+        leash_status = "🛡️ Break-Even Lock (0.0% Floor)"
     else:
-        if is_ballistic:
-            target_floor_roe = -0.030  # -3.0% ROE
-            leash_status = "Ballistic Room-to-Run Stop"
-        else:
-            target_floor_roe = -0.025  # -2.5% ROE
-            leash_status = "Trend Breathing-Room Stop"
+        target_floor_roe = -0.010  # Tight Sept 23 Initial Stop (-1.0% ROE Max Loss)
 
     if is_long:
         stop_px = entry_px * (1 + (target_floor_roe / leverage))
@@ -241,7 +266,7 @@ def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     now_ts = time.time()
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Ultra-Conviction Mode).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Hybrid Engine Started (30-Min High-Retention Sniper Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -258,6 +283,12 @@ def execute_engine():
     meta = api_retry(info.meta)
     open_orders = api_retry(info.frontend_open_orders, ACCOUNT_ADDRESS)
     now_ms = int(now_ts * 1000)
+
+    # --- GEMINI MACRO SHIELD ---
+    gemini_risk, gemini_briefing = check_gemini_macro_shield()
+    audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] {gemini_briefing}")
+    if gemini_risk == "HIGH":
+        audit_logs.append("🚨 GEMINI HIGH RISK ALERT: Pausing new position entries.")
 
     # --- BTC REGIME SHIELD ---
     btc_regime, btc_change_pct = get_btc_regime(info, now_ms)
@@ -351,14 +382,14 @@ def execute_engine():
             unrealized_pnl = float(pos.get("unrealizedPnl", 0))
             pos_equity = margin_used + unrealized_pnl
 
-            # STRICT DIRECTIONAL PURGE: Fired only when BTC daily explicitly flips to hostile state
+            # STRICT DIRECTIONAL PURGE
             if btc_regime == "RED" and is_long:
                 try:
                     audit_logs.append(f"🛑 DIRECTIONAL PURGE: Closing LONG on {coin} because BTC Daily is RED.")
                     exchange.market_close(coin)
                     state["closed_trades_ledger"].insert(0, {
                         "coin": coin, "entry_price": entry_px, "exit_price": current_px,
-                        "pnl_usd": unrealized_pnl, "roe_pct": ((current_px - entry_px)/entry_px*5*100), "side": "LONG",
+                        "pnl_usd": unrealized_pnl, "roe_pct": ((current_px - entry_px)/entry_px*3*100), "side": "LONG",
                         "exit_reason": "🛑 BTC Bearish Flip Directional Purge", "timestamp": timestamp
                     })
                     trade_closed_this_run = True
@@ -372,7 +403,7 @@ def execute_engine():
                     exchange.market_close(coin)
                     state["closed_trades_ledger"].insert(0, {
                         "coin": coin, "entry_price": entry_px, "exit_price": current_px,
-                        "pnl_usd": unrealized_pnl, "roe_pct": ((entry_px - current_px)/entry_px*5*100), "side": "SHORT",
+                        "pnl_usd": unrealized_pnl, "roe_pct": ((entry_px - current_px)/entry_px*3*100), "side": "SHORT",
                         "exit_reason": "🟢 BTC Bullish Flip Directional Purge", "timestamp": timestamp
                     })
                     trade_closed_this_run = True
@@ -391,7 +422,7 @@ def execute_engine():
 
             try:
                 time.sleep(0.05)
-                c_candles = api_retry(info.candles_snapshot, name=coin, interval="5m", startTime=now_ms - 3600000 * 2, endTime=now_ms)
+                c_candles = api_retry(info.candles_snapshot, name=coin, interval="30m", startTime=now_ms - 86400000 * 2, endTime=now_ms)
                 highs = [float(c["h"]) for c in c_candles]
                 lows = [float(c["l"]) for c in c_candles]
                 closes = [float(c["c"]) for c in c_candles]
@@ -454,7 +485,7 @@ def execute_engine():
         entry_px = old_data.get("entry_px", 0.0)
         exit_px = float(all_mids.get(closed_coin, entry_px))
         margin = old_data.get("margin", 50.0)
-        lev = old_data.get("leverage", 5.0)
+        lev = old_data.get("leverage", 3.0)
         szi = old_data.get("szi", 1.0)
         is_long = szi > 0 if isinstance(szi, (int, float)) else True
         
@@ -463,7 +494,7 @@ def execute_engine():
 
         already_logged = any(t["coin"] == closed_coin for t in state["closed_trades_ledger"][:2])
         if not already_logged:
-            reason = f"🎯 Tiered Profit Lock (+{roe_pct:.1f}%)" if raw_pnl >= 0 else f"🛡️ Tight Stop Loss ({roe_pct:.1f}%)"
+            reason = f"🎯 Profit Lock (+{roe_pct:.1f}%)" if raw_pnl >= 0 else f"🛡️ Tight Stop Loss ({roe_pct:.1f}%)"
             state["closed_trades_ledger"].insert(0, {
                 "coin": closed_coin, "entry_price": entry_px, "exit_price": exit_px,
                 "pnl_usd": raw_pnl, "roe_pct": roe_pct, "side": "LONG" if is_long else "SHORT",
@@ -479,8 +510,8 @@ def execute_engine():
     market_candidates = []
     scanned_count = 0
 
-    # SCANNING ONLY OCCURS IF BTC REGIME IS EXPLICITLY GREEN OR RED
-    if btc_regime in ["GREEN", "RED"]:
+    # SCANNING RUNS IF BTC IS GREEN OR RED AND GEMINI IS NOT HIGH RISK
+    if btc_regime in ["GREEN", "RED"] and gemini_risk != "HIGH":
         for coin in universe:
             if coin in active_coins or coin in ["USDC", "USDT"]:
                 continue
@@ -501,9 +532,8 @@ def execute_engine():
                 lows = [float(c["l"]) for c in candles]
                 volumes = [float(c.get("v", 0)) for c in candles]
 
-                # STRICT ADX FILTER (Must be >= 25.0)
                 adx_30m = calculate_adx(highs[:-1], lows[:-1], closes[:-1])
-                if adx_30m < 25.0:
+                if adx_30m < 22.0:
                     continue
 
                 upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
@@ -538,9 +568,9 @@ def execute_engine():
                     if upper_wick > 0.35:
                         upper_wick_ok = False
 
-                # LONG SCAN: ALLOWED IF BTC IS GREEN & VOL RATIO >= 3.0 & ADX >= 25.0
+                # LONG SCAN
                 if btc_regime == "GREEN" and ema20 > ema50:
-                    if comp_close > upper and comp_close <= upper * 1.04 and vol_ratio >= 3.0 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
+                    if comp_close > upper and comp_close <= upper * 1.04 and vol_ratio >= 2.2 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
                         is_ballistic = comp_close > (upper + 1.5 * atr)
                         extension_score = max(0.0, (comp_close - upper) / upper)
                         atr_score = atr / comp_close
@@ -553,9 +583,9 @@ def execute_engine():
                                 "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio, "adx": adx_30m
                             }
                             market_candidates.append(candidate_obj)
-                            audit_logs.append(f"ULTRA-CONVICTION LONG MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, ADX: {adx_30m:.1f}, 30m CI: {ci_30m:.1f})")
+                            audit_logs.append(f"HIGH-CONVICTION LONG MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, ADX: {adx_30m:.1f}, 30m CI: {ci_30m:.1f})")
 
-                # SHORT SCAN: ALLOWED IF BTC IS RED & VOL RATIO >= 3.0 & ADX >= 25.0
+                # SHORT SCAN
                 is_red_candle = comp_close < comp_open
                 recent_green_to_red = (prev_comp_close >= prev_comp_open) and is_red_candle
                 has_downward_continuation = comp_close < prev_comp_close
@@ -566,7 +596,7 @@ def execute_engine():
                         lower_wick_ok = False
 
                 if btc_regime == "RED" and ema20 < ema50:
-                    if comp_close < lower and comp_close >= lower * 0.96 and vol_ratio >= 3.0 and (recent_green_to_red or has_downward_continuation) and lower_wick_ok:
+                    if comp_close < lower and comp_close >= lower * 0.96 and vol_ratio >= 2.2 and (recent_green_to_red or has_downward_continuation) and lower_wick_ok:
                         is_ballistic = comp_close < (lower - 1.5 * atr)
                         extension_score = max(0.0, (lower - comp_close) / lower)
                         atr_score = atr / comp_close
@@ -579,13 +609,13 @@ def execute_engine():
                                 "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio, "adx": adx_30m
                             }
                             market_candidates.append(candidate_obj)
-                            audit_logs.append(f"ULTRA-CONVICTION SHORT MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, ADX: {adx_30m:.1f}, 30m CI: {ci_30m:.1f})")
+                            audit_logs.append(f"HIGH-CONVICTION SHORT MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, ADX: {adx_30m:.1f}, 30m CI: {ci_30m:.1f})")
 
             except Exception:
                 continue
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
-    audit_logs.append(f"Ultra-Conviction Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
+    audit_logs.append(f"Hybrid Scan Complete (30m): Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
 
     trades_executed = False
     available_slots = 6 - active_count
@@ -596,6 +626,9 @@ def execute_engine():
             is_long = candidate["is_long"]
             is_ballistic = candidate["is_ballistic"]
             
+            # Dynamic Leverage Selection: 1x for Large-Caps, 3x for Altcoin Runners
+            assigned_leverage = 1 if coin in LARGE_CAP_COINS else 3
+
             target_pct = np.random.uniform(0.15, 0.17) if is_ballistic else np.random.uniform(0.12, 0.14)
             target_usd = max(50.0, account_value * target_pct)
             
@@ -607,7 +640,7 @@ def execute_engine():
 
             try:
                 try:
-                    exchange.update_leverage(coin, 5, True)
+                    exchange.update_leverage(coin, assigned_leverage, True)
                 except Exception:
                     pass
 
@@ -616,8 +649,7 @@ def execute_engine():
                     active_count += 1
                     active_coins.add(coin)
                     trades_executed = True
-                    audit_logs.append(f"EXECUTION SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {coin} (Size: {sz})")
-                    audit_logs.append(f"INFINITE RUNNER MODE: No TP limit. Staircase retention engine managing {coin} extension.")
+                    audit_logs.append(f"EXECUTION SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {coin} ({assigned_leverage}x Leverage, Size: {sz})")
 
             except Exception as e:
                 audit_logs.append(f"EXECUTION FAILED on {coin}: {e}")
@@ -642,7 +674,7 @@ def execute_engine():
         if VERBOSE_TEST_MODE:
             audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
             audit_section = f"""
-            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Ultra-Conviction Mode)</div>
+            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Hybrid Formula Active)</div>
             <div class="table-responsive" style="overflow-x: hidden;">
               <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
                 <tbody>{audit_rows}</tbody>
@@ -665,7 +697,7 @@ def execute_engine():
                 roe_val = float(t.get("roe_pct", 0.0))
             else:
                 if entry_p > 0:
-                    pnl_val = ((exit_p - entry_p) / entry_p * 50.0 * 5.0) if side == "LONG" else ((entry_p - exit_p) / entry_p * 50.0 * 5.0)
+                    pnl_val = ((exit_p - entry_p) / entry_p * 50.0 * 3.0) if side == "LONG" else ((entry_p - exit_p) / entry_p * 50.0 * 3.0)
                     roe_val = (pnl_val / 50.0) * 100
                 else:
                     pnl_val = 0.0
@@ -759,7 +791,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Ultra-Conviction Mode)</p>
+                <p>Timestamp: {timestamp} (Hybrid Formula Active)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -769,12 +801,12 @@ def execute_engine():
                 </div>
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (Ultra-Conviction Engine)</div>
-                  &bull; <b>Strict Directional Unison:</b> Requires BTC Daily &ge; +0.15% for BULL / &le; -0.15% for BEAR. Zero trades in NEUTRAL zone.<br>
-                  &bull; <b>Ultra-Conviction Scan:</b> Requires Volume Expansion &ge; 3.0x AND ADX &ge; 25.0.<br>
-                  &bull; <b>Chop Purge Exit Disabled:</b> Active trades will NEVER be forced-closed on CI. Exits handled purely by hard/trailing stops.<br>
-                  &bull; <b>Slippage-Protected Ratchet:</b> Winner locks hold wide buffers to prevent market order slippage below breakeven.<br>
-                  &bull; <b>Leverage Profile: Optimized 5x Safe Max Leverage</b>
+                  <div class="rules-title">&#9989; Active Guardrails (Hybrid Formula Engine)</div>
+                  &bull; <b>30-Minute Patience Interval:</b> Runs on a clean 30m schedule to eliminate micro-wick fakeouts.<br>
+                  &bull; <b>High-Peak Profit Lock:</b> Locks 90%–95% of peak ROE on major runners + Volume Stall Lock.<br>
+                  &bull; <b>Tight Initial Risk Cap:</b> Initial stop loss capped at max -1.0% ROE.<br>
+                  &bull; <b>Dynamic Safe Leverage Profile:</b> 1x leverage on large-caps, 3x on altcoin runners.<br>
+                  &bull; <b>Gemini AI & BTC Macro Shield:</b> Real-time daily market search + BTC Directional Shield.
                 </div>
 
                 <div class="section-title">Positions per Bot (USD)</div>
@@ -799,11 +831,11 @@ def execute_engine():
         send_html_dashboard_email(f"Hyperliquid Report — USD ${account_value:.2f}", html_content, text_fallback)
     else:
         save_state(state)
-        print(f"[{timestamp}] Single precision cycle complete ({elapsed_minutes:.1f}m since last report). Skipping email dispatch.", flush=True)
+        print(f"[{timestamp}] Hybrid precision cycle complete ({elapsed_minutes:.1f}m since last report). Skipping email dispatch.", flush=True)
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing single-run 5-minute precision cycle...", flush=True)
+    print(f"[{timestamp}] Executing single-run 30-minute hybrid precision cycle...", flush=True)
     try:
         execute_engine()
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Cycle execution completed successfully.", flush=True)
