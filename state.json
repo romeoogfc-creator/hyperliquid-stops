@@ -44,6 +44,16 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "BCH",
+      "entry_price": 325.25,
+      "exit_price": 327.16,
+      "pnl_usd": -0.4851454026133807,
+      "roe_pct": -5.8724058416603375,
+      "side": "SHORT",
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-5.9%)",
+      "timestamp": "2026-09-28 02:27:09"
+    },
+    {
       "coin": "GMT",
       "entry_price": 0.009008,
       "exit_price": 0.008945,
@@ -132,73 +142,11 @@
       "side": "LONG",
       "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-1.6%)",
       "timestamp": "2026-09-27 22:15:08"
-    },
-    {
-      "coin": "YGG",
-      "entry_price": 0.028097,
-      "exit_price": 0.028064,
-      "pnl_usd": -0.08196232797096216,
-      "roe_pct": -0.3523507847813123,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-0.4%)",
-      "timestamp": "2026-09-27 21:50:04"
-    },
-    {
-      "coin": "APT",
-      "entry_price": 0.866,
-      "exit_price": 0.8536,
-      "pnl_usd": -0.9823639685912214,
-      "roe_pct": -1.4318706697459544,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-1.4%)",
-      "timestamp": "2026-09-27 21:44:13"
-    },
-    {
-      "coin": "DOT",
-      "entry_price": 1.2608,
-      "exit_price": 1.26585,
-      "pnl_usd": 0.2774429064879441,
-      "roe_pct": 0.40053934010152276,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Tiered Profit Lock (+0.4%)",
-      "timestamp": "2026-09-27 20:16:02"
-    },
-    {
-      "coin": "OP",
-      "entry_price": 0.14851,
-      "exit_price": 0.14718,
-      "pnl_usd": -0.6098492855699943,
-      "roe_pct": -4.477812941889428,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-4.5%)",
-      "timestamp": "2026-09-27 19:33:25"
-    },
-    {
-      "coin": "TIA",
-      "entry_price": 0.50693,
-      "exit_price": 0.50392,
-      "pnl_usd": -0.3829969827195022,
-      "roe_pct": -2.9688517152269127,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-3.0%)",
-      "timestamp": "2026-09-27 18:34:33"
     }
   ],
-  "active_position_cache": {
-    "BCH": {
-      "entry_px": 325.25,
-      "current_px": 327.855,
-      "szi": -0.252,
-      "peak_roe": -0.08009223674096905,
-      "margin": 8.261442,
-      "leverage": 10.0,
-      "side": "SHORT"
-    }
-  },
-  "previous_active_coins": [
-    "BCH"
-  ],
-  "last_run_timestamp": "2026-09-28 02:14:05",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-09-28 02:27:57",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -208,5 +156,5 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790560838.856305
+  "last_email_timestamp": 1790562429.5107808
 }
