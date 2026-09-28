@@ -143,7 +143,7 @@ def calculate_adx(highs, lows, closes, period=14):
         return 15.0
 
 def get_btc_regime(info, now_ms):
-    """Fetches BTC daily candle with a 0.15% hysteresis buffer."""
+    """Fetches BTC daily candle with a strict 0.15% threshold."""
     try:
         btc_candles = api_retry(info.candles_snapshot, name="BTC", interval="1d", startTime=now_ms - 86400000 * 5, endTime=now_ms)
         if not btc_candles or len(btc_candles) < 2:
@@ -241,7 +241,7 @@ def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     now_ts = time.time()
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Native 5-Min Trigger Mode).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Strict Directional Unison Mode).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -259,15 +259,15 @@ def execute_engine():
     open_orders = api_retry(info.frontend_open_orders, ACCOUNT_ADDRESS)
     now_ms = int(now_ts * 1000)
 
-    # --- BTC REGIME SHIELD WITH HYSTERESIS BUFFER ---
+    # --- BTC REGIME SHIELD ---
     btc_regime, btc_change_pct = get_btc_regime(info, now_ms)
     audit_logs.append(f"BTC Directional Shield: Daily Candle is {btc_regime} ({btc_change_pct:+.2f}%).")
     if btc_regime == "RED":
-        audit_logs.append("🛑 MACRO BEAR REGIME: ALL LONG entries strictly BLOCKED. Existing LONGs will be purged.")
+        audit_logs.append("🛑 MACRO BEAR REGIME: ONLY SHORT entries allowed. Existing LONGs will be purged.")
     elif btc_regime == "GREEN":
-        audit_logs.append("🟢 MACRO BULL REGIME: ALL SHORT entries strictly BLOCKED. Existing SHORTs will be purged.")
+        audit_logs.append("🟢 MACRO BULL REGIME: ONLY LONG entries allowed. Existing SHORTs will be purged.")
     else:
-        audit_logs.append("⚖️ MACRO NEUTRAL ZONE: Standard scanning active with zero forced purges.")
+        audit_logs.append("⚖️ MACRO NEUTRAL ZONE: ALL NEW ENTRIES STRICTLY BLOCKED. Remaining in 100% Cash.")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -351,7 +351,7 @@ def execute_engine():
             unrealized_pnl = float(pos.get("unrealizedPnl", 0))
             pos_equity = margin_used + unrealized_pnl
 
-            # STRICT DIRECTIONAL PURGE
+            # STRICT DIRECTIONAL PURGE: Fired only when BTC daily explicitly flips to hostile state
             if btc_regime == "RED" and is_long:
                 try:
                     audit_logs.append(f"🛑 DIRECTIONAL PURGE: Closing LONG on {coin} because BTC Daily is RED.")
@@ -479,107 +479,109 @@ def execute_engine():
     market_candidates = []
     scanned_count = 0
 
-    for coin in universe:
-        if coin in active_coins or coin in ["USDC", "USDT"]:
-            continue
-        try:
-            px = float(all_mids.get(coin, 0))
-            if px <= 0:
+    # SCANNING ONLY OCCURS IF BTC REGIME IS EXPLICITLY GREEN OR RED
+    if btc_regime in ["GREEN", "RED"]:
+        for coin in universe:
+            if coin in active_coins or coin in ["USDC", "USDT"]:
                 continue
-            
-            time.sleep(0.25)
-            candles = api_retry(info.candles_snapshot, name=coin, interval="30m", startTime=now_ms - 86400000 * 3, endTime=now_ms)
-            if not candles or len(candles) < 50:
+            try:
+                px = float(all_mids.get(coin, 0))
+                if px <= 0:
+                    continue
+                
+                time.sleep(0.25)
+                candles = api_retry(info.candles_snapshot, name=coin, interval="30m", startTime=now_ms - 86400000 * 3, endTime=now_ms)
+                if not candles or len(candles) < 50:
+                    continue
+                scanned_count += 1
+
+                closes = [float(c["c"]) for c in candles]
+                opens = [float(c["o"]) for c in candles]
+                highs = [float(c["h"]) for c in candles]
+                lows = [float(c["l"]) for c in candles]
+                volumes = [float(c.get("v", 0)) for c in candles]
+
+                adx_30m = calculate_adx(highs[:-1], lows[:-1], closes[:-1])
+                if adx_30m < 22.0:
+                    continue
+
+                upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
+                comp_close = closes[-2]
+                comp_open = opens[-2]
+                prev_comp_close = closes[-3]
+                prev_comp_open = opens[-3]
+                comp_high = highs[-2]
+                comp_low = lows[-2]
+                
+                ci_30m = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
+                if ci_30m > 55.0:
+                    continue
+
+                avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else volumes[-3]
+                comp_vol = volumes[-2]
+                vol_ratio = comp_vol / avg_vol if avg_vol > 0 else 1.0
+
+                atr = np.mean([h - l for h, l in zip(highs[-15:-1], lows[-15:-1])])
+
+                s_closes = pd.Series(closes[:-1])
+                ema20 = s_closes.ewm(span=20, adjust=False).mean().iloc[-1]
+                ema50 = s_closes.ewm(span=50, adjust=False).mean().iloc[-1]
+
+                is_green_candle = comp_close > comp_open
+                recent_red_to_green = (prev_comp_close <= prev_comp_open) and is_green_candle
+                has_upward_continuation = comp_close > prev_comp_close
+                candle_range = comp_high - comp_low
+                upper_wick_ok = True
+                if candle_range > 0:
+                    upper_wick = (comp_high - comp_close) / candle_range
+                    if upper_wick > 0.35:
+                        upper_wick_ok = False
+
+                # LONG SCAN: STRICTLY ALLOWED ONLY IF BTC IS GREEN
+                if btc_regime == "GREEN" and ema20 > ema50:
+                    if comp_close > upper and comp_close <= upper * 1.04 and vol_ratio >= 2.5 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
+                        is_ballistic = comp_close > (upper + 1.5 * atr)
+                        extension_score = max(0.0, (comp_close - upper) / upper)
+                        atr_score = atr / comp_close
+                        momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
+
+                        pass_5m, ci_5m = verify_5m_micro_structure(info, coin, now_ms, is_long=True)
+                        if pass_5m and ci_5m <= 55.0:
+                            candidate_obj = {
+                                "coin": coin, "close": comp_close, "is_long": True, "is_ballistic": is_ballistic,
+                                "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio, "adx": adx_30m
+                            }
+                            market_candidates.append(candidate_obj)
+                            audit_logs.append(f"HIGH-CONVICTION LONG MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, ADX: {adx_30m:.1f}, 30m CI: {ci_30m:.1f})")
+
+                # SHORT SCAN: STRICTLY ALLOWED ONLY IF BTC IS RED
+                is_red_candle = comp_close < comp_open
+                recent_green_to_red = (prev_comp_close >= prev_comp_open) and is_red_candle
+                has_downward_continuation = comp_close < prev_comp_close
+                lower_wick_ok = True
+                if candle_range > 0:
+                    lower_wick = (comp_close - comp_low) / candle_range
+                    if lower_wick > 0.35:
+                        lower_wick_ok = False
+
+                if btc_regime == "RED" and ema20 < ema50:
+                    if comp_close < lower and comp_close >= lower * 0.96 and vol_ratio >= 2.5 and (recent_green_to_red or has_downward_continuation) and lower_wick_ok:
+                        is_ballistic = comp_close < (lower - 1.5 * atr)
+                        extension_score = max(0.0, (lower - comp_close) / lower)
+                        atr_score = atr / comp_close
+                        momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
+
+                        pass_5m, ci_5m = verify_5m_micro_structure(info, coin, now_ms, is_long=False)
+                        if pass_5m and ci_5m <= 55.0:
+                            candidate_obj = {
+                                "coin": coin, "close": comp_close, "is_long": False, "is_ballistic": is_ballistic,
+                                "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio, "adx": adx_30m
+                            }
+                            market_candidates.append(candidate_obj)
+                            audit_logs.append(f"HIGH-CONVICTION SHORT MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, ADX: {adx_30m:.1f}, 30m CI: {ci_30m:.1f})")
+
+            except Exception:
                 continue
-            scanned_count += 1
-
-            closes = [float(c["c"]) for c in candles]
-            opens = [float(c["o"]) for c in candles]
-            highs = [float(c["h"]) for c in candles]
-            lows = [float(c["l"]) for c in candles]
-            volumes = [float(c.get("v", 0)) for c in candles]
-
-            adx_30m = calculate_adx(highs[:-1], lows[:-1], closes[:-1])
-            if adx_30m < 22.0:
-                continue
-
-            upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
-            comp_close = closes[-2]
-            comp_open = opens[-2]
-            prev_comp_close = closes[-3]
-            prev_comp_open = opens[-3]
-            comp_high = highs[-2]
-            comp_low = lows[-2]
-            
-            ci_30m = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
-            if ci_30m > 55.0:
-                continue
-
-            avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else volumes[-3]
-            comp_vol = volumes[-2]
-            vol_ratio = comp_vol / avg_vol if avg_vol > 0 else 1.0
-
-            atr = np.mean([h - l for h, l in zip(highs[-15:-1], lows[-15:-1])])
-
-            s_closes = pd.Series(closes[:-1])
-            ema20 = s_closes.ewm(span=20, adjust=False).mean().iloc[-1]
-            ema50 = s_closes.ewm(span=50, adjust=False).mean().iloc[-1]
-
-            is_green_candle = comp_close > comp_open
-            recent_red_to_green = (prev_comp_close <= prev_comp_open) and is_green_candle
-            has_upward_continuation = comp_close > prev_comp_close
-            candle_range = comp_high - comp_low
-            upper_wick_ok = True
-            if candle_range > 0:
-                upper_wick = (comp_high - comp_close) / candle_range
-                if upper_wick > 0.35:
-                    upper_wick_ok = False
-
-            # LONG SCAN: ALLOWED IF BTC IS NOT RED & ADX >= 22
-            if btc_regime != "RED" and ema20 > ema50:
-                if comp_close > upper and comp_close <= upper * 1.04 and vol_ratio >= 2.5 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
-                    is_ballistic = comp_close > (upper + 1.5 * atr)
-                    extension_score = max(0.0, (comp_close - upper) / upper)
-                    atr_score = atr / comp_close
-                    momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
-
-                    pass_5m, ci_5m = verify_5m_micro_structure(info, coin, now_ms, is_long=True)
-                    if pass_5m and ci_5m <= 55.0:
-                        candidate_obj = {
-                            "coin": coin, "close": comp_close, "is_long": True, "is_ballistic": is_ballistic,
-                            "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio, "adx": adx_30m
-                        }
-                        market_candidates.append(candidate_obj)
-                        audit_logs.append(f"HIGH-CONVICTION LONG MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, ADX: {adx_30m:.1f}, 30m CI: {ci_30m:.1f})")
-
-            # SHORT SCAN: ALLOWED IF BTC IS NOT GREEN & ADX >= 22
-            is_red_candle = comp_close < comp_open
-            recent_green_to_red = (prev_comp_close >= prev_comp_open) and is_red_candle
-            has_downward_continuation = comp_close < prev_comp_close
-            lower_wick_ok = True
-            if candle_range > 0:
-                lower_wick = (comp_close - comp_low) / candle_range
-                if lower_wick > 0.35:
-                    lower_wick_ok = False
-
-            if btc_regime != "GREEN" and ema20 < ema50:
-                if comp_close < lower and comp_close >= lower * 0.96 and vol_ratio >= 2.5 and (recent_green_to_red or has_downward_continuation) and lower_wick_ok:
-                    is_ballistic = comp_close < (lower - 1.5 * atr)
-                    extension_score = max(0.0, (lower - comp_close) / lower)
-                    atr_score = atr / comp_close
-                    momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
-
-                    pass_5m, ci_5m = verify_5m_micro_structure(info, coin, now_ms, is_long=False)
-                    if pass_5m and ci_5m <= 55.0:
-                        candidate_obj = {
-                            "coin": coin, "close": comp_close, "is_long": False, "is_ballistic": is_ballistic,
-                            "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio, "adx": adx_30m
-                        }
-                        market_candidates.append(candidate_obj)
-                        audit_logs.append(f"HIGH-CONVICTION SHORT MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, ADX: {adx_30m:.1f}, 30m CI: {ci_30m:.1f})")
-
-        except Exception:
-            continue
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
     audit_logs.append(f"High-Conviction Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
@@ -639,7 +641,7 @@ def execute_engine():
         if VERBOSE_TEST_MODE:
             audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
             audit_section = f"""
-            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (5-Min Native Trigger)</div>
+            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Strict Directional Unison)</div>
             <div class="table-responsive" style="overflow-x: hidden;">
               <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
                 <tbody>{audit_rows}</tbody>
@@ -756,7 +758,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Native 5-Min Trigger Mode)</p>
+                <p>Timestamp: {timestamp} (Strict Directional Unison)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -766,10 +768,10 @@ def execute_engine():
                 </div>
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (5-Min Native Engine)</div>
-                  &bull; <b>ADX Trend Strength Filter:</b> Banned entries when ADX &lt; 22.0. Forces 100% cash in rangebound markets.<br>
+                  <div class="rules-title">&#9989; Active Guardrails (Strict Directional Engine)</div>
+                  &bull; <b>Strict Directional Unison:</b> Requires BTC Daily &ge; +0.15% for BULL / &le; -0.15% for BEAR. Zero trades in NEUTRAL zone.<br>
                   &bull; <b>Chop Purge Exit Disabled:</b> Active trades will NEVER be forced-closed on CI. Exits handled purely by hard/trailing stops.<br>
-                  &bull; <b>Volume Threshold:</b> Elevated to &ge; 2.5x volume expansion on completed 30m candles.<br>
+                  &bull; <b>High-Conviction Scan:</b> Requires Volume &ge; 2.5x AND ADX &ge; 22.0.<br>
                   &bull; <b>Slippage-Protected Ratchet:</b> Winner locks hold wide buffers to prevent market order slippage below breakeven.<br>
                   &bull; <b>Leverage Profile: Optimized 5x Safe Max Leverage</b>
                 </div>
