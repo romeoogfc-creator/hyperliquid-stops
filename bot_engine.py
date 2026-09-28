@@ -149,10 +149,12 @@ def calculate_adx(highs, lows, closes, period=14):
 def check_gemini_macro_shield(state, now_ts, is_scan_window):
     """
     Refreshes Gemini AI assessment on 30-minute entry scan windows.
-    Reuses cache on 5-minute inter-candle trailing stop runs.
+    Cascades across models on 404, 503 (high demand), or 429 (rate limit) errors.
+    Reuses cached risk if Google API capacity is fully exhausted.
     """
     gemini_cache = state.get("gemini_cache", {})
     
+    # 1. Reuse cache on inter-candle 5m trailing stop runs
     if not is_scan_window and "risk" in gemini_cache:
         elapsed_mins = (now_ts - float(gemini_cache.get("timestamp", 0))) / 60.0
         return gemini_cache["risk"], f"{gemini_cache['briefing']} (Refreshed {elapsed_mins:.0f}m ago)"
@@ -160,11 +162,13 @@ def check_gemini_macro_shield(state, now_ts, is_scan_window):
     if not GEMINI_API_KEY:
         return "LOW", "Gemini API key not set — Macro shield bypassed."
 
+    # 2. Fresh check on 30m scan windows with multi-model cascade
     try:
         from google import genai
         client = genai.Client(api_key=GEMINI_API_KEY)
         model_cascade = ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.8-flash']
         
+        last_err_msg = ""
         for model_name in model_cascade:
             try:
                 response = client.models.generate_content(
@@ -181,12 +185,21 @@ def check_gemini_macro_shield(state, now_ts, is_scan_window):
                 }
                 return risk_level, text.strip()
             except Exception as m_err:
-                if "404" in str(m_err) or "NOT_FOUND" in str(m_err):
+                last_err_msg = str(m_err)
+                err_str = str(m_err).upper()
+                # Cascade to next model on 404, 503 (high demand), or 429 (rate limit)
+                if any(code in err_str for code in ["404", "503", "429", "UNAVAILABLE", "NOT_FOUND", "RESOURCE_EXHAUSTED"]):
                     continue
                 raise m_err
 
-        return "LOW", "Gemini Shield active — default PASS"
+        # If all API models hit high demand, preserve existing cached risk level
+        if "risk" in gemini_cache:
+            return gemini_cache["risk"], f"{gemini_cache['briefing']} (Cached fallback during API demand spike)"
+        
+        return "LOW", f"Gemini Shield active — default PASS ({last_err_msg})"
     except Exception as e:
+        if "risk" in gemini_cache:
+            return gemini_cache["risk"], f"{gemini_cache['briefing']} (Cached fallback during API error)"
         return "LOW", f"Gemini Shield active — default PASS ({e})"
 
 def get_btc_regime(info, now_ms):
