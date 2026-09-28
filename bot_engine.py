@@ -241,7 +241,7 @@ def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     now_ts = time.time()
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Strict Directional Unison Mode).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Ultra-Conviction Mode).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -501,8 +501,9 @@ def execute_engine():
                 lows = [float(c["l"]) for c in candles]
                 volumes = [float(c.get("v", 0)) for c in candles]
 
+                # STRICT ADX FILTER (Must be >= 25.0)
                 adx_30m = calculate_adx(highs[:-1], lows[:-1], closes[:-1])
-                if adx_30m < 22.0:
+                if adx_30m < 25.0:
                     continue
 
                 upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
@@ -537,9 +538,9 @@ def execute_engine():
                     if upper_wick > 0.35:
                         upper_wick_ok = False
 
-                # LONG SCAN: STRICTLY ALLOWED ONLY IF BTC IS GREEN
+                # LONG SCAN: ALLOWED IF BTC IS GREEN & VOL RATIO >= 3.0 & ADX >= 25.0
                 if btc_regime == "GREEN" and ema20 > ema50:
-                    if comp_close > upper and comp_close <= upper * 1.04 and vol_ratio >= 2.5 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
+                    if comp_close > upper and comp_close <= upper * 1.04 and vol_ratio >= 3.0 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
                         is_ballistic = comp_close > (upper + 1.5 * atr)
                         extension_score = max(0.0, (comp_close - upper) / upper)
                         atr_score = atr / comp_close
@@ -552,9 +553,9 @@ def execute_engine():
                                 "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio, "adx": adx_30m
                             }
                             market_candidates.append(candidate_obj)
-                            audit_logs.append(f"HIGH-CONVICTION LONG MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, ADX: {adx_30m:.1f}, 30m CI: {ci_30m:.1f})")
+                            audit_logs.append(f"ULTRA-CONVICTION LONG MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, ADX: {adx_30m:.1f}, 30m CI: {ci_30m:.1f})")
 
-                # SHORT SCAN: STRICTLY ALLOWED ONLY IF BTC IS RED
+                # SHORT SCAN: ALLOWED IF BTC IS RED & VOL RATIO >= 3.0 & ADX >= 25.0
                 is_red_candle = comp_close < comp_open
                 recent_green_to_red = (prev_comp_close >= prev_comp_open) and is_red_candle
                 has_downward_continuation = comp_close < prev_comp_close
@@ -565,7 +566,7 @@ def execute_engine():
                         lower_wick_ok = False
 
                 if btc_regime == "RED" and ema20 < ema50:
-                    if comp_close < lower and comp_close >= lower * 0.96 and vol_ratio >= 2.5 and (recent_green_to_red or has_downward_continuation) and lower_wick_ok:
+                    if comp_close < lower and comp_close >= lower * 0.96 and vol_ratio >= 3.0 and (recent_green_to_red or has_downward_continuation) and lower_wick_ok:
                         is_ballistic = comp_close < (lower - 1.5 * atr)
                         extension_score = max(0.0, (lower - comp_close) / lower)
                         atr_score = atr / comp_close
@@ -578,13 +579,13 @@ def execute_engine():
                                 "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio, "adx": adx_30m
                             }
                             market_candidates.append(candidate_obj)
-                            audit_logs.append(f"HIGH-CONVICTION SHORT MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, ADX: {adx_30m:.1f}, 30m CI: {ci_30m:.1f})")
+                            audit_logs.append(f"ULTRA-CONVICTION SHORT MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, ADX: {adx_30m:.1f}, 30m CI: {ci_30m:.1f})")
 
             except Exception:
                 continue
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
-    audit_logs.append(f"High-Conviction Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
+    audit_logs.append(f"Ultra-Conviction Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
 
     trades_executed = False
     available_slots = 6 - active_count
@@ -641,7 +642,7 @@ def execute_engine():
         if VERBOSE_TEST_MODE:
             audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
             audit_section = f"""
-            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Strict Directional Unison)</div>
+            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Ultra-Conviction Mode)</div>
             <div class="table-responsive" style="overflow-x: hidden;">
               <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
                 <tbody>{audit_rows}</tbody>
@@ -758,7 +759,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Strict Directional Unison)</p>
+                <p>Timestamp: {timestamp} (Ultra-Conviction Mode)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -768,10 +769,10 @@ def execute_engine():
                 </div>
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (Strict Directional Engine)</div>
+                  <div class="rules-title">&#9989; Active Guardrails (Ultra-Conviction Engine)</div>
                   &bull; <b>Strict Directional Unison:</b> Requires BTC Daily &ge; +0.15% for BULL / &le; -0.15% for BEAR. Zero trades in NEUTRAL zone.<br>
+                  &bull; <b>Ultra-Conviction Scan:</b> Requires Volume Expansion &ge; 3.0x AND ADX &ge; 25.0.<br>
                   &bull; <b>Chop Purge Exit Disabled:</b> Active trades will NEVER be forced-closed on CI. Exits handled purely by hard/trailing stops.<br>
-                  &bull; <b>High-Conviction Scan:</b> Requires Volume &ge; 2.5x AND ADX &ge; 22.0.<br>
                   &bull; <b>Slippage-Protected Ratchet:</b> Winner locks hold wide buffers to prevent market order slippage below breakeven.<br>
                   &bull; <b>Leverage Profile: Optimized 5x Safe Max Leverage</b>
                 </div>
