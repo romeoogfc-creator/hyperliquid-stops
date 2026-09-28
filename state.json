@@ -147,7 +147,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-09-28 20:54:59",
+  "last_run_timestamp": "2026-09-28 21:14:20",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -160,8 +160,8 @@
   "last_email_timestamp": 1790628889.8251052,
   "last_scan_timestamp": 1790617744.9268353,
   "gemini_cache": {
-    "timestamp": 1790628889.8251052,
+    "timestamp": 1790630048.6677108,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nCrypto markets currently face significant uncertainty driven by shifting macroeconomic interest rate expectations, regulatory scrutiny, and high levels of leverage that leave assets vulnerable to sharp, sudden liquidations."
+    "briefing": "**Risk Level: HIGH** \n\nCurrent crypto markets face extreme volatility driven by shifting macroeconomic liquidity, ongoing regulatory crackdowns, and elevated leverage that leaves portfolios vulnerable to sudden, cascading liquidations."
   }
 }
