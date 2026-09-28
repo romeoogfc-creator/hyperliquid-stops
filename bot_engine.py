@@ -30,7 +30,8 @@ def load_state():
         "active_position_cache": {},
         "previous_active_coins": [],
         "last_run_timestamp": "",
-        "last_email_timestamp": 0
+        "last_email_timestamp": 0,
+        "last_scan_timestamp": 0
     }
     if os.path.exists(STATE_FILE):
         try:
@@ -145,13 +146,11 @@ def calculate_adx(highs, lows, closes, period=14):
         return 15.0
 
 def check_gemini_macro_shield():
-    """Runs a quick macro assessment check via Gemini SDK with model fallback cascade."""
     if not GEMINI_API_KEY:
         return "LOW", "Gemini API key not set — Macro shield bypassed."
     try:
         from google import genai
         client = genai.Client(api_key=GEMINI_API_KEY)
-        
         model_cascade = ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.8-flash']
         
         for model_name in model_cascade:
@@ -173,7 +172,6 @@ def check_gemini_macro_shield():
         return "LOW", f"Gemini Shield active — default PASS ({e})"
 
 def get_btc_regime(info, now_ms):
-    """Fetches BTC daily candle with a 0.15% threshold."""
     try:
         btc_candles = api_retry(info.candles_snapshot, name="BTC", interval="1d", startTime=now_ms - 86400000 * 5, endTime=now_ms)
         if not btc_candles or len(btc_candles) < 2:
@@ -200,6 +198,7 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=3.0, cho
 
     leash_status = "Tight Initial Stop (-1.0% ROE)"
     
+    # FAST 5-MIN TRAILING RATCHET: Locks top profits dynamically as peaks develop
     if peak_roe >= 0.15:
         target_floor_roe = peak_roe * 0.95
         leash_status = f"⚡ Ultra-Runner 95% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
@@ -272,7 +271,7 @@ def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     now_ts = time.time()
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Hybrid Engine Started (30-Min High-Retention Sniper Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (5m Stop Ratchet / 30m Entry Scanner).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -293,18 +292,10 @@ def execute_engine():
     # --- GEMINI MACRO SHIELD ---
     gemini_risk, gemini_briefing = check_gemini_macro_shield()
     audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] {gemini_briefing}")
-    if gemini_risk == "HIGH":
-        audit_logs.append("🚨 GEMINI HIGH RISK ALERT: Pausing new position entries.")
 
     # --- BTC REGIME SHIELD ---
     btc_regime, btc_change_pct = get_btc_regime(info, now_ms)
     audit_logs.append(f"BTC Directional Shield: Daily Candle is {btc_regime} ({btc_change_pct:+.2f}%).")
-    if btc_regime == "RED":
-        audit_logs.append("🛑 MACRO BEAR REGIME: ONLY SHORT entries allowed. Existing LONGs will be purged.")
-    elif btc_regime == "GREEN":
-        audit_logs.append("🟢 MACRO BULL REGIME: ONLY LONG entries allowed. Existing SHORTs will be purged.")
-    else:
-        audit_logs.append("⚖️ MACRO NEUTRAL ZONE: ALL NEW ENTRIES STRICTLY BLOCKED. Remaining in 100% Cash.")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -347,7 +338,7 @@ def execute_engine():
 
     portfolio_pnl_pct = (total_unrealized_pnl / account_value) if account_value > 0 else 0.0
     if portfolio_pnl_pct <= -0.035:
-        audit_logs.append(f"🚨 PORTFOLIO CIRCUIT BREAKER TRIGGERED: Unrealized P&L at {portfolio_pnl_pct*100:.2f}%. Flattening all positions to cash!")
+        audit_logs.append(f"🚨 PORTFOLIO CIRCUIT BREAKER TRIGGERED: Unrealized P&L at {portfolio_pnl_pct*100:.2f}%. Flattening all positions!")
         for pos_item in asset_positions:
             pos = pos_item.get("position", {})
             coin = pos.get("coin")
@@ -356,9 +347,8 @@ def execute_engine():
                 try:
                     entry_px = float(pos.get("entryPx", 0))
                     exit_px = float(all_mids.get(coin, 0))
-                    collateral = float(pos.get("marginUsed", 0))
                     pnl = float(pos.get("unrealizedPnl", 0))
-                    roe = (pnl / collateral * 100) if collateral > 0 else 0.0
+                    roe = (pnl / float(pos.get("marginUsed", 1))) * 100
                     exchange.market_close(coin)
                     state["closed_trades_ledger"].insert(0, {
                         "coin": coin, "entry_price": entry_px, "exit_price": exit_px,
@@ -372,7 +362,7 @@ def execute_engine():
         save_state(state)
         return
 
-    # --- ACTIVE POSITION MANAGEMENT ---
+    # --- EVERY 5-MIN RUN: ACTIVE POSITION TRAILING STOP MANAGEMENT ---
     if asset_positions:
         for pos_item in asset_positions:
             pos = pos_item.get("position", {})
@@ -433,6 +423,15 @@ def execute_engine():
                 lows = [float(c["l"]) for c in c_candles]
                 closes = [float(c["c"]) for c in c_candles]
                 vols = [float(c.get("v", 0)) for c in c_candles]
+                
+                # Check candle high/low to capture intraday spike peak even if price pulled back slightly
+                if is_long and len(highs) > 0:
+                    candle_max_roe = (((max(highs[-2:]) - entry_px) / entry_px) * leverage)
+                    peak_roe = max(peak_roe, candle_max_roe)
+                elif (not is_long) and len(lows) > 0:
+                    candle_min_roe = (((entry_px - min(lows[-2:])) / entry_px) * leverage)
+                    peak_roe = max(peak_roe, candle_min_roe)
+
                 ci = calculate_choppiness_index(highs, lows, closes)
                 vol_ratio = (vols[-1] / np.mean(vols[-14:])) if len(vols) >= 14 and np.mean(vols[-14:]) > 0 else 1.0
             except Exception:
@@ -512,11 +511,22 @@ def execute_engine():
     state["active_position_cache"] = new_active_cache
     state["previous_active_coins"] = list(active_coins)
 
+    # --- 30-MINUTE CANDLE BOUNDARY CHECK FOR NEW ENTRY SCANNING ---
+    current_gm_min = time.gmtime(now_ts).tm_min
+    last_scan_ts = float(state.get("last_scan_timestamp", 0))
+    minutes_since_last_scan = (now_ts - last_scan_ts) / 60.0
+    
+    # Executes entry scan if on a :00 or :30 boundary (or if >25 mins passed since last scan)
+    is_30m_scan_window = (current_gm_min in [0, 1, 2, 30, 31, 32]) or (minutes_since_last_scan >= 25.0)
+
     universe = [asset["name"] for asset in meta.get("universe", [])][:100]
     market_candidates = []
     scanned_count = 0
 
-    if btc_regime in ["GREEN", "RED"] and gemini_risk != "HIGH":
+    if is_30m_scan_window and btc_regime in ["GREEN", "RED"] and gemini_risk != "HIGH":
+        state["last_scan_timestamp"] = now_ts
+        audit_logs.append("⏰ 30-Minute Candle Boundary Reached: Launching Full Market Entry Scanner...")
+
         for coin in universe:
             if coin in active_coins or coin in ["USDC", "USDT"]:
                 continue
@@ -616,9 +626,12 @@ def execute_engine():
 
             except Exception:
                 continue
+    else:
+        audit_logs.append("⏸️ Inter-candle run (5m interval): Position trailing stops updated. Entry scan sleeping until next 30m mark.")
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
-    audit_logs.append(f"Hybrid Scan Complete (30m): Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
+    if is_30m_scan_window:
+        audit_logs.append(f"30m Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
 
     trades_executed = False
     available_slots = 6 - active_count
@@ -676,7 +689,7 @@ def execute_engine():
         if VERBOSE_TEST_MODE:
             audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
             audit_section = f"""
-            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Hybrid Formula Active)</div>
+            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (5m Stop Ratchet / 30m Entry Scan)</div>
             <div class="table-responsive" style="overflow-x: hidden;">
               <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
                 <tbody>{audit_rows}</tbody>
@@ -793,7 +806,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Hybrid Formula Active)</p>
+                <p>Timestamp: {timestamp} (Hybrid 5m/30m Mode Active)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -803,12 +816,12 @@ def execute_engine():
                 </div>
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (Hybrid Formula Engine)</div>
-                  &bull; <b>30-Minute Patience Interval:</b> Runs on a clean 30m schedule to eliminate micro-wick fakeouts.<br>
-                  &bull; <b>High-Peak Profit Lock:</b> Locks 90%–95% of peak ROE on major runners + Volume Stall Lock.<br>
-                  &bull; <b>Tight Initial Risk Cap:</b> Initial stop loss capped at max -1.0% ROE.<br>
-                  &bull; <b>Dynamic Safe Leverage Profile:</b> 1x leverage on large-caps, 3x on altcoin runners.<br>
-                  &bull; <b>Gemini AI & BTC Macro Shield:</b> Real-time daily market search + BTC Directional Shield.
+                  <div class="rules-title">&#9989; Active Guardrails (Dual-Speed Engine)</div>
+                  &bull; <b>5-Minute Trailing Ratchet:</b> Evaluates open positions every 5 minutes to lock in 90%–95% of peak ROE spikes before pullbacks.<br>
+                  &bull; <b>30-Minute Entry Boundary:</b> Restricts new trade scans strictly to completed 30-minute candles to eliminate entry noise.<br>
+                  &bull; <b>Candle-High Peak Tracking:</b> Remembers the highest wick reached during the 30m candle to prevent giving back top profits.<br>
+                  &bull; <b>Tight Initial Risk Cap:</b> Max initial stop capped at -1.0% ROE.<br>
+                  &bull; <b>Dynamic Safe Leverage Profile:</b> 1x leverage on large-caps, 3x on altcoin runners.
                 </div>
 
                 <div class="section-title">Positions per Bot (USD)</div>
@@ -833,11 +846,11 @@ def execute_engine():
         send_html_dashboard_email(f"Hyperliquid Report — USD ${account_value:.2f}", html_content, text_fallback)
     else:
         save_state(state)
-        print(f"[{timestamp}] Hybrid precision cycle complete ({elapsed_minutes:.1f}m since last report). Skipping email dispatch.", flush=True)
+        print(f"[{timestamp}] Hybrid cycle complete ({elapsed_minutes:.1f}m since last report). Skipping email dispatch.", flush=True)
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing single-run 30-minute hybrid precision cycle...", flush=True)
+    print(f"[{timestamp}] Executing single-run dual-speed precision cycle...", flush=True)
     try:
         execute_engine()
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Cycle execution completed successfully.", flush=True)
