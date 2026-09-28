@@ -31,7 +31,8 @@ def load_state():
         "previous_active_coins": [],
         "last_run_timestamp": "",
         "last_email_timestamp": 0,
-        "last_scan_timestamp": 0
+        "last_scan_timestamp": 0,
+        "gemini_cache": {}
     }
     if os.path.exists(STATE_FILE):
         try:
@@ -145,9 +146,20 @@ def calculate_adx(highs, lows, closes, period=14):
     except Exception:
         return 15.0
 
-def check_gemini_macro_shield():
+def check_gemini_macro_shield(state, now_ts, is_scan_window):
+    """
+    Refreshes Gemini AI assessment on 30-minute entry scan windows.
+    Reuses cache on 5-minute inter-candle trailing stop runs.
+    """
+    gemini_cache = state.get("gemini_cache", {})
+    
+    if not is_scan_window and "risk" in gemini_cache:
+        elapsed_mins = (now_ts - float(gemini_cache.get("timestamp", 0))) / 60.0
+        return gemini_cache["risk"], f"{gemini_cache['briefing']} (Refreshed {elapsed_mins:.0f}m ago)"
+
     if not GEMINI_API_KEY:
         return "LOW", "Gemini API key not set — Macro shield bypassed."
+
     try:
         from google import genai
         client = genai.Client(api_key=GEMINI_API_KEY)
@@ -157,10 +169,16 @@ def check_gemini_macro_shield():
             try:
                 response = client.models.generate_content(
                     model=model_name,
-                    contents='Perform a 1-sentence risk assessment for crypto markets today. State Risk Level as LOW, MODERATE, or HIGH.'
+                    contents='Perform a 1-sentence risk assessment for crypto markets right now. State Risk Level as LOW, MODERATE, or HIGH.'
                 )
                 text = response.text if response and response.text else "LOW Risk"
                 risk_level = "HIGH" if "HIGH" in text.upper() else ("MODERATE" if "MODERATE" in text.upper() else "LOW")
+                
+                state["gemini_cache"] = {
+                    "timestamp": now_ts,
+                    "risk": risk_level,
+                    "briefing": text.strip()
+                }
                 return risk_level, text.strip()
             except Exception as m_err:
                 if "404" in str(m_err) or "NOT_FOUND" in str(m_err):
@@ -198,7 +216,6 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=3.0, cho
 
     leash_status = "Tight Initial Stop (-1.0% ROE)"
     
-    # FAST 5-MIN TRAILING RATCHET: Locks top profits dynamically as peaks develop
     if peak_roe >= 0.15:
         target_floor_roe = peak_roe * 0.95
         leash_status = f"⚡ Ultra-Runner 95% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
@@ -289,8 +306,14 @@ def execute_engine():
     open_orders = api_retry(info.frontend_open_orders, ACCOUNT_ADDRESS)
     now_ms = int(now_ts * 1000)
 
+    # --- 30-MINUTE CANDLE BOUNDARY CHECK FOR NEW ENTRY SCANNING ---
+    current_gm_min = time.gmtime(now_ts).tm_min
+    last_scan_ts = float(state.get("last_scan_timestamp", 0))
+    minutes_since_last_scan = (now_ts - last_scan_ts) / 60.0
+    is_30m_scan_window = (current_gm_min in [0, 1, 2, 30, 31, 32]) or (minutes_since_last_scan >= 25.0)
+
     # --- GEMINI MACRO SHIELD ---
-    gemini_risk, gemini_briefing = check_gemini_macro_shield()
+    gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_30m_scan_window)
     audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] {gemini_briefing}")
 
     # --- BTC REGIME SHIELD ---
@@ -424,7 +447,6 @@ def execute_engine():
                 closes = [float(c["c"]) for c in c_candles]
                 vols = [float(c.get("v", 0)) for c in c_candles]
                 
-                # Check candle high/low to capture intraday spike peak even if price pulled back slightly
                 if is_long and len(highs) > 0:
                     candle_max_roe = (((max(highs[-2:]) - entry_px) / entry_px) * leverage)
                     peak_roe = max(peak_roe, candle_max_roe)
@@ -510,14 +532,6 @@ def execute_engine():
 
     state["active_position_cache"] = new_active_cache
     state["previous_active_coins"] = list(active_coins)
-
-    # --- 30-MINUTE CANDLE BOUNDARY CHECK FOR NEW ENTRY SCANNING ---
-    current_gm_min = time.gmtime(now_ts).tm_min
-    last_scan_ts = float(state.get("last_scan_timestamp", 0))
-    minutes_since_last_scan = (now_ts - last_scan_ts) / 60.0
-    
-    # Executes entry scan if on a :00 or :30 boundary (or if >25 mins passed since last scan)
-    is_30m_scan_window = (current_gm_min in [0, 1, 2, 30, 31, 32]) or (minutes_since_last_scan >= 25.0)
 
     universe = [asset["name"] for asset in meta.get("universe", [])][:100]
     market_candidates = []
