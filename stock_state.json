@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-28 19:14:05",
+  "last_run_timestamp": "2026-09-28 19:44:11",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -18,11 +18,24 @@
     "timestamp": "2026-09-24 04:34:54",
     "scan_date": "2026-09-24"
   },
-  "previous_active_symbols": [
-    "V",
-    "PFE"
-  ],
+  "previous_active_symbols": [],
   "closed_trades_ledger": [
+    {
+      "symbol": "V",
+      "entry_price": 369.23,
+      "exit_price": 368.99,
+      "exit_reason": "EOD Square-Off (100% Cash Flat)",
+      "realized_pnl": -8.400000000000318,
+      "timestamp": "2026-09-28 19:43:59"
+    },
+    {
+      "symbol": "PFE",
+      "entry_price": 28.504867,
+      "exit_price": 28.87,
+      "exit_reason": "EOD Square-Off (100% Cash Flat)",
+      "realized_pnl": 165.04011600000007,
+      "timestamp": "2026-09-28 19:43:59"
+    },
     {
       "symbol": "NVDA",
       "entry_price": 232.2,
@@ -184,22 +197,7 @@
       "timestamp": "2026-09-22 21:16:24"
     }
   ],
-  "active_position_cache": {
-    "PFE": {
-      "entry_px": 28.504867,
-      "current_px": 28.794,
-      "qty": 452.0,
-      "peak_roe": 0.010143285355444726,
-      "vol_ratio": 2.1114100118709542
-    },
-    "V": {
-      "entry_px": 369.23,
-      "current_px": 369.24,
-      "qty": 35.0,
-      "peak_roe": 0.0012458359288247962,
-      "vol_ratio": 0.8466495112359784
-    }
-  },
+  "active_position_cache": {},
   "daily_starting_equity": {
     "2026-09-22": 101022.53,
     "2026-09-23": 100687.3,
