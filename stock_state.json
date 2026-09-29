@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-29 17:44:59",
+  "last_run_timestamp": "2026-09-29 18:18:18",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,14 +19,19 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "HD",
-    "PFE",
-    "IWM",
     "JNJ",
-    "MA",
-    "LLY"
+    "PFE",
+    "MA"
   ],
   "closed_trades_ledger": [
+    {
+      "symbol": "PFE",
+      "entry_price": 28.28,
+      "exit_price": 28.595,
+      "exit_reason": "\ud83d\udee1\ufe0f Dynamic Stop Loss (-1.11%)",
+      "realized_pnl": -143.00999999999897,
+      "timestamp": "2026-09-29 18:18:04"
+    },
     {
       "symbol": "LLY",
       "entry_price": 1169.03,
@@ -178,40 +183,12 @@
       "exit_reason": "Balanced Hard Stop (-1.2%)",
       "realized_pnl": -132.23497950000026,
       "timestamp": "2026-09-23 15:42:32"
-    },
-    {
-      "symbol": "GE",
-      "entry_price": 325.71,
-      "exit_price": 321.245,
-      "exit_reason": "Balanced Hard Stop (-1.2%)",
-      "realized_pnl": -137.53226949999922,
-      "timestamp": "2026-09-23 15:12:34"
     }
   ],
   "active_position_cache": {
-    "HD": {
-      "entry_px": 289.913409,
-      "current_px": 288.875,
-      "qty": 44.0,
-      "side": "short",
-      "peak_roe": 0.007255300840534765,
-      "vol_ratio": 0.5939093269307261,
-      "best_target_floor_roe": 0.006255300840534765,
-      "best_stop_px": 288.099913409
-    },
-    "IWM": {
-      "entry_px": 278.935,
-      "current_px": 277.865,
-      "qty": 46.0,
-      "side": "short",
-      "peak_roe": 0.005001165146001692,
-      "vol_ratio": 0.035964017348445676,
-      "best_target_floor_roe": 0.004001165146001692,
-      "best_stop_px": 277.818935
-    },
     "JNJ": {
       "entry_px": 266.5825,
-      "current_px": 267.275,
+      "current_px": 267.26,
       "qty": 48.0,
       "side": "short",
       "peak_roe": 9.377959918590779e-06,
@@ -219,19 +196,9 @@
       "best_target_floor_roe": -0.01,
       "best_stop_px": 269.24832499999997
     },
-    "LLY": {
-      "entry_px": 1169.03,
-      "current_px": 1181.65,
-      "qty": 10.0,
-      "side": "short",
-      "peak_roe": -0.004619214220336596,
-      "vol_ratio": 3.115242732772613,
-      "best_target_floor_roe": -0.01,
-      "best_stop_px": 1180.7203
-    },
     "MA": {
       "entry_px": 561.6,
-      "current_px": 564.545,
+      "current_px": 564.255,
       "qty": 22.0,
       "side": "short",
       "peak_roe": -0.0029202279202278957,
@@ -241,7 +208,7 @@
     },
     "PFE": {
       "entry_px": 28.28,
-      "current_px": 28.51,
+      "current_px": 28.595,
       "qty": 454.0,
       "side": "short",
       "peak_roe": 0.0,
