@@ -6,7 +6,7 @@
     "MEME": 0,
     "GMT": 6,
     "FIL": 12,
-    "CAKE": 0,
+    "CAKE": 1,
     "FET": 1,
     "ZEN": 1,
     "BANANA": 9,
@@ -44,6 +44,16 @@
     "BSV": 0
   },
   "closed_trades_ledger": [
+    {
+      "coin": "OP",
+      "entry_price": 0.13136,
+      "exit_price": 0.13055,
+      "pnl_usd": 0.4675216900121832,
+      "roe_pct": 3.083130328867254,
+      "side": "SHORT",
+      "exit_reason": "\ud83c\udfaf Profit Lock (+3.1%)",
+      "timestamp": "2026-09-29 01:55:43"
+    },
     {
       "coin": "BSV",
       "entry_price": 20.648,
@@ -133,53 +143,33 @@
       "side": "LONG",
       "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-0.2%)",
       "timestamp": "2026-09-27 23:10:09"
-    },
-    {
-      "coin": "SUI",
-      "entry_price": 1.2772,
-      "exit_price": 1.25775,
-      "pnl_usd": -1.04064,
-      "roe_pct": -1.5228625117444385,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udea8 High Choppiness Chop Purge (CI: 63.8)",
-      "timestamp": "2026-09-27 23:10:09"
     }
   ],
   "active_position_cache": {
-    "OP": {
-      "entry_px": 0.13136,
-      "current_px": 0.12964,
-      "szi": -584.8,
-      "peak_roe": 0.07384287454323984,
-      "margin": 15.163864,
-      "leverage": 5.0,
-      "side": "SHORT"
-    },
     "MEME": {
       "entry_px": 0.000589,
-      "current_px": 0.00058,
+      "current_px": 0.000584,
       "szi": -138350.0,
       "peak_roe": 0.045840407470288634,
-      "margin": 26.793783,
+      "margin": 26.932133,
       "leverage": 3.0,
       "side": "SHORT"
     },
     "CAKE": {
       "entry_px": 2.5715,
-      "current_px": 2.54215,
+      "current_px": 2.5534,
       "szi": -29.6,
-      "peak_roe": 0.011471903558234525,
-      "margin": 75.2432,
+      "peak_roe": 0.013882947695897275,
+      "margin": 75.55992,
       "leverage": 1.0,
       "side": "SHORT"
     }
   },
   "previous_active_coins": [
-    "MEME",
     "CAKE",
-    "OP"
+    "MEME"
   ],
-  "last_run_timestamp": "2026-09-29 01:40:08",
+  "last_run_timestamp": "2026-09-29 01:55:53",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -189,11 +179,11 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790644962.6362555,
+  "last_email_timestamp": 1790646943.741125,
   "last_scan_timestamp": 1790644962.6362555,
   "gemini_cache": {
-    "timestamp": 1790644962.6362555,
-    "risk": "MODERATE",
-    "briefing": "**Risk Level: MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of interest rate cuts, elevated volatility persists due to ongoing regulatory uncertainty and the potential for significant liquidations during abrupt macroeconomic shifts."
+    "timestamp": 1790646943.741125,
+    "risk": "HIGH",
+    "briefing": "**Risk Level: HIGH** \n\nDriven by heightened macroeconomic uncertainty, persistent regulatory pressure, and fragile liquidity, the crypto market currently faces elevated vulnerability to sharp downward volatility and systemic contagion."
   }
 }
