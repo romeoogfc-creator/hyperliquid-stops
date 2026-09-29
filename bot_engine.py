@@ -594,7 +594,8 @@ def execute_engine():
     MAX_CRYPTO_SLOTS = 2
     available_slots = MAX_CRYPTO_SLOTS - active_count
 
-    if is_30m_scan_window and btc_regime in ["GREEN", "RED"] and gemini_risk != "HIGH":
+    # Bypassed gemini_risk != "HIGH" gate to enable live Micro-Probe testing
+    if is_30m_scan_window and btc_regime in ["GREEN", "RED"]:
         state["last_scan_timestamp"] = now_ts
         audit_logs.append("⏰ 30-Minute Candle Boundary Reached: Launching All-Weather Micro-Probe Scanner...")
 
