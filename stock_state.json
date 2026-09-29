@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-29 13:18:23",
+  "last_run_timestamp": "2026-09-29 13:47:14",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -18,7 +18,10 @@
     "timestamp": "2026-09-24 04:34:54",
     "scan_date": "2026-09-24"
   },
-  "previous_active_symbols": [],
+  "previous_active_symbols": [
+    "DKNG",
+    "HD"
+  ],
   "closed_trades_ledger": [
     {
       "symbol": "V",
@@ -197,7 +200,22 @@
       "timestamp": "2026-09-22 21:16:24"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "DKNG": {
+      "entry_px": 21.09,
+      "current_px": 20.87,
+      "qty": -612.0,
+      "peak_roe": 0.010431484115694589,
+      "vol_ratio": 1.1738561287301634
+    },
+    "HD": {
+      "entry_px": 289.913409,
+      "current_px": 290.905,
+      "qty": -44.0,
+      "peak_roe": -0.003420300576714516,
+      "vol_ratio": 0.5939093269307261
+    }
+  },
   "daily_starting_equity": {
     "2026-09-22": 101022.53,
     "2026-09-23": 100687.3,
