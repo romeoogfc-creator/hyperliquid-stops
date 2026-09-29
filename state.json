@@ -3,7 +3,7 @@
   "stagnation_tracker": {
     "APT": 24,
     "BLUR": 0,
-    "MEME": 0,
+    "MEME": 1,
     "GMT": 6,
     "FIL": 12,
     "CAKE": 0,
@@ -148,10 +148,10 @@
   "active_position_cache": {
     "MEME": {
       "entry_px": 0.000589,
-      "current_px": 0.000584,
+      "current_px": 0.000598,
       "szi": -138350.0,
       "peak_roe": 0.06621392190152796,
-      "margin": 26.932133,
+      "margin": 27.577766,
       "leverage": 3.0,
       "side": "SHORT",
       "best_target_floor_roe": 0.05297113752122237,
@@ -161,7 +161,7 @@
   "previous_active_coins": [
     "MEME"
   ],
-  "last_run_timestamp": "2026-09-29 05:36:23",
+  "last_run_timestamp": "2026-09-29 05:54:09",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -171,11 +171,11 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790659101.8882117,
+  "last_email_timestamp": 1790661242.9984245,
   "last_scan_timestamp": 1790653440.4226456,
   "gemini_cache": {
-    "timestamp": 1790660177.7651248,
+    "timestamp": 1790661242.9984245,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market is currently grappling with heightened volatility driven by macroeconomic uncertainty, shifting regulatory landscapes, and significant speculative positioning, making it susceptible to sharp, unpredictable price swings."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory landscapes, and high leverage, leaving it highly susceptible to sharp, liquidity-driven corrections."
   }
 }
