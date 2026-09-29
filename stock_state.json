@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-29 19:15:44",
+  "last_run_timestamp": "2026-09-29 19:23:37",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,11 +19,27 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "JNJ",
+    "DKNG",
     "MA",
-    "DKNG"
+    "JNJ"
   ],
   "closed_trades_ledger": [
+    {
+      "symbol": "JNJ",
+      "entry_price": 266.5825,
+      "exit_price": 267.21,
+      "exit_reason": "\ud83d\udea8 High Choppiness Chop Purge (CI: 62.7)",
+      "realized_pnl": -30.12,
+      "timestamp": "2026-09-29 19:23:24"
+    },
+    {
+      "symbol": "DKNG",
+      "entry_price": 19.77,
+      "exit_price": 19.65,
+      "exit_reason": "\u26a1 Volume Stall Profit Take (+0.61%)",
+      "realized_pnl": 77.76,
+      "timestamp": "2026-09-29 19:23:24"
+    },
     {
       "symbol": "PFE",
       "entry_price": 28.28,
@@ -186,33 +202,13 @@
     }
   ],
   "active_position_cache": {
-    "DKNG": {
-      "entry_px": 19.77,
-      "current_px": 19.675,
-      "qty": 648.0,
-      "side": "short",
-      "peak_roe": 0.004805260495700499,
-      "vol_ratio": 1.1738561287301634,
-      "best_target_floor_roe": 0.0,
-      "best_stop_px": 19.77
-    },
-    "JNJ": {
-      "entry_px": 266.5825,
-      "current_px": 266.78,
-      "qty": 48.0,
-      "side": "short",
-      "peak_roe": 9.377959918590779e-06,
-      "vol_ratio": 0.9343964956709216,
-      "best_target_floor_roe": -0.01,
-      "best_stop_px": 269.24832499999997
-    },
     "MA": {
       "entry_px": 561.6,
-      "current_px": 565.75,
+      "current_px": 565.5745,
       "qty": 22.0,
       "side": "short",
       "peak_roe": -0.0029202279202278957,
-      "vol_ratio": 1.070318710703187,
+      "vol_ratio": 0.6438913673006182,
       "best_target_floor_roe": -0.01,
       "best_stop_px": 567.216
     }
