@@ -220,7 +220,6 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=1.0, cho
 
     leash_status = "Tight Initial Stop (-1.0% ROE)"
     
-    # 1. Evaluate Peak Tier Floors FIRST
     if peak_roe >= 0.15:
         target_floor_roe = peak_roe * 0.95
         leash_status = f"⚡ Ultra-Runner 95% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
@@ -239,7 +238,6 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=1.0, cho
     else:
         target_floor_roe = -0.010
 
-    # 2. Volume Stall Check (Only allowed to TIGHTEN the floor, never loosen it)
     if vol_ratio < 0.85 and roe >= 0.010:
         stall_floor = max(0.001, roe - 0.001)
         if stall_floor > target_floor_roe:
@@ -315,19 +313,22 @@ def execute_engine():
     open_orders = api_retry(info.frontend_open_orders, ACCOUNT_ADDRESS)
     now_ms = int(now_ts * 1000)
 
-    # --- 30-MINUTE CANDLE BOUNDARY CHECK FOR NEW ENTRY SCANNING ---
+    # --- 30-MINUTE CANDLE BOUNDARY CHECK ---
     current_gm_min = time.gmtime(now_ts).tm_min
     last_scan_ts = float(state.get("last_scan_timestamp", 0))
     minutes_since_last_scan = (now_ts - last_scan_ts) / 60.0
     is_30m_scan_window = (current_gm_min in [0, 1, 2, 30, 31, 32]) or (minutes_since_last_scan >= 25.0)
 
-    # --- GEMINI MACRO SHIELD ---
     gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_30m_scan_window)
     audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] {gemini_briefing}")
 
-    # --- BTC REGIME SHIELD ---
     btc_regime, btc_change_pct = get_btc_regime(info, now_ms)
     audit_logs.append(f"BTC Directional Shield: Daily Candle is {btc_regime} ({btc_change_pct:+.2f}%).")
+
+    # Map NEUTRAL regime to directional bias so scanning is never blocked
+    effective_regime = btc_regime
+    if effective_regime == "NEUTRAL":
+        effective_regime = "GREEN" if btc_change_pct >= 0 else "RED"
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -361,7 +362,7 @@ def execute_engine():
     fallback_val = float(margin_summary.get("accountValue", 0.0))
     account_value = total_spot_net_worth if total_spot_net_worth > 0 else fallback_val
 
-    # --- PORTFOLIO DRAWDOWN CIRCUIT BREAKER (-3.5% Loss Check) ---
+    # Portfolio Drawdown Circuit Breaker
     if asset_positions:
         for pos_item in asset_positions:
             pos = pos_item.get("position", {})
@@ -394,7 +395,7 @@ def execute_engine():
         save_state(state)
         return
 
-    # --- EVERY 5-MIN RUN: ACTIVE POSITION TRAILING STOP MANAGEMENT ---
+    # Active Position Trailing Stop Management
     if asset_positions:
         for pos_item in asset_positions:
             pos = pos_item.get("position", {})
@@ -410,7 +411,7 @@ def execute_engine():
             unrealized_pnl = float(pos.get("unrealizedPnl", 0))
             pos_equity = margin_used + unrealized_pnl
 
-            # STRICT DIRECTIONAL PURGE
+            # Strict Directional Purge
             if btc_regime == "RED" and is_long:
                 try:
                     audit_logs.append(f"🛑 DIRECTIONAL PURGE: Closing LONG on {coin} because BTC Daily is RED.")
@@ -469,7 +470,6 @@ def execute_engine():
                 ci = 50.0
                 vol_ratio = 1.0
 
-            # --- MONOTONIC ONE-WAY RATCHET GUARD ---
             prev_best_floor = current_active_cache.get(coin, {}).get("best_target_floor_roe", -0.010)
             prev_best_stop = current_active_cache.get(coin, {}).get("best_stop_px", None)
 
@@ -490,7 +490,6 @@ def execute_engine():
 
             px = round_sig_figs(stop_px_raw, 5)
 
-            # --- DIRECT PYTHON MARKET CLOSE GUARD ---
             stop_triggered = (current_px <= px) if is_long else (current_px >= px)
             if stop_triggered:
                 try:
@@ -530,7 +529,6 @@ def execute_engine():
             stag_count = state["stagnation_tracker"].get(coin, 0)
             audit_logs.append(f"Crypto Position: {coin} | ROE: {current_roe*100:+.2f}% (Peak: {peak_roe*100:+.2f}%) | Stop: ${px} | [{leash_status}] | Stg: {stag_count}/48")
 
-            # Update trigger order on exchange safely
             try:
                 for order in open_orders:
                     if order.get("coin") == coin and order.get("isTrigger"):
@@ -590,14 +588,13 @@ def execute_engine():
     market_candidates = []
     scanned_count = 0
 
-    # --- MICRO-PROBE MODE PARAMETERS ---
     MAX_CRYPTO_SLOTS = 2
     available_slots = MAX_CRYPTO_SLOTS - active_count
 
-    # Bypassed gemini_risk != "HIGH" gate to enable live Micro-Probe testing
-    if is_30m_scan_window and btc_regime in ["GREEN", "RED"]:
+    # ALWAYS SCAN ON THE 30M CANDLE BOUNDARY (Never skip scanning even if BTC is NEUTRAL)
+    if is_30m_scan_window:
         state["last_scan_timestamp"] = now_ts
-        audit_logs.append("⏰ 30-Minute Candle Boundary Reached: Launching All-Weather Micro-Probe Scanner...")
+        audit_logs.append(f"⏰ 30-Minute Candle Boundary Reached: Launching All-Weather Scanner (BTC Tilt: {effective_regime})...")
 
         for coin in universe:
             if coin in active_coins or coin in ["USDC", "USDT"]:
@@ -655,7 +652,7 @@ def execute_engine():
                     if upper_wick > 0.35:
                         upper_wick_ok = False
 
-                if btc_regime == "GREEN" and ema20 > ema50:
+                if effective_regime == "GREEN" and ema20 > ema50:
                     if comp_close > upper and comp_close <= upper * 1.04 and vol_ratio >= 1.5 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
                         is_ballistic = comp_close > (upper + 1.5 * atr)
                         extension_score = max(0.0, (comp_close - upper) / upper)
@@ -680,7 +677,7 @@ def execute_engine():
                     if lower_wick > 0.35:
                         lower_wick_ok = False
 
-                if btc_regime == "RED" and ema20 < ema50:
+                if effective_regime == "RED" and ema20 < ema50:
                     if comp_close < lower and comp_close >= lower * 0.96 and vol_ratio >= 1.5 and (recent_green_to_red or has_downward_continuation) and lower_wick_ok:
                         is_ballistic = comp_close < (lower - 1.5 * atr)
                         extension_score = max(0.0, (lower - comp_close) / lower)
