@@ -147,14 +147,8 @@ def calculate_adx(highs, lows, closes, period=14):
         return 15.0
 
 def check_gemini_macro_shield(state, now_ts, is_scan_window):
-    """
-    Refreshes Gemini AI assessment on 30-minute entry scan windows.
-    Cascades across models on 404, 503 (high demand), or 429 (rate limit) errors.
-    Reuses cached risk if Google API capacity is fully exhausted.
-    """
     gemini_cache = state.get("gemini_cache", {})
     
-    # 1. Reuse cache on inter-candle 5m trailing stop runs
     if not is_scan_window and "risk" in gemini_cache:
         elapsed_mins = (now_ts - float(gemini_cache.get("timestamp", 0))) / 60.0
         return gemini_cache["risk"], f"{gemini_cache['briefing']} (Refreshed {elapsed_mins:.0f}m ago)"
@@ -162,7 +156,6 @@ def check_gemini_macro_shield(state, now_ts, is_scan_window):
     if not GEMINI_API_KEY:
         return "LOW", "Gemini API key not set — Macro shield bypassed."
 
-    # 2. Fresh check on 30m scan windows with multi-model cascade
     try:
         from google import genai
         client = genai.Client(api_key=GEMINI_API_KEY)
@@ -187,12 +180,10 @@ def check_gemini_macro_shield(state, now_ts, is_scan_window):
             except Exception as m_err:
                 last_err_msg = str(m_err)
                 err_str = str(m_err).upper()
-                # Cascade to next model on 404, 503 (high demand), or 429 (rate limit)
                 if any(code in err_str for code in ["404", "503", "429", "UNAVAILABLE", "NOT_FOUND", "RESOURCE_EXHAUSTED"]):
                     continue
                 raise m_err
 
-        # If all API models hit high demand, preserve existing cached risk level
         if "risk" in gemini_cache:
             return gemini_cache["risk"], f"{gemini_cache['briefing']} (Cached fallback during API demand spike)"
         
@@ -221,7 +212,7 @@ def get_btc_regime(info, now_ms):
         print(f"[WARN] Failed to fetch BTC daily regime: {e}", flush=True)
         return "NEUTRAL", 0.0
 
-def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=3.0, choppiness_index=50.0, is_ballistic=False, vol_ratio=1.0, peak_roe=0.0):
+def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=1.0, choppiness_index=50.0, is_ballistic=False, vol_ratio=1.0, peak_roe=0.0):
     if is_long:
         roe = ((current_px - entry_px) / entry_px) * leverage
     else:
@@ -229,18 +220,16 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=3.0, cho
 
     leash_status = "Tight Initial Stop (-1.0% ROE)"
     
+    # 1. Evaluate Peak Tier Floors FIRST
     if peak_roe >= 0.15:
         target_floor_roe = peak_roe * 0.95
         leash_status = f"⚡ Ultra-Runner 95% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
     elif peak_roe >= 0.08:
         target_floor_roe = peak_roe * 0.90
         leash_status = f"🚀 Mega-Runner 90% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif vol_ratio < 0.85 and roe >= 0.010:
-        target_floor_roe = max(0.001, roe - 0.001)
-        leash_status = f"🔒 Volume Stall Lock (+0.1% Buffer) [{roe*100:.1f}% ROE]"
     elif peak_roe >= 0.05:
-        target_floor_roe = 0.030
-        leash_status = "📈 Mid-Runner Lock (+3.0% Floor)"
+        target_floor_roe = max(0.030, peak_roe * 0.80)
+        leash_status = f"📈 80% Peak Runner Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
     elif peak_roe >= 0.035:
         target_floor_roe = 0.015
         leash_status = "🎯 Winner Lock (+1.5% Net Floor)"
@@ -249,6 +238,13 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=3.0, cho
         leash_status = "🛡️ Break-Even Lock (0.0% Floor)"
     else:
         target_floor_roe = -0.010
+
+    # 2. Volume Stall Check (Only allowed to TIGHTEN the floor, never loosen it)
+    if vol_ratio < 0.85 and roe >= 0.010:
+        stall_floor = max(0.001, roe - 0.001)
+        if stall_floor > target_floor_roe:
+            target_floor_roe = stall_floor
+            leash_status = f"🔒 Volume Stall Tighten (+0.1% Buffer) [{roe*100:.1f}% ROE]"
 
     if is_long:
         stop_px = entry_px * (1 + (target_floor_roe / leverage))
@@ -301,7 +297,7 @@ def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     now_ts = time.time()
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (5m Stop Ratchet / 30m Entry Scanner).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Micro-Probe Mode Active / 5m Stop Ratchet / 30m Entry Scanner).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -421,7 +417,7 @@ def execute_engine():
                     exchange.market_close(coin)
                     state["closed_trades_ledger"].insert(0, {
                         "coin": coin, "entry_price": entry_px, "exit_price": current_px,
-                        "pnl_usd": unrealized_pnl, "roe_pct": ((current_px - entry_px)/entry_px*3*100), "side": "LONG",
+                        "pnl_usd": unrealized_pnl, "roe_pct": ((current_px - entry_px)/entry_px*1*100), "side": "LONG",
                         "exit_reason": "🛑 BTC Bearish Flip Directional Purge", "timestamp": timestamp
                     })
                     trade_closed_this_run = True
@@ -435,7 +431,7 @@ def execute_engine():
                     exchange.market_close(coin)
                     state["closed_trades_ledger"].insert(0, {
                         "coin": coin, "entry_price": entry_px, "exit_price": current_px,
-                        "pnl_usd": unrealized_pnl, "roe_pct": ((entry_px - current_px)/entry_px*3*100), "side": "SHORT",
+                        "pnl_usd": unrealized_pnl, "roe_pct": ((entry_px - current_px)/entry_px*1*100), "side": "SHORT",
                         "exit_reason": "🟢 BTC Bullish Flip Directional Purge", "timestamp": timestamp
                     })
                     trade_closed_this_run = True
@@ -473,18 +469,38 @@ def execute_engine():
                 ci = 50.0
                 vol_ratio = 1.0
 
+            # --- MONOTONIC ONE-WAY RATCHET GUARD ---
+            prev_best_floor = current_active_cache.get(coin, {}).get("best_target_floor_roe", -0.010)
+            prev_best_stop = current_active_cache.get(coin, {}).get("best_stop_px", None)
+
+            stop_px_raw, current_roe, target_floor, is_buy_order, leash_status = calculate_crypto_stop_price(
+                entry_px, is_long, current_px, leverage, choppiness_index=ci, vol_ratio=vol_ratio, peak_roe=peak_roe
+            )
+
+            target_floor = max(target_floor, prev_best_floor)
+            
+            if is_long:
+                stop_px_raw = entry_px * (1 + (target_floor / leverage))
+                if prev_best_stop is not None:
+                    stop_px_raw = max(stop_px_raw, prev_best_stop)
+            else:
+                stop_px_raw = entry_px * (1 - (target_floor / leverage))
+                if prev_best_stop is not None:
+                    stop_px_raw = min(stop_px_raw, prev_best_stop)
+
+            px = round_sig_figs(stop_px_raw, 5)
+
             active_count += 1
             active_coins.add(coin)
             total_margin_used += margin_used
 
             new_active_cache[coin] = {
-                "entry_px": entry_px, "current_px": current_px, "szi": szi, "peak_roe": peak_roe, "margin": margin_used, "leverage": leverage, "side": "LONG" if is_long else "SHORT"
+                "entry_px": entry_px, "current_px": current_px, "szi": szi, 
+                "peak_roe": peak_roe, "margin": margin_used, "leverage": leverage, 
+                "side": "LONG" if is_long else "SHORT",
+                "best_target_floor_roe": target_floor,
+                "best_stop_px": px
             }
-
-            stop_px_raw, current_roe, target_floor, is_buy_order, leash_status = calculate_crypto_stop_price(
-                entry_px, is_long, current_px, leverage, choppiness_index=ci, vol_ratio=vol_ratio, peak_roe=peak_roe
-            )
-            px = round_sig_figs(stop_px_raw, 5)
 
             initial_risk_ref = 0.01
             r_multiple = current_roe / initial_risk_ref if initial_risk_ref > 0 else 0.0
@@ -524,8 +540,8 @@ def execute_engine():
         old_data = previous_cache.get(closed_coin, {})
         entry_px = old_data.get("entry_px", 0.0)
         exit_px = float(all_mids.get(closed_coin, entry_px))
-        margin = old_data.get("margin", 50.0)
-        lev = old_data.get("leverage", 3.0)
+        margin = old_data.get("margin", 30.0)
+        lev = old_data.get("leverage", 1.0)
         szi = old_data.get("szi", 1.0)
         is_long = szi > 0 if isinstance(szi, (int, float)) else True
         
@@ -550,9 +566,13 @@ def execute_engine():
     market_candidates = []
     scanned_count = 0
 
+    # --- MICRO-PROBE MODE PARAMETERS ---
+    MAX_CRYPTO_SLOTS = 2
+    available_slots = MAX_CRYPTO_SLOTS - active_count
+
     if is_30m_scan_window and btc_regime in ["GREEN", "RED"] and gemini_risk != "HIGH":
         state["last_scan_timestamp"] = now_ts
-        audit_logs.append("⏰ 30-Minute Candle Boundary Reached: Launching Full Market Entry Scanner...")
+        audit_logs.append("⏰ 30-Minute Candle Boundary Reached: Launching All-Weather Micro-Probe Scanner...")
 
         for coin in universe:
             if coin in active_coins or coin in ["USDC", "USDT"]:
@@ -574,8 +594,9 @@ def execute_engine():
                 lows = [float(c["l"]) for c in candles]
                 volumes = [float(c.get("v", 0)) for c in candles]
 
+                # Moderate ADX filter (18.0)
                 adx_30m = calculate_adx(highs[:-1], lows[:-1], closes[:-1])
-                if adx_30m < 22.0:
+                if adx_30m < 18.0:
                     continue
 
                 upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
@@ -586,8 +607,9 @@ def execute_engine():
                 comp_high = highs[-2]
                 comp_low = lows[-2]
                 
+                # Moderate Choppiness ceiling (58.0)
                 ci_30m = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
-                if ci_30m > 55.0:
+                if ci_30m > 58.0:
                     continue
 
                 avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else volumes[-3]
@@ -610,21 +632,22 @@ def execute_engine():
                     if upper_wick > 0.35:
                         upper_wick_ok = False
 
+                # Moderate Volume Ratio (>= 1.5x)
                 if btc_regime == "GREEN" and ema20 > ema50:
-                    if comp_close > upper and comp_close <= upper * 1.04 and vol_ratio >= 2.2 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
+                    if comp_close > upper and comp_close <= upper * 1.04 and vol_ratio >= 1.5 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
                         is_ballistic = comp_close > (upper + 1.5 * atr)
                         extension_score = max(0.0, (comp_close - upper) / upper)
                         atr_score = atr / comp_close
                         momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
 
                         pass_5m, ci_5m = verify_5m_micro_structure(info, coin, now_ms, is_long=True)
-                        if pass_5m and ci_5m <= 55.0:
+                        if pass_5m and ci_5m <= 58.0:
                             candidate_obj = {
                                 "coin": coin, "close": comp_close, "is_long": True, "is_ballistic": is_ballistic,
                                 "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio, "adx": adx_30m
                             }
                             market_candidates.append(candidate_obj)
-                            audit_logs.append(f"HIGH-CONVICTION LONG MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, ADX: {adx_30m:.1f}, 30m CI: {ci_30m:.1f})")
+                            audit_logs.append(f"MICRO-PROBE LONG MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, ADX: {adx_30m:.1f}, 30m CI: {ci_30m:.1f})")
 
                 is_red_candle = comp_close < comp_open
                 recent_green_to_red = (prev_comp_close >= prev_comp_open) and is_red_candle
@@ -636,20 +659,20 @@ def execute_engine():
                         lower_wick_ok = False
 
                 if btc_regime == "RED" and ema20 < ema50:
-                    if comp_close < lower and comp_close >= lower * 0.96 and vol_ratio >= 2.2 and (recent_green_to_red or has_downward_continuation) and lower_wick_ok:
+                    if comp_close < lower and comp_close >= lower * 0.96 and vol_ratio >= 1.5 and (recent_green_to_red or has_downward_continuation) and lower_wick_ok:
                         is_ballistic = comp_close < (lower - 1.5 * atr)
                         extension_score = max(0.0, (lower - comp_close) / lower)
                         atr_score = atr / comp_close
                         momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
 
                         pass_5m, ci_5m = verify_5m_micro_structure(info, coin, now_ms, is_long=False)
-                        if pass_5m and ci_5m <= 55.0:
+                        if pass_5m and ci_5m <= 58.0:
                             candidate_obj = {
                                 "coin": coin, "close": comp_close, "is_long": False, "is_ballistic": is_ballistic,
                                 "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio, "adx": adx_30m
                             }
                             market_candidates.append(candidate_obj)
-                            audit_logs.append(f"HIGH-CONVICTION SHORT MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, ADX: {adx_30m:.1f}, 30m CI: {ci_30m:.1f})")
+                            audit_logs.append(f"MICRO-PROBE SHORT MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, ADX: {adx_30m:.1f}, 30m CI: {ci_30m:.1f})")
 
             except Exception:
                 continue
@@ -661,18 +684,17 @@ def execute_engine():
         audit_logs.append(f"30m Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
 
     trades_executed = False
-    available_slots = 6 - active_count
     if available_slots > 0 and market_candidates:
         for candidate in market_candidates[:available_slots]:
             coin = candidate["coin"]
             px = candidate["close"]
             is_long = candidate["is_long"]
-            is_ballistic = candidate["is_ballistic"]
             
-            assigned_leverage = 1 if coin in LARGE_CAP_COINS else 3
+            # 1x Fixed Safe Leverage across ALL assets
+            assigned_leverage = 1
 
-            target_pct = np.random.uniform(0.15, 0.17) if is_ballistic else np.random.uniform(0.12, 0.14)
-            target_usd = max(50.0, account_value * target_pct)
+            # Micro Sizing: 6% NAV (~$30 per trade)
+            target_usd = max(25.0, account_value * 0.06)
             
             decimals = sz_decimals_map.get(coin, 4)
             raw_sz = target_usd / px
@@ -691,7 +713,7 @@ def execute_engine():
                     active_count += 1
                     active_coins.add(coin)
                     trades_executed = True
-                    audit_logs.append(f"EXECUTION SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {coin} ({assigned_leverage}x Leverage, Size: {sz})")
+                    audit_logs.append(f"MICRO-PROBE SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {coin} (1x Leverage, Size: {sz} ~${target_usd:.2f})")
 
             except Exception as e:
                 audit_logs.append(f"EXECUTION FAILED on {coin}: {e}")
@@ -739,8 +761,8 @@ def execute_engine():
                 roe_val = float(t.get("roe_pct", 0.0))
             else:
                 if entry_p > 0:
-                    pnl_val = ((exit_p - entry_p) / entry_p * 50.0 * 3.0) if side == "LONG" else ((entry_p - exit_p) / entry_p * 50.0 * 3.0)
-                    roe_val = (pnl_val / 50.0) * 100
+                    pnl_val = ((exit_p - entry_p) / entry_p * 30.0 * 1.0) if side == "LONG" else ((entry_p - exit_p) / entry_p * 30.0 * 1.0)
+                    roe_val = (pnl_val / 30.0) * 100
                 else:
                     pnl_val = 0.0
                     roe_val = 0.0
@@ -769,7 +791,7 @@ def execute_engine():
             </tr>
             """
 
-        text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/6"
+        text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/2"
 
         positions_rows = "".join([
             f"<tr>"
@@ -833,7 +855,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Hybrid 5m/30m Mode Active)</p>
+                <p>Timestamp: {timestamp} (Micro-Probe Mode Active)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -844,11 +866,11 @@ def execute_engine():
 
                 <div class="rules-card">
                   <div class="rules-title">&#9989; Active Guardrails (Dual-Speed Engine)</div>
-                  &bull; <b>5-Minute Trailing Ratchet:</b> Evaluates open positions every 5 minutes to lock in 90%–95% of peak ROE spikes before pullbacks.<br>
+                  &bull; <b>Micro-Probe Mode:</b> Relaxed thresholds (Vol 1.5x, ADX 18.0, CI 58.0) capped at 2 slots (1x Leverage, 6% NAV / ~$30 per trade).<br>
+                  &bull; <b>5-Minute Trailing Ratchet:</b> Evaluates open positions every 5 minutes with a strict non-reversing stop loss guard.<br>
                   &bull; <b>30-Minute Entry Boundary:</b> Restricts new trade scans strictly to completed 30-minute candles to eliminate entry noise.<br>
                   &bull; <b>Candle-High Peak Tracking:</b> Remembers the highest wick reached during the 30m candle to prevent giving back top profits.<br>
-                  &bull; <b>Tight Initial Risk Cap:</b> Max initial stop capped at -1.0% ROE.<br>
-                  &bull; <b>Dynamic Safe Leverage Profile:</b> 1x leverage on large-caps, 3x on altcoin runners.
+                  &bull; <b>Tight Initial Risk Cap:</b> Max initial stop capped at -1.0% ROE.
                 </div>
 
                 <div class="section-title">Positions per Bot (USD)</div>
