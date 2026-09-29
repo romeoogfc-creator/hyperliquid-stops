@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-29 16:16:52",
+  "last_run_timestamp": "2026-09-29 16:29:55",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,14 +19,22 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "LLY",
-    "IWM",
-    "HD",
-    "MSTR",
+    "JNJ",
+    "PFE",
     "UNH",
-    "PFE"
+    "HD",
+    "LLY",
+    "IWM"
   ],
   "closed_trades_ledger": [
+    {
+      "symbol": "UNH",
+      "entry_price": 373.885882,
+      "exit_price": 373.105,
+      "exit_reason": "\ud83c\udfaf Profit Lock (+0.21%)",
+      "realized_pnl": 26.549987999998734,
+      "timestamp": "2026-09-29 16:29:50"
+    },
     {
       "symbol": "MSTR",
       "entry_price": 155.760976,
@@ -178,58 +186,68 @@
       "exit_reason": "Morning Profit Grab (99% Locked)",
       "realized_pnl": 254.80000000000018,
       "timestamp": "2026-09-23 13:42:39"
-    },
-    {
-      "symbol": "DE",
-      "entry_price": 698.43,
-      "exit_price": 701.0,
-      "exit_reason": "Morning Profit Grab (99% Locked)",
-      "realized_pnl": 37.07045100000072,
-      "timestamp": "2026-09-23 13:36:13"
     }
   ],
   "active_position_cache": {
     "HD": {
       "entry_px": 289.913409,
-      "current_px": 288.28,
-      "qty": -44.0,
+      "current_px": 288.77,
+      "qty": 44.0,
+      "side": "short",
       "peak_roe": 0.005634127119660163,
-      "vol_ratio": 0.5939093269307261
+      "vol_ratio": 0.5939093269307261,
+      "best_target_floor_roe": 0.0025,
+      "best_stop_px": 289.1886254775
     },
     "IWM": {
       "entry_px": 278.935,
-      "current_px": 277.77,
-      "qty": -46.0,
+      "current_px": 277.905,
+      "qty": 46.0,
+      "side": "short",
       "peak_roe": 0.004176600283220178,
-      "vol_ratio": 0.035964017348445676
+      "vol_ratio": 0.035964017348445676,
+      "best_target_floor_roe": 0.0,
+      "best_stop_px": 278.935
+    },
+    "JNJ": {
+      "entry_px": 266.5825,
+      "current_px": 266.58,
+      "qty": 48.0,
+      "side": "short",
+      "peak_roe": 9.377959918590779e-06,
+      "vol_ratio": 0.9343964956709216,
+      "best_target_floor_roe": -0.01,
+      "best_stop_px": 269.24832499999997
     },
     "LLY": {
       "entry_px": 1169.03,
-      "current_px": 1176.57,
-      "qty": -10.0,
+      "current_px": 1176.76,
+      "qty": 10.0,
+      "side": "short",
       "peak_roe": -0.004619214220336596,
-      "vol_ratio": 3.115242732772613
-    },
-    "MSTR": {
-      "entry_px": 155.760976,
-      "current_px": 153.18,
-      "qty": -82.0,
-      "peak_roe": 0.019780153406331973,
-      "vol_ratio": 1.08291931965508
+      "vol_ratio": 3.115242732772613,
+      "best_target_floor_roe": -0.01,
+      "best_stop_px": 1180.7203
     },
     "PFE": {
       "entry_px": 28.28,
-      "current_px": 28.315,
-      "qty": -454.0,
+      "current_px": 28.295,
+      "qty": 454.0,
+      "side": "short",
       "peak_roe": 0.0,
-      "vol_ratio": 0.8163527597622328
+      "vol_ratio": 0.8163527597622328,
+      "best_target_floor_roe": -0.01,
+      "best_stop_px": 28.562800000000003
     },
     "UNH": {
       "entry_px": 373.885882,
-      "current_px": 372.255,
-      "qty": -34.0,
+      "current_px": 373.105,
+      "qty": 34.0,
+      "side": "short",
       "peak_roe": 0.006033611079222258,
-      "vol_ratio": 0.602688315563023
+      "vol_ratio": 0.602688315563023,
+      "best_target_floor_roe": 0.0025,
+      "best_stop_px": 372.951167295
     }
   },
   "daily_starting_equity": {
