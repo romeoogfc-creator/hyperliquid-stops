@@ -142,49 +142,51 @@ def calculate_atr(highs, lows, closes, period=14):
 
 def calculate_stock_stop_price(entry_px, is_long, current_px, vol_ratio=1.0, peak_roe=0.0):
     """
-    Symmetric Moon-Runner Profit Lock Ratchet Ladder for Equities (+0.3% to +100%+)
+    Ultra-Sniper Profit Lock Ratchet Ladder for Equities (+0.25% to +100%+)
     """
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
         roe = (entry_px - current_px) / entry_px
 
-    leash_status = "Tight Initial Stop (-1.0%)"
+    leash_status = "Tight Stop (-1.0%)"
     
-    # --- MOON RUNNER LADDER (Up to +100%+) ---
-    if peak_roe >= 0.30:  # +30% to +100%+ Parabolic Runner
-        target_floor_roe = max(peak_roe - 0.005, peak_roe * 0.98)  # Tight 0.5% trail / 98% lock
+    # --- ULTRA-SNIPER PROFIT LADDER ---
+    if peak_roe >= 0.30:  # +30%+ Parabolic
+        target_floor_roe = max(peak_roe - 0.005, peak_roe * 0.98)
         leash_status = f"🌌 Parabolic 98% [{peak_roe*100:.1f}% -> +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.15:  # +15% to +30% Super Runner
-        target_floor_roe = max(peak_roe - 0.010, peak_roe * 0.95)  # 1.0% trail / 95% lock
+    elif peak_roe >= 0.15:  # +15%
+        target_floor_roe = max(peak_roe - 0.010, peak_roe * 0.95)
         leash_status = f"🚀 Super Moon [{peak_roe*100:.1f}% -> +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.05:  # +5% to +15% Moon Runner
-        target_floor_roe = max(peak_roe - 0.020, peak_roe * 0.90)  # 2.0% breathing trail / 90% lock
+    elif peak_roe >= 0.05:  # +5%
+        target_floor_roe = max(peak_roe - 0.020, peak_roe * 0.90)
         leash_status = f"🌕 Moon Trail [{peak_roe*100:.1f}% -> +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.030:  # +3.0% Peak
-        target_floor_roe = peak_roe * 0.95
-        leash_status = f"⚡ Ultra 95% [{peak_roe*100:.2f}% -> +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.015:  # +1.5% Peak
-        target_floor_roe = peak_roe * 0.90
-        leash_status = f"🚀 Mega 90% [{peak_roe*100:.2f}% -> +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.008:  # +0.8% Peak
-        target_floor_roe = max(0.005, peak_roe * 0.80)
-        leash_status = f"📈 80% Peak [{peak_roe*100:.2f}% -> +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.005:  # +0.5% Peak
+    elif peak_roe >= 0.020:  # +2.0%
+        target_floor_roe = peak_roe - 0.003
+        leash_status = f"⚡ Mega Lock [{peak_roe*100:.2f}% -> +{target_floor_roe*100:.2f}%]"
+    elif peak_roe >= 0.010:  # +1.0%
+        target_floor_roe = peak_roe - 0.0015
+        leash_status = f"🚀 Ultra Lock [{peak_roe*100:.2f}% -> +{target_floor_roe*100:.2f}%]"
+    elif peak_roe >= 0.008:  # +0.8%
+        target_floor_roe = 0.0065
+        leash_status = f"📈 80% Lock [{peak_roe*100:.2f}% -> +0.65%]"
+    elif peak_roe >= 0.006:  # +0.6%
+        target_floor_roe = 0.0045
+        leash_status = f"🎯 60% Lock [{peak_roe*100:.2f}% -> +0.45%]"
+    elif peak_roe >= 0.004:  # +0.4%
         target_floor_roe = 0.0025
-        leash_status = "🎯 Winner Lock (+0.25%)"
-    elif peak_roe >= 0.003:  # +0.3% Peak
-        target_floor_roe = 0.0000
-        leash_status = "🛡️ Break-Even (0.0%)"
+        leash_status = f"🔒 40% Lock [{peak_roe*100:.2f}% -> +0.25%]"
+    elif peak_roe >= 0.0025:  # +0.25%
+        target_floor_roe = 0.0010
+        leash_status = "🛡️ Micro Lock (+0.10%)"
     else:
-        target_floor_roe = -0.010  # -1.0% Initial Risk Cap
+        target_floor_roe = -0.010
 
-    # Volume Stall Check (Only allowed to TIGHTEN the floor, never loosen it)
-    if vol_ratio < 0.85 and roe >= 0.005:
-        stall_floor = max(0.001, roe - 0.001)
+    if vol_ratio < 0.85 and roe >= 0.003:
+        stall_floor = max(0.001, roe - 0.0005)
         if stall_floor > target_floor_roe:
             target_floor_roe = stall_floor
-            leash_status = f"🔒 Volume Stall [{roe*100:.2f}% ROE]"
+            leash_status = f"🔒 Vol Stall [{roe*100:.2f}% ROE]"
 
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
@@ -252,9 +254,8 @@ def execute_stock_engine():
 
     start_date = (datetime.now() - timedelta(days=14)).strftime('%Y-%m-%d')
 
-    # --- SPY MACRO TREND REGIME SHIELD ---
     spy_green, spy_open_px, spy_close_px = check_market_macro_regime()
-    spy_regime_str = f"GREEN (Open: ${spy_open_px:.2f}, Close: ${spy_close_px:.2f}) -> LONGs Allowed" if spy_green else f"RED (Open: ${spy_open_px:.2f}, Close: ${spy_close_px:.2f}) -> SHORTs Allowed"
+    spy_regime_str = f"GREEN (${spy_open_px:.2f} -> ${spy_close_px:.2f}) -> LONGs" if spy_green else f"RED (${spy_open_px:.2f} -> ${spy_close_px:.2f}) -> SHORTs"
     audit_logs.append(f"SPY Macro Regime Shield: {spy_regime_str}")
 
     state = load_state()
@@ -268,7 +269,6 @@ def execute_stock_engine():
     cash = float(account_data.get("cash", 100000.0))
     margin_util_pct = ((equity - cash) / equity * 100) if equity > 0 else 0.0
 
-    # Fixed Daily Starting Equity Rollover
     daily_starting_dict = state.get("daily_starting_equity", {})
     if today_str not in daily_starting_dict:
         prev_days = [d for d in daily_starting_dict.keys() if d < today_str]
@@ -289,7 +289,6 @@ def execute_stock_engine():
     orders_res = requests.get(f"{BASE_URL}/v2/orders?status=open", headers=HEADERS)
     open_orders = orders_res.json() if orders_res.status_code == 200 else []
 
-    # --- PORTFOLIO DRAWDOWN CIRCUIT BREAKER (-3.5% Loss Check) ---
     total_unrealized_pnl = sum([float(p.get("unrealized_pl", 0)) for p in positions_list])
     portfolio_pnl_pct = (total_unrealized_pnl / equity) if equity > 0 else 0.0
     if portfolio_pnl_pct <= -0.035 and positions_list:
@@ -320,7 +319,6 @@ def execute_stock_engine():
         save_state(state)
         positions_list = []
 
-    # --- RULE 1: PRE-CLOSE EOD SQUARE-OFF (2:40 PM CT) ---
     is_eod_square_off = (ct_now.hour == 14 and ct_now.minute >= 40) or (ct_now.hour >= 15)
 
     if is_eod_square_off and positions_list:
@@ -380,31 +378,69 @@ def execute_stock_engine():
         active_symbols.add(symbol)
         current_roe = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
 
+        ci_pos = 50.0
+        vol_ratio = 1.0
+
+        # --- HOLE #1 FIX: INTRADAY 5M WICK & REVERSAL SCAN FOR ACTIVE POSITIONS ---
         try:
-            bar_res = requests.get(f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=30Min&limit=15&feed=iex&start={start_date}", headers=HEADERS)
+            start_date_5m = (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d')
+            bar_res = requests.get(f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=5Min&limit=20&feed=iex&start={start_date_5m}", headers=HEADERS)
             if bar_res.status_code == 200:
                 b_list = bar_res.json().get("bars", {}).get(symbol, [])
-                if len(b_list) >= 14:
-                    highs_pos = [float(b["h"]) for b in b_list]
-                    lows_pos = [float(b["l"]) for b in b_list]
-                    closes_pos = [float(b["c"]) for b in b_list]
-                    volumes_pos = [float(b["v"]) for b in b_list]
-                    ci_pos = calculate_choppiness_index(highs_pos, lows_pos, closes_pos)
-                    vol_ratio = volumes_pos[-1] / np.mean(volumes_pos[:-1]) if np.mean(volumes_pos[:-1]) > 0 else 1.0
-                else:
-                    ci_pos = 50.0
-                    vol_ratio = 1.0
-            else:
-                ci_pos = 50.0
-                vol_ratio = 1.0
-        except Exception:
-            ci_pos = 50.0
-            vol_ratio = 1.0
+                if b_list:
+                    m5_highs = [float(b["h"]) for b in b_list]
+                    m5_lows = [float(b["l"]) for b in b_list]
+                    m5_closes = [float(b["c"]) for b in b_list]
+                    m5_opens = [float(b["o"]) for b in b_list]
+                    m5_vols = [float(b["v"]) for b in b_list]
 
-        # --- REGIME MISMATCH GUARD (Macro Regime Flip Defense) ---
+                    # Extract true intraday Peak ROE from 5m wicks over the last 30 minutes
+                    if is_long and m5_highs:
+                        candle_peak_roe = (max(m5_highs[-6:]) - entry_px) / entry_px
+                        current_roe = max(current_roe, candle_peak_roe)
+                    elif (not is_long) and m5_lows:
+                        candle_peak_roe = (entry_px - min(m5_lows[-6:])) / entry_px
+                        current_roe = max(current_roe, candle_peak_roe)
+
+                    vol_ratio = m5_vols[-1] / np.mean(m5_vols[:-1]) if len(m5_vols) > 1 and np.mean(m5_vols[:-1]) > 0 else 1.0
+                    ci_pos = calculate_choppiness_index(m5_highs, m5_lows, m5_closes)
+
+                    # HOLE #3 FIX: ACTIVE VOLUME COLLAPSE TAKE-PROFIT
+                    if vol_ratio < 0.75 and current_roe >= 0.0035:
+                        audit_logs.append(f"⚡ VOL STALL PROFIT TAKE: Closing {symbol} @ {current_roe*100:+.2f}% ROE due to volume collapse ({vol_ratio:.2f}x).")
+                        close_side = "sell" if is_long else "buy"
+                        requests.post(f"{BASE_URL}/v2/orders", json={
+                            "symbol": symbol, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"
+                        }, headers=HEADERS)
+                        state["closed_trades_ledger"].insert(0, {
+                            "symbol": symbol, "entry_price": entry_px, "exit_price": current_px,
+                            "exit_reason": f"⚡ Volume Stall Profit Take (+{current_roe*100:.2f}%)", "realized_pnl": unrealized_pnl, "timestamp": timestamp
+                        })
+                        continue
+
+                    # HOLE #4 FIX: LOWER WICK REVERSAL EXIT (SHORT DEFENSE)
+                    last_c, last_o = m5_closes[-1], m5_opens[-1]
+                    last_h, last_l = m5_highs[-1], m5_lows[-1]
+                    c_range = last_h - last_l
+                    if (not is_long) and current_roe >= 0.0025 and c_range > 0:
+                        lower_wick_ratio = (min(last_o, last_c) - last_l) / c_range
+                        if lower_wick_ratio > 0.50:
+                            audit_logs.append(f"🛡️ LOWER WICK REVERSAL EXIT: Closing SHORT on {symbol} @ {current_roe*100:+.2f}% ROE to prevent profit rollback.")
+                            close_side = "buy"
+                            requests.post(f"{BASE_URL}/v2/orders", json={
+                                "symbol": symbol, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"
+                            }, headers=HEADERS)
+                            state["closed_trades_ledger"].insert(0, {
+                                "symbol": symbol, "entry_price": entry_px, "exit_price": current_px,
+                                "exit_reason": f"🛡️ Lower Wick Reversal Lock (+{current_roe*100:.2f}%)", "realized_pnl": unrealized_pnl, "timestamp": timestamp
+                            })
+                            continue
+        except Exception as e:
+            audit_logs.append(f"Wick tracking warning on {symbol}: {e}")
+
         regime_mismatch = (is_long and not spy_green) or (not is_long and spy_green)
         if regime_mismatch:
-            audit_logs.append(f"🚨 REGIME DEFENSE: Forcing immediate market close on {symbol} due to SPY regime flip!")
+            audit_logs.append(f"🚨 REGIME DEFENSE: Closing {symbol} due to SPY regime flip!")
             close_side = "sell" if is_long else "buy"
             close_payload = {
                 "symbol": symbol, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"
@@ -419,9 +455,8 @@ def execute_stock_engine():
             except Exception as e:
                 audit_logs.append(f"Failed to force close {symbol}: {e}")
 
-        # --- ACTIVE POSITION CHOP PURGE (CI > 60.0 and Flat/Negative) ---
         if ci_pos > 60.0 and current_roe < 0.005:
-            audit_logs.append(f"🚨 CHOP PURGE: Closing {symbol} immediately due to dead chop (CI: {ci_pos:.1f}, ROE: {current_roe*100:+.2f}%)")
+            audit_logs.append(f"🚨 CHOP PURGE: Closing {symbol} (CI: {ci_pos:.1f}, ROE: {current_roe*100:+.2f}%)")
             close_side = "sell" if is_long else "buy"
             try:
                 requests.post(f"{BASE_URL}/v2/orders", json={
@@ -438,7 +473,6 @@ def execute_stock_engine():
         prev_peak = current_active_cache.get(symbol, {}).get("peak_roe", current_roe)
         peak_roe = max(current_roe, prev_peak)
 
-        # --- MONOTONIC ONE-WAY RATCHET GUARD FOR EQUITIES ---
         prev_best_floor = current_active_cache.get(symbol, {}).get("best_target_floor_roe", -0.010)
         prev_best_stop = current_active_cache.get(symbol, {}).get("best_stop_px", None)
 
@@ -506,7 +540,6 @@ def execute_stock_engine():
             "status": leash_status
         })
 
-    # --- FIXED CLOSED SYMBOLS CLEANUP (DIRECTION-AWARE REALIZED P&L) ---
     closed_symbols = set(current_active_cache.keys()) - active_symbols
     for closed_sym in closed_symbols:
         old_data = current_active_cache.get(closed_sym, {})
