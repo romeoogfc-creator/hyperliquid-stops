@@ -142,7 +142,7 @@ def calculate_atr(highs, lows, closes, period=14):
 
 def calculate_stock_stop_price(entry_px, is_long, current_px, vol_ratio=1.0, peak_roe=0.0):
     """
-    Crypto-Grade Multi-Tiered Peak Profit Lock Ratchet Ladder for Equities (1x Leverage)
+    Symmetric Moon-Runner Profit Lock Ratchet Ladder for Equities (+0.3% to +100%+)
     """
     if is_long:
         roe = (current_px - entry_px) / entry_px
@@ -151,23 +151,40 @@ def calculate_stock_stop_price(entry_px, is_long, current_px, vol_ratio=1.0, pea
 
     leash_status = "Tight Initial Stop (-1.0%)"
     
-    if peak_roe >= 0.030:  # +3.0% Peak (Ultra-Runner)
+    # --- MOON RUNNER LADDER (Up to +100%+) ---
+    if peak_roe >= 0.30:  # +30% to +100%+ Parabolic Runner
+        target_floor_roe = max(peak_roe - 0.005, peak_roe * 0.98)  # Tight 0.5% trail / 98% lock
+        leash_status = f"🌌 Parabolic Moon Lock 98% [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+    elif peak_roe >= 0.15:  # +15% to +30% Super Runner
+        target_floor_roe = max(peak_roe - 0.010, peak_roe * 0.95)  # 1.0% trail / 95% lock
+        leash_status = f"🚀 Super Moon Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+    elif peak_roe >= 0.05:  # +5% to +15% Moon Runner
+        target_floor_roe = max(peak_roe - 0.020, peak_roe * 0.90)  # 2.0% breathing trail / 90% lock
+        leash_status = f"🌕 Moon Runner Trail [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+    elif peak_roe >= 0.030:  # +3.0% Peak
         target_floor_roe = peak_roe * 0.95
-        leash_status = f"⚡ Ultra-Runner 95% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-    elif peak_roe >= 0.015:  # +1.5% Peak (Mega-Runner)
+        leash_status = f"⚡ Ultra-Runner 95% Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+    elif peak_roe >= 0.015:  # +1.5% Peak
         target_floor_roe = peak_roe * 0.90
-        leash_status = f"🚀 Mega-Runner 90% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-    elif vol_ratio < 0.85 and roe >= 0.005:  # Stalling volume while up +0.5%
-        target_floor_roe = max(0.001, roe - 0.001)
-        leash_status = f"🔒 Volume Stall Lock (+0.1% Buffer) [{roe*100:.2f}% ROE]"
-    elif peak_roe >= 0.010:  # +1.0% Peak
-        target_floor_roe = 0.005
-        leash_status = "🎯 Winner Lock (+0.5% Net Floor)"
+        leash_status = f"🚀 Mega-Runner 90% Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+    elif peak_roe >= 0.008:  # +0.8% Peak
+        target_floor_roe = max(0.005, peak_roe * 0.80)
+        leash_status = f"📈 80% Peak Runner Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
     elif peak_roe >= 0.005:  # +0.5% Peak
-        target_floor_roe = 0.000  # Strict Break-Even Lock (0% Loss Allowed)
+        target_floor_roe = 0.0025
+        leash_status = "🎯 Winner Lock (+0.25% Net Floor)"
+    elif peak_roe >= 0.003:  # +0.3% Peak
+        target_floor_roe = 0.0000
         leash_status = "🛡️ Break-Even Lock (0.0% Floor)"
     else:
         target_floor_roe = -0.010  # -1.0% Initial Risk Cap
+
+    # Volume Stall Check (Only allowed to TIGHTEN the floor, never loosen it)
+    if vol_ratio < 0.85 and roe >= 0.005:
+        stall_floor = max(0.001, roe - 0.001)
+        if stall_floor > target_floor_roe:
+            target_floor_roe = stall_floor
+            leash_status = f"🔒 Volume Stall Lock (+0.1% Buffer) [{roe*100:.2f}% ROE]"
 
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
@@ -279,9 +296,12 @@ def execute_stock_engine():
         audit_logs.append(f"🚨 PORTFOLIO CIRCUIT BREAKER TRIGGERED: Unrealized P&L at {portfolio_pnl_pct*100:.2f}%. Emergency flattening all equities to cash!")
         for pos in positions_list:
             sym = pos.get("symbol")
-            qty = float(pos.get("qty", 0))
-            side = pos.get("side")
+            qty = abs(float(pos.get("qty", 0)))
+            side = pos.get("side", "long").lower()
             close_side = "sell" if side == "long" else "buy"
+            entry_p = float(pos.get("avg_entry_price", 0))
+            exit_p = float(pos.get("current_price", entry_p))
+            realized_pnl = (exit_p - entry_p) * qty if side == "long" else (entry_p - exit_p) * qty
             try:
                 requests.post(f"{BASE_URL}/v2/orders", json={
                     "symbol": sym, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"
@@ -289,10 +309,9 @@ def execute_stock_engine():
                 if "closed_trades_ledger" not in state:
                     state["closed_trades_ledger"] = []
                 state["closed_trades_ledger"].insert(0, {
-                    "symbol": sym, "entry_price": float(pos.get("avg_entry_price", 0)),
-                    "exit_price": float(pos.get("current_price", 0)),
+                    "symbol": sym, "entry_price": entry_p, "exit_price": exit_p,
                     "exit_reason": "🚨 Portfolio Drawdown Circuit Breaker (-3.5%)",
-                    "realized_pnl": float(pos.get("unrealized_pl", 0)), "timestamp": timestamp
+                    "realized_pnl": realized_pnl, "timestamp": timestamp
                 })
             except Exception as e:
                 audit_logs.append(f"Circuit breaker close failed on {sym}: {e}")
@@ -309,8 +328,8 @@ def execute_stock_engine():
         audit_logs.append(f"EMERGENCY EXIT TRIGGERED ({reason_text}): Liquidating all open positions to cash.")
         for pos in positions_list:
             sym = pos.get("symbol")
-            qty = float(pos.get("qty", 0))
-            side = pos.get("side")
+            qty = abs(float(pos.get("qty", 0)))
+            side = pos.get("side", "long").lower()
             entry_px = float(pos.get("avg_entry_price", 0))
             current_px = float(pos.get("current_price", entry_px))
             close_side = "sell" if side == "long" else "buy"
@@ -350,9 +369,9 @@ def execute_stock_engine():
 
     for pos in positions_list:
         symbol = pos.get("symbol")
-        qty = float(pos.get("qty", 0))
-        side = pos.get("side", "long")
-        is_long = side == "long"
+        qty = abs(float(pos.get("qty", 0)))
+        side = pos.get("side", "long").lower()
+        is_long = (side == "long")
         entry_px = float(pos.get("avg_entry_price", 0))
         current_px = float(pos.get("current_price", entry_px))
         market_value = float(pos.get("market_value", 0))
@@ -382,7 +401,7 @@ def execute_stock_engine():
             ci_pos = 50.0
             vol_ratio = 1.0
 
-        # --- REGIME MISMATCH GUARD (Blood-Bath / Trend Flip Defense) ---
+        # --- REGIME MISMATCH GUARD (Macro Regime Flip Defense) ---
         regime_mismatch = (is_long and not spy_green) or (not is_long and spy_green)
         if regime_mismatch:
             audit_logs.append(f"🚨 REGIME DEFENSE: Forcing immediate market close on {symbol} due to SPY regime flip!")
@@ -419,16 +438,32 @@ def execute_stock_engine():
         prev_peak = current_active_cache.get(symbol, {}).get("peak_roe", current_roe)
         peak_roe = max(current_roe, prev_peak)
 
-        new_active_cache[symbol] = {
-            "entry_px": entry_px, "current_px": current_px, "qty": qty, "peak_roe": peak_roe, "vol_ratio": vol_ratio
-        }
+        # --- MONOTONIC ONE-WAY RATCHET GUARD FOR EQUITIES ---
+        prev_best_floor = current_active_cache.get(symbol, {}).get("best_target_floor_roe", -0.010)
+        prev_best_stop = current_active_cache.get(symbol, {}).get("best_stop_px", None)
 
-        # --- CRYPTO-GRADE STOP RATCHET EVALUATION ---
-        stop_px_calc, current_roe, target_floor_roe, leash_status = calculate_stock_stop_price(
+        stop_px_raw, current_roe, target_floor_roe, leash_status = calculate_stock_stop_price(
             entry_px, is_long, current_px, vol_ratio=vol_ratio, peak_roe=peak_roe
         )
 
-        should_exit = current_roe <= target_floor_roe
+        target_floor_roe = max(target_floor_roe, prev_best_floor)
+
+        if is_long:
+            stop_px_calc = entry_px * (1 + target_floor_roe)
+            if prev_best_stop is not None:
+                stop_px_calc = max(stop_px_calc, prev_best_stop)
+            should_exit = current_px <= stop_px_calc
+        else:
+            stop_px_calc = entry_px * (1 - target_floor_roe)
+            if prev_best_stop is not None:
+                stop_px_calc = min(stop_px_calc, prev_best_stop)
+            should_exit = current_px >= stop_px_calc
+
+        new_active_cache[symbol] = {
+            "entry_px": entry_px, "current_px": current_px, "qty": qty, "side": side,
+            "peak_roe": peak_roe, "vol_ratio": vol_ratio,
+            "best_target_floor_roe": target_floor_roe, "best_stop_px": stop_px_calc
+        }
 
         if should_exit:
             reason = f"🎯 Profit Lock (+{current_roe*100:.2f}%)" if current_roe >= 0 else f"🛡️ Dynamic Stop Loss ({current_roe*100:.2f}%)"
@@ -471,13 +506,17 @@ def execute_stock_engine():
             "status": leash_status
         })
 
+    # --- FIXED CLOSED SYMBOLS CLEANUP (DIRECTION-AWARE REALIZED P&L) ---
     closed_symbols = set(current_active_cache.keys()) - active_symbols
     for closed_sym in closed_symbols:
         old_data = current_active_cache.get(closed_sym, {})
         entry_px = old_data.get("entry_px", 0.0)
         exit_px = float(old_data.get("current_px", entry_px))
-        qty = old_data.get("qty", 0.0)
-        realized_pnl = (exit_px - entry_px) * qty
+        qty = abs(float(old_data.get("qty", 0.0)))
+        old_side = old_data.get("side", "long").lower()
+        old_is_long = (old_side == "long")
+        
+        realized_pnl = (exit_px - entry_px) * qty if old_is_long else (entry_px - exit_px) * qty
         
         existing_symbols_today = [t['symbol'] for t in state.get("closed_trades_ledger", []) if today_str in t.get("timestamp", "")]
         if closed_sym not in existing_symbols_today:
