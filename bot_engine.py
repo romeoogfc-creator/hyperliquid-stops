@@ -490,6 +490,23 @@ def execute_engine():
 
             px = round_sig_figs(stop_px_raw, 5)
 
+            # --- DIRECT PYTHON MARKET CLOSE GUARD ---
+            stop_triggered = (current_px <= px) if is_long else (current_px >= px)
+            if stop_triggered:
+                try:
+                    audit_logs.append(f"🎯 RATCHET STOP TRIGGERED IN PYTHON: Closing {coin} {'LONG' if is_long else 'SHORT'} @ ${current_px:.5f} (Stop: ${px:.5f}, ROE: {current_roe*100:+.2f}%).")
+                    exchange.market_close(coin)
+                    reason = f"🎯 Profit Lock (+{current_roe*100:.1f}%)" if current_roe >= 0 else f"🛡️ Tight Stop Loss ({current_roe*100:.1f}%)"
+                    state["closed_trades_ledger"].insert(0, {
+                        "coin": coin, "entry_price": entry_px, "exit_price": current_px,
+                        "pnl_usd": unrealized_pnl, "roe_pct": current_roe * 100, "side": "LONG" if is_long else "SHORT",
+                        "exit_reason": reason, "timestamp": timestamp
+                    })
+                    trade_closed_this_run = True
+                    continue
+                except Exception as e:
+                    audit_logs.append(f"Direct Python market close failed on {coin}: {e}")
+
             active_count += 1
             active_coins.add(coin)
             total_margin_used += margin_used
@@ -513,15 +530,22 @@ def execute_engine():
             stag_count = state["stagnation_tracker"].get(coin, 0)
             audit_logs.append(f"Crypto Position: {coin} | ROE: {current_roe*100:+.2f}% (Peak: {peak_roe*100:+.2f}%) | Stop: ${px} | [{leash_status}] | Stg: {stag_count}/48")
 
-            for order in open_orders:
-                if order.get("coin") == coin and order.get("isTrigger"):
-                    exchange.cancel(coin, order["oid"])
+            # Update trigger order on exchange safely
+            try:
+                for order in open_orders:
+                    if order.get("coin") == coin and order.get("isTrigger"):
+                        try:
+                            exchange.cancel(coin, order["oid"])
+                        except Exception:
+                            pass
 
-            exchange.order(
-                coin, is_buy_order, abs(szi), px,
-                {"trigger": {"triggerPx": px, "isMarket": True, "tpsl": "sl"}},
-                reduce_only=True
-            )
+                exchange.order(
+                    coin, is_buy_order, abs(szi), px,
+                    {"trigger": {"triggerPx": px, "isMarket": True, "tpsl": "sl"}},
+                    reduce_only=True
+                )
+            except Exception as t_err:
+                audit_logs.append(f"Trigger order sync warning on {coin}: {t_err}")
 
             positions_data.append({
                 "bot_title": "TR-GC-Crypto-LS-23", "coin": coin,
@@ -594,7 +618,6 @@ def execute_engine():
                 lows = [float(c["l"]) for c in candles]
                 volumes = [float(c.get("v", 0)) for c in candles]
 
-                # Moderate ADX filter (18.0)
                 adx_30m = calculate_adx(highs[:-1], lows[:-1], closes[:-1])
                 if adx_30m < 18.0:
                     continue
@@ -607,7 +630,6 @@ def execute_engine():
                 comp_high = highs[-2]
                 comp_low = lows[-2]
                 
-                # Moderate Choppiness ceiling (58.0)
                 ci_30m = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
                 if ci_30m > 58.0:
                     continue
@@ -632,7 +654,6 @@ def execute_engine():
                     if upper_wick > 0.35:
                         upper_wick_ok = False
 
-                # Moderate Volume Ratio (>= 1.5x)
                 if btc_regime == "GREEN" and ema20 > ema50:
                     if comp_close > upper and comp_close <= upper * 1.04 and vol_ratio >= 1.5 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
                         is_ballistic = comp_close > (upper + 1.5 * atr)
@@ -690,10 +711,8 @@ def execute_engine():
             px = candidate["close"]
             is_long = candidate["is_long"]
             
-            # 1x Fixed Safe Leverage across ALL assets
             assigned_leverage = 1
 
-            # Micro Sizing: 6% NAV (~$30 per trade)
             target_usd = max(25.0, account_value * 0.06)
             
             decimals = sz_decimals_map.get(coin, 4)
