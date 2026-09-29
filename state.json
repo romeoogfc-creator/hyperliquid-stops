@@ -148,10 +148,10 @@
   "active_position_cache": {
     "MEME": {
       "entry_px": 0.000589,
-      "current_px": 0.000583,
+      "current_px": 0.000586,
       "szi": -138350.0,
       "peak_roe": 0.06621392190152796,
-      "margin": 26.932133,
+      "margin": 27.024366,
       "leverage": 3.0,
       "side": "SHORT",
       "best_target_floor_roe": 0.05297113752122237,
@@ -161,7 +161,7 @@
   "previous_active_coins": [
     "MEME"
   ],
-  "last_run_timestamp": "2026-09-29 04:11:42",
+  "last_run_timestamp": "2026-09-29 04:21:43",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -174,8 +174,8 @@
   "last_email_timestamp": 1790655096.369586,
   "last_scan_timestamp": 1790653440.4226456,
   "gemini_cache": {
-    "timestamp": 1790655096.369586,
+    "timestamp": 1790655698.226205,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Increased macroeconomic uncertainty and significant regulatory pressure create a volatile environment prone to sharp, liquidity-driven price swings."
+    "briefing": "**Risk Level: HIGH**\n\nCrypto markets currently face heightened volatility due to macroeconomic uncertainty, shifting regulatory landscapes, and speculative overextension, necessitating extreme caution for investors."
   }
 }
