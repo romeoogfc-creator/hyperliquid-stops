@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-29 16:29:55",
+  "last_run_timestamp": "2026-09-29 16:46:52",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,12 +19,12 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "JNJ",
+    "IWM",
     "PFE",
-    "UNH",
+    "JNJ",
+    "MA",
     "HD",
-    "LLY",
-    "IWM"
+    "LLY"
   ],
   "closed_trades_ledger": [
     {
@@ -191,27 +191,27 @@
   "active_position_cache": {
     "HD": {
       "entry_px": 289.913409,
-      "current_px": 288.77,
+      "current_px": 287.99,
       "qty": 44.0,
       "side": "short",
-      "peak_roe": 0.005634127119660163,
+      "peak_roe": 0.006634425798497621,
       "vol_ratio": 0.5939093269307261,
-      "best_target_floor_roe": 0.0025,
-      "best_stop_px": 289.1886254775
+      "best_target_floor_roe": 0.005634425798497621,
+      "best_stop_px": 288.279913409
     },
     "IWM": {
       "entry_px": 278.935,
-      "current_px": 277.905,
+      "current_px": 277.54,
       "qty": 46.0,
       "side": "short",
-      "peak_roe": 0.004176600283220178,
+      "peak_roe": 0.005001165146001692,
       "vol_ratio": 0.035964017348445676,
-      "best_target_floor_roe": 0.0,
-      "best_stop_px": 278.935
+      "best_target_floor_roe": 0.004001165146001692,
+      "best_stop_px": 277.818935
     },
     "JNJ": {
       "entry_px": 266.5825,
-      "current_px": 266.58,
+      "current_px": 266.73,
       "qty": 48.0,
       "side": "short",
       "peak_roe": 9.377959918590779e-06,
@@ -221,7 +221,7 @@
     },
     "LLY": {
       "entry_px": 1169.03,
-      "current_px": 1176.76,
+      "current_px": 1178.74,
       "qty": 10.0,
       "side": "short",
       "peak_roe": -0.004619214220336596,
@@ -229,25 +229,25 @@
       "best_target_floor_roe": -0.01,
       "best_stop_px": 1180.7203
     },
+    "MA": {
+      "entry_px": 561.6,
+      "current_px": 563.24,
+      "qty": 22.0,
+      "side": "short",
+      "peak_roe": -0.0029202279202278957,
+      "vol_ratio": 1.070318710703187,
+      "best_target_floor_roe": -0.01,
+      "best_stop_px": 567.216
+    },
     "PFE": {
       "entry_px": 28.28,
-      "current_px": 28.295,
+      "current_px": 28.405,
       "qty": 454.0,
       "side": "short",
       "peak_roe": 0.0,
       "vol_ratio": 0.8163527597622328,
       "best_target_floor_roe": -0.01,
       "best_stop_px": 28.562800000000003
-    },
-    "UNH": {
-      "entry_px": 373.885882,
-      "current_px": 373.105,
-      "qty": 34.0,
-      "side": "short",
-      "peak_roe": 0.006033611079222258,
-      "vol_ratio": 0.602688315563023,
-      "best_target_floor_roe": 0.0025,
-      "best_stop_px": 372.951167295
     }
   },
   "daily_starting_equity": {
