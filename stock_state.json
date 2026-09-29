@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-29 17:13:39",
+  "last_run_timestamp": "2026-09-29 17:44:59",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,14 +19,38 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "MA",
-    "LLY",
-    "IWM",
     "HD",
+    "PFE",
+    "IWM",
     "JNJ",
-    "PFE"
+    "MA",
+    "LLY"
   ],
   "closed_trades_ledger": [
+    {
+      "symbol": "LLY",
+      "entry_price": 1169.03,
+      "exit_price": 1181.65,
+      "exit_reason": "\ud83d\udee1\ufe0f Dynamic Stop Loss (-1.08%)",
+      "realized_pnl": -126.20000000000118,
+      "timestamp": "2026-09-29 17:44:50"
+    },
+    {
+      "symbol": "IWM",
+      "entry_price": 278.935,
+      "exit_price": 277.865,
+      "exit_reason": "\ud83c\udfaf Profit Lock (+0.38%)",
+      "realized_pnl": 49.219999999999686,
+      "timestamp": "2026-09-29 17:44:50"
+    },
+    {
+      "symbol": "HD",
+      "entry_price": 289.913409,
+      "exit_price": 288.875,
+      "exit_reason": "\ud83c\udfaf Profit Lock (+0.36%)",
+      "realized_pnl": 45.689996000000065,
+      "timestamp": "2026-09-29 17:44:50"
+    },
     {
       "symbol": "UNH",
       "entry_price": 373.885882,
@@ -162,36 +186,12 @@
       "exit_reason": "Balanced Hard Stop (-1.2%)",
       "realized_pnl": -137.53226949999922,
       "timestamp": "2026-09-23 15:12:34"
-    },
-    {
-      "symbol": "SNOW",
-      "entry_price": 343.17,
-      "exit_price": 336.51,
-      "exit_reason": "Razor-Tight Hard Stop (-0.7%)",
-      "realized_pnl": -194.57323200000073,
-      "timestamp": "2026-09-23 14:07:58"
-    },
-    {
-      "symbol": "MSFT",
-      "entry_price": 504.38052,
-      "exit_price": 499.32,
-      "exit_reason": "Razor-Tight Hard Stop (-0.7%)",
-      "realized_pnl": -101.42648420399993,
-      "timestamp": "2026-09-23 14:07:58"
-    },
-    {
-      "symbol": "NVDA",
-      "entry_price": 221.98,
-      "exit_price": 228.35,
-      "exit_reason": "Morning Profit Grab (99% Locked)",
-      "realized_pnl": 254.80000000000018,
-      "timestamp": "2026-09-23 13:42:39"
     }
   ],
   "active_position_cache": {
     "HD": {
       "entry_px": 289.913409,
-      "current_px": 287.81,
+      "current_px": 288.875,
       "qty": 44.0,
       "side": "short",
       "peak_roe": 0.007255300840534765,
@@ -201,7 +201,7 @@
     },
     "IWM": {
       "entry_px": 278.935,
-      "current_px": 277.65,
+      "current_px": 277.865,
       "qty": 46.0,
       "side": "short",
       "peak_roe": 0.005001165146001692,
@@ -211,7 +211,7 @@
     },
     "JNJ": {
       "entry_px": 266.5825,
-      "current_px": 266.72,
+      "current_px": 267.275,
       "qty": 48.0,
       "side": "short",
       "peak_roe": 9.377959918590779e-06,
@@ -221,7 +221,7 @@
     },
     "LLY": {
       "entry_px": 1169.03,
-      "current_px": 1180.4,
+      "current_px": 1181.65,
       "qty": 10.0,
       "side": "short",
       "peak_roe": -0.004619214220336596,
@@ -231,7 +231,7 @@
     },
     "MA": {
       "entry_px": 561.6,
-      "current_px": 564.08,
+      "current_px": 564.545,
       "qty": 22.0,
       "side": "short",
       "peak_roe": -0.0029202279202278957,
@@ -241,7 +241,7 @@
     },
     "PFE": {
       "entry_px": 28.28,
-      "current_px": 28.505,
+      "current_px": 28.51,
       "qty": 454.0,
       "side": "short",
       "peak_roe": 0.0,
