@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-29 15:17:20",
+  "last_run_timestamp": "2026-09-29 15:46:38",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,12 +19,12 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "PFE",
-    "UNH",
+    "LLY",
     "HD",
     "MSTR",
+    "UNH",
     "IWM",
-    "LLY"
+    "PFE"
   ],
   "closed_trades_ledger": [
     {
@@ -191,42 +191,42 @@
   "active_position_cache": {
     "HD": {
       "entry_px": 289.913409,
-      "current_px": 289.0,
+      "current_px": 288.71,
       "qty": -44.0,
-      "peak_roe": 0.0031506269515115854,
+      "peak_roe": 0.00415092563034924,
       "vol_ratio": 0.5939093269307261
     },
     "IWM": {
       "entry_px": 278.935,
-      "current_px": 278.205,
+      "current_px": 278.01,
       "qty": -46.0,
-      "peak_roe": 0.0026170971731766116,
+      "peak_roe": 0.003316184774230596,
       "vol_ratio": 0.035964017348445676
     },
     "LLY": {
       "entry_px": 1169.03,
-      "current_px": 1175.3,
+      "current_px": 1174.43,
       "qty": -10.0,
-      "peak_roe": -0.005363420955835164,
+      "peak_roe": -0.004619214220336596,
       "vol_ratio": 3.115242732772613
     },
     "MSTR": {
       "entry_px": 155.760976,
-      "current_px": 154.07,
+      "current_px": 152.68,
       "qty": -82.0,
-      "peak_roe": 0.01085622370522387,
+      "peak_roe": 0.019780153406331973,
       "vol_ratio": 1.08291931965508
     },
     "PFE": {
       "entry_px": 28.28,
-      "current_px": 28.365,
+      "current_px": 28.28,
       "qty": -454.0,
-      "peak_roe": -0.00300565770862791,
+      "peak_roe": 0.0,
       "vol_ratio": 0.8163527597622328
     },
     "UNH": {
       "entry_px": 373.885882,
-      "current_px": 371.63,
+      "current_px": 373.42,
       "qty": -34.0,
       "peak_roe": 0.006033611079222258,
       "vol_ratio": 0.602688315563023
