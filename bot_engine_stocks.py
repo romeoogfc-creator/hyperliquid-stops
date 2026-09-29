@@ -154,28 +154,28 @@ def calculate_stock_stop_price(entry_px, is_long, current_px, vol_ratio=1.0, pea
     # --- MOON RUNNER LADDER (Up to +100%+) ---
     if peak_roe >= 0.30:  # +30% to +100%+ Parabolic Runner
         target_floor_roe = max(peak_roe - 0.005, peak_roe * 0.98)  # Tight 0.5% trail / 98% lock
-        leash_status = f"🌌 Parabolic Moon Lock 98% [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+        leash_status = f"🌌 Parabolic 98% [{peak_roe*100:.1f}% -> +{target_floor_roe*100:.2f}%]"
     elif peak_roe >= 0.15:  # +15% to +30% Super Runner
         target_floor_roe = max(peak_roe - 0.010, peak_roe * 0.95)  # 1.0% trail / 95% lock
-        leash_status = f"🚀 Super Moon Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+        leash_status = f"🚀 Super Moon [{peak_roe*100:.1f}% -> +{target_floor_roe*100:.2f}%]"
     elif peak_roe >= 0.05:  # +5% to +15% Moon Runner
         target_floor_roe = max(peak_roe - 0.020, peak_roe * 0.90)  # 2.0% breathing trail / 90% lock
-        leash_status = f"🌕 Moon Runner Trail [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+        leash_status = f"🌕 Moon Trail [{peak_roe*100:.1f}% -> +{target_floor_roe*100:.2f}%]"
     elif peak_roe >= 0.030:  # +3.0% Peak
         target_floor_roe = peak_roe * 0.95
-        leash_status = f"⚡ Ultra-Runner 95% Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+        leash_status = f"⚡ Ultra 95% [{peak_roe*100:.2f}% -> +{target_floor_roe*100:.2f}%]"
     elif peak_roe >= 0.015:  # +1.5% Peak
         target_floor_roe = peak_roe * 0.90
-        leash_status = f"🚀 Mega-Runner 90% Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+        leash_status = f"🚀 Mega 90% [{peak_roe*100:.2f}% -> +{target_floor_roe*100:.2f}%]"
     elif peak_roe >= 0.008:  # +0.8% Peak
         target_floor_roe = max(0.005, peak_roe * 0.80)
-        leash_status = f"📈 80% Peak Runner Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+        leash_status = f"📈 80% Peak [{peak_roe*100:.2f}% -> +{target_floor_roe*100:.2f}%]"
     elif peak_roe >= 0.005:  # +0.5% Peak
         target_floor_roe = 0.0025
-        leash_status = "🎯 Winner Lock (+0.25% Net Floor)"
+        leash_status = "🎯 Winner Lock (+0.25%)"
     elif peak_roe >= 0.003:  # +0.3% Peak
         target_floor_roe = 0.0000
-        leash_status = "🛡️ Break-Even Lock (0.0% Floor)"
+        leash_status = "🛡️ Break-Even (0.0%)"
     else:
         target_floor_roe = -0.010  # -1.0% Initial Risk Cap
 
@@ -184,7 +184,7 @@ def calculate_stock_stop_price(entry_px, is_long, current_px, vol_ratio=1.0, pea
         stall_floor = max(0.001, roe - 0.001)
         if stall_floor > target_floor_roe:
             target_floor_roe = stall_floor
-            leash_status = f"🔒 Volume Stall Lock (+0.1% Buffer) [{roe*100:.2f}% ROE]"
+            leash_status = f"🔒 Volume Stall [{roe*100:.2f}% ROE]"
 
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
@@ -682,7 +682,7 @@ def execute_stock_engine():
 
     audit_section = ""
     if VERBOSE_TEST_MODE:
-        audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
+        audit_rows = "".join([f"<tr><td style='padding: 5px 6px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 10px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
         <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Pure Quantitative Sniper Engine)</div>
         <div class="table-responsive" style="overflow-x: hidden;">
@@ -695,28 +695,22 @@ def execute_stock_engine():
     closed_ledger = state.get("closed_trades_ledger", [])
     closed_rows = "".join([
         f"<tr>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['symbol']}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(t.get('entry_price', 0), 5)}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(t.get('exit_price', 0), 5)}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: #b45309;'>{t['exit_reason']}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if t.get('realized_pnl', 0) >= 0 else '#c62828'}; font-weight: bold;'>${t.get('realized_pnl', 0):+.2f}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 10px;'>{t['timestamp']}</td>"
+        f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['symbol']}</td>"
+        f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 9px;'>${round_sig_figs(t.get('entry_price', 0), 5)}<br>&rarr; ${round_sig_figs(t.get('exit_price', 0), 5)}</td>"
+        f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; color: {'#2e7d32' if t.get('realized_pnl', 0) >= 0 else '#c62828'}; font-weight: bold;'>${t.get('realized_pnl', 0):+.2f}</td>"
+        f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; color: #b45309; font-size: 9px;'>{t['exit_reason']}</td>"
         f"</tr>"
         for t in closed_ledger[:5]
-    ]) if closed_ledger else "<tr><td colspan='6' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
+    ]) if closed_ledger else "<tr><td colspan='4' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
 
     text_fallback = f"TR-GC-Equities-LS-01 | Pure Quantitative Sniper\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Total Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
     positions_rows = "".join([
         f"<tr>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['symbol']}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['market_value']:.2f}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #334155;'>${round_sig_figs(p['entry'], 5)}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #b45309;'>${p['stop']}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td>"
+        f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['symbol']}<br><span style='color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-size: 9px;'>{p['side']}</span></td>"
+        f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; font-size: 10px;'>${p['market_value']:.0f}</td>"
+        f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f}<br><span style='font-size: 9px;'>({p['roe']:+.2f}%)</span></td>"
+        f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; font-family: monospace;'><span style='color: #b45309; font-weight: bold;'>${p['stop']}</span><br><span style='color: #2e7d32; font-size: 9px;'>{p['status']}</span></td>"
         f"</tr>"
         for p in positions_data
     ])
@@ -728,42 +722,42 @@ def execute_stock_engine():
         total_roe_avg = (total_pnl_sum / total_cost_basis * 100) if total_cost_basis > 0 else 0.0
         positions_rows += f"""
         <tr style="background: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
-            <td colspan="3" style="padding: 9px 10px; text-align: right;">TOTAL:</td>
-            <td style="padding: 9px 10px;">${total_market_value_sum:.2f}</td>
-            <td style="padding: 9px 10px; color: {'#2e7d32' if total_pnl_sum >= 0 else '#c62828'};">${total_pnl_sum:+.2f} ({total_roe_avg:+.2f}%)</td>
-            <td colspan="3"></td>
+            <td style="padding: 6px 4px;">TOTAL:</td>
+            <td style="padding: 6px 4px;">${total_market_value_sum:.0f}</td>
+            <td style="padding: 6px 4px; color: {'#2e7d32' if total_pnl_sum >= 0 else '#c62828'};">${total_pnl_sum:+.2f} ({total_roe_avg:+.2f}%)</td>
+            <td></td>
         </tr>
         """
     else:
-        positions_rows = "<tr><td colspan='8' style='padding: 15px; text-align: center; color: #666;'>No active positions (100% Cash Flat).</td></tr>"
+        positions_rows = "<tr><td colspan='4' style='padding: 12px; text-align: center; color: #666;'>No active positions (100% Cash Flat).</td></tr>"
 
     html_content = f"""
     <html>
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-          body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 10px; color: #333; }}
+          body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 4px; color: #333; }}
           .container {{ max-width: 100%; width: 100%; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); box-sizing: border-box; }}
-          .header {{ background: #0f172a; color: #ffffff; padding: 15px 20px; }}
-          .header h2 {{ margin: 0; font-size: 16px; font-weight: 600; }}
-          .header p {{ margin: 5px 0 0; font-size: 11px; color: #94a3b8; }}
-          .content {{ padding: 15px; }}
-          .net-worth-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin-bottom: 20px; }}
-          .net-worth-title {{ font-size: 12px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 6px; }}
-          .net-worth-value {{ font-size: 24px; font-weight: 700; color: #0f172a; }}
-          .net-worth-subtitle {{ font-size: 11px; color: #64748b; margin-top: 4px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }}
+          .header {{ background: #0f172a; color: #ffffff; padding: 10px 12px; }}
+          .header h2 {{ margin: 0; font-size: 14px; font-weight: 600; }}
+          .header p {{ margin: 2px 0 0; font-size: 10px; color: #94a3b8; }}
+          .content {{ padding: 8px; }}
+          .net-worth-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 12px; }}
+          .net-worth-title {{ font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 2px; }}
+          .net-worth-value {{ font-size: 20px; font-weight: 700; color: #0f172a; }}
+          .net-worth-subtitle {{ font-size: 10px; color: #64748b; margin-top: 4px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px; }}
           
-          .pnl-badge {{ background: {'#e6f4ea' if today_total_gain >= 0 else '#fce8e6'}; color: {'#137333' if today_total_gain >= 0 else '#c5221f'}; padding: 4px 8px; border-radius: 4px; font-weight: bold; }}
-          .lifetime-badge {{ background: #f1f5f9; color: #0f172a; padding: 4px 8px; border-radius: 4px; font-weight: bold; }}
+          .pnl-badge {{ background: {'#e6f4ea' if today_total_gain >= 0 else '#fce8e6'}; color: {'#137333' if today_total_gain >= 0 else '#c5221f'}; padding: 2px 5px; border-radius: 4px; font-weight: bold; }}
+          .lifetime-badge {{ background: #f1f5f9; color: #0f172a; padding: 2px 5px; border-radius: 4px; font-weight: bold; }}
 
-          .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; font-size: 11px; color: #334155; line-height: 1.6; }}
-          .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 12px; color: #0f172a; }}
-          .section-title {{ font-size: 13px; text-transform: uppercase; color: #475569; margin: 20px 0 8px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; font-weight: 600; }}
-          .table-responsive {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 15px; }}
-          table {{ width: 100%; border-collapse: collapse; font-size: 11px; white-space: nowrap; }}
-          th {{ background: #f1f5f9; color: #475569; text-align: left; padding: 8px 8px; font-weight: 600; border-bottom: 2px solid #cbd5e1; }}
-          td {{ padding: 8px 8px; }}
-          .footer {{ text-align: center; font-size: 10px; color: #94a3b8; padding: 12px; background: #f8fafc; border-top: 1px solid #e2e8f0; }}
+          .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; margin-bottom: 12px; font-size: 10px; color: #334155; line-height: 1.4; }}
+          .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 3px; font-size: 10px; color: #0f172a; }}
+          .section-title {{ font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 4px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 2px; font-weight: 600; }}
+          .table-responsive {{ width: 100%; overflow: hidden; margin-bottom: 10px; }}
+          table {{ width: 100%; border-collapse: collapse; font-size: 10px; table-layout: fixed; }}
+          th {{ background: #f1f5f9; color: #475569; text-align: left; padding: 5px 4px; font-weight: 600; border-bottom: 2px solid #cbd5e1; font-size: 10px; }}
+          td {{ padding: 5px 4px; word-wrap: break-word; overflow-wrap: break-word; }}
+          .footer {{ text-align: center; font-size: 9px; color: #94a3b8; padding: 8px; background: #f8fafc; border-top: 1px solid #e2e8f0; }}
         </style>
       </head>
       <body>
@@ -777,7 +771,7 @@ def execute_stock_engine():
               <div class="net-worth-title">Total Account Equity</div>
               <div class="net-worth-value">USD ${equity:.2f}</div>
               <div class="net-worth-subtitle">
-                <span>Margin Utilization: <b>{margin_util_pct:.1f}%</b></span>
+                <span>Margin: <b>{margin_util_pct:.1f}%</b></span>
                 <span>Today's Gain: <span class="pnl-badge">${today_total_gain:+,.2f}</span></span>
                 <span>Lifetime P&L: <span class="lifetime-badge">${lifetime_cumulative_pnl:+,.2f}</span></span>
               </div>
@@ -797,12 +791,32 @@ def execute_stock_engine():
 
             <div class="section-title">Active Sniper Scalps</div>
             <div class="table-responsive">
-              <table><thead><tr><th>Bot Title</th><th>Symbol</th><th>Side</th><th>Market Value USD</th><th>Unrealized P&L USD</th><th>Buy Price</th><th>Stop Price</th><th>Status</th></tr></thead><tbody>{positions_rows}</tbody></table>
+              <table style="width: 100%;">
+                <thead>
+                  <tr>
+                    <th style="width: 22%;">Sym</th>
+                    <th style="width: 20%;">Val ($)</th>
+                    <th style="width: 28%;">P&L (ROE)</th>
+                    <th style="width: 30%;">Stop / Status</th>
+                  </tr>
+                </thead>
+                <tbody>{positions_rows}</tbody>
+              </table>
             </div>
 
             <div class="section-title">Recently Closed Trades & Exit Telemetry</div>
             <div class="table-responsive">
-              <table><thead><tr><th>Symbol</th><th>Entry Price</th><th>Exit Price</th><th>Exit Reason / Catalyst</th><th>Realized P&L</th><th>Timestamp</th></tr></thead><tbody>{closed_rows}</tbody></table>
+              <table style="width: 100%;">
+                <thead>
+                  <tr>
+                    <th style="width: 20%;">Sym</th>
+                    <th style="width: 30%;">Entry &rarr; Exit</th>
+                    <th style="width: 25%;">Realized</th>
+                    <th style="width: 25%;">Reason</th>
+                  </tr>
+                </thead>
+                <tbody>{closed_rows}</tbody>
+              </table>
             </div>
 
             {audit_section}
