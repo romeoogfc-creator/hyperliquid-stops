@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-29 19:02:39",
+  "last_run_timestamp": "2026-09-29 19:15:44",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,8 +19,8 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "MA",
     "JNJ",
+    "MA",
     "DKNG"
   ],
   "closed_trades_ledger": [
@@ -188,17 +188,17 @@
   "active_position_cache": {
     "DKNG": {
       "entry_px": 19.77,
-      "current_px": 19.685,
+      "current_px": 19.675,
       "qty": 648.0,
       "side": "short",
-      "peak_roe": 0.004299443601416331,
+      "peak_roe": 0.004805260495700499,
       "vol_ratio": 1.1738561287301634,
       "best_target_floor_roe": 0.0,
       "best_stop_px": 19.77
     },
     "JNJ": {
       "entry_px": 266.5825,
-      "current_px": 266.7903,
+      "current_px": 266.78,
       "qty": 48.0,
       "side": "short",
       "peak_roe": 9.377959918590779e-06,
@@ -208,7 +208,7 @@
     },
     "MA": {
       "entry_px": 561.6,
-      "current_px": 565.145,
+      "current_px": 565.75,
       "qty": 22.0,
       "side": "short",
       "peak_roe": -0.0029202279202278957,
