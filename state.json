@@ -148,10 +148,10 @@
   "active_position_cache": {
     "MEME": {
       "entry_px": 0.000589,
-      "current_px": 0.000587,
+      "current_px": 0.000584,
       "szi": -138350.0,
       "peak_roe": 0.06621392190152796,
-      "margin": 27.070483,
+      "margin": 26.932133,
       "leverage": 3.0,
       "side": "SHORT",
       "best_target_floor_roe": 0.05297113752122237,
@@ -161,7 +161,7 @@
   "previous_active_coins": [
     "MEME"
   ],
-  "last_run_timestamp": "2026-09-29 05:18:28",
+  "last_run_timestamp": "2026-09-29 05:36:23",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -174,8 +174,8 @@
   "last_email_timestamp": 1790659101.8882117,
   "last_scan_timestamp": 1790653440.4226456,
   "gemini_cache": {
-    "timestamp": 1790659101.8882117,
+    "timestamp": 1790660177.7651248,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains significantly exposed to heightened regulatory uncertainty, macroeconomic volatility regarding interest rate policies, and the potential for sharp liquidity-driven corrections following recent price surges."
+    "briefing": "Risk Level: **HIGH** \u2014 The market is currently grappling with heightened volatility driven by macroeconomic uncertainty, shifting regulatory landscapes, and significant speculative positioning, making it susceptible to sharp, unpredictable price swings."
   }
 }
