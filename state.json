@@ -6,7 +6,7 @@
     "MEME": 0,
     "GMT": 6,
     "FIL": 12,
-    "CAKE": 1,
+    "CAKE": 0,
     "FET": 1,
     "ZEN": 1,
     "BANANA": 9,
@@ -148,19 +148,19 @@
   "active_position_cache": {
     "MEME": {
       "entry_px": 0.000589,
-      "current_px": 0.000584,
+      "current_px": 0.00058,
       "szi": -138350.0,
-      "peak_roe": 0.045840407470288634,
-      "margin": 26.932133,
+      "peak_roe": 0.05602716468590858,
+      "margin": 26.747666,
       "leverage": 3.0,
       "side": "SHORT"
     },
     "CAKE": {
       "entry_px": 2.5715,
-      "current_px": 2.5534,
+      "current_px": 2.53945,
       "szi": -29.6,
-      "peak_roe": 0.013882947695897275,
-      "margin": 75.55992,
+      "peak_roe": 0.01504958195605676,
+      "margin": 75.152624,
       "leverage": 1.0,
       "side": "SHORT"
     }
@@ -169,7 +169,7 @@
     "CAKE",
     "MEME"
   ],
-  "last_run_timestamp": "2026-09-29 01:55:53",
+  "last_run_timestamp": "2026-09-29 02:15:12",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -182,8 +182,8 @@
   "last_email_timestamp": 1790646943.741125,
   "last_scan_timestamp": 1790644962.6362555,
   "gemini_cache": {
-    "timestamp": 1790646943.741125,
+    "timestamp": 1790648105.7442482,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nDriven by heightened macroeconomic uncertainty, persistent regulatory pressure, and fragile liquidity, the crypto market currently faces elevated vulnerability to sharp downward volatility and systemic contagion."
+    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating significant volatility driven by shifting macroeconomic expectations, fluctuating institutional inflows, and sensitive regulatory developments, all of which keep the sector highly susceptible to rapid, sentiment-driven price swings."
   }
 }
