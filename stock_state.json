@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-29 13:47:14",
+  "last_run_timestamp": "2026-09-29 14:16:37",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,10 +19,46 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
+    "PLTR",
     "DKNG",
+    "CRM",
+    "RBLX",
+    "UNH",
     "HD"
   ],
   "closed_trades_ledger": [
+    {
+      "symbol": "RBLX",
+      "entry_price": 40.81,
+      "exit_price": 41.91,
+      "exit_reason": "\ud83d\udee1\ufe0f Dynamic Stop Loss (-2.70%)",
+      "realized_pnl": 348.6999999999982,
+      "timestamp": "2026-09-29 14:16:17"
+    },
+    {
+      "symbol": "PLTR",
+      "entry_price": 185.12,
+      "exit_price": 186.99,
+      "exit_reason": "\ud83d\udee1\ufe0f Dynamic Stop Loss (-1.01%)",
+      "realized_pnl": 129.0300000000003,
+      "timestamp": "2026-09-29 14:16:17"
+    },
+    {
+      "symbol": "DKNG",
+      "entry_price": 21.09,
+      "exit_price": 21.02,
+      "exit_reason": "\ud83c\udfaf Profit Lock (+0.33%)",
+      "realized_pnl": -42.840000000000174,
+      "timestamp": "2026-09-29 14:16:17"
+    },
+    {
+      "symbol": "CRM",
+      "entry_price": 223.75,
+      "exit_price": 228.235,
+      "exit_reason": "\ud83d\udee1\ufe0f Dynamic Stop Loss (-2.00%)",
+      "realized_pnl": 255.64500000000078,
+      "timestamp": "2026-09-29 14:16:17"
+    },
     {
       "symbol": "V",
       "entry_price": 369.23,
@@ -150,70 +186,50 @@
       "exit_reason": "Morning Profit Grab (99% Locked)",
       "realized_pnl": 190.58499900000027,
       "timestamp": "2026-09-23 13:36:13"
-    },
-    {
-      "symbol": "MU",
-      "entry_price": 1047.68,
-      "exit_price": 1095.59,
-      "exit_reason": "Morning Profit Grab (99% Locked)",
-      "realized_pnl": 383.27999999999884,
-      "timestamp": "2026-09-23 13:36:13"
-    },
-    {
-      "symbol": "INTC",
-      "entry_price": 118.3,
-      "exit_price": 121.5061,
-      "exit_reason": "Morning Profit Grab (99% Locked)",
-      "realized_pnl": 333.43440000000066,
-      "timestamp": "2026-09-23 13:36:13"
-    },
-    {
-      "symbol": "AVGO",
-      "entry_price": 355.285833,
-      "exit_price": 357.73,
-      "exit_reason": "Morning Profit Grab (99% Locked)",
-      "realized_pnl": 58.660007999999834,
-      "timestamp": "2026-09-23 13:36:13"
-    },
-    {
-      "symbol": "MU",
-      "entry_price": 1047.68,
-      "exit_price": 1091.0,
-      "exit_reason": "Trailing Peak Profit Grab",
-      "realized_pnl": 346.5599999999995,
-      "timestamp": "2026-09-22 21:16:24"
-    },
-    {
-      "symbol": "TXN",
-      "entry_price": 264.579697,
-      "exit_price": 271.75,
-      "exit_reason": "Trailing Peak Profit Grab",
-      "realized_pnl": 236.61999899999967,
-      "timestamp": "2026-09-22 21:16:24"
-    },
-    {
-      "symbol": "DE",
-      "entry_price": 698.43,
-      "exit_price": 703.12,
-      "exit_reason": "Trailing Peak Profit Grab",
-      "realized_pnl": 67.64996700000079,
-      "timestamp": "2026-09-22 21:16:24"
     }
   ],
   "active_position_cache": {
+    "CRM": {
+      "entry_px": 223.75,
+      "current_px": 228.235,
+      "qty": -57.0,
+      "peak_roe": -0.020044692737430227,
+      "vol_ratio": 2.4607861453504287
+    },
     "DKNG": {
       "entry_px": 21.09,
-      "current_px": 20.87,
+      "current_px": 21.02,
       "qty": -612.0,
       "peak_roe": 0.010431484115694589,
       "vol_ratio": 1.1738561287301634
     },
     "HD": {
       "entry_px": 289.913409,
-      "current_px": 290.905,
+      "current_px": 291.4401,
       "qty": -44.0,
       "peak_roe": -0.003420300576714516,
       "vol_ratio": 0.5939093269307261
+    },
+    "PLTR": {
+      "entry_px": 185.12,
+      "current_px": 186.99,
+      "qty": -69.0,
+      "peak_roe": -0.010101555747623187,
+      "vol_ratio": 1.4349850395860846
+    },
+    "RBLX": {
+      "entry_px": 40.81,
+      "current_px": 41.91,
+      "qty": -317.0,
+      "peak_roe": -0.026954177897573983,
+      "vol_ratio": 1.5252938224099712
+    },
+    "UNH": {
+      "entry_px": 373.885882,
+      "current_px": 375.27,
+      "qty": -34.0,
+      "peak_roe": -0.0037019798463532273,
+      "vol_ratio": 0.602688315563023
     }
   },
   "daily_starting_equity": {
