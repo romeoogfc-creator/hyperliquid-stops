@@ -49,6 +49,16 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "TRB",
+      "entry_price": 21.469,
+      "exit_price": 20.916,
+      "pnl_usd": -0.26688,
+      "roe_pct": -2.5758069775024492,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udcc9 Gaussian Upper Band Invalidation ($20.9160 < $20.9845)",
+      "timestamp": "2026-09-30 22:14:46"
+    },
+    {
       "coin": "SUSHI",
       "entry_price": 0.28048,
       "exit_price": 0.27609,
@@ -319,20 +329,9 @@
       "timestamp": "2026-09-29 01:55:43"
     }
   ],
-  "active_position_cache": {
-    "TRB": {
-      "entry_px": 21.469,
-      "current_px": 21.039,
-      "szi": 0.48,
-      "margin": 3.36672,
-      "side": "LONG",
-      "peak_roe": -0.005589454562392333
-    }
-  },
-  "previous_active_coins": [
-    "TRB"
-  ],
-  "last_run_timestamp": "2026-09-30 21:55:52",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-09-30 22:14:50",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -342,7 +341,7 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790805313.0594652,
+  "last_email_timestamp": 1790806486.9388864,
   "last_scan_timestamp": 1790805313.0594652,
   "gemini_cache": {
     "timestamp": 1790805313.0594652,
