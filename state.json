@@ -48,6 +48,26 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "CRV",
+      "entry_price": 0.40473,
+      "exit_price": 0.39902,
+      "pnl_usd": -0.212544,
+      "roe_pct": -1.4108170879351651,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-1.4%)",
+      "timestamp": "2026-09-30 10:30:08"
+    },
+    {
+      "coin": "BTC",
+      "entry_price": 83213.0,
+      "exit_price": 83757.5,
+      "pnl_usd": -0.0981,
+      "roe_pct": -0.6543448739980532,
+      "side": "SHORT",
+      "exit_reason": "\ud83d\udfe2 BTC Bullish Flip Directional Purge",
+      "timestamp": "2026-09-30 10:30:08"
+    },
+    {
       "coin": "MINA",
       "entry_price": 0.1409,
       "exit_price": 0.141395,
@@ -228,23 +248,9 @@
       "timestamp": "2026-09-28 00:56:23"
     }
   ],
-  "active_position_cache": {
-    "BTC": {
-      "entry_px": 83213.0,
-      "current_px": 83710.5,
-      "szi": -0.00018,
-      "peak_roe": 0.0024395226707365435,
-      "margin": 15.0678,
-      "leverage": 1.0,
-      "side": "SHORT",
-      "best_target_floor_roe": -0.01,
-      "best_stop_px": 84045.0
-    }
-  },
-  "previous_active_coins": [
-    "BTC"
-  ],
-  "last_run_timestamp": "2026-09-30 10:08:35",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-09-30 10:30:59",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -254,11 +260,11 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790762861.3246524,
-  "last_scan_timestamp": 1790762861.3246524,
+  "last_email_timestamp": 1790764208.214875,
+  "last_scan_timestamp": 1790764208.214875,
   "gemini_cache": {
-    "timestamp": 1790762861.3246524,
+    "timestamp": 1790764208.214875,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and historical post-halving price instability, warranting a cautious outlook."
+    "briefing": "Risk Level: **HIGH** \u2014 The market is currently grappling with heightened volatility driven by macroeconomic uncertainty, shifting regulatory landscapes, and the leveraged nature of recent price action, necessitating extreme caution."
   }
 }
