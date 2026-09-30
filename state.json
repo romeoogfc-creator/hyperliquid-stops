@@ -42,8 +42,8 @@
     "ETH": 12,
     "BCH": 1,
     "BSV": 0,
-    "MINA": 1,
-    "IMX": 1
+    "MINA": 0,
+    "IMX": 2
   },
   "closed_trades_ledger": [
     {
@@ -150,10 +150,10 @@
   "active_position_cache": {
     "MINA": {
       "entry_px": 0.13994,
-      "current_px": 0.139805,
+      "current_px": 0.139195,
       "szi": -106.0,
-      "peak_roe": 0.015863941689295807,
-      "margin": 4.942073,
+      "peak_roe": 0.01715020723167061,
+      "margin": 4.918046,
       "leverage": 3.0,
       "side": "SHORT",
       "best_target_floor_roe": 0.0,
@@ -161,10 +161,10 @@
     },
     "IMX": {
       "entry_px": 0.16469,
-      "current_px": 0.16462,
+      "current_px": 0.16443,
       "szi": -91.4,
       "peak_roe": 0.02398445564393749,
-      "margin": 3.008156,
+      "margin": 3.005597,
       "leverage": 5.0,
       "side": "SHORT",
       "best_target_floor_roe": 0.0,
@@ -175,7 +175,7 @@
     "MINA",
     "IMX"
   ],
-  "last_run_timestamp": "2026-09-30 03:45:47",
+  "last_run_timestamp": "2026-09-30 03:59:46",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
