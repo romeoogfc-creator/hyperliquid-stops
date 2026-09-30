@@ -181,7 +181,6 @@ def calculate_adaptive_stock_stop(entry_px, is_long, current_px, atr_val, peak_r
         target_floor_roe = 0.0025
         leash_status = "🛡️ Scratch Lock (+0.25% Floor)"
     else:
-        # Dynamic Initial Loss Cap using 1H ATR Volatility Buffer
         target_floor_roe = -atr_roe_buffer
 
     if is_long:
@@ -193,6 +192,7 @@ def calculate_adaptive_stock_stop(entry_px, is_long, current_px, atr_val, peak_r
 
 def execute_stock_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
+    now_ts = time.time()
     ct_now = get_central_time()
     today_str = ct_now.strftime('%Y-%m-%d')
     
@@ -568,15 +568,73 @@ def execute_stock_engine():
         """
 
     closed_ledger = state.get("closed_trades_ledger", [])
-    closed_rows = "".join([
-        f"<tr>"
-        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['symbol']}</td>"
-        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 10px;'>${round_sig_figs(t.get('entry_price', 0), 5)}<br>&rarr; ${round_sig_figs(t.get('exit_price', 0), 5)}</td>"
-        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: {'#2e7d32' if t.get('realized_pnl', 0) >= 0 else '#c62828'}; font-weight: bold;'>${t.get('realized_pnl', 0):+.2f}</td>"
-        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: #b45309; font-size: 10px;'>{t['exit_reason']}</td>"
-        f"</tr>"
-        for t in closed_ledger[:5]
-    ]) if closed_ledger else "<tr><td colspan='4' style='padding: 12px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
+    
+    # 24-Hour Performance Metrics Calculations
+    cutoff_ts = now_ts - 86400
+    trades_24h = []
+    for t in closed_ledger:
+        t_str = str(t.get("timestamp", timestamp)).replace("Z", "").replace("T", " ")
+        try:
+            t_ts = time.mktime(time.strptime(t_str, "%Y-%m-%d %H:%M:%S"))
+            if t_ts >= cutoff_ts:
+                trades_24h.append(t)
+        except Exception:
+            trades_24h.append(t)
+
+    total_24h = len(trades_24h)
+    wins_24h = [t for t in trades_24h if float(t.get("realized_pnl", 0)) > 0]
+    losses_24h = [t for t in trades_24h if float(t.get("realized_pnl", 0)) <= 0]
+    
+    win_count = len(wins_24h)
+    loss_count = len(losses_24h)
+    win_rate_24h = (win_count / total_24h * 100) if total_24h > 0 else 0.0
+    
+    avg_win_usd = (sum(float(t.get("realized_pnl", 0)) for t in wins_24h) / win_count) if win_count > 0 else 0.0
+    avg_loss_usd = (sum(float(t.get("realized_pnl", 0)) for t in losses_24h) / loss_count) if loss_count > 0 else 0.0
+    net_24h_usd = sum(float(t.get("realized_pnl", 0)) for t in trades_24h)
+
+    summary_card_html = f"""
+    <div class="summary-card">
+      <div class="summary-title">📊 24-Hour Performance Test Summary (1H Master Engine)</div>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
+        <tr>
+          <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase;">Total Trades (24h): <b style="color: #0f172a;">{total_24h}</b></td>
+          <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase; text-align: right;">Win Ratio: <b style="color: #0f172a;">{win_count}W / {loss_count}L ({win_rate_24h:.1f}%)</b></td>
+        </tr>
+        <tr>
+          <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase;">Avg Win: <b style="color: #15803d;">${avg_win_usd:+.2f}</b></td>
+          <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase; text-align: right;">Avg Loss: <b style="color: #b91c1c;">${avg_loss_usd:+.2f}</b></td>
+        </tr>
+      </table>
+      <div class="summary-net">
+        Net 24H Realized P&L: <span class="{'win-color' if net_24h_usd >= 0 else 'loss-color'}">${net_24h_usd:+.2f}</span>
+      </div>
+    </div>
+    """
+
+    parsed_closed_rows = []
+    total_realized_pnl = 0.0
+
+    for t in closed_ledger[:5]:
+        pnl_val = float(t.get("realized_pnl", 0.0))
+        total_realized_pnl += pnl_val
+        parsed_closed_rows.append(
+            f"<tr>"
+            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['symbol']}</td>"
+            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 10px;'>${round_sig_figs(t.get('entry_price', 0), 5)}<br>&rarr; ${round_sig_figs(t.get('exit_price', 0), 5)}</td>"
+            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: {'#2e7d32' if pnl_val >= 0 else '#c62828'}; font-weight: bold;'>${pnl_val:+.2f}</td>"
+            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: #b45309; font-size: 10px;'>{t['exit_reason']}</td>"
+            f"</tr>"
+        )
+
+    total_pnl_color = '#2e7d32' if total_realized_pnl >= 0 else '#c62828'
+    closed_rows = "".join(parsed_closed_rows) if parsed_closed_rows else "<tr><td colspan='4' style='padding: 12px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
+    closed_rows += f"""
+    <tr style="background: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
+        <td colspan="2" style="padding: 8px; text-align: right;">TOTAL RECENT REALIZED P&L:</td>
+        <td colspan="2" style="padding: 8px; color: {total_pnl_color};">${total_realized_pnl:+.2f}</td>
+    </tr>
+    """
 
     text_fallback = f"TR-GC-Equities-LS-01 | 1H Adaptive Engine\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
@@ -622,6 +680,13 @@ def execute_stock_engine():
           .net-worth-value {{ font-size: 22px; font-weight: 700; color: #0f172a; }}
           .net-worth-subtitle {{ font-size: 10px; color: #64748b; margin-top: 6px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px; }}
           
+          .summary-card {{ background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px; margin-bottom: 12px; }}
+          .summary-title {{ font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }}
+          .summary-net {{ font-size: 11px; font-weight: 700; color: #166534; border-top: 1px dashed #bbf7d0; padding-top: 6px; margin-top: 2px; }}
+          
+          .win-color {{ color: #15803d !important; }}
+          .loss-color {{ color: #b91c1c !important; }}
+
           .pnl-badge {{ background: {'#e6f4ea' if today_total_gain >= 0 else '#fce8e6'}; color: {'#137333' if today_total_gain >= 0 else '#c5221f'}; padding: 2px 6px; border-radius: 4px; font-weight: bold; }}
           .lifetime-badge {{ background: #f1f5f9; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-weight: bold; }}
 
@@ -660,6 +725,8 @@ def execute_stock_engine():
                 <span>Lifetime P&L: <span class="lifetime-badge">${lifetime_cumulative_pnl:+,.2f}</span></span>
               </div>
             </div>
+
+            {summary_card_html}
 
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Guardrails (1-Hour Master Engine)</div>
