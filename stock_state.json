@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-30 16:46:01",
+  "last_run_timestamp": "2026-09-30 16:51:46",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,11 +19,11 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "PYPL",
-    "V",
     "MA",
+    "PYPL",
     "DE",
-    "AMZN"
+    "SNOW",
+    "V"
   ],
   "closed_trades_ledger": [
     {
@@ -188,27 +188,18 @@
     }
   ],
   "active_position_cache": {
-    "AMZN": {
-      "entry_px": 251.88,
-      "current_px": 251.49,
-      "qty": 3.0,
-      "side": "long",
-      "peak_roe": -0.0015483563601714561,
-      "best_target_floor_roe": -0.012,
-      "best_stop_px": 248.85744
-    },
     "DE": {
       "entry_px": 679.17,
-      "current_px": 675.37,
+      "current_px": 674.64,
       "qty": 1.0,
       "side": "short",
-      "peak_roe": 0.005595064564100232,
+      "peak_roe": 0.006669905914572159,
       "best_target_floor_roe": 0.0025,
       "best_stop_px": 677.472075
     },
     "MA": {
       "entry_px": 557.68,
-      "current_px": 555.14,
+      "current_px": 555.435,
       "qty": 1.0,
       "side": "short",
       "peak_roe": 0.004554583273561835,
@@ -217,19 +208,28 @@
     },
     "PYPL": {
       "entry_px": 53.03,
-      "current_px": 52.88,
+      "current_px": 52.845,
       "qty": 18.0,
       "side": "short",
-      "peak_roe": 0.00282858759192907,
-      "best_target_floor_roe": -0.012,
-      "best_stop_px": 53.666360000000005
+      "peak_roe": 0.003488591363379262,
+      "best_target_floor_roe": -0.013819670806282179,
+      "best_stop_px": 53.76285714285714
+    },
+    "SNOW": {
+      "entry_px": 346.6,
+      "current_px": 346.35,
+      "qty": 2.0,
+      "side": "long",
+      "peak_roe": -0.0007212925562608193,
+      "best_target_floor_roe": -0.019119404830599276,
+      "best_stop_px": 339.97321428571433
     },
     "V": {
       "entry_px": 361.24,
-      "current_px": 360.93,
+      "current_px": 360.805,
       "qty": 35.0,
       "side": "short",
-      "peak_roe": 0.0008581552430517171,
+      "peak_roe": 0.001204185582991923,
       "best_target_floor_roe": -0.012,
       "best_stop_px": 365.57488
     }
