@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-30 15:19:21",
+  "last_run_timestamp": "2026-09-30 15:33:40",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,13 +19,20 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "UNH",
     "COIN",
-    "GE",
+    "HOOD",
     "V",
-    "HOOD"
+    "UNH"
   ],
   "closed_trades_ledger": [
+    {
+      "symbol": "UNH",
+      "entry_price": 367.914118,
+      "exit_price": 371.35,
+      "exit_reason": "\ud83d\udee1\ufe0f Stop Loss (-0.93%)",
+      "realized_pnl": -116.81998800000167,
+      "timestamp": "2026-09-30 15:33:26"
+    },
     {
       "symbol": "GE",
       "entry_price": 312.54,
@@ -177,20 +184,12 @@
       "exit_reason": "Dynamic Stop Loss",
       "realized_pnl": -198.85983600000057,
       "timestamp": "2026-09-28 13:46:52"
-    },
-    {
-      "symbol": "AAPL",
-      "entry_price": 341.49,
-      "exit_price": 342.3704,
-      "exit_reason": "\ud83d\udea8 High Choppiness Chop Purge (CI: 63.2)",
-      "realized_pnl": 33.4552,
-      "timestamp": "2026-09-28 13:46:52"
     }
   ],
   "active_position_cache": {
     "COIN": {
       "entry_px": 186.016087,
-      "current_px": 186.15,
+      "current_px": 186.94,
       "qty": 69.0,
       "side": "short",
       "peak_roe": -0.0006123825193677825,
@@ -198,19 +197,9 @@
       "best_target_floor_roe": -0.008,
       "best_stop_px": 187.504215696
     },
-    "GE": {
-      "entry_px": 312.54,
-      "current_px": 315.35,
-      "qty": 41.0,
-      "side": "short",
-      "peak_roe": -0.002431688743840759,
-      "vol_ratio": 1.1476651591243308,
-      "best_target_floor_roe": -0.008,
-      "best_stop_px": 315.04032
-    },
     "HOOD": {
       "entry_px": 114.38,
-      "current_px": 114.41,
+      "current_px": 114.4471,
       "qty": 112.0,
       "side": "short",
       "peak_roe": -0.0002622836160167961,
@@ -220,7 +209,7 @@
     },
     "UNH": {
       "entry_px": 367.914118,
-      "current_px": 370.155,
+      "current_px": 371.35,
       "qty": 34.0,
       "side": "short",
       "peak_roe": -0.00023342947660417434,
@@ -230,7 +219,7 @@
     },
     "V": {
       "entry_px": 361.24,
-      "current_px": 363.38,
+      "current_px": 363.08,
       "qty": 35.0,
       "side": "short",
       "peak_roe": -0.001550215922932129,
