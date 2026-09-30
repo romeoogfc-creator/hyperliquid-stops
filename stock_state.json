@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-30 13:18:41",
+  "last_run_timestamp": "2026-09-30 13:45:28",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -18,8 +18,18 @@
     "timestamp": "2026-09-24 04:34:54",
     "scan_date": "2026-09-24"
   },
-  "previous_active_symbols": [],
+  "previous_active_symbols": [
+    "DKNG"
+  ],
   "closed_trades_ledger": [
+    {
+      "symbol": "DKNG",
+      "entry_price": 19.572332,
+      "exit_price": 19.485,
+      "exit_reason": "\u26a1 Volume Stall Profit Take (+0.45%)",
+      "realized_pnl": 57.289792,
+      "timestamp": "2026-09-30 13:45:05"
+    },
     {
       "symbol": "MA",
       "entry_price": 561.6,
