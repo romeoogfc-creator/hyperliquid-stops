@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-30 17:44:12",
+  "last_run_timestamp": "2026-09-30 18:17:16",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,11 +19,11 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "SNOW",
-    "MA",
     "V",
     "PYPL",
-    "DE"
+    "DE",
+    "SNOW",
+    "SLB"
   ],
   "closed_trades_ledger": [
     {
@@ -190,34 +190,34 @@
   "active_position_cache": {
     "DE": {
       "entry_px": 679.17,
-      "current_px": 672.75,
+      "current_px": 671.825,
       "qty": 1.0,
       "side": "short",
-      "peak_roe": 0.009452714342506234,
+      "peak_roe": 0.01081467084824111,
       "best_target_floor_roe": 0.0025,
       "best_stop_px": 677.472075
     },
-    "MA": {
-      "entry_px": 557.68,
-      "current_px": 556.44,
-      "qty": 1.0,
-      "side": "short",
-      "peak_roe": 0.0053435662028401675,
-      "best_target_floor_roe": 0.0025,
-      "best_stop_px": 556.2858
-    },
     "PYPL": {
       "entry_px": 53.03,
-      "current_px": 52.715,
+      "current_px": 52.46,
       "qty": 18.0,
       "side": "short",
-      "peak_roe": 0.006639637940788234,
+      "peak_roe": 0.010748632849330572,
       "best_target_floor_roe": 0.0025,
       "best_stop_px": 52.897425000000005
     },
+    "SLB": {
+      "entry_px": 49.02,
+      "current_px": 49.021,
+      "qty": 20.0,
+      "side": "short",
+      "peak_roe": -2.0399836801258046e-05,
+      "best_target_floor_roe": -0.01689543626508135,
+      "best_stop_px": 49.848214285714285
+    },
     "SNOW": {
       "entry_px": 346.6,
-      "current_px": 344.215,
+      "current_px": 342.0306,
       "qty": 2.0,
       "side": "long",
       "peak_roe": -0.0007212925562608193,
@@ -226,7 +226,7 @@
     },
     "V": {
       "entry_px": 361.24,
-      "current_px": 361.651,
+      "current_px": 361.48,
       "qty": 35.0,
       "side": "short",
       "peak_roe": 0.0022976414572029235,
