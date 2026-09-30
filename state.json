@@ -309,9 +309,19 @@
       "timestamp": "2026-09-29 01:55:43"
     }
   ],
-  "active_position_cache": {},
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-09-30 16:34:37",
+  "active_position_cache": {
+    "SUSHI": {
+      "entry_px": 0.28048,
+      "current_px": 0.27857,
+      "szi": 36.3,
+      "margin": 3.371544,
+      "side": "LONG"
+    }
+  },
+  "previous_active_coins": [
+    "SUSHI"
+  ],
+  "last_run_timestamp": "2026-09-30 16:52:33",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
