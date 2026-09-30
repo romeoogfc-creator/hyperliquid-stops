@@ -253,49 +253,11 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=1.0, cho
 
     return stop_px, roe, target_floor_roe, is_buy_order, leash_status
 
-def verify_5m_micro_structure(info, coin, now_ms, is_long):
-    try:
-        m5_candles = api_retry(info.candles_snapshot, name=coin, interval="5m", startTime=now_ms - 3600000 * 4, endTime=now_ms)
-        if not m5_candles or len(m5_candles) < 6:
-            return True, 50.0
-        m_closes = [float(c["c"]) for c in m5_candles]
-        m_opens = [float(c["o"]) for c in m5_candles]
-        m_highs = [float(c["h"]) for c in m5_candles]
-        m_lows = [float(c["l"]) for c in m5_candles]
-        
-        ci_5m = calculate_choppiness_index(m_highs, m_lows, m_closes)
-
-        last_completed_high = m_highs[-2]
-        last_completed_low = m_lows[-2]
-        last_completed_close = m_closes[-2]
-        last_completed_open = m_opens[-2]
-        
-        candle_range = last_completed_high - last_completed_low
-        if candle_range > 0:
-            if is_long:
-                upper_wick_ratio = (last_completed_high - max(last_completed_open, last_completed_close)) / candle_range
-                if upper_wick_ratio > 0.35:
-                    return False, ci_5m
-            else:
-                lower_wick_ratio = (min(last_completed_open, last_completed_close) - last_completed_low) / candle_range
-                if lower_wick_ratio > 0.35:
-                    return False, ci_5m
-
-        if is_long:
-            net_progress = m_closes[-2] >= m_closes[-5]
-            return net_progress, ci_5m
-        else:
-            net_progress = m_closes[-2] <= m_closes[-5]
-            return net_progress, ci_5m
-
-    except Exception:
-        return True, 50.0
-
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     now_ts = time.time()
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Micro-Probe Mode Active / 5m Stop Ratchet / 30m Entry Scanner).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Hybrid Engine Started ($15 Fixed Micro-Sizing / Unfiltered Crossovers).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -557,7 +519,7 @@ def execute_engine():
         old_data = previous_cache.get(closed_coin, {})
         entry_px = old_data.get("entry_px", 0.0)
         exit_px = float(all_mids.get(closed_coin, entry_px))
-        margin = old_data.get("margin", 30.0)
+        margin = old_data.get("margin", 15.0)
         lev = old_data.get("leverage", 1.0)
         szi = old_data.get("szi", 1.0)
         is_long = szi > 0 if isinstance(szi, (int, float)) else True
@@ -586,9 +548,10 @@ def execute_engine():
     MAX_CRYPTO_SLOTS = 2
     available_slots = MAX_CRYPTO_SLOTS - active_count
 
+    # --- 30M ENTRY SCANNER (UNFILTERED CROSSOVERS + CI <= 62.0) ---
     if is_30m_scan_window:
         state["last_scan_timestamp"] = now_ts
-        audit_logs.append(f"⏰ 30-Minute Candle Boundary Reached: Launching All-Weather Scanner (BTC Tilt: {effective_regime})...")
+        audit_logs.append(f"⏰ 30-Minute Candle Boundary Reached: Launching Hybrid Scanner (BTC Tilt: {effective_regime})...")
 
         for coin in universe:
             if coin in active_coins or coin in ["USDC", "USDT"]:
@@ -598,7 +561,7 @@ def execute_engine():
                 if px <= 0:
                     continue
                 
-                time.sleep(0.25)
+                time.sleep(0.20)
                 candles = api_retry(info.candles_snapshot, name=coin, interval="30m", startTime=now_ms - 86400000 * 3, endTime=now_ms)
                 if not candles or len(candles) < 50:
                     continue
@@ -610,8 +573,9 @@ def execute_engine():
                 lows = [float(c["l"]) for c in candles]
                 volumes = [float(c.get("v", 0)) for c in candles]
 
-                adx_30m = calculate_adx(highs[:-1], lows[:-1], closes[:-1])
-                if adx_30m < 18.0:
+                # 1. Choppiness Index (Relaxed to baseline winning setup: CI <= 62.0)
+                ci_30m = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
+                if ci_30m > 62.0:
                     continue
 
                 upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
@@ -619,73 +583,46 @@ def execute_engine():
                 comp_open = opens[-2]
                 prev_comp_close = closes[-3]
                 prev_comp_open = opens[-3]
-                comp_high = highs[-2]
-                comp_low = lows[-2]
                 
-                ci_30m = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
-                if ci_30m > 58.0:
-                    continue
-
                 avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else volumes[-3]
                 comp_vol = volumes[-2]
                 vol_ratio = comp_vol / avg_vol if avg_vol > 0 else 1.0
-
                 atr = np.mean([h - l for h, l in zip(highs[-15:-1], lows[-15:-1])])
 
-                s_closes = pd.Series(closes[:-1])
-                ema20 = s_closes.ewm(span=20, adjust=False).mean().iloc[-1]
-                ema50 = s_closes.ewm(span=50, adjust=False).mean().iloc[-1]
-
+                # Signal Triggers: Direct Gaussian Channel Breakouts (No ADX or Volume Gatekeepers)
                 is_green_candle = comp_close > comp_open
                 recent_red_to_green = (prev_comp_close <= prev_comp_open) and is_green_candle
                 has_upward_continuation = comp_close > prev_comp_close
-                candle_range = comp_high - comp_low
-                upper_wick_ok = True
-                if candle_range > 0:
-                    upper_wick = (comp_high - comp_close) / candle_range
-                    if upper_wick > 0.35:
-                        upper_wick_ok = False
 
-                if effective_regime == "GREEN" and ema20 > ema50:
-                    if comp_close > upper and comp_close <= upper * 1.04 and vol_ratio >= 1.5 and (recent_red_to_green or has_upward_continuation) and upper_wick_ok:
+                if effective_regime == "GREEN":
+                    if comp_close > upper and (recent_red_to_green or has_upward_continuation):
                         is_ballistic = comp_close > (upper + 1.5 * atr)
                         extension_score = max(0.0, (comp_close - upper) / upper)
                         atr_score = atr / comp_close
                         momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
 
-                        pass_5m, ci_5m = verify_5m_micro_structure(info, coin, now_ms, is_long=True)
-                        if pass_5m and ci_5m <= 58.0:
-                            candidate_obj = {
-                                "coin": coin, "close": comp_close, "is_long": True, "is_ballistic": is_ballistic,
-                                "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio, "adx": adx_30m
-                            }
-                            market_candidates.append(candidate_obj)
-                            audit_logs.append(f"MICRO-PROBE LONG MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, ADX: {adx_30m:.1f}, 30m CI: {ci_30m:.1f})")
+                        market_candidates.append({
+                            "coin": coin, "close": comp_close, "is_long": True, "is_ballistic": is_ballistic,
+                            "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio
+                        })
+                        audit_logs.append(f"HYBRID LONG MATCH: {coin} @ ${comp_close:.4f} (CI: {ci_30m:.1f}, VolRatio: {vol_ratio:.2f})")
 
                 is_red_candle = comp_close < comp_open
                 recent_green_to_red = (prev_comp_close >= prev_comp_open) and is_red_candle
                 has_downward_continuation = comp_close < prev_comp_close
-                lower_wick_ok = True
-                if candle_range > 0:
-                    lower_wick = (comp_close - comp_low) / candle_range
-                    if lower_wick > 0.35:
-                        lower_wick_ok = False
 
-                if effective_regime == "RED" and ema20 < ema50:
-                    if comp_close < lower and comp_close >= lower * 0.96 and vol_ratio >= 1.5 and (recent_green_to_red or has_downward_continuation) and lower_wick_ok:
+                if effective_regime == "RED":
+                    if comp_close < lower and (recent_green_to_red or has_downward_continuation):
                         is_ballistic = comp_close < (lower - 1.5 * atr)
                         extension_score = max(0.0, (lower - comp_close) / lower)
                         atr_score = atr / comp_close
                         momentum_score = (extension_score + (1.5 * atr_score)) if is_ballistic else (extension_score + atr_score)
 
-                        pass_5m, ci_5m = verify_5m_micro_structure(info, coin, now_ms, is_long=False)
-                        if pass_5m and ci_5m <= 58.0:
-                            candidate_obj = {
-                                "coin": coin, "close": comp_close, "is_long": False, "is_ballistic": is_ballistic,
-                                "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio, "adx": adx_30m
-                            }
-                            market_candidates.append(candidate_obj)
-                            audit_logs.append(f"MICRO-PROBE SHORT MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}, ADX: {adx_30m:.1f}, 30m CI: {ci_30m:.1f})")
+                        market_candidates.append({
+                            "coin": coin, "close": comp_close, "is_long": False, "is_ballistic": is_ballistic,
+                            "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio
+                        })
+                        audit_logs.append(f"HYBRID SHORT MATCH: {coin} @ ${comp_close:.4f} (CI: {ci_30m:.1f}, VolRatio: {vol_ratio:.2f})")
 
             except Exception:
                 continue
@@ -705,7 +642,8 @@ def execute_engine():
             
             assigned_leverage = 1
 
-            target_usd = max(25.0, account_value * 0.06)
+            # Micro-Sizing Test Floor: Exactly $15.00 Notional Sizing per slot (~$30 Max Exposure across 2 slots)
+            target_usd = 15.0
             
             decimals = sz_decimals_map.get(coin, 4)
             raw_sz = target_usd / px
@@ -724,7 +662,7 @@ def execute_engine():
                     active_count += 1
                     active_coins.add(coin)
                     trades_executed = True
-                    audit_logs.append(f"MICRO-PROBE SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {coin} (1x Leverage, Size: {sz} ~${target_usd:.2f})")
+                    audit_logs.append(f"HYBRID EXECUTION SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {coin} (1x Leverage, Size: {sz} ~${target_usd:.2f})")
 
             except Exception as e:
                 audit_logs.append(f"EXECUTION FAILED on {coin}: {e}")
@@ -772,8 +710,8 @@ def execute_engine():
                 roe_val = float(t.get("roe_pct", 0.0))
             else:
                 if entry_p > 0:
-                    pnl_val = ((exit_p - entry_p) / entry_p * 30.0 * 1.0) if side == "LONG" else ((entry_p - exit_p) / entry_p * 30.0 * 1.0)
-                    roe_val = (pnl_val / 30.0) * 100
+                    pnl_val = ((exit_p - entry_p) / entry_p * 15.0 * 1.0) if side == "LONG" else ((entry_p - exit_p) / entry_p * 15.0 * 1.0)
+                    roe_val = (pnl_val / 15.0) * 100
                 else:
                     pnl_val = 0.0
                     roe_val = 0.0
@@ -876,7 +814,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Micro-Probe Mode Active)</p>
+                <p>Timestamp: {timestamp} (Hybrid Unfiltered Engine Active)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -887,11 +825,11 @@ def execute_engine():
 
                 <div class="rules-card">
                   <div class="rules-title">&#9989; Active Guardrails (Dual-Speed Engine)</div>
-                  &bull; <b>Micro-Probe Mode:</b> Vol 1.5x, ADX 18.0, CI 58.0 (2 slots, 1x Lev, 6% NAV)<br>
-                  &bull; <b>5m Trailing Ratchet:</b> Evaluates open positions every 5m<br>
+                  &bull; <b>Hybrid Unfiltered Mode:</b> Pure GC Crossover, CI &le; 62.0 (2 slots, 1x Lev, $15 Fixed Sizing)<br>
+                  &bull; <b>5m Trailing Ratchet:</b> Evaluates open positions every 5m with 80%-95% Peak Profit Locks<br>
                   &bull; <b>30m Entry Boundary:</b> Restricts new scans to completed 30m candles<br>
-                  &bull; <b>Candle-High Peak Tracking:</b> Remembers highest wick to lock profits<br>
-                  &bull; <b>Tight Initial Risk Cap:</b> Capped at -1.0% ROE
+                  &bull; <b>Directional Purge:</b> Auto-closes Longs on Red BTC / Shorts on Green BTC<br>
+                  &bull; <b>Tight Initial Risk Cap:</b> Max initial stop capped at -1.0% ROE (-$0.15 Max Loss)
                 </div>
 
                 <div class="section-title">Positions per Bot (USD)</div>
