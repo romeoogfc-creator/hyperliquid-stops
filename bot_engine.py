@@ -257,7 +257,7 @@ def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     now_ts = time.time()
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Hybrid Engine Started ($15 Fixed Micro-Sizing / Unfiltered Crossovers).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Hybrid Engine Started ($15 Fixed Micro-Sizing / 1h Unfiltered Crossovers).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -278,9 +278,11 @@ def execute_engine():
     current_gm_min = time.gmtime(now_ts).tm_min
     last_scan_ts = float(state.get("last_scan_timestamp", 0))
     minutes_since_last_scan = (now_ts - last_scan_ts) / 60.0
-    is_30m_scan_window = (current_gm_min in [0, 1, 2, 30, 31, 32]) or (minutes_since_last_scan >= 25.0)
+    
+    # 1-HOUR SCAN WINDOW
+    is_1h_scan_window = (current_gm_min in [0, 1, 2, 3]) or (minutes_since_last_scan >= 50.0)
 
-    gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_30m_scan_window)
+    gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_1h_scan_window)
     audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] {gemini_briefing}")
 
     btc_regime, btc_change_pct = get_btc_regime(info, now_ms)
@@ -408,7 +410,7 @@ def execute_engine():
 
             try:
                 time.sleep(0.05)
-                c_candles = api_retry(info.candles_snapshot, name=coin, interval="30m", startTime=now_ms - 86400000 * 2, endTime=now_ms)
+                c_candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 3, endTime=now_ms)
                 highs = [float(c["h"]) for c in c_candles]
                 lows = [float(c["l"]) for c in c_candles]
                 closes = [float(c["c"]) for c in c_candles]
@@ -548,10 +550,10 @@ def execute_engine():
     MAX_CRYPTO_SLOTS = 2
     available_slots = MAX_CRYPTO_SLOTS - active_count
 
-    # --- 30M ENTRY SCANNER (UNFILTERED CROSSOVERS + CI <= 62.0) ---
-    if is_30m_scan_window:
+    # --- 1-HOUR ENTRY SCANNER (UNFILTERED CROSSOVERS + CI <= 62.0) ---
+    if is_1h_scan_window:
         state["last_scan_timestamp"] = now_ts
-        audit_logs.append(f"⏰ 30-Minute Candle Boundary Reached: Launching Hybrid Scanner (BTC Tilt: {effective_regime})...")
+        audit_logs.append(f"⏰ 1-Hour Candle Boundary Reached: Launching Hybrid Scanner (BTC Tilt: {effective_regime})...")
 
         for coin in universe:
             if coin in active_coins or coin in ["USDC", "USDT"]:
@@ -562,7 +564,7 @@ def execute_engine():
                     continue
                 
                 time.sleep(0.20)
-                candles = api_retry(info.candles_snapshot, name=coin, interval="30m", startTime=now_ms - 86400000 * 3, endTime=now_ms)
+                candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
                 if not candles or len(candles) < 50:
                     continue
                 scanned_count += 1
@@ -573,8 +575,8 @@ def execute_engine():
                 lows = [float(c["l"]) for c in candles]
                 volumes = [float(c.get("v", 0)) for c in candles]
 
-                ci_30m = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
-                if ci_30m > 62.0:
+                ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
+                if ci_1h > 62.0:
                     continue
 
                 upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
@@ -601,9 +603,9 @@ def execute_engine():
 
                         market_candidates.append({
                             "coin": coin, "close": comp_close, "is_long": True, "is_ballistic": is_ballistic,
-                            "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio
+                            "score": momentum_score, "ci": ci_1h, "vol_ratio": vol_ratio
                         })
-                        audit_logs.append(f"HYBRID LONG MATCH: {coin} @ ${comp_close:.4f} (CI: {ci_30m:.1f}, VolRatio: {vol_ratio:.2f})")
+                        audit_logs.append(f"1H LONG MATCH: {coin} @ ${comp_close:.4f} (CI: {ci_1h:.1f}, VolRatio: {vol_ratio:.2f})")
 
                 is_red_candle = comp_close < comp_open
                 recent_green_to_red = (prev_comp_close >= prev_comp_open) and is_red_candle
@@ -618,18 +620,18 @@ def execute_engine():
 
                         market_candidates.append({
                             "coin": coin, "close": comp_close, "is_long": False, "is_ballistic": is_ballistic,
-                            "score": momentum_score, "ci": ci_30m, "vol_ratio": vol_ratio
+                            "score": momentum_score, "ci": ci_1h, "vol_ratio": vol_ratio
                         })
-                        audit_logs.append(f"HYBRID SHORT MATCH: {coin} @ ${comp_close:.4f} (CI: {ci_30m:.1f}, VolRatio: {vol_ratio:.2f})")
+                        audit_logs.append(f"1H SHORT MATCH: {coin} @ ${comp_close:.4f} (CI: {ci_1h:.1f}, VolRatio: {vol_ratio:.2f})")
 
             except Exception:
                 continue
     else:
-        audit_logs.append("⏸️ Inter-candle run (5m interval): Position trailing stops updated. Entry scan sleeping until next 30m mark.")
+        audit_logs.append("⏸️ Inter-candle run (5m interval): Position trailing stops updated. Entry scan sleeping until top of hour (1h mark).")
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
-    if is_30m_scan_window:
-        audit_logs.append(f"30m Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
+    if is_1h_scan_window:
+        audit_logs.append(f"1h Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
 
     trades_executed = False
     if available_slots > 0 and market_candidates:
@@ -658,7 +660,7 @@ def execute_engine():
                     active_count += 1
                     active_coins.add(coin)
                     trades_executed = True
-                    audit_logs.append(f"HYBRID EXECUTION SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {coin} (1x Leverage, Size: {sz} ~${target_usd:.2f})")
+                    audit_logs.append(f"1H EXECUTION SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {coin} (1x Leverage, Size: {sz} ~${target_usd:.2f})")
 
             except Exception as e:
                 audit_logs.append(f"EXECUTION FAILED on {coin}: {e}")
@@ -708,7 +710,7 @@ def execute_engine():
 
         summary_card_html = f"""
         <div class="summary-card">
-          <div class="summary-title">📊 24-Hour Performance Test Summary (30m Mode)</div>
+          <div class="summary-title">📊 24-Hour Performance Test Summary (1h Mode)</div>
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
             <tr>
               <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase;">Total Trades (24h): <b style="color: #0f172a;">{total_24h}</b></td>
@@ -854,7 +856,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Hybrid Unfiltered Engine Active)</p>
+                <p>Timestamp: {timestamp} (1h Unfiltered Engine Active)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -867,9 +869,9 @@ def execute_engine():
 
                 <div class="rules-card">
                   <div class="rules-title">&#9989; Active Guardrails (Dual-Speed Engine)</div>
-                  &bull; <b>Hybrid Unfiltered Mode:</b> Pure GC Crossover, CI &le; 62.0 (2 slots, 1x Lev, $15 Fixed Sizing)<br>
+                  &bull; <b>1h Unfiltered Mode:</b> Pure GC Crossover, CI &le; 62.0 (2 slots, 1x Lev, $15 Fixed Sizing)<br>
                   &bull; <b>5m Trailing Ratchet:</b> Evaluates open positions every 5m with 80%-95% Peak Profit Locks<br>
-                  &bull; <b>30m Entry Boundary:</b> Restricts new scans to completed 30m candles<br>
+                  &bull; <b>1h Entry Boundary:</b> Restricts new scans to completed 1-hour candles<br>
                   &bull; <b>Directional Purge:</b> Auto-closes Longs on Red BTC / Shorts on Green BTC<br>
                   &bull; <b>Tight Initial Risk Cap:</b> Max initial stop capped at -1.0% ROE (-$0.15 Max Loss)
                 </div>
