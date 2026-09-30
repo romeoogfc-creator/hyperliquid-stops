@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-30 15:47:45",
+  "last_run_timestamp": "2026-09-30 16:17:52",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,12 +19,19 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "SBUX",
     "MA",
-    "GE",
+    "SBUX",
     "V"
   ],
   "closed_trades_ledger": [
+    {
+      "symbol": "SBUX",
+      "entry_price": 94.7,
+      "exit_price": 95.16,
+      "exit_reason": "\ud83d\udcc8 Trend Invalidation (Close $95.16 > Band $94.94)",
+      "realized_pnl": -4.5999999999999375,
+      "timestamp": "2026-09-30 16:17:42"
+    },
     {
       "symbol": "GE",
       "entry_price": 314.25,
@@ -176,38 +183,21 @@
       "exit_reason": "\ud83d\udee1\ufe0f Dynamic Stop Loss (-2.00%)",
       "realized_pnl": 255.64500000000078,
       "timestamp": "2026-09-29 14:16:17"
-    },
-    {
-      "symbol": "V",
-      "entry_price": 369.23,
-      "exit_price": 368.99,
-      "exit_reason": "EOD Square-Off (100% Cash Flat)",
-      "realized_pnl": -8.400000000000318,
-      "timestamp": "2026-09-28 19:43:59"
     }
   ],
   "active_position_cache": {
-    "GE": {
-      "entry_px": 314.25,
-      "current_px": 314.15,
-      "qty": 3.0,
-      "side": "short",
-      "peak_roe": 0.0003182179793159037,
-      "best_target_floor_roe": -0.012,
-      "best_stop_px": 318.021
-    },
     "MA": {
       "entry_px": 557.68,
-      "current_px": 557.825,
+      "current_px": 557.35,
       "qty": 1.0,
       "side": "short",
-      "peak_roe": -0.00026000573805783875,
+      "peak_roe": 0.000591737196958699,
       "best_target_floor_roe": -0.012,
       "best_stop_px": 564.37216
     },
     "SBUX": {
       "entry_px": 94.7,
-      "current_px": 94.75,
+      "current_px": 95.16,
       "qty": 10.0,
       "side": "short",
       "peak_roe": -0.0005279831045406246,
@@ -216,7 +206,7 @@
     },
     "V": {
       "entry_px": 361.24,
-      "current_px": 362.345,
+      "current_px": 362.0,
       "qty": 35.0,
       "side": "short",
       "peak_roe": -0.001550215922932129,
