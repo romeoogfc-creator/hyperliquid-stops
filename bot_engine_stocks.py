@@ -16,7 +16,6 @@ BASE_URL = os.getenv("APAL_BASE_URL", "https://paper-api.alpaca.markets")
 STATE_FILE = "stock_state.json"
 
 VERBOSE_TEST_MODE = True
-TEST_MICRO_SIZING_MODE = True  # $1,000 micro-test size to limit noise hits to ~$10
 
 HEADERS = {
     "APCA-API-KEY-ID": API_KEY,
@@ -75,10 +74,9 @@ def check_market_macro_regime():
                 prev_close = float(spy_bars[-2]["c"])
                 pct_change = ((latest_close - prev_close) / prev_close) * 100
                 
-                # Require >= +0.25% for GREEN, <= -0.25% for RED, else NEUTRAL (Chop Zone)
-                if pct_change >= 0.25:
+                if pct_change >= 0.15:
                     return "GREEN", prev_close, latest_close, pct_change
-                elif pct_change <= -0.25:
+                elif pct_change <= -0.15:
                     return "RED", prev_close, latest_close, pct_change
                 else:
                     return "NEUTRAL", prev_close, latest_close, pct_change
@@ -149,53 +147,42 @@ def calculate_atr(highs, lows, closes, period=14):
     except Exception:
         return 1.0
 
-def calculate_stock_stop_price(entry_px, is_long, current_px, vol_ratio=1.0, peak_roe=0.0):
+def calculate_adaptive_stock_stop(entry_px, is_long, current_px, atr_val, peak_roe=0.0):
+    """
+    Adaptive Volatility Buffer + 80%-97% Peak Profit Lock Ladder
+    """
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
         roe = (entry_px - current_px) / entry_px
 
-    leash_status = "Noise Buffer (-1.5%)"
-    
-    if peak_roe >= 3.00:
-        target_floor_roe = max(peak_roe * 0.92, peak_roe - 0.25)
-        leash_status = f"🌌 Galactic Moon 92% [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
-    elif peak_roe >= 1.00:
-        target_floor_roe = max(peak_roe * 0.90, peak_roe - 0.12)
-        leash_status = f"🌕 Super Moon 90% [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
-    elif peak_roe >= 0.50:
-        target_floor_roe = max(peak_roe * 0.88, peak_roe - 0.08)
-        leash_status = f"🚀 Mega Runner 88% [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif peak_roe >= 0.20:
-        target_floor_roe = max(peak_roe * 0.85, peak_roe - 0.04)
-        leash_status = f"⚡ Parabolic 85% [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif peak_roe >= 0.08:
-        target_floor_roe = peak_roe * 0.82
-        leash_status = f"📈 Trend Lock 82% [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif peak_roe >= 0.035:
-        target_floor_roe = max(0.025, peak_roe * 0.80)
-        leash_status = f"🎯 80% Peak Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-    elif peak_roe >= 0.020:
-        target_floor_roe = max(0.015, peak_roe * 0.75)
-        leash_status = f"🔒 75% Peak Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-    elif peak_roe >= 0.010:
-        target_floor_roe = 0.0075
-        leash_status = f"⚡ Winner Lock [{peak_roe*100:.2f}% -> +0.75% Floor]"
-    elif peak_roe >= 0.005:
-        target_floor_roe = 0.0035
-        leash_status = f"🔒 Micro Lock [{peak_roe*100:.2f}% -> +0.35% Floor]"
-    elif peak_roe >= 0.0025:
-        target_floor_roe = 0.0010
-        leash_status = "🛡️ Scratch Lock (+0.10% Floor)"
-    else:
-        # Standardized -1.5% initial stop buffer to absorb intraday equity noise
-        target_floor_roe = -0.015
+    atr_roe_buffer = (atr_val * 1.5) / entry_px if entry_px > 0 else 0.015
+    atr_roe_buffer = max(0.012, min(0.035, atr_roe_buffer)) # Clamped between 1.2% and 3.5%
 
-    if vol_ratio < 0.85 and roe >= 0.003:
-        stall_floor = max(0.001, roe - 0.0005)
-        if stall_floor > target_floor_roe:
-            target_floor_roe = stall_floor
-            leash_status = f"🔒 Volume Stall Tighten [{roe*100:.2f}% ROE]"
+    leash_status = f"ATR Noise Buffer (-{atr_roe_buffer*100:.2f}%)"
+    
+    # 80%-97% Peak Profit Ratchet Ladder
+    if peak_roe >= 0.30:  # +30%+ Parabolic Runner
+        target_floor_roe = max(peak_roe * 0.95, peak_roe - 0.05)
+        leash_status = f"🌌 Parabolic 95%-97% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
+    elif peak_roe >= 0.15:  # +15%+ Mega Runner
+        target_floor_roe = peak_roe * 0.90
+        leash_status = f"🚀 Mega Runner 90% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
+    elif peak_roe >= 0.08:  # +8%+ Strong Trend
+        target_floor_roe = peak_roe * 0.85
+        leash_status = f"📈 Trend Lock 85% [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
+    elif peak_roe >= 0.03:  # +3%+ Breakout Winner
+        target_floor_roe = max(0.02, peak_roe * 0.80)
+        leash_status = f"🎯 80% Peak Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+    elif peak_roe >= 0.015:  # +1.5% Winner
+        target_floor_roe = 0.010
+        leash_status = "🔒 Winner Lock (+1.0% Floor)"
+    elif peak_roe >= 0.005:  # +0.5% Micro Breakout
+        target_floor_roe = 0.0025
+        leash_status = "🛡️ Scratch Lock (+0.25% Floor)"
+    else:
+        # Dynamic Initial Loss Cap using ATR Volatility Buffer
+        target_floor_roe = -atr_roe_buffer
 
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
@@ -210,7 +197,7 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (Micro-Test Sizing Mode, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Adaptive Engine Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
@@ -218,7 +205,7 @@ def execute_stock_engine():
     start_date = (datetime.now() - timedelta(days=14)).strftime('%Y-%m-%d')
 
     spy_regime, spy_open_px, spy_close_px, spy_pct = check_market_macro_regime()
-    spy_regime_str = f"{spy_regime} ({spy_pct:+.2f}%) -> {'LONGs' if spy_regime == 'GREEN' else ('SHORTs' if spy_regime == 'RED' else 'NEUTRAL (Chop Protection)')}"
+    spy_regime_str = f"{spy_regime} ({spy_pct:+.2f}%) -> {'LONG Tilt' if spy_regime == 'GREEN' else ('SHORT Tilt' if spy_regime == 'RED' else 'NEUTRAL (Adaptive Sizing Mode)')}"
     audit_logs.append(f"SPY Macro Regime Shield: {spy_regime_str}")
 
     state = load_state()
@@ -341,90 +328,61 @@ def execute_stock_engine():
         active_symbols.add(symbol)
         current_roe = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
 
-        ci_pos = 50.0
-        vol_ratio = 1.0
+        should_exit = False
+        exit_reason = ""
+        atr_val = 1.0
 
         try:
-            start_date_5m = (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d')
-            bar_res = requests.get(f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=5Min&limit=20&feed=iex&start={start_date_5m}", headers=HEADERS)
+            start_date_30m = (datetime.now() - timedelta(days=5)).strftime('%Y-%m-%d')
+            bar_res = requests.get(f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=30Min&limit=50&feed=iex&start={start_date_30m}", headers=HEADERS)
             if bar_res.status_code == 200:
                 b_list = bar_res.json().get("bars", {}).get(symbol, [])
                 if b_list:
-                    m5_highs = [float(b["h"]) for b in b_list]
-                    m5_lows = [float(b["l"]) for b in b_list]
-                    m5_closes = [float(b["c"]) for b in b_list]
-                    m5_vols = [float(b["v"]) for b in b_list]
+                    closes_30m = [float(b["c"]) for b in b_list]
+                    highs_30m = [float(b["h"]) for b in b_list]
+                    lows_30m = [float(b["l"]) for b in b_list]
+                    
+                    atr_val = calculate_atr(highs_30m, lows_30m, closes_30m)
+                    upper_band, lower_band, filter_line = calculate_gaussian_channel(closes_30m)
 
-                    vol_ratio = m5_vols[-1] / np.mean(m5_vols[:-1]) if len(m5_vols) > 1 and np.mean(m5_vols[:-1]) > 0 else 1.0
-                    ci_pos = calculate_choppiness_index(m5_highs, m5_lows, m5_closes)
+                    # Trend Invalidation Rule
+                    if is_long and current_px < upper_band:
+                        should_exit = True
+                        exit_reason = f"📉 Trend Invalidation (Close ${current_px:.2f} < Band ${upper_band:.2f})"
+                    elif (not is_long) and current_px > lower_band:
+                        should_exit = True
+                        exit_reason = f"📈 Trend Invalidation (Close ${current_px:.2f} > Band ${lower_band:.2f})"
         except Exception as e:
-            audit_logs.append(f"Position tracking warning on {symbol}: {e}")
+            audit_logs.append(f"Position analytics warning on {symbol}: {e}")
 
-        # SPY Regime Mismatch Protection
+        # SPY Regime Mismatch Guard
         regime_mismatch = (is_long and spy_regime == "RED") or ((not is_long) and spy_regime == "GREEN")
         if regime_mismatch:
-            audit_logs.append(f"🚨 REGIME DEFENSE: Closing {symbol} due to SPY regime mismatch!")
-            close_side = "sell" if is_long else "buy"
-            try:
-                requests.post(f"{BASE_URL}/v2/orders", json={
-                    "symbol": symbol, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"
-                }, headers=HEADERS)
-                state["closed_trades_ledger"].insert(0, {
-                    "symbol": symbol, "entry_price": entry_px, "exit_price": current_px,
-                    "exit_reason": "🚨 Macro Regime Force Exit", "realized_pnl": unrealized_pnl, "timestamp": timestamp
-                })
-                continue
-            except Exception as e:
-                audit_logs.append(f"Failed to force close {symbol}: {e}")
+            should_exit = True
+            exit_reason = "🚨 SPY Macro Regime Flip Guard"
 
-        # High Choppiness Index Purge (CI > 60.0)
-        if ci_pos > 60.0 and current_roe < 0.005:
-            audit_logs.append(f"🚨 CHOP PURGE: Closing {symbol} (CI: {ci_pos:.1f}, ROE: {current_roe*100:+.2f}%)")
-            close_side = "sell" if is_long else "buy"
-            try:
-                requests.post(f"{BASE_URL}/v2/orders", json={
-                    "symbol": symbol, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"
-                }, headers=HEADERS)
-                state["closed_trades_ledger"].insert(0, {
-                    "symbol": symbol, "entry_price": entry_px, "exit_price": current_px,
-                    "exit_reason": f"🚨 High Choppiness Chop Purge (CI: {ci_pos:.1f})", "realized_pnl": unrealized_pnl, "timestamp": timestamp
-                })
-                continue
-            except Exception as e:
-                audit_logs.append(f"Chop purge failed on {symbol}: {e}")
-
+        # Calculate Peak ROE exclusively after live entry
         prev_peak = current_active_cache.get(symbol, {}).get("peak_roe", current_roe)
         peak_roe = max(current_roe, prev_peak)
 
-        prev_best_floor = current_active_cache.get(symbol, {}).get("best_target_floor_roe", -0.015)
-        prev_best_stop = current_active_cache.get(symbol, {}).get("best_stop_px", None)
-
-        stop_px_raw, current_roe, target_floor_roe, leash_status = calculate_stock_stop_price(
-            entry_px, is_long, current_px, vol_ratio=vol_ratio, peak_roe=peak_roe
+        stop_px_calc, current_roe, target_floor_roe, leash_status = calculate_adaptive_stock_stop(
+            entry_px, is_long, current_px, atr_val, peak_roe=peak_roe
         )
 
-        target_floor_roe = max(target_floor_roe, prev_best_floor)
-
-        if is_long:
-            stop_px_calc = entry_px * (1 + target_floor_roe)
-            if prev_best_stop is not None:
-                stop_px_calc = max(stop_px_calc, prev_best_stop)
-            should_exit = current_px <= stop_px_calc
-        else:
-            stop_px_calc = entry_px * (1 - target_floor_roe)
-            if prev_best_stop is not None:
-                stop_px_calc = min(stop_px_calc, prev_best_stop)
-            should_exit = current_px >= stop_px_calc
+        if is_long and current_px <= stop_px_calc:
+            should_exit = True
+            exit_reason = f"🎯 Stop/Profit Lock Triggered ({current_roe*100:.2f}%)"
+        elif (not is_long) and current_px >= stop_px_calc:
+            should_exit = True
+            exit_reason = f"🎯 Stop/Profit Lock Triggered ({current_roe*100:.2f}%)"
 
         new_active_cache[symbol] = {
             "entry_px": entry_px, "current_px": current_px, "qty": qty, "side": side,
-            "peak_roe": peak_roe, "vol_ratio": vol_ratio,
-            "best_target_floor_roe": target_floor_roe, "best_stop_px": stop_px_calc
+            "peak_roe": peak_roe, "best_target_floor_roe": target_floor_roe, "best_stop_px": stop_px_calc
         }
 
         if should_exit:
-            reason = f"🎯 Profit Lock (+{current_roe*100:.2f}%)" if current_roe >= 0 else f"🛡️ Stop Loss ({current_roe*100:.2f}%)"
-            audit_logs.append(f"EXIT TRIGGERED on {symbol} at {current_roe*100:+.2f}% ROE. {reason}")
+            audit_logs.append(f"EXIT TRIGGERED on {symbol} at {current_roe*100:+.2f}% ROE. Reason: {exit_reason}")
             close_side = "sell" if is_long else "buy"
             realized_pnl = (current_px - entry_px) * qty if is_long else (entry_px - current_px) * qty
 
@@ -437,7 +395,7 @@ def execute_stock_engine():
                 
                 state["closed_trades_ledger"].insert(0, {
                     "symbol": symbol, "entry_price": entry_px, "exit_price": current_px,
-                    "exit_reason": reason, "realized_pnl": realized_pnl, "timestamp": timestamp
+                    "exit_reason": exit_reason, "realized_pnl": realized_pnl, "timestamp": timestamp
                 })
                 state["closed_trades_ledger"] = state["closed_trades_ledger"][:20]
                 active_count -= 1
@@ -463,7 +421,7 @@ def execute_stock_engine():
     state["active_position_cache"] = new_active_cache
     state["previous_active_symbols"] = list(active_symbols)
 
-    MAX_STOCK_SLOTS = 4
+    MAX_STOCK_SLOTS = 5
     is_trading_window = (8 <= ct_now.hour < 15) or (ct_now.hour == 15 and ct_now.minute <= 30)
 
     watchlist = [
@@ -515,74 +473,58 @@ def execute_stock_engine():
 
             scanned_count += 1
             closes = [float(b["c"]) for b in bars]
-            opens = [float(b["o"]) for b in bars]
             highs = [float(b["h"]) for b in bars]
             lows = [float(b["l"]) for b in bars]
-            volumes = [float(b["v"]) for b in bars]
 
             upper, lower, filter_band = calculate_gaussian_channel(closes)
             current_close = closes[-1]
-            current_open = opens[-1]
             prev_close = closes[-2]
 
-            # Chop Filter: Reject coins in dead sideways range
             ci = calculate_choppiness_index(highs, lows, closes)
-            if ci > 58.0:
-                continue
-
-            avg_vol = np.mean(volumes[-10:]) if len(volumes) >= 10 else volumes[-1]
-            current_vol = volumes[-1]
-            vol_ratio = current_vol / avg_vol if avg_vol > 0 else 1.0
             
-            # Volume Expansion Filter: Require volume surge to enter
-            if vol_ratio < 1.1:
+            # Extension Cap: Skip if close is over upper * 1.025
+            if current_close > upper * 1.025:
                 continue
 
-            atr = calculate_atr(highs, lows, closes)
+            candidate_obj = None
+            if spy_regime in ["GREEN", "NEUTRAL"]:
+                if current_close > upper and prev_close <= upper:
+                    candidate_obj = {
+                        "symbol": symbol, "close": current_close, "is_long": True,
+                        "score": (current_close - upper) / upper, "ci": ci
+                    }
+                    audit_logs.append(f"ADAPTIVE LONG MATCH: {symbol} @ ${current_close:.2f} (Breakout above Upper Band, CI: {ci:.1f})")
 
-            if spy_regime == "GREEN":
-                extension_score = max(0.0, (current_close - upper) / upper)
-                atr_score = atr / current_close if current_close > 0 else 0.0
-                momentum_score = extension_score + atr_score
+            if spy_regime in ["RED", "NEUTRAL"] and candidate_obj is None:
+                if current_close < lower and prev_close >= lower:
+                    candidate_obj = {
+                        "symbol": symbol, "close": current_close, "is_long": False,
+                        "score": (lower - current_close) / lower, "ci": ci
+                    }
+                    audit_logs.append(f"ADAPTIVE SHORT MATCH: {symbol} @ ${current_close:.2f} (Breakdown below Lower Band, CI: {ci:.1f})")
 
-                candidate_obj = {
-                    "symbol": symbol, "close": current_close, "is_long": True,
-                    "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
-                }
-
-                if current_close > upper and current_close <= upper * 1.02 and current_close > current_open:
-                    market_candidates.append(candidate_obj)
-                    audit_logs.append(f"BREAKOUT MATCH: {symbol} @ ${current_close:.2f} (VolRatio: {vol_ratio:.2f}x, CI: {ci:.1f})")
-
-            elif spy_regime == "RED":
-                extension_score = max(0.0, (lower - current_close) / lower)
-                atr_score = atr / current_close if current_close > 0 else 0.0
-                momentum_score = extension_score + atr_score
-
-                candidate_obj = {
-                    "symbol": symbol, "close": current_close, "is_long": False,
-                    "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
-                }
-
-                if current_close < lower and current_close >= lower * 0.98 and current_close < current_open:
-                    market_candidates.append(candidate_obj)
-                    audit_logs.append(f"BREAKDOWN MATCH: {symbol} @ ${current_close:.2f} (VolRatio: {vol_ratio:.2f}x, CI: {ci:.1f})")
+            if candidate_obj:
+                market_candidates.append(candidate_obj)
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
-    audit_logs.append(f"Sniper Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} validated triggers.")
+    audit_logs.append(f"Adaptive Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} validated triggers.")
 
     if not is_trading_window or is_eod_square_off:
         audit_logs.append("Execution Gate: Outside active trading hours or square-off window active.")
-    elif spy_regime == "NEUTRAL":
-        audit_logs.append("Execution Gate: SPY in NEUTRAL Chop Zone (±0.25%). Blocking entries.")
     elif active_count < MAX_STOCK_SLOTS and market_candidates:
         for candidate in market_candidates[: (MAX_STOCK_SLOTS - active_count)]:
             symbol = candidate["symbol"]
             px = candidate["close"]
             is_long = candidate["is_long"]
+            cand_ci = candidate.get("ci", 50.0)
 
-            # TEST_MICRO_SIZING_MODE = $1,000 fixed position size
-            target_usd = 1000.0 if TEST_MICRO_SIZING_MODE else max(50.0, equity * 0.05)
+            # Adaptive Position Sizing: Full 10% NAV on clean trends, $1,000 micro-test size during high chop/neutral
+            if cand_ci > 58.0 or spy_regime == "NEUTRAL":
+                target_usd = 1000.0
+                audit_logs.append(f"MICRO SIZING APPLIED for {symbol}: ${target_usd} due to Chop/Neutral regime.")
+            else:
+                target_usd = max(1000.0, equity * 0.10)
+
             raw_qty = target_usd / px
             qty = max(1, int(raw_qty))
             order_side = "buy" if is_long else "sell"
@@ -605,7 +547,7 @@ def execute_stock_engine():
             except Exception as e:
                 audit_logs.append(f"ORDER EXCEPTION on {symbol}: {e}")
     else:
-        audit_logs.append(f"Execution Gate: Active slots ({active_count}/{MAX_STOCK_SLOTS}). No new scalps triggered.")
+        audit_logs.append(f"Execution Gate: Active slots ({active_count}/{MAX_STOCK_SLOTS}). No new entries triggered.")
 
     save_state(state)
 
@@ -632,7 +574,7 @@ def execute_stock_engine():
         for t in closed_ledger[:5]
     ]) if closed_ledger else "<tr><td colspan='4' style='padding: 12px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
 
-    text_fallback = f"TR-GC-Equities-LS-01 | Micro-Test Mode\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
+    text_fallback = f"TR-GC-Equities-LS-01 | Adaptive Engine\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
     positions_rows = "".join([
         f"<tr>"
@@ -701,8 +643,8 @@ def execute_stock_engine():
       <body>
         <div class="container">
           <div class="header">
-            <h2>TR-GC-Equities-LS-01 | Micro-Test Mode</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: PURE QUANTITATIVE ADAPTIVE</p>
+            <h2>TR-GC-Equities-LS-01 | Adaptive Formula Engine</h2>
+            <p>Timestamp: {timestamp} &bull; Mode: UNBLOCKED ADAPTIVE</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -716,12 +658,12 @@ def execute_stock_engine():
             </div>
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Guardrails (Fine-Tuned Micro Test Mode)</div>
-              &bull; <b>Micro-Test Position Sizing ($1,000/trade):</b> Limits noise-stop impacts to ~$10 per hit<br>
-              &bull; <b>SPY Regime Deadzone (&plusmn;0.25% Filter):</b> Blocks fakeout trades when market is flat<br>
-              &bull; <b>Strict Chop Filter (CI &le; 58.0):</b> Rejects stocks stuck in sideways ranging movement<br>
-              &bull; <b>Volume Expansion (1.1x):</b> Requires volume breakout confirmation before entering<br>
-              &bull; <b>Standardized -1.5% Noise Buffer:</b> Gives positions breathing room against standard 30m wicks
+              <div class="rules-title">&#9989; Active Guardrails (Unblocked Adaptive Formula)</div>
+              &bull; <b>Gaussian Band Invalidation Exit:</b> Longs ride until close below Upper Band<br>
+              &bull; <b>ATR Volatility Buffer (1.5x ATR):</b> Filters noise wicks while cutting real losses<br>
+              &bull; <b>80%–97% Peak Profit Ratchet:</b> Locks 80% to 97% of peak gains on parabolic trend runners<br>
+              &bull; <b>Unblocked Adaptive Sizing:</b> Trades execute continuously; high chop auto-scales to $1,000 micro-size<br>
+              &bull; <b>Extension Cap (1.025x):</b> Blocks entering overextended breakouts
             </div>
 
             <div class="section-title">Active Sniper Scalps</div>
@@ -764,7 +706,7 @@ def execute_stock_engine():
     """
 
     send_html_dashboard_email(f"Alpaca Quantitative Report — USD ${equity:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] Micro-test quantitative report complete.")
+    print(f"[{timestamp}] Adaptive formula report complete.")
 
 if __name__ == "__main__":
     try:
