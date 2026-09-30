@@ -48,6 +48,26 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "kBONK",
+      "entry_price": 0.004004,
+      "exit_price": 0.003989,
+      "pnl_usd": -0.055995,
+      "roe_pct": -3.746253746253594,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-3.7%)",
+      "timestamp": "2026-09-30 10:50:05"
+    },
+    {
+      "coin": "BLUR",
+      "entry_price": 0.020916,
+      "exit_price": 0.020853,
+      "pnl_usd": -0.047319,
+      "roe_pct": -0.9036144578313332,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-0.9%)",
+      "timestamp": "2026-09-30 10:50:05"
+    },
+    {
       "coin": "CRV",
       "entry_price": 0.40473,
       "exit_price": 0.39902,
@@ -250,7 +270,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-09-30 10:30:59",
+  "last_run_timestamp": "2026-09-30 10:50:10",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -260,7 +280,7 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790764208.214875,
+  "last_email_timestamp": 1790765405.0488868,
   "last_scan_timestamp": 1790764208.214875,
   "gemini_cache": {
     "timestamp": 1790764208.214875,
