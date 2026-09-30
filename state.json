@@ -47,6 +47,16 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "MINA",
+      "entry_price": 0.13994,
+      "exit_price": 0.1409,
+      "pnl_usd": -0.1016290958982409,
+      "roe_pct": -2.058024867800462,
+      "side": "SHORT",
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-2.1%)",
+      "timestamp": "2026-09-30 04:23:08"
+    },
+    {
       "coin": "IMX",
       "entry_price": 0.16469,
       "exit_price": 0.1655,
@@ -157,23 +167,9 @@
       "timestamp": "2026-09-28 00:56:23"
     }
   ],
-  "active_position_cache": {
-    "MINA": {
-      "entry_px": 0.13994,
-      "current_px": 0.13969,
-      "szi": -106.0,
-      "peak_roe": 0.01736458482206671,
-      "margin": 4.938186,
-      "leverage": 3.0,
-      "side": "SHORT",
-      "best_target_floor_roe": 0.0,
-      "best_stop_px": 0.13994
-    }
-  },
-  "previous_active_coins": [
-    "MINA"
-  ],
-  "last_run_timestamp": "2026-09-30 04:03:58",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-09-30 04:23:55",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -183,11 +179,11 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790741034.12915,
-  "last_scan_timestamp": 1790739901.492751,
+  "last_email_timestamp": 1790742188.9187732,
+  "last_scan_timestamp": 1790742188.9187732,
   "gemini_cache": {
-    "timestamp": 1790739901.492751,
+    "timestamp": 1790742188.9187732,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nDriven by persistent macroeconomic uncertainty, stringent regulatory headwinds, and elevated leverage, current crypto market conditions expose investors to severe downside volatility and systemic liquidity shocks."
+    "briefing": "Risk Level: HIGH; while institutional adoption and potential rate cuts provide long-term support, current market sentiment remains vulnerable to significant volatility driven by macroeconomic uncertainty, regulatory shifts, and high leverage in derivatives markets."
   }
 }
