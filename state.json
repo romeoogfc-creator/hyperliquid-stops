@@ -47,6 +47,26 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "FET",
+      "entry_price": 0.2218,
+      "exit_price": 0.221915,
+      "pnl_usd": -0.00612,
+      "roe_pct": -0.25924256086565367,
+      "side": "SHORT",
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-0.3%)",
+      "timestamp": "2026-09-30 04:42:57"
+    },
+    {
+      "coin": "MINA",
+      "entry_price": 0.14092,
+      "exit_price": 0.142265,
+      "pnl_usd": -0.14364,
+      "roe_pct": -2.863326710190207,
+      "side": "SHORT",
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-2.9%)",
+      "timestamp": "2026-09-30 04:42:57"
+    },
+    {
       "coin": "MINA",
       "entry_price": 0.13994,
       "exit_price": 0.1409,
@@ -169,7 +189,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-09-30 04:23:55",
+  "last_run_timestamp": "2026-09-30 04:43:01",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -179,7 +199,7 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790742188.9187732,
+  "last_email_timestamp": 1790743377.0732672,
   "last_scan_timestamp": 1790742188.9187732,
   "gemini_cache": {
     "timestamp": 1790742188.9187732,
