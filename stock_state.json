@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-30 18:49:06",
+  "last_run_timestamp": "2026-09-30 19:16:21",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,11 +19,11 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "SNOW",
-    "PYPL",
+    "DE",
     "SLB",
+    "SNOW",
     "V",
-    "DE"
+    "PYPL"
   ],
   "closed_trades_ledger": [
     {
@@ -190,7 +190,7 @@
   "active_position_cache": {
     "DE": {
       "entry_px": 679.17,
-      "current_px": 669.98,
+      "current_px": 671.3,
       "qty": 1.0,
       "side": "short",
       "peak_roe": 0.013531221932653005,
@@ -199,7 +199,7 @@
     },
     "PYPL": {
       "entry_px": 53.03,
-      "current_px": 52.5938,
+      "current_px": 52.68,
       "qty": 18.0,
       "side": "short",
       "peak_roe": 0.010748632849330572,
@@ -208,7 +208,7 @@
     },
     "SLB": {
       "entry_px": 49.02,
-      "current_px": 48.985,
+      "current_px": 49.025,
       "qty": 20.0,
       "side": "short",
       "peak_roe": 0.000713994288045771,
@@ -217,7 +217,7 @@
     },
     "SNOW": {
       "entry_px": 346.6,
-      "current_px": 341.085,
+      "current_px": 343.335,
       "qty": 2.0,
       "side": "long",
       "peak_roe": -0.0007212925562608193,
@@ -226,7 +226,7 @@
     },
     "V": {
       "entry_px": 361.24,
-      "current_px": 360.4817,
+      "current_px": 361.04,
       "qty": 35.0,
       "side": "short",
       "peak_roe": 0.0022976414572029235,
