@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-30 16:51:46",
+  "last_run_timestamp": "2026-09-30 17:15:26",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,11 +19,11 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "MA",
-    "PYPL",
-    "DE",
     "SNOW",
-    "V"
+    "DE",
+    "MA",
+    "V",
+    "PYPL"
   ],
   "closed_trades_ledger": [
     {
@@ -190,34 +190,34 @@
   "active_position_cache": {
     "DE": {
       "entry_px": 679.17,
-      "current_px": 674.64,
+      "current_px": 673.62,
       "qty": 1.0,
       "side": "short",
-      "peak_roe": 0.006669905914572159,
+      "peak_roe": 0.00817173903440958,
       "best_target_floor_roe": 0.0025,
       "best_stop_px": 677.472075
     },
     "MA": {
       "entry_px": 557.68,
-      "current_px": 555.435,
+      "current_px": 554.7,
       "qty": 1.0,
       "side": "short",
-      "peak_roe": 0.004554583273561835,
-      "best_target_floor_roe": -0.012,
-      "best_stop_px": 564.37216
+      "peak_roe": 0.0053435662028401675,
+      "best_target_floor_roe": 0.0025,
+      "best_stop_px": 556.2858
     },
     "PYPL": {
       "entry_px": 53.03,
-      "current_px": 52.845,
+      "current_px": 52.6779,
       "qty": 18.0,
       "side": "short",
-      "peak_roe": 0.003488591363379262,
-      "best_target_floor_roe": -0.013819670806282179,
-      "best_stop_px": 53.76285714285714
+      "peak_roe": 0.006639637940788234,
+      "best_target_floor_roe": 0.0025,
+      "best_stop_px": 52.897425000000005
     },
     "SNOW": {
       "entry_px": 346.6,
-      "current_px": 346.35,
+      "current_px": 344.575,
       "qty": 2.0,
       "side": "long",
       "peak_roe": -0.0007212925562608193,
@@ -226,10 +226,10 @@
     },
     "V": {
       "entry_px": 361.24,
-      "current_px": 360.805,
+      "current_px": 360.41,
       "qty": 35.0,
       "side": "short",
-      "peak_roe": 0.001204185582991923,
+      "peak_roe": 0.0022976414572029235,
       "best_target_floor_roe": -0.012,
       "best_stop_px": 365.57488
     }
