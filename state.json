@@ -321,7 +321,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-09-30 20:41:25",
+  "last_run_timestamp": "2026-09-30 20:57:07",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -331,11 +331,11 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790800403.7539766,
-  "last_scan_timestamp": 1790798435.510975,
+  "last_email_timestamp": 1790801767.56847,
+  "last_scan_timestamp": 1790801767.56847,
   "gemini_cache": {
-    "timestamp": 1790798435.510975,
-    "risk": "MODERATE",
-    "briefing": "**Risk Level: MODERATE**\n\nWhile ongoing institutional adoption and favorable macroeconomic liquidity provide a strong structural floor, current market valuations remain vulnerable to sudden regulatory crackdowns, geopolitical shocks, and unexpected macroeconomic tightening."
+    "timestamp": 1790801767.56847,
+    "risk": "HIGH",
+    "briefing": "**Risk Level: HIGH** \n\nDriven by aggressive macroeconomic tightening, persistent regulatory headwinds, and fragile market liquidity, current crypto market conditions expose investors to severe downside volatility and heightened systemic contagion risk."
   }
 }
