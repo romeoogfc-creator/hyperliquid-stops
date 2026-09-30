@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-30 14:26:46",
+  "last_run_timestamp": "2026-09-30 14:48:49",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,9 +19,11 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
+    "UNH",
     "V",
-    "GE",
-    "UNH"
+    "HOOD",
+    "COIN",
+    "GE"
   ],
   "closed_trades_ledger": [
     {
@@ -218,9 +220,19 @@
     }
   ],
   "active_position_cache": {
+    "COIN": {
+      "entry_px": 186.016087,
+      "current_px": 186.13,
+      "qty": 69.0,
+      "side": "short",
+      "peak_roe": -0.0006123825193677825,
+      "vol_ratio": 0.4015657709844857,
+      "best_target_floor_roe": -0.008,
+      "best_stop_px": 187.504215696
+    },
     "GE": {
       "entry_px": 312.54,
-      "current_px": 313.43,
+      "current_px": 314.85,
       "qty": 41.0,
       "side": "short",
       "peak_roe": -0.002431688743840759,
@@ -228,9 +240,19 @@
       "best_target_floor_roe": -0.008,
       "best_stop_px": 315.04032
     },
+    "HOOD": {
+      "entry_px": 114.38,
+      "current_px": 114.455,
+      "qty": 112.0,
+      "side": "short",
+      "peak_roe": -0.0006557090400419902,
+      "vol_ratio": 0.6354561715475685,
+      "best_target_floor_roe": -0.008,
+      "best_stop_px": 115.29504
+    },
     "UNH": {
       "entry_px": 367.914118,
-      "current_px": 368.0,
+      "current_px": 370.77,
       "qty": 34.0,
       "side": "short",
       "peak_roe": -0.00023342947660417434,
@@ -240,7 +262,7 @@
     },
     "V": {
       "entry_px": 361.24,
-      "current_px": 362.43,
+      "current_px": 363.22,
       "qty": 35.0,
       "side": "short",
       "peak_roe": -0.001550215922932129,
