@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-30 19:16:21",
+  "last_run_timestamp": "2026-09-30 19:43:28",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -18,14 +18,48 @@
     "timestamp": "2026-09-24 04:34:54",
     "scan_date": "2026-09-24"
   },
-  "previous_active_symbols": [
-    "DE",
-    "SLB",
-    "SNOW",
-    "V",
-    "PYPL"
-  ],
+  "previous_active_symbols": [],
   "closed_trades_ledger": [
+    {
+      "symbol": "V",
+      "entry_price": 361.24,
+      "exit_price": 360.34,
+      "exit_reason": "EOD Square-Off (100% Cash Flat)",
+      "realized_pnl": 31.500000000001194,
+      "timestamp": "2026-09-30 19:43:20"
+    },
+    {
+      "symbol": "SNOW",
+      "entry_price": 346.6,
+      "exit_price": 341.4675,
+      "exit_reason": "EOD Square-Off (100% Cash Flat)",
+      "realized_pnl": -10.2650000000001,
+      "timestamp": "2026-09-30 19:43:20"
+    },
+    {
+      "symbol": "SLB",
+      "entry_price": 49.02,
+      "exit_price": 48.91,
+      "exit_reason": "EOD Square-Off (100% Cash Flat)",
+      "realized_pnl": 2.2000000000001307,
+      "timestamp": "2026-09-30 19:43:20"
+    },
+    {
+      "symbol": "PYPL",
+      "entry_price": 53.03,
+      "exit_price": 52.685,
+      "exit_reason": "EOD Square-Off (100% Cash Flat)",
+      "realized_pnl": 6.2099999999999795,
+      "timestamp": "2026-09-30 19:43:20"
+    },
+    {
+      "symbol": "DE",
+      "entry_price": 679.17,
+      "exit_price": 671.76,
+      "exit_reason": "EOD Square-Off (100% Cash Flat)",
+      "realized_pnl": 7.409999999999968,
+      "timestamp": "2026-09-30 19:43:20"
+    },
     {
       "symbol": "MA",
       "entry_price": 557.68,
@@ -187,53 +221,7 @@
       "timestamp": "2026-09-29 14:16:17"
     }
   ],
-  "active_position_cache": {
-    "DE": {
-      "entry_px": 679.17,
-      "current_px": 671.3,
-      "qty": 1.0,
-      "side": "short",
-      "peak_roe": 0.013531221932653005,
-      "best_target_floor_roe": 0.0025,
-      "best_stop_px": 677.472075
-    },
-    "PYPL": {
-      "entry_px": 53.03,
-      "current_px": 52.68,
-      "qty": 18.0,
-      "side": "short",
-      "peak_roe": 0.010748632849330572,
-      "best_target_floor_roe": 0.0025,
-      "best_stop_px": 52.897425000000005
-    },
-    "SLB": {
-      "entry_px": 49.02,
-      "current_px": 49.025,
-      "qty": 20.0,
-      "side": "short",
-      "peak_roe": 0.000713994288045771,
-      "best_target_floor_roe": -0.01689543626508135,
-      "best_stop_px": 49.848214285714285
-    },
-    "SNOW": {
-      "entry_px": 346.6,
-      "current_px": 343.335,
-      "qty": 2.0,
-      "side": "long",
-      "peak_roe": -0.0007212925562608193,
-      "best_target_floor_roe": -0.019119404830599276,
-      "best_stop_px": 339.97321428571433
-    },
-    "V": {
-      "entry_px": 361.24,
-      "current_px": 361.04,
-      "qty": 35.0,
-      "side": "short",
-      "peak_roe": 0.0022976414572029235,
-      "best_target_floor_roe": -0.012,
-      "best_stop_px": 365.57488
-    }
-  },
+  "active_position_cache": {},
   "daily_starting_equity": {
     "2026-09-22": 101022.53,
     "2026-09-23": 100687.3,
