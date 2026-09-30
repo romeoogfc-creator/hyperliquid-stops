@@ -322,9 +322,9 @@
   "active_position_cache": {
     "TRB": {
       "entry_px": 21.469,
-      "current_px": 21.349,
+      "current_px": 21.039,
       "szi": 0.48,
-      "margin": 3.41616,
+      "margin": 3.36672,
       "side": "LONG",
       "peak_roe": -0.005589454562392333
     }
@@ -332,7 +332,7 @@
   "previous_active_coins": [
     "TRB"
   ],
-  "last_run_timestamp": "2026-09-30 21:36:50",
+  "last_run_timestamp": "2026-09-30 21:55:52",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -342,11 +342,11 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790804207.7069407,
-  "last_scan_timestamp": 1790801767.56847,
+  "last_email_timestamp": 1790805313.0594652,
+  "last_scan_timestamp": 1790805313.0594652,
   "gemini_cache": {
-    "timestamp": 1790801767.56847,
+    "timestamp": 1790805313.0594652,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nDriven by aggressive macroeconomic tightening, persistent regulatory headwinds, and fragile market liquidity, current crypto market conditions expose investors to severe downside volatility and heightened systemic contagion risk."
+    "briefing": "**Risk Level: HIGH**\n\nCrypto markets currently face significant uncertainty driven by shifting macroeconomic interest rate expectations, heightened regulatory scrutiny, and the potential for increased volatility following recent price rallies."
   }
 }
