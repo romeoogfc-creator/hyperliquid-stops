@@ -44,9 +44,19 @@
     "BSV": 0,
     "MINA": 2,
     "IMX": 2,
-    "BTC": 2
+    "BTC": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "MINA",
+      "entry_price": 0.1409,
+      "exit_price": 0.141395,
+      "pnl_usd": -0.05257053875088668,
+      "roe_pct": -1.0539389638041068,
+      "side": "SHORT",
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-1.1%)",
+      "timestamp": "2026-09-30 10:07:41"
+    },
     {
       "coin": "APT",
       "entry_price": 0.7826,
@@ -221,32 +231,20 @@
   "active_position_cache": {
     "BTC": {
       "entry_px": 83213.0,
-      "current_px": 83570.5,
+      "current_px": 83710.5,
       "szi": -0.00018,
       "peak_roe": 0.0024395226707365435,
-      "margin": 15.04278,
+      "margin": 15.0678,
       "leverage": 1.0,
       "side": "SHORT",
       "best_target_floor_roe": -0.01,
       "best_stop_px": 84045.0
-    },
-    "MINA": {
-      "entry_px": 0.1409,
-      "current_px": 0.141125,
-      "szi": -106.0,
-      "peak_roe": 0.0019162526614621735,
-      "margin": 4.988006,
-      "leverage": 3.0,
-      "side": "SHORT",
-      "best_target_floor_roe": -0.01,
-      "best_stop_px": 0.14137
     }
   },
   "previous_active_coins": [
-    "BTC",
-    "MINA"
+    "BTC"
   ],
-  "last_run_timestamp": "2026-09-30 09:51:09",
+  "last_run_timestamp": "2026-09-30 10:08:35",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -256,11 +254,11 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790760603.6625867,
-  "last_scan_timestamp": 1790760603.6625867,
+  "last_email_timestamp": 1790762861.3246524,
+  "last_scan_timestamp": 1790762861.3246524,
   "gemini_cache": {
-    "timestamp": 1790760603.6625867,
+    "timestamp": 1790762861.3246524,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to geopolitical instability, all of which contribute to an environment of unpredictable price swings."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and historical post-halving price instability, warranting a cautious outlook."
   }
 }
