@@ -1,7 +1,7 @@
 {
   "cooldown_blocklist": {},
   "stagnation_tracker": {
-    "APT": 26,
+    "APT": 27,
     "BLUR": 0,
     "MEME": 1,
     "GMT": 6,
@@ -46,6 +46,16 @@
     "IMX": 2
   },
   "closed_trades_ledger": [
+    {
+      "coin": "FET",
+      "entry_price": 0.21765,
+      "exit_price": 0.21529,
+      "pnl_usd": 0.16836,
+      "roe_pct": 5.421548357454631,
+      "side": "SHORT",
+      "exit_reason": "\ud83c\udfaf Profit Lock (+5.4%)",
+      "timestamp": "2026-09-30 08:06:13"
+    },
     {
       "coin": "JUP",
       "entry_price": 0.32,
@@ -200,10 +210,10 @@
   "active_position_cache": {
     "APT": {
       "entry_px": 0.7826,
-      "current_px": 0.7875,
+      "current_px": 0.7849,
       "szi": -19.17,
       "peak_roe": 0.004600051111678938,
-      "margin": 15.096375,
+      "margin": 15.04845,
       "leverage": 1.0,
       "side": "SHORT",
       "best_target_floor_roe": -0.01,
@@ -213,7 +223,7 @@
   "previous_active_coins": [
     "APT"
   ],
-  "last_run_timestamp": "2026-09-30 07:50:36",
+  "last_run_timestamp": "2026-09-30 08:06:18",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -223,7 +233,7 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790754589.2373142,
+  "last_email_timestamp": 1790755573.5067525,
   "last_scan_timestamp": 1790754589.2373142,
   "gemini_cache": {
     "timestamp": 1790754589.2373142,
