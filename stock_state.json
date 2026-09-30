@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-30 14:48:49",
+  "last_run_timestamp": "2026-09-30 15:19:21",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -20,12 +20,20 @@
   },
   "previous_active_symbols": [
     "UNH",
-    "V",
-    "HOOD",
     "COIN",
-    "GE"
+    "GE",
+    "V",
+    "HOOD"
   ],
   "closed_trades_ledger": [
+    {
+      "symbol": "GE",
+      "entry_price": 312.54,
+      "exit_price": 315.35,
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-0.90%)",
+      "realized_pnl": -115.2100000000001,
+      "timestamp": "2026-09-30 15:19:09"
+    },
     {
       "symbol": "DKNG",
       "entry_price": 19.572332,
@@ -177,52 +185,12 @@
       "exit_reason": "\ud83d\udea8 High Choppiness Chop Purge (CI: 63.2)",
       "realized_pnl": 33.4552,
       "timestamp": "2026-09-28 13:46:52"
-    },
-    {
-      "symbol": "XOM",
-      "entry_price": 162.07,
-      "exit_price": 161.045,
-      "exit_reason": "Macro Bloodbath Shield (SPY Flipped Red - 100% Cash Flat)",
-      "realized_pnl": -63.43171500000035,
-      "timestamp": "2026-09-23 16:37:07"
-    },
-    {
-      "symbol": "PFE",
-      "entry_price": 28.14,
-      "exit_price": 28.075,
-      "exit_reason": "Macro Bloodbath Shield (SPY Flipped Red - 100% Cash Flat)",
-      "realized_pnl": -23.27260000000046,
-      "timestamp": "2026-09-23 16:37:07"
-    },
-    {
-      "symbol": "BA",
-      "entry_price": 203.11,
-      "exit_price": 201.6401,
-      "exit_reason": "Macro Bloodbath Shield (SPY Flipped Red - 100% Cash Flat)",
-      "realized_pnl": -72.53515530000118,
-      "timestamp": "2026-09-23 16:37:07"
-    },
-    {
-      "symbol": "LMT",
-      "entry_price": 534.77,
-      "exit_price": 527.24,
-      "exit_reason": "Balanced Hard Stop (-1.2%)",
-      "realized_pnl": -141.3614429999995,
-      "timestamp": "2026-09-23 15:42:32"
-    },
-    {
-      "symbol": "ABBV",
-      "entry_price": 269.0,
-      "exit_price": 265.445,
-      "exit_reason": "Balanced Hard Stop (-1.2%)",
-      "realized_pnl": -132.23497950000026,
-      "timestamp": "2026-09-23 15:42:32"
     }
   ],
   "active_position_cache": {
     "COIN": {
       "entry_px": 186.016087,
-      "current_px": 186.13,
+      "current_px": 186.15,
       "qty": 69.0,
       "side": "short",
       "peak_roe": -0.0006123825193677825,
@@ -232,7 +200,7 @@
     },
     "GE": {
       "entry_px": 312.54,
-      "current_px": 314.85,
+      "current_px": 315.35,
       "qty": 41.0,
       "side": "short",
       "peak_roe": -0.002431688743840759,
@@ -242,17 +210,17 @@
     },
     "HOOD": {
       "entry_px": 114.38,
-      "current_px": 114.455,
+      "current_px": 114.41,
       "qty": 112.0,
       "side": "short",
-      "peak_roe": -0.0006557090400419902,
+      "peak_roe": -0.0002622836160167961,
       "vol_ratio": 0.6354561715475685,
       "best_target_floor_roe": -0.008,
       "best_stop_px": 115.29504
     },
     "UNH": {
       "entry_px": 367.914118,
-      "current_px": 370.77,
+      "current_px": 370.155,
       "qty": 34.0,
       "side": "short",
       "peak_roe": -0.00023342947660417434,
@@ -262,7 +230,7 @@
     },
     "V": {
       "entry_px": 361.24,
-      "current_px": 363.22,
+      "current_px": 363.38,
       "qty": 35.0,
       "side": "short",
       "peak_roe": -0.001550215922932129,
