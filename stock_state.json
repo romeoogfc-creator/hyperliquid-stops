@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-30 13:45:28",
+  "last_run_timestamp": "2026-09-30 14:18:07",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,7 +19,9 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "DKNG"
+    "GE",
+    "V",
+    "UNH"
   ],
   "closed_trades_ledger": [
     {
@@ -215,7 +217,38 @@
       "timestamp": "2026-09-23 15:42:32"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "GE": {
+      "entry_px": 312.54,
+      "current_px": 313.3,
+      "qty": 41.0,
+      "side": "short",
+      "peak_roe": -0.002431688743840759,
+      "vol_ratio": 1.1476651591243308,
+      "best_target_floor_roe": -0.01,
+      "best_stop_px": 315.66540000000003
+    },
+    "UNH": {
+      "entry_px": 367.914118,
+      "current_px": 368.32,
+      "qty": 34.0,
+      "side": "short",
+      "peak_roe": -0.0011031976761490291,
+      "vol_ratio": 0.5486243530373195,
+      "best_target_floor_roe": -0.01,
+      "best_stop_px": 371.59325917999996
+    },
+    "V": {
+      "entry_px": 361.24,
+      "current_px": 361.8,
+      "qty": 35.0,
+      "side": "short",
+      "peak_roe": -0.001550215922932129,
+      "vol_ratio": 1.0724692972894412,
+      "best_target_floor_roe": -0.01,
+      "best_stop_px": 364.8524
+    }
+  },
   "daily_starting_equity": {
     "2026-09-22": 101022.53,
     "2026-09-23": 100687.3,
