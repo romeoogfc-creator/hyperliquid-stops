@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-30 15:46:57",
+  "last_run_timestamp": "2026-09-30 15:47:45",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,11 +19,20 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "COIN",
-    "HOOD",
+    "SBUX",
+    "MA",
+    "GE",
     "V"
   ],
   "closed_trades_ledger": [
+    {
+      "symbol": "GE",
+      "entry_price": 314.25,
+      "exit_price": 314.15,
+      "exit_reason": "\ud83d\udcc8 Trend Invalidation (Close $314.15 > Band $314.09)",
+      "realized_pnl": 0.3000000000000682,
+      "timestamp": "2026-09-30 15:47:31"
+    },
     {
       "symbol": "HOOD",
       "entry_price": 114.38,
@@ -175,38 +184,39 @@
       "exit_reason": "EOD Square-Off (100% Cash Flat)",
       "realized_pnl": -8.400000000000318,
       "timestamp": "2026-09-28 19:43:59"
-    },
-    {
-      "symbol": "PFE",
-      "entry_price": 28.504867,
-      "exit_price": 28.87,
-      "exit_reason": "EOD Square-Off (100% Cash Flat)",
-      "realized_pnl": 165.04011600000007,
-      "timestamp": "2026-09-28 19:43:59"
     }
   ],
   "active_position_cache": {
-    "COIN": {
-      "entry_px": 186.016087,
-      "current_px": 186.55,
-      "qty": 69.0,
+    "GE": {
+      "entry_px": 314.25,
+      "current_px": 314.15,
+      "qty": 3.0,
       "side": "short",
-      "peak_roe": -0.0006123825193677825,
-      "best_target_floor_roe": -0.017406328641119854,
-      "best_stop_px": 189.25394414285716
+      "peak_roe": 0.0003182179793159037,
+      "best_target_floor_roe": -0.012,
+      "best_stop_px": 318.021
     },
-    "HOOD": {
-      "entry_px": 114.38,
-      "current_px": 114.45,
-      "qty": 112.0,
+    "MA": {
+      "entry_px": 557.68,
+      "current_px": 557.825,
+      "qty": 1.0,
       "side": "short",
-      "peak_roe": -0.0002622836160167961,
-      "best_target_floor_roe": -0.025427459845627366,
-      "best_stop_px": 117.28839285714287
+      "peak_roe": -0.00026000573805783875,
+      "best_target_floor_roe": -0.012,
+      "best_stop_px": 564.37216
+    },
+    "SBUX": {
+      "entry_px": 94.7,
+      "current_px": 94.75,
+      "qty": 10.0,
+      "side": "short",
+      "peak_roe": -0.0005279831045406246,
+      "best_target_floor_roe": -0.012,
+      "best_stop_px": 95.8364
     },
     "V": {
       "entry_px": 361.24,
-      "current_px": 362.23,
+      "current_px": 362.345,
       "qty": 35.0,
       "side": "short",
       "peak_roe": -0.001550215922932129,
