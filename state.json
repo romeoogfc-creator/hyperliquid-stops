@@ -45,9 +45,19 @@
     "MINA": 2,
     "IMX": 2,
     "BTC": 3,
-    "NEAR": 2
+    "NEAR": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "WIF",
+      "entry_price": 0.25714,
+      "exit_price": 0.25471,
+      "pnl_usd": -0.14219,
+      "roe_pct": -4.725052500583317,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-4.7%)",
+      "timestamp": "2026-09-30 12:00:05"
+    },
     {
       "coin": "WIF",
       "entry_price": 0.25384,
@@ -282,20 +292,20 @@
   "active_position_cache": {
     "NEAR": {
       "entry_px": 5.298,
-      "current_px": 5.30075,
+      "current_px": 5.30275,
       "szi": 2.8,
-      "peak_roe": 0.008456021140052925,
-      "margin": 14.83972,
+      "peak_roe": 0.010437901094752719,
+      "margin": 14.85008,
       "leverage": 1.0,
       "side": "LONG",
-      "best_target_floor_roe": -0.01,
-      "best_stop_px": 5.245
+      "best_target_floor_roe": 0.0,
+      "best_stop_px": 5.298
     }
   },
   "previous_active_coins": [
     "NEAR"
   ],
-  "last_run_timestamp": "2026-09-30 11:45:20",
+  "last_run_timestamp": "2026-09-30 12:00:58",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -305,11 +315,11 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790768666.5564673,
-  "last_scan_timestamp": 1790768666.5564673,
+  "last_email_timestamp": 1790769605.034274,
+  "last_scan_timestamp": 1790769605.034274,
   "gemini_cache": {
-    "timestamp": 1790768666.5564673,
+    "timestamp": 1790769605.034274,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Increased volatility is expected as the market navigates significant macroeconomic uncertainty, shifting regulatory landscapes, and the lingering impact of recent deleveraging events."
+    "briefing": "**Risk Level: HIGH** \n\nDriven by persistent macroeconomic uncertainty, stringent global regulatory crackdowns, and elevated market leverage, current cryptocurrency markets face an amplified vulnerability to sudden, sharp liquidations and severe downward price volatility."
   }
 }
