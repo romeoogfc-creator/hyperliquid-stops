@@ -639,7 +639,15 @@ def execute_engine():
                 f"</tr>"
             )
 
+        # Added Total Realized P&L Summary Row at the bottom of closed trades table
+        total_pnl_color = '#2e7d32' if total_realized_pnl >= 0 else '#c62828'
         closed_rows = "".join(parsed_closed_rows) if parsed_closed_rows else "<tr><td colspan='4' style='padding: 12px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
+        closed_rows += f"""
+        <tr style="background: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
+            <td colspan="2" style="padding: 8px; text-align: right;">TOTAL RECENT REALIZED P&L:</td>
+            <td colspan="2" style="padding: 8px; color: {total_pnl_color};">${total_realized_pnl:+.2f}</td>
+        </tr>
+        """
 
         positions_rows = "".join([
             f"<tr>"
