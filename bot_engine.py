@@ -117,6 +117,64 @@ def calculate_choppiness_index(highs, lows, closes, period=14):
     except Exception:
         return 50.0
 
+def calculate_atr(highs, lows, closes, period=14):
+    try:
+        if len(highs) < period + 1:
+            return highs[-1] - lows[-1] if len(highs) > 0 else 1.0
+        trs = [max(highs[i] - lows[i], abs(highs[i] - closes[i-1]), abs(lows[i] - closes[i-1])) for i in range(1, len(closes))]
+        return np.mean(trs[-period:]) if len(trs) >= period else np.mean(trs)
+    except Exception:
+        return 1.0
+
+def calculate_moonshot_ratchet_stop(entry_px, is_long, current_px, atr_val, peak_roe=0.0):
+    """
+    1H ATR Volatility Buffer + Galactic Moonshot Ratchet (+300%+ Cap)
+    """
+    if is_long:
+        roe = (current_px - entry_px) / entry_px
+    else:
+        roe = (entry_px - current_px) / entry_px
+
+    atr_roe_buffer = (atr_val * 1.5) / entry_px if entry_px > 0 else 0.020
+    atr_roe_buffer = max(0.015, min(0.040, atr_roe_buffer))  # Clamped between 1.5% and 4.0% ROE
+
+    leash_status = f"1H ATR Noise Buffer (-{atr_roe_buffer*100:.2f}%)"
+    
+    # Galactic Moonshot & Parabolic Ratchet Ladder (+300% to Moon Cap)
+    if peak_roe >= 3.00:  # +300%+ MOONSHOT RUNNER
+        target_floor_roe = max(peak_roe * 0.95, peak_roe - 0.20)
+        leash_status = f"🚀 GALACTIC MOONSHOT 95% Lock [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
+    elif peak_roe >= 1.50:  # +150% Parabolic Wave
+        target_floor_roe = max(peak_roe * 0.92, peak_roe - 0.12)
+        leash_status = f"🌌 Parabolic Wave 92% Lock [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
+    elif peak_roe >= 0.75:  # +75% Major Runner
+        target_floor_roe = peak_roe * 0.90
+        leash_status = f"🌕 Major Runner 90% Lock [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
+    elif peak_roe >= 0.30:  # +30% Strong Trend
+        target_floor_roe = max(peak_roe * 0.88, peak_roe - 0.05)
+        leash_status = f"📈 Strong Trend 88% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
+    elif peak_roe >= 0.15:  # +15% Breakout
+        target_floor_roe = peak_roe * 0.85
+        leash_status = f"🚀 Breakout 85% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
+    elif peak_roe >= 0.03:  # +3% Winner
+        target_floor_roe = max(0.02, peak_roe * 0.80)
+        leash_status = f"🎯 80% Peak Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+    elif peak_roe >= 0.015:  # +1.5% Winner
+        target_floor_roe = 0.010
+        leash_status = "🔒 Winner Lock (+1.0% Floor)"
+    elif peak_roe >= 0.005:  # +0.5% Micro Breakout
+        target_floor_roe = 0.0025
+        leash_status = "🛡️ Scratch Lock (+0.25% Floor)"
+    else:
+        target_floor_roe = -atr_roe_buffer
+
+    if is_long:
+        stop_px = entry_px * (1 + target_floor_roe)
+    else:
+        stop_px = entry_px * (1 - target_floor_roe)
+
+    return stop_px, roe, target_floor_roe, leash_status
+
 def check_gemini_macro_shield(state, now_ts, is_scan_window):
     gemini_cache = state.get("gemini_cache", {})
     
@@ -187,7 +245,7 @@ def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     now_ts = time.time()
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (1h Micro-Sizing Test Mode).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (All-Weather Moonshot Ratchet Mode).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -303,25 +361,26 @@ def execute_engine():
             
             should_exit = False
             exit_reason = ""
+            atr_val = 1.0
 
-            if current_roe <= -0.012:
-                should_exit = True
-                exit_reason = f"🛡️ Hard Loss Cap Triggered ({current_roe*100:.2f}%)"
+            try:
+                c_candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
+                closes = [float(c["c"]) for c in c_candles]
+                highs = [float(c["h"]) for c in c_candles]
+                lows = [float(c["l"]) for c in c_candles]
+                
+                atr_val = calculate_atr(highs, lows, closes)
+                upper_band, lower_band, filter_line = calculate_gaussian_channel(closes)
 
-            if not should_exit:
-                try:
-                    c_candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
-                    closes = [float(c["c"]) for c in c_candles]
-                    upper_band, lower_band, filter_line = calculate_gaussian_channel(closes)
-
-                    if is_long and current_px < upper_band:
-                        should_exit = True
-                        exit_reason = f"📉 Gaussian Upper Band Invalidation (${current_px:.4f} < ${upper_band:.4f})"
-                    elif (not is_long) and current_px > filter_line:
-                        should_exit = True
-                        exit_reason = f"📈 Gaussian Filter Invalidation (${current_px:.4f} > ${filter_line:.4f})"
-                except Exception as e:
-                    audit_logs.append(f"Channel calculation warning on {coin}: {e}")
+                # 1H Gaussian Band Invalidation Exit
+                if is_long and current_px < upper_band:
+                    should_exit = True
+                    exit_reason = f"📉 Gaussian Upper Band Invalidation (${current_px:.4f} < ${upper_band:.4f})"
+                elif (not is_long) and current_px > filter_line:
+                    should_exit = True
+                    exit_reason = f"📈 Gaussian Filter Invalidation (${current_px:.4f} > ${filter_line:.4f})"
+            except Exception as e:
+                audit_logs.append(f"Channel calculation warning on {coin}: {e}")
 
             if btc_regime == "RED" and is_long:
                 should_exit = True
@@ -329,6 +388,21 @@ def execute_engine():
             elif btc_regime == "GREEN" and (not is_long):
                 should_exit = True
                 exit_reason = "🟢 BTC Daily Bullish Flip Purge"
+
+            # Track Peak ROE exclusively after live entry
+            prev_peak = current_active_cache.get(coin, {}).get("peak_roe", current_roe)
+            peak_roe = max(current_roe, prev_peak)
+
+            stop_px_calc, current_roe, target_floor_roe, leash_status = calculate_moonshot_ratchet_stop(
+                entry_px, is_long, current_px, atr_val, peak_roe=peak_roe
+            )
+
+            if is_long and current_px <= stop_px_calc:
+                should_exit = True
+                exit_reason = f"🎯 Stop/Profit Lock Triggered ({current_roe*100:.2f}%)"
+            elif (not is_long) and current_px >= stop_px_calc:
+                should_exit = True
+                exit_reason = f"🎯 Stop/Profit Lock Triggered ({current_roe*100:.2f}%)"
 
             if should_exit:
                 try:
@@ -350,7 +424,8 @@ def execute_engine():
 
             new_active_cache[coin] = {
                 "entry_px": entry_px, "current_px": current_px, "szi": szi, 
-                "margin": margin_used, "side": "LONG" if is_long else "SHORT"
+                "margin": margin_used, "side": "LONG" if is_long else "SHORT",
+                "peak_roe": peak_roe
             }
 
             positions_data.append({
@@ -359,8 +434,8 @@ def execute_engine():
                 "entry": entry_px, "current": current_px, "leverage": 1,
                 "collateral": margin_used, "position_usd": pos_equity,
                 "pnl": unrealized_pnl, "roe": current_roe * 100,
-                "stop": round_sig_figs(upper_band if is_long else filter_line, 5),
-                "status": "Active Trade"
+                "stop": round_sig_figs(stop_px_calc, 5),
+                "status": leash_status
             })
 
     state["active_position_cache"] = new_active_cache
@@ -512,7 +587,7 @@ def execute_engine():
 
         summary_card_html = f"""
         <div class="summary-card">
-          <div class="summary-title">📊 24-Hour Performance Test Summary (1h Unblocked Micro Mode)</div>
+          <div class="summary-title">📊 24-Hour Performance Test Summary (Moonshot Ratchet Mode)</div>
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
             <tr>
               <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase;">Total Trades (24h): <b style="color: #0f172a;">{total_24h}</b></td>
@@ -625,7 +700,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (1h Unblocked Micro Mode Active)</p>
+                <p>Timestamp: {timestamp} (Moonshot Ratchet + ATR Buffer Active)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -637,11 +712,11 @@ def execute_engine():
                 {summary_card_html}
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (Unblocked 1h Micro Mode)</div>
-                  &bull; <b>Unblocked Micro Sizing:</b> Trades execute during HIGH risk at $10 size (pennies loss cap)<br>
-                  &bull; <b>Strict Chop Filter (CI &le; 58.0):</b> Blocks fake breakouts in ranging market conditions<br>
-                  &bull; <b>Volume Expansion (1.1x):</b> Requires volume confirmation before opening new positions<br>
-                  &bull; <b>Hard -1.2% Risk Cap:</b> Caps initial trade loss at max -$0.15 - -$0.18
+                  <div class="rules-title">&#9989; Active Guardrails (Moonshot Ratchet Engine)</div>
+                  &bull; <b>Galactic Moonshot Ratchet (+300%+ Cap):</b> Locks 80% to 95% of peak gains on runners<br>
+                  &bull; <b>1H ATR Volatility Buffer (1.5x ATR):</b> Provides noise room while cutting real losses<br>
+                  &bull; <b>Strict Chop Filter (CI &le; 58.0):</b> Rejects coins in sideways ranging consolidation<br>
+                  &bull; <b>Unblocked Micro Sizing ($10–$15):</b> Keeps test loss capped at pennies ($\approx \$0.15$)
                 </div>
 
                 <div class="section-title">Positions per Bot (USD)</div>
