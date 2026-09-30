@@ -119,33 +119,6 @@ def calculate_choppiness_index(highs, lows, closes, period=14):
     except Exception:
         return 50.0
 
-def calculate_adx(highs, lows, closes, period=14):
-    try:
-        df = pd.DataFrame({'high': highs, 'low': lows, 'close': closes})
-        df['tr0'] = df['high'] - df['low']
-        df['tr1'] = (df['high'] - df['close'].shift(1)).abs()
-        df['tr2'] = (df['low'] - df['close'].shift(1)).abs()
-        df['tr'] = df[['tr0', 'tr1', 'tr2']].max(axis=1)
-
-        df['up'] = df['high'] - df['high'].shift(1)
-        df['down'] = df['low'].shift(1) - df['low']
-
-        df['pos_dm'] = np.where((df['up'] > df['down']) & (df['up'] > 0), df['up'], 0.0)
-        df['neg_dm'] = np.where((df['down'] > df['up']) & (df['down'] > 0), df['down'], 0.0)
-
-        tr_smooth = df['tr'].ewm(alpha=1/period, adjust=False).mean()
-        pos_dm_smooth = df['pos_dm'].ewm(alpha=1/period, adjust=False).mean()
-        neg_dm_smooth = df['neg_dm'].ewm(alpha=1/period, adjust=False).mean()
-
-        pos_di = 100 * (pos_dm_smooth / tr_smooth)
-        neg_di = 100 * (neg_dm_smooth / tr_smooth)
-        
-        dx = 100 * (pos_di - neg_di).abs() / (pos_di + neg_di)
-        adx = dx.ewm(alpha=1/period, adjust=False).mean().iloc[-1]
-        return adx if not np.isnan(adx) else 15.0
-    except Exception:
-        return 15.0
-
 def check_gemini_macro_shield(state, now_ts, is_scan_window):
     gemini_cache = state.get("gemini_cache", {})
     
@@ -212,7 +185,11 @@ def get_btc_regime(info, now_ms):
         print(f"[WARN] Failed to fetch BTC daily regime: {e}", flush=True)
         return "NEUTRAL", 0.0
 
-def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=1.0, choppiness_index=50.0, is_ballistic=False, vol_ratio=1.0, peak_roe=0.0):
+def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=1.0, vol_ratio=1.0, peak_roe=0.0):
+    """
+    Precision Crypto Stop Calculator:
+    Strictly caps initial risk at -1.0% ROE (-0.010 floor).
+    """
     if is_long:
         roe = ((current_px - entry_px) / entry_px) * leverage
     else:
@@ -236,6 +213,7 @@ def calculate_crypto_stop_price(entry_px, is_long, current_px, leverage=1.0, cho
         target_floor_roe = 0.000
         leash_status = "🛡️ Break-Even Lock (0.0% Floor)"
     else:
+        # Hard cap loss at -1.0% ROE
         target_floor_roe = -0.010
 
     if vol_ratio < 0.85 and roe >= 0.010:
@@ -279,7 +257,6 @@ def execute_engine():
     last_scan_ts = float(state.get("last_scan_timestamp", 0))
     minutes_since_last_scan = (now_ts - last_scan_ts) / 60.0
     
-    # 1-HOUR SCAN WINDOW
     is_1h_scan_window = (current_gm_min in [0, 1, 2, 3]) or (minutes_since_last_scan >= 50.0)
 
     gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_1h_scan_window)
@@ -405,47 +382,31 @@ def execute_engine():
                 leverage = 1.0
 
             current_roe = (((current_px - entry_px) / entry_px) * leverage) if is_long else (((entry_px - current_px) / entry_px) * leverage)
+            
+            # FIX: Only update peak_roe based on LIVE execution price progression (prevents pre-entry candle corruption)
             prev_peak = current_active_cache.get(coin, {}).get("peak_roe", current_roe)
             peak_roe = max(current_roe, prev_peak)
 
+            vol_ratio = 1.0
             try:
-                time.sleep(0.05)
-                c_candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 3, endTime=now_ms)
-                highs = [float(c["h"]) for c in c_candles]
-                lows = [float(c["l"]) for c in c_candles]
-                closes = [float(c["c"]) for c in c_candles]
+                c_candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 2, endTime=now_ms)
                 vols = [float(c.get("v", 0)) for c in c_candles]
-                
-                if is_long and len(highs) > 0:
-                    candle_max_roe = (((max(highs[-2:]) - entry_px) / entry_px) * leverage)
-                    peak_roe = max(peak_roe, candle_max_roe)
-                elif (not is_long) and len(lows) > 0:
-                    candle_min_roe = (((entry_px - min(lows[-2:])) / entry_px) * leverage)
-                    peak_roe = max(peak_roe, candle_min_roe)
-
-                ci = calculate_choppiness_index(highs, lows, closes)
                 vol_ratio = (vols[-1] / np.mean(vols[-14:])) if len(vols) >= 14 and np.mean(vols[-14:]) > 0 else 1.0
             except Exception:
-                ci = 50.0
                 vol_ratio = 1.0
 
             prev_best_floor = current_active_cache.get(coin, {}).get("best_target_floor_roe", -0.010)
-            prev_best_stop = current_active_cache.get(coin, {}).get("best_stop_px", None)
 
             stop_px_raw, current_roe, target_floor, is_buy_order, leash_status = calculate_crypto_stop_price(
-                entry_px, is_long, current_px, leverage, choppiness_index=ci, vol_ratio=vol_ratio, peak_roe=peak_roe
+                entry_px, is_long, current_px, leverage, vol_ratio=vol_ratio, peak_roe=peak_roe
             )
 
             target_floor = max(target_floor, prev_best_floor)
             
             if is_long:
                 stop_px_raw = entry_px * (1 + (target_floor / leverage))
-                if prev_best_stop is not None:
-                    stop_px_raw = max(stop_px_raw, prev_best_stop)
             else:
                 stop_px_raw = entry_px * (1 - (target_floor / leverage))
-                if prev_best_stop is not None:
-                    stop_px_raw = min(stop_px_raw, prev_best_stop)
 
             px = round_sig_figs(stop_px_raw, 5)
 
@@ -477,9 +438,6 @@ def execute_engine():
                 "best_stop_px": px
             }
 
-            initial_risk_ref = 0.01
-            r_multiple = current_roe / initial_risk_ref if initial_risk_ref > 0 else 0.0
-
             if current_roe < 0.01:
                 state["stagnation_tracker"][coin] = state["stagnation_tracker"].get(coin, 0) + 1
             else:
@@ -510,7 +468,7 @@ def execute_engine():
                 "entry": entry_px, "current": current_px, "leverage": int(leverage),
                 "collateral": margin_used, "position_usd": pos_equity,
                 "pnl": unrealized_pnl, "roe": current_roe * 100,
-                "r_multiple": r_multiple, "stop": px, "floor": target_floor * 100,
+                "r_multiple": current_roe / 0.01 if 0.01 > 0 else 0.0, "stop": px, "floor": target_floor * 100,
                 "status": leash_status
             })
 
@@ -550,8 +508,13 @@ def execute_engine():
     MAX_CRYPTO_SLOTS = 2
     available_slots = MAX_CRYPTO_SLOTS - active_count
 
-    # --- 1-HOUR ENTRY SCANNER (UNFILTERED CROSSOVERS + CI <= 62.0) ---
-    if is_1h_scan_window:
+    # FIX: Strict Gemini HIGH Risk Entry Block
+    if gemini_risk == "HIGH":
+        audit_logs.append("🛡️ GEMINI HIGH RISK SHIELD ACTIVE: Blocking all new trade entries!")
+        available_slots = 0
+
+    # --- 1-HOUR ENTRY SCANNER ---
+    if is_1h_scan_window and available_slots > 0:
         state["last_scan_timestamp"] = now_ts
         audit_logs.append(f"⏰ 1-Hour Candle Boundary Reached: Launching Hybrid Scanner (BTC Tilt: {effective_regime})...")
 
@@ -627,10 +590,11 @@ def execute_engine():
             except Exception:
                 continue
     else:
-        audit_logs.append("⏸️ Inter-candle run (5m interval): Position trailing stops updated. Entry scan sleeping until top of hour (1h mark).")
+        if not is_1h_scan_window:
+            audit_logs.append("⏸️ Inter-candle run (5m interval): Position trailing stops updated. Entry scan sleeping until top of hour (1h mark).")
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
-    if is_1h_scan_window:
+    if is_1h_scan_window and available_slots > 0:
         audit_logs.append(f"1h Scan Complete: Evaluated {scanned_count} assets. Found {len(market_candidates)} breakouts.")
 
     trades_executed = False
@@ -675,15 +639,12 @@ def execute_engine():
     elapsed_minutes = (now_ts - last_email_ts) / 60.0
     
     is_time_for_periodic_email = (elapsed_minutes >= 25.0)
-    
-    # ALWAYS DISPATCH EMAIL ON: 1) Trade Open, 2) Trade Close, 3) 1h Hourly Candle Scan Window, 4) Periodic (~25m)
     should_send_email = is_time_for_periodic_email or trades_executed or trade_closed_this_run or is_1h_scan_window
 
     if should_send_email:
         state["last_email_timestamp"] = now_ts
         save_state(state)
 
-        # --- COMPUTE 24-HOUR PERFORMANCE SUMMARY ---
         cutoff_ts = now_ts - 86400
         trades_24h = []
         for t in state.get("closed_trades_ledger", []):
@@ -751,17 +712,8 @@ def execute_engine():
             exit_p = float(t.get("exit_price", 0.0))
             side = t.get("side", "LONG")
             
-            if "pnl_usd" in t:
-                pnl_val = float(t["pnl_usd"])
-                roe_val = float(t.get("roe_pct", 0.0))
-            else:
-                if entry_p > 0:
-                    pnl_val = ((exit_p - entry_p) / entry_p * 15.0 * 1.0) if side == "LONG" else ((entry_p - exit_p) / entry_p * 15.0 * 1.0)
-                    roe_val = (pnl_val / 15.0) * 100
-                else:
-                    pnl_val = 0.0
-                    roe_val = 0.0
-            
+            pnl_val = float(t.get("pnl_usd", 0.0))
+            roe_val = float(t.get("roe_pct", 0.0))
             total_realized_pnl += pnl_val
 
             parsed_closed_rows.append(
@@ -874,8 +826,9 @@ def execute_engine():
                   &bull; <b>1h Unfiltered Mode:</b> Pure GC Crossover, CI &le; 62.0 (2 slots, 1x Lev, $15 Fixed Sizing)<br>
                   &bull; <b>5m Trailing Ratchet:</b> Evaluates open positions every 5m with 80%-95% Peak Profit Locks<br>
                   &bull; <b>1h Entry Boundary:</b> Restricts new scans to completed 1-hour candles<br>
+                  &bull; <b>Gemini High-Risk Entry Block:</b> Automatically halts new trades if Gemini Shield is HIGH<br>
                   &bull; <b>Directional Purge:</b> Auto-closes Longs on Red BTC / Shorts on Green BTC<br>
-                  &bull; <b>Tight Initial Risk Cap:</b> Max initial stop capped at -1.0% ROE (-$0.15 Max Loss)
+                  &bull; <b>Strict -1.0% Risk Cap:</b> Initial stop hard-capped at -1.0% ROE (-$0.15 max loss)
                 </div>
 
                 <div class="section-title">Positions per Bot (USD)</div>
