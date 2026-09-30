@@ -573,7 +573,6 @@ def execute_engine():
                 lows = [float(c["l"]) for c in candles]
                 volumes = [float(c.get("v", 0)) for c in candles]
 
-                # 1. Choppiness Index (Relaxed to baseline winning setup: CI <= 62.0)
                 ci_30m = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
                 if ci_30m > 62.0:
                     continue
@@ -589,7 +588,6 @@ def execute_engine():
                 vol_ratio = comp_vol / avg_vol if avg_vol > 0 else 1.0
                 atr = np.mean([h - l for h, l in zip(highs[-15:-1], lows[-15:-1])])
 
-                # Signal Triggers: Direct Gaussian Channel Breakouts (No ADX or Volume Gatekeepers)
                 is_green_candle = comp_close > comp_open
                 recent_red_to_green = (prev_comp_close <= prev_comp_open) and is_green_candle
                 has_upward_continuation = comp_close > prev_comp_close
@@ -641,8 +639,6 @@ def execute_engine():
             is_long = candidate["is_long"]
             
             assigned_leverage = 1
-
-            # Micro-Sizing Test Floor: Exactly $15.00 Notional Sizing per slot (~$30 Max Exposure across 2 slots)
             target_usd = 15.0
             
             decimals = sz_decimals_map.get(coin, 4)
@@ -713,24 +709,16 @@ def execute_engine():
         summary_card_html = f"""
         <div class="summary-card">
           <div class="summary-title">📊 24-Hour Performance Test Summary (30m Mode)</div>
-          <div class="summary-grid">
-            <div class="summary-item">
-              <span class="summary-label">Total Trades (24h)</span>
-              <span class="summary-val">{total_24h}</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">Win / Loss Ratio</span>
-              <span class="summary-val">{win_count}W / {loss_count}L ({win_rate_24h:.1f}%)</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">Avg Win</span>
-              <span class="summary-val win-color">+{avg_win_roe:.2f}% (${avg_win_usd:+.2f})</span>
-            </div>
-            <div class="summary-item">
-              <span class="summary-label">Avg Loss</span>
-              <span class="summary-val loss-color">{avg_loss_roe:.2f}% (${avg_loss_usd:+.2f})</span>
-            </div>
-          </div>
+          <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
+            <tr>
+              <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase;">Total Trades (24h): <b style="color: #0f172a;">{total_24h}</b></td>
+              <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase; text-align: right;">Win Ratio: <b style="color: #0f172a;">{win_count}W / {loss_count}L ({win_rate_24h:.1f}%)</b></td>
+            </tr>
+            <tr>
+              <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase;">Avg Win: <b style="color: #15803d;">+{avg_win_roe:.2f}% (${avg_win_usd:+.2f})</b></td>
+              <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase; text-align: right;">Avg Loss: <b style="color: #b91c1c;">{avg_loss_roe:.2f}% (${avg_loss_usd:+.2f})</b></td>
+            </tr>
+          </table>
           <div class="summary-net">
             Net 24H Realized P&L: <span class="{'win-color' if net_24h_usd >= 0 else 'loss-color'}">${net_24h_usd:+.2f}</span>
           </div>
@@ -739,7 +727,7 @@ def execute_engine():
 
         audit_section = ""
         if VERBOSE_TEST_MODE:
-            audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
+            audit_rows = "".join([f"<tr><td style='padding: 6px 8px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 10px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
             audit_section = f"""
             <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log</div>
             <div class="table-responsive">
@@ -774,23 +762,21 @@ def execute_engine():
 
             parsed_closed_rows.append(
                 f"<tr>"
-                f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['coin']} <span style='font-size: 10px; color: {'#2e7d32' if side == 'LONG' else '#c62828'};'>({side})</span></td>"
-                f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(entry_p, 5)}</td>"
-                f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(exit_p, 5)}</td>"
-                f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: bold; color: {'#2e7d32' if pnl_val >= 0 else '#c62828'};'>${pnl_val:+.2f} ({roe_val:+.2f}%)</td>"
-                f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: #b45309;'>{t['exit_reason']}</td>"
-                f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 10px;'>{t['timestamp']}</td>"
+                f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['coin']}<br><span style='font-size: 10px; color: {'#2e7d32' if side == 'LONG' else '#c62828'}; font-weight: 600;'>({side})</span></td>"
+                f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 10px;'>${round_sig_figs(entry_p, 5)}<br>&rarr; ${round_sig_figs(exit_p, 5)}</td>"
+                f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: {'#2e7d32' if pnl_val >= 0 else '#c62828'}; font-weight: bold;'>${pnl_val:+.2f}<br><span style='font-size: 10px;'>({roe_val:+.2f}%)</span></td>"
+                f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 10px;'><span style='color: #b45309; font-weight: 600;'>{t['exit_reason']}</span><br><span style='color: #94a3b8; font-size: 9px; font-family: monospace;'>{t.get('timestamp', '')}</span></td>"
                 f"</tr>"
             )
 
-        closed_rows = "".join(parsed_closed_rows) if parsed_closed_rows else "<tr><td colspan='6' style='padding: 12px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
+        closed_rows = "".join(parsed_closed_rows) if parsed_closed_rows else "<tr><td colspan='4' style='padding: 12px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
 
         if parsed_closed_rows:
             closed_rows += f"""
             <tr style="background: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
-                <td colspan="3" style="padding: 8px 10px; text-align: right;">TOTAL REALIZED P&L:</td>
-                <td style="padding: 8px 10px; color: {'#2e7d32' if total_realized_pnl >= 0 else '#c62828'};">${total_realized_pnl:+.2f}</td>
-                <td colspan="2"></td>
+                <td colspan="2" style="padding: 6px 8px; text-align: right;">TOTAL REALIZED P&L:</td>
+                <td style="padding: 6px 8px; color: {'#2e7d32' if total_realized_pnl >= 0 else '#c62828'};">${total_realized_pnl:+.2f}</td>
+                <td></td>
             </tr>
             """
 
@@ -798,16 +784,10 @@ def execute_engine():
 
         positions_rows = "".join([
             f"<tr>"
-            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td>"
-            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}</td>"
-            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee;'>{p['leverage']}x</td>"
-            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td>"
-            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee;'>${p['collateral']:.2f}</td>"
-            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: 600; color: #0f172a;'>${p['position_usd']:.2f}</td>"
-            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td>"
-            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(p['entry'], 5)}</td>"
-            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #b45309;'>${p['stop']}</td>"
-            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td>"
+            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}<br><span style='font-size: 10px; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']} ({p['leverage']}x)</span></td>"
+            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 11px; font-weight: 600;'>${p['position_usd']:.2f}<br><span style='font-size: 9px; color: #64748b; font-weight: normal;'>Cost: ${p['collateral']:.2f}</span></td>"
+            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f}<br><span style='font-size: 10px;'>({p['roe']:+.2f}%)</span></td>"
+            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 10px;'><span style='color: #b45309; font-weight: bold; font-family: monospace;'>${p['stop']}</span><br><span style='color: #2e7d32; font-weight: 600;'>{p['status']}</span></td>"
             f"</tr>"
             for p in positions_data
         ])
@@ -819,61 +799,54 @@ def execute_engine():
             total_roe_avg = (total_pnl_sum / total_collateral_sum * 100) if total_collateral_sum > 0 else 0.0
             positions_rows += f"""
             <tr style="background: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
-                <td colspan="4" style="padding: 8px 10px; text-align: right;">TOTAL UNREALIZED:</td>
-                <td style="padding: 8px 10px;">${total_collateral_sum:.2f}</td>
-                <td style="padding: 8px 10px;">${total_position_usd_sum:.2f}</td>
-                <td style="padding: 8px 10px; color: {'#2e7d32' if total_pnl_sum >= 0 else '#c62828'};">${total_pnl_sum:+.2f} ({total_roe_avg:+.2f}%)</td>
-                <td colspan="3"></td>
+                <td style="padding: 6px 8px;">TOTAL:</td>
+                <td style="padding: 6px 8px;">${total_position_usd_sum:.2f}</td>
+                <td style="padding: 6px 8px; color: {'#2e7d32' if total_pnl_sum >= 0 else '#c62828'};">${total_pnl_sum:+.2f} ({total_roe_avg:+.2f}%)</td>
+                <td></td>
             </tr>
             """
         else:
-            positions_rows = "<tr><td colspan='10' style='padding: 12px; text-align: center; color: #666;'>No active positions found.</td></tr>"
+            positions_rows = "<tr><td colspan='4' style='padding: 12px; text-align: center; color: #666;'>No active positions found.</td></tr>"
 
         html_content = f"""
         <html>
           <head>
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
-              body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 12px; color: #333; }}
-              .container {{ max-width: 950px; width: 100%; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); box-sizing: border-box; }}
-              .header {{ background: #0f172a; color: #ffffff; padding: 16px 20px; }}
-              .header h2 {{ margin: 0; font-size: 16px; font-weight: 600; letter-spacing: 0.5px; }}
-              .header p {{ margin: 4px 0 0; font-size: 11px; color: #94a3b8; }}
-              .content {{ padding: 16px; }}
-              .net-worth-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 16px; margin-bottom: 16px; }}
-              .net-worth-title {{ font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 4px; letter-spacing: 0.5px; }}
-              .net-worth-value {{ font-size: 24px; font-weight: 700; color: #0f172a; }}
-              .net-worth-subtitle {{ font-size: 11px; color: #64748b; margin-top: 6px; }}
+              body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 8px; color: #333; }}
+              .container {{ max-width: 600px; width: 100%; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); box-sizing: border-box; }}
+              .header {{ background: #0f172a; color: #ffffff; padding: 14px 16px; }}
+              .header h2 {{ margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.5px; }}
+              .header p {{ margin: 3px 0 0; font-size: 11px; color: #94a3b8; }}
+              .content {{ padding: 12px; }}
+              .net-worth-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 14px; margin-bottom: 12px; }}
+              .net-worth-title {{ font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 2px; letter-spacing: 0.5px; }}
+              .net-worth-value {{ font-size: 22px; font-weight: 700; color: #0f172a; }}
+              .net-worth-subtitle {{ font-size: 10px; color: #64748b; margin-top: 4px; }}
               
-              .summary-card {{ background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 14px 16px; margin-bottom: 16px; }}
-              .summary-title {{ font-size: 12px; font-weight: 700; color: #15803d; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px; }}
-              .summary-grid {{ display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; }}
-              .summary-item {{ flex: 1 1 40%; min-width: 130px; background: #ffffff; padding: 8px 10px; border-radius: 4px; border: 1px solid #dcfce7; }}
-              .summary-label {{ font-size: 10px; color: #166534; display: block; text-transform: uppercase; font-weight: 600; }}
-              .summary-val {{ font-size: 13px; font-weight: 700; color: #0f172a; }}
-              .summary-net {{ font-size: 12px; font-weight: 700; color: #166534; border-top: 1px dashed #bbf7d0; padding-top: 8px; margin-top: 4px; }}
+              .summary-card {{ background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px; margin-bottom: 12px; }}
+              .summary-title {{ font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }}
+              .summary-net {{ font-size: 11px; font-weight: 700; color: #166534; border-top: 1px dashed #bbf7d0; padding-top: 6px; margin-top: 2px; }}
               
               .win-color {{ color: #15803d !important; }}
               .loss-color {{ color: #b91c1c !important; }}
 
-              .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; font-size: 11px; color: #334155; line-height: 1.5; }}
-              .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 11px; color: #0f172a; letter-spacing: 0.5px; }}
-              .section-title {{ font-size: 12px; text-transform: uppercase; color: #475569; margin: 18px 0 6px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; font-weight: 600; letter-spacing: 0.5px; }}
-              .table-responsive {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 12px; }}
+              .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; font-size: 10px; color: #334155; line-height: 1.4; }}
+              .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a; letter-spacing: 0.5px; }}
+              .section-title {{ font-size: 11px; text-transform: uppercase; color: #475569; margin: 14px 0 6px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; font-weight: 600; letter-spacing: 0.5px; }}
+              .table-responsive {{ width: 100%; overflow-x: auto; margin-bottom: 12px; }}
               table {{ width: 100%; border-collapse: collapse; font-size: 11px; }}
-              th {{ background: #f1f5f9; color: #475569; text-align: left; padding: 8px 10px; font-weight: 600; border-bottom: 2px solid #cbd5e1; white-space: nowrap; }}
-              td {{ padding: 8px 10px; border-bottom: 1px solid #f1f5f9; white-space: nowrap; }}
-              .footer {{ text-align: center; font-size: 10px; color: #94a3b8; padding: 12px; background: #f8fafc; border-top: 1px solid #e2e8f0; }}
+              th {{ background: #f1f5f9; color: #475569; text-align: left; padding: 6px 8px; font-weight: 600; border-bottom: 2px solid #cbd5e1; font-size: 10px; }}
+              td {{ padding: 6px 8px; border-bottom: 1px solid #f1f5f9; }}
+              .footer {{ text-align: center; font-size: 9px; color: #94a3b8; padding: 10px; background: #f8fafc; border-top: 1px solid #e2e8f0; }}
 
               @media only screen and (max-width: 600px) {{
-                body {{ padding: 4px !important; }}
+                body {{ padding: 2px !important; }}
                 .content {{ padding: 8px !important; }}
-                .header {{ padding: 12px !important; }}
-                .net-worth-card {{ padding: 10px !important; }}
-                .net-worth-value {{ font-size: 20px !important; }}
-                .summary-item {{ flex: 1 1 100% !important; }}
+                .header {{ padding: 10px !important; }}
+                .net-worth-value {{ font-size: 18px !important; }}
                 table {{ font-size: 10px !important; }}
-                th, td {{ padding: 6px 6px !important; }}
+                th, td {{ padding: 5px 4px !important; }}
               }}
             </style>
           </head>
@@ -906,16 +879,10 @@ def execute_engine():
                   <table>
                     <thead>
                       <tr>
-                        <th>Bot Title</th>
-                        <th>Asset</th>
-                        <th>Leverage</th>
-                        <th>Side</th>
-                        <th>Collateral USD</th>
-                        <th>Position USD</th>
-                        <th>Unrealized P&L USD</th>
-                        <th>Buy Price</th>
-                        <th>Stop Price</th>
-                        <th>Bot Status</th>
+                        <th style="width: 25%;">Asset</th>
+                        <th style="width: 20%;">Val ($)</th>
+                        <th style="width: 25%;">P&L (ROE)</th>
+                        <th style="width: 30%;">Stop / Status</th>
                       </tr>
                     </thead>
                     <tbody>{positions_rows}</tbody>
@@ -927,12 +894,10 @@ def execute_engine():
                   <table>
                     <thead>
                       <tr>
-                        <th>Asset</th>
-                        <th>Entry Price</th>
-                        <th>Exit Price</th>
-                        <th>Realized P&L USD ($)</th>
-                        <th>Exit Reason / Catalyst</th>
-                        <th>Timestamp</th>
+                        <th style="width: 22%;">Asset</th>
+                        <th style="width: 28%;">Entry &rarr; Exit</th>
+                        <th style="width: 22%;">Realized</th>
+                        <th style="width: 28%;">Reason</th>
                       </tr>
                     </thead>
                     <tbody>{closed_rows}</tbody>
