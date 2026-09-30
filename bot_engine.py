@@ -304,12 +304,10 @@ def execute_engine():
             should_exit = False
             exit_reason = ""
 
-            # Check Hard Initial Stop (-1.2% ROE max loss cap)
             if current_roe <= -0.012:
                 should_exit = True
                 exit_reason = f"🛡️ Hard Loss Cap Triggered ({current_roe*100:.2f}%)"
 
-            # Check Band Invalidation
             if not should_exit:
                 try:
                     c_candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
@@ -375,13 +373,11 @@ def execute_engine():
     MAX_CRYPTO_SLOTS = 2
     available_slots = MAX_CRYPTO_SLOTS - active_count
 
-    # Unblocked Trades: Use ultra-small $10 test size on High Risk, $15 on Moderate/Low
     if gemini_risk == "HIGH":
-        base_sizing_usd = 10.0  # Ultra-small test sizing (Penny risk on chop)
+        base_sizing_usd = 10.0
     else:
-        base_sizing_usd = 15.0  # Standard micro test sizing
+        base_sizing_usd = 15.0
 
-    # --- 1-HOUR ENTRY SCANNER ---
     if is_1h_scan_window and available_slots > 0:
         state["last_scan_timestamp"] = now_ts
         audit_logs.append(f"⏰ 1-Hour Candle Boundary Reached: Scanning (BTC Tilt: {effective_regime}, Target Size: ${base_sizing_usd:.0f})...")
@@ -405,12 +401,10 @@ def execute_engine():
                 lows = [float(c["l"]) for c in candles]
                 volumes = [float(c.get("v", 0)) for c in candles]
 
-                # STRICT CHOPPINESS FILTER: Reject choppy ranging coins (CI > 58.0)
                 ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
                 if ci_1h > 58.0:
                     continue
 
-                # VOLUME EXPANSION FILTER: Require 1.1x volume surge to validate breakout
                 avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else volumes[-3]
                 comp_vol = volumes[-2]
                 vol_ratio = comp_vol / avg_vol if avg_vol > 0 else 1.0
@@ -488,7 +482,15 @@ def execute_engine():
         save_state(state)
 
         cutoff_ts = now_ts - 86400
-        trades_24h = [t for t in state.get("closed_trades_ledger", []) if time.mktime(time.strptime(t.get("timestamp", timestamp), "%Y-%m-%d %H:%M:%S")) >= cutoff_ts]
+        trades_24h = []
+        for t in state.get("closed_trades_ledger", []):
+            t_str = str(t.get("timestamp", timestamp)).replace("Z", "").replace("T", " ")
+            try:
+                t_ts = time.mktime(time.strptime(t_str, "%Y-%m-%d %H:%M:%S"))
+                if t_ts >= cutoff_ts:
+                    trades_24h.append(t)
+            except Exception:
+                trades_24h.append(t)
 
         total_24h = len(trades_24h)
         wins_24h = [t for t in trades_24h if float(t.get("pnl_usd", 0)) > 0]
@@ -505,6 +507,8 @@ def execute_engine():
         avg_loss_usd = (sum(float(t.get("pnl_usd", 0)) for t in losses_24h) / loss_count) if loss_count > 0 else 0.0
         
         net_24h_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_24h)
+
+        text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/2"
 
         summary_card_html = f"""
         <div class="summary-card">
