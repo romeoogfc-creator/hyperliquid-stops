@@ -313,7 +313,6 @@ def execute_engine():
     open_orders = api_retry(info.frontend_open_orders, ACCOUNT_ADDRESS)
     now_ms = int(now_ts * 1000)
 
-    # --- 30-MINUTE CANDLE BOUNDARY CHECK ---
     current_gm_min = time.gmtime(now_ts).tm_min
     last_scan_ts = float(state.get("last_scan_timestamp", 0))
     minutes_since_last_scan = (now_ts - last_scan_ts) / 60.0
@@ -325,7 +324,6 @@ def execute_engine():
     btc_regime, btc_change_pct = get_btc_regime(info, now_ms)
     audit_logs.append(f"BTC Directional Shield: Daily Candle is {btc_regime} ({btc_change_pct:+.2f}%).")
 
-    # Map NEUTRAL regime to directional bias so scanning is never blocked
     effective_regime = btc_regime
     if effective_regime == "NEUTRAL":
         effective_regime = "GREEN" if btc_change_pct >= 0 else "RED"
@@ -362,7 +360,6 @@ def execute_engine():
     fallback_val = float(margin_summary.get("accountValue", 0.0))
     account_value = total_spot_net_worth if total_spot_net_worth > 0 else fallback_val
 
-    # Portfolio Drawdown Circuit Breaker
     if asset_positions:
         for pos_item in asset_positions:
             pos = pos_item.get("position", {})
@@ -395,7 +392,6 @@ def execute_engine():
         save_state(state)
         return
 
-    # Active Position Trailing Stop Management
     if asset_positions:
         for pos_item in asset_positions:
             pos = pos_item.get("position", {})
@@ -411,7 +407,6 @@ def execute_engine():
             unrealized_pnl = float(pos.get("unrealizedPnl", 0))
             pos_equity = margin_used + unrealized_pnl
 
-            # Strict Directional Purge
             if btc_regime == "RED" and is_long:
                 try:
                     audit_logs.append(f"🛑 DIRECTIONAL PURGE: Closing LONG on {coin} because BTC Daily is RED.")
@@ -591,7 +586,6 @@ def execute_engine():
     MAX_CRYPTO_SLOTS = 2
     available_slots = MAX_CRYPTO_SLOTS - active_count
 
-    # ALWAYS SCAN ON THE 30M CANDLE BOUNDARY (Never skip scanning even if BTC is NEUTRAL)
     if is_30m_scan_window:
         state["last_scan_timestamp"] = now_ts
         audit_logs.append(f"⏰ 30-Minute Candle Boundary Reached: Launching All-Weather Scanner (BTC Tilt: {effective_regime})...")
@@ -753,11 +747,11 @@ def execute_engine():
 
         audit_section = ""
         if VERBOSE_TEST_MODE:
-            audit_rows = "".join([f"<tr><td style='padding: 5px 6px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 10px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
+            audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
             audit_section = f"""
             <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log</div>
-            <div class="table-responsive" style="overflow-x: hidden;">
-              <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
+            <div class="table-responsive">
+              <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%;">
                 <tbody>{audit_rows}</tbody>
               </table>
             </div>
@@ -788,22 +782,23 @@ def execute_engine():
 
             parsed_closed_rows.append(
                 f"<tr>"
-                f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['coin']}<br><span style='font-size: 9px; color: {'#2e7d32' if side == 'LONG' else '#c62828'};'>{side}</span></td>"
-                f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 9px;'>${round_sig_figs(entry_p, 5)}<br>&rarr; ${round_sig_figs(exit_p, 5)}</td>"
-                f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; color: {'#2e7d32' if pnl_val >= 0 else '#c62828'}; font-weight: bold;'>${pnl_val:+.2f}<br><span style='font-size: 9px;'>({roe_val:+.2f}%)</span></td>"
-                f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; color: #b45309; font-size: 9px;'>{t['exit_reason']}</td>"
+                f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['coin']} <span style='font-size: 10px; color: {'#2e7d32' if side == 'LONG' else '#c62828'};'>({side})</span></td>"
+                f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(entry_p, 5)}</td>"
+                f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(exit_p, 5)}</td>"
+                f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: bold; color: {'#2e7d32' if pnl_val >= 0 else '#c62828'};'>${pnl_val:+.2f} ({roe_val:+.2f}%)</td>"
+                f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: #b45309;'>{t['exit_reason']}</td>"
+                f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 10px;'>{t['timestamp']}</td>"
                 f"</tr>"
             )
 
-        closed_rows = "".join(parsed_closed_rows) if parsed_closed_rows else "<tr><td colspan='4' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
+        closed_rows = "".join(parsed_closed_rows) if parsed_closed_rows else "<tr><td colspan='6' style='padding: 12px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
 
         if parsed_closed_rows:
             closed_rows += f"""
             <tr style="background: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
-                <td style="padding: 6px 4px;">TOTAL:</td>
-                <td style="padding: 6px 4px;"></td>
-                <td style="padding: 6px 4px; color: {'#2e7d32' if total_realized_pnl >= 0 else '#c62828'};">${total_realized_pnl:+.2f}</td>
-                <td></td>
+                <td colspan="3" style="padding: 8px 10px; text-align: right;">TOTAL REALIZED P&L:</td>
+                <td style="padding: 8px 10px; color: {'#2e7d32' if total_realized_pnl >= 0 else '#c62828'};">${total_realized_pnl:+.2f}</td>
+                <td colspan="2"></td>
             </tr>
             """
 
@@ -811,10 +806,16 @@ def execute_engine():
 
         positions_rows = "".join([
             f"<tr>"
-            f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}<br><span style='color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-size: 9px;'>{p['side']} ({p['leverage']}x)</span></td>"
-            f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; font-size: 10px;'>${p['position_usd']:.0f}</td>"
-            f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f}<br><span style='font-size: 9px;'>({p['roe']:+.2f}%)</span></td>"
-            f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; font-family: monospace;'><span style='color: #b45309; font-weight: bold;'>${p['stop']}</span><br><span style='color: #2e7d32; font-size: 9px;'>{p['status']}</span></td>"
+            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td>"
+            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}</td>"
+            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee;'>{p['leverage']}x</td>"
+            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td>"
+            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee;'>${p['collateral']:.2f}</td>"
+            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: 600; color: #0f172a;'>${p['position_usd']:.2f}</td>"
+            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td>"
+            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(p['entry'], 5)}</td>"
+            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #b45309;'>${p['stop']}</td>"
+            f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td>"
             f"</tr>"
             for p in positions_data
         ])
@@ -826,38 +827,49 @@ def execute_engine():
             total_roe_avg = (total_pnl_sum / total_collateral_sum * 100) if total_collateral_sum > 0 else 0.0
             positions_rows += f"""
             <tr style="background: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
-                <td style="padding: 6px 4px;">TOTAL:</td>
-                <td style="padding: 6px 4px;">${total_position_usd_sum:.0f}</td>
-                <td style="padding: 6px 4px; color: {'#2e7d32' if total_pnl_sum >= 0 else '#c62828'};">${total_pnl_sum:+.2f} ({total_roe_avg:+.2f}%)</td>
-                <td></td>
+                <td colspan="4" style="padding: 8px 10px; text-align: right;">TOTAL UNREALIZED:</td>
+                <td style="padding: 8px 10px;">${total_collateral_sum:.2f}</td>
+                <td style="padding: 8px 10px;">${total_position_usd_sum:.2f}</td>
+                <td style="padding: 8px 10px; color: {'#2e7d32' if total_pnl_sum >= 0 else '#c62828'};">${total_pnl_sum:+.2f} ({total_roe_avg:+.2f}%)</td>
+                <td colspan="3"></td>
             </tr>
             """
         else:
-            positions_rows = "<tr><td colspan='4' style='padding: 12px; text-align: center; color: #666;'>No active positions found.</td></tr>"
+            positions_rows = "<tr><td colspan='10' style='padding: 12px; text-align: center; color: #666;'>No active positions found.</td></tr>"
 
         html_content = f"""
         <html>
           <head>
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <style>
-              body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 4px; color: #333; }}
-              .container {{ max-width: 100%; width: 100%; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); box-sizing: border-box; }}
-              .header {{ background: #0f172a; color: #ffffff; padding: 10px 12px; }}
-              .header h2 {{ margin: 0; font-size: 14px; font-weight: 600; }}
-              .header p {{ margin: 2px 0 0; font-size: 10px; color: #94a3b8; }}
-              .content {{ padding: 8px; }}
-              .net-worth-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 12px; }}
-              .net-worth-title {{ font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 2px; }}
-              .net-worth-value {{ font-size: 20px; font-weight: 700; color: #0f172a; }}
-              .net-worth-subtitle {{ font-size: 10px; color: #64748b; margin-top: 4px; }}
-              .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; margin-bottom: 12px; font-size: 10px; color: #334155; line-height: 1.4; }}
-              .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 3px; font-size: 10px; color: #0f172a; }}
-              .section-title {{ font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 4px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 2px; font-weight: 600; }}
-              .table-responsive {{ width: 100%; overflow: hidden; margin-bottom: 10px; }}
-              table {{ width: 100%; border-collapse: collapse; font-size: 10px; table-layout: fixed; }}
-              th {{ background: #f1f5f9; color: #475569; text-align: left; padding: 5px 4px; font-weight: 600; border-bottom: 2px solid #cbd5e1; font-size: 10px; }}
-              td {{ padding: 5px 4px; word-wrap: break-word; overflow-wrap: break-word; }}
-              .footer {{ text-align: center; font-size: 9px; color: #94a3b8; padding: 8px; background: #f8fafc; border-top: 1px solid #e2e8f0; }}
+              body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 12px; color: #333; }}
+              .container {{ max-width: 950px; width: 100%; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); box-sizing: border-box; }}
+              .header {{ background: #0f172a; color: #ffffff; padding: 16px 20px; }}
+              .header h2 {{ margin: 0; font-size: 16px; font-weight: 600; letter-spacing: 0.5px; }}
+              .header p {{ margin: 4px 0 0; font-size: 11px; color: #94a3b8; }}
+              .content {{ padding: 16px; }}
+              .net-worth-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px 16px; margin-bottom: 16px; }}
+              .net-worth-title {{ font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 4px; letter-spacing: 0.5px; }}
+              .net-worth-value {{ font-size: 24px; font-weight: 700; color: #0f172a; }}
+              .net-worth-subtitle {{ font-size: 11px; color: #64748b; margin-top: 6px; }}
+              .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; font-size: 11px; color: #334155; line-height: 1.5; }}
+              .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 11px; color: #0f172a; letter-spacing: 0.5px; }}
+              .section-title {{ font-size: 12px; text-transform: uppercase; color: #475569; margin: 18px 0 6px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; font-weight: 600; letter-spacing: 0.5px; }}
+              .table-responsive {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 12px; }}
+              table {{ width: 100%; border-collapse: collapse; font-size: 11px; }}
+              th {{ background: #f1f5f9; color: #475569; text-align: left; padding: 8px 10px; font-weight: 600; border-bottom: 2px solid #cbd5e1; white-space: nowrap; }}
+              td {{ padding: 8px 10px; border-bottom: 1px solid #f1f5f9; white-space: nowrap; }}
+              .footer {{ text-align: center; font-size: 10px; color: #94a3b8; padding: 12px; background: #f8fafc; border-top: 1px solid #e2e8f0; }}
+
+              @media only screen and (max-width: 600px) {{
+                body {{ padding: 4px !important; }}
+                .content {{ padding: 8px !important; }}
+                .header {{ padding: 12px !important; }}
+                .net-worth-card {{ padding: 10px !important; }}
+                .net-worth-value {{ font-size: 20px !important; }}
+                table {{ font-size: 10px !important; }}
+                th, td {{ padding: 6px 6px !important; }}
+              }}
             </style>
           </head>
           <body>
@@ -882,30 +894,38 @@ def execute_engine():
                   &bull; <b>Tight Initial Risk Cap:</b> Capped at -1.0% ROE
                 </div>
 
-                <div class="section-title">Active Positions</div>
+                <div class="section-title">Positions per Bot (USD)</div>
                 <div class="table-responsive">
-                  <table style="width: 100%;">
+                  <table>
                     <thead>
                       <tr>
-                        <th style="width: 22%;">Asset</th>
-                        <th style="width: 20%;">Val ($)</th>
-                        <th style="width: 28%;">P&L (ROE)</th>
-                        <th style="width: 30%;">Stop / Status</th>
+                        <th>Bot Title</th>
+                        <th>Asset</th>
+                        <th>Leverage</th>
+                        <th>Side</th>
+                        <th>Collateral USD</th>
+                        <th>Position USD</th>
+                        <th>Unrealized P&L USD</th>
+                        <th>Buy Price</th>
+                        <th>Stop Price</th>
+                        <th>Bot Status</th>
                       </tr>
                     </thead>
                     <tbody>{positions_rows}</tbody>
                   </table>
                 </div>
 
-                <div class="section-title">Recently Closed Trades</div>
+                <div class="section-title">Recently Closed Trades & Exit Telemetry</div>
                 <div class="table-responsive">
-                  <table style="width: 100%;">
+                  <table>
                     <thead>
                       <tr>
-                        <th style="width: 20%;">Asset</th>
-                        <th style="width: 30%;">Entry &rarr; Exit</th>
-                        <th style="width: 25%;">Realized</th>
-                        <th style="width: 25%;">Reason</th>
+                        <th>Asset</th>
+                        <th>Entry Price</th>
+                        <th>Exit Price</th>
+                        <th>Realized P&L USD ($)</th>
+                        <th>Exit Reason / Catalyst</th>
+                        <th>Timestamp</th>
                       </tr>
                     </thead>
                     <tbody>{closed_rows}</tbody>
