@@ -142,51 +142,56 @@ def calculate_atr(highs, lows, closes, period=14):
 
 def calculate_stock_stop_price(entry_px, is_long, current_px, vol_ratio=1.0, peak_roe=0.0):
     """
-    Ultra-Sniper Profit Lock Ratchet Ladder for Equities (+0.25% to +100%+)
+    Ultra-Sniper Trailing Profit Lock Ladder for Equities with Parabolic Moonshot Breathing Room (+0.25% to +300%+).
     """
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
         roe = (entry_px - current_px) / entry_px
 
-    leash_status = "Tight Stop (-1.0%)"
+    leash_status = "Tight Stop (-0.8%)"
     
-    # --- ULTRA-SNIPER PROFIT LADDER ---
-    if peak_roe >= 0.30:  # +30%+ Parabolic
-        target_floor_roe = max(peak_roe - 0.005, peak_roe * 0.98)
-        leash_status = f"🌌 Parabolic 98% [{peak_roe*100:.1f}% -> +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.15:  # +15%
-        target_floor_roe = max(peak_roe - 0.010, peak_roe * 0.95)
-        leash_status = f"🚀 Super Moon [{peak_roe*100:.1f}% -> +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.05:  # +5%
-        target_floor_roe = max(peak_roe - 0.020, peak_roe * 0.90)
-        leash_status = f"🌕 Moon Trail [{peak_roe*100:.1f}% -> +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.020:  # +2.0%
-        target_floor_roe = peak_roe - 0.003
-        leash_status = f"⚡ Mega Lock [{peak_roe*100:.2f}% -> +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.010:  # +1.0%
-        target_floor_roe = peak_roe - 0.0015
-        leash_status = f"🚀 Ultra Lock [{peak_roe*100:.2f}% -> +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.008:  # +0.8%
-        target_floor_roe = 0.0065
-        leash_status = f"📈 80% Lock [{peak_roe*100:.2f}% -> +0.65%]"
-    elif peak_roe >= 0.006:  # +0.6%
-        target_floor_roe = 0.0045
-        leash_status = f"🎯 60% Lock [{peak_roe*100:.2f}% -> +0.45%]"
-    elif peak_roe >= 0.004:  # +0.4%
-        target_floor_roe = 0.0025
-        leash_status = f"🔒 40% Lock [{peak_roe*100:.2f}% -> +0.25%]"
-    elif peak_roe >= 0.0025:  # +0.25%
+    # --- PARABOLIC MOONSHOT LADDER (+100% to +300%+) WITH BREATHING ROOM ---
+    if peak_roe >= 3.00:  # +300%+ Galactic Moonshot
+        target_floor_roe = max(peak_roe * 0.92, peak_roe - 0.25)  # 92% lock or max 25% ROE breathing room
+        leash_status = f"🌌 Galactic Moon 92% [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
+    elif peak_roe >= 1.00:  # +100%+ Super Moonshot
+        target_floor_roe = max(peak_roe * 0.90, peak_roe - 0.12)  # 90% lock or max 12% ROE breathing room
+        leash_status = f"🌕 Super Moon 90% [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
+    elif peak_roe >= 0.50:  # +50%+ Mega Runner
+        target_floor_roe = max(peak_roe * 0.88, peak_roe - 0.08)  # 88% lock or max 8% ROE breathing room
+        leash_status = f"🚀 Mega Runner 88% [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
+    elif peak_roe >= 0.20:  # +20%+ Parabolic Runner
+        target_floor_roe = max(peak_roe * 0.85, peak_roe - 0.04)  # 85% lock or max 4% ROE breathing room
+        leash_status = f"⚡ Parabolic 85% [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
+    elif peak_roe >= 0.08:  # +8%+ Strong Trend
+        target_floor_roe = peak_roe * 0.82
+        leash_status = f"📈 Trend Lock 82% [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
+    elif peak_roe >= 0.035:  # +3.5%+ Runner
+        target_floor_roe = max(0.025, peak_roe * 0.80)
+        leash_status = f"🎯 80% Peak Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+    elif peak_roe >= 0.020:  # +2.0%+ Scalp
+        target_floor_roe = max(0.015, peak_roe * 0.75)
+        leash_status = f"🔒 75% Peak Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+    elif peak_roe >= 0.010:  # +1.0% Winner
+        target_floor_roe = 0.0075
+        leash_status = f"⚡ Winner Lock [{peak_roe*100:.2f}% -> +0.75% Floor]"
+    elif peak_roe >= 0.005:  # +0.50% Micro Breakout
+        target_floor_roe = 0.0035
+        leash_status = f"🔒 Micro Lock [{peak_roe*100:.2f}% -> +0.35% Floor]"
+    elif peak_roe >= 0.0025:  # +0.25% Scalp Scratch
         target_floor_roe = 0.0010
-        leash_status = "🛡️ Micro Lock (+0.10%)"
+        leash_status = "🛡️ Scratch Lock (+0.10% Floor)"
     else:
-        target_floor_roe = -0.010
+        # Ultra-tight loss protection (-0.80% max initial loss)
+        target_floor_roe = -0.008
 
+    # Volume Stall Protection
     if vol_ratio < 0.85 and roe >= 0.003:
         stall_floor = max(0.001, roe - 0.0005)
         if stall_floor > target_floor_roe:
             target_floor_roe = stall_floor
-            leash_status = f"🔒 Vol Stall [{roe*100:.2f}% ROE]"
+            leash_status = f"🔒 Volume Stall Tighten [{roe*100:.2f}% ROE]"
 
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
@@ -381,7 +386,6 @@ def execute_stock_engine():
         ci_pos = 50.0
         vol_ratio = 1.0
 
-        # --- HOLE #1 FIX: INTRADAY 5M WICK & REVERSAL SCAN FOR ACTIVE POSITIONS ---
         try:
             start_date_5m = (datetime.now() - timedelta(days=2)).strftime('%Y-%m-%d')
             bar_res = requests.get(f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=5Min&limit=20&feed=iex&start={start_date_5m}", headers=HEADERS)
@@ -394,7 +398,6 @@ def execute_stock_engine():
                     m5_opens = [float(b["o"]) for b in b_list]
                     m5_vols = [float(b["v"]) for b in b_list]
 
-                    # Extract true intraday Peak ROE from 5m wicks over the last 30 minutes
                     if is_long and m5_highs:
                         candle_peak_roe = (max(m5_highs[-6:]) - entry_px) / entry_px
                         current_roe = max(current_roe, candle_peak_roe)
@@ -405,7 +408,6 @@ def execute_stock_engine():
                     vol_ratio = m5_vols[-1] / np.mean(m5_vols[:-1]) if len(m5_vols) > 1 and np.mean(m5_vols[:-1]) > 0 else 1.0
                     ci_pos = calculate_choppiness_index(m5_highs, m5_lows, m5_closes)
 
-                    # HOLE #3 FIX: ACTIVE VOLUME COLLAPSE TAKE-PROFIT
                     if vol_ratio < 0.75 and current_roe >= 0.0035:
                         audit_logs.append(f"⚡ VOL STALL PROFIT TAKE: Closing {symbol} @ {current_roe*100:+.2f}% ROE due to volume collapse ({vol_ratio:.2f}x).")
                         close_side = "sell" if is_long else "buy"
@@ -418,7 +420,6 @@ def execute_stock_engine():
                         })
                         continue
 
-                    # HOLE #4 FIX: LOWER WICK REVERSAL EXIT (SHORT DEFENSE)
                     last_c, last_o = m5_closes[-1], m5_opens[-1]
                     last_h, last_l = m5_highs[-1], m5_lows[-1]
                     c_range = last_h - last_l
@@ -473,7 +474,7 @@ def execute_stock_engine():
         prev_peak = current_active_cache.get(symbol, {}).get("peak_roe", current_roe)
         peak_roe = max(current_roe, prev_peak)
 
-        prev_best_floor = current_active_cache.get(symbol, {}).get("best_target_floor_roe", -0.010)
+        prev_best_floor = current_active_cache.get(symbol, {}).get("best_target_floor_roe", -0.008)
         prev_best_stop = current_active_cache.get(symbol, {}).get("best_stop_px", None)
 
         stop_px_raw, current_roe, target_floor_roe, leash_status = calculate_stock_stop_price(
@@ -500,7 +501,7 @@ def execute_stock_engine():
         }
 
         if should_exit:
-            reason = f"🎯 Profit Lock (+{current_roe*100:.2f}%)" if current_roe >= 0 else f"🛡️ Dynamic Stop Loss ({current_roe*100:.2f}%)"
+            reason = f"🎯 Profit Lock (+{current_roe*100:.2f}%)" if current_roe >= 0 else f"🛡️ Tight Stop Loss ({current_roe*100:.2f}%)"
             audit_logs.append(f"EXIT TRIGGERED on {symbol} at {current_roe*100:+.2f}% ROE (Peak: {peak_roe*100:+.2f}%, VolRatio: {vol_ratio:.2f}). {reason} - securing bag!")
             close_side = "sell" if is_long else "buy"
             realized_pnl = (current_px - entry_px) * qty if is_long else (entry_px - current_px) * qty
@@ -715,11 +716,11 @@ def execute_stock_engine():
 
     audit_section = ""
     if VERBOSE_TEST_MODE:
-        audit_rows = "".join([f"<tr><td style='padding: 5px 6px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 10px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
+        audit_rows = "".join([f"<tr><td style='padding: 6px 8px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 10px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Pure Quantitative Sniper Engine)</div>
-        <div class="table-responsive" style="overflow-x: hidden;">
-          <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log</div>
+        <div class="table-responsive">
+          <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%;">
             <tbody>{audit_rows}</tbody>
           </table>
         </div>
@@ -728,22 +729,22 @@ def execute_stock_engine():
     closed_ledger = state.get("closed_trades_ledger", [])
     closed_rows = "".join([
         f"<tr>"
-        f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['symbol']}</td>"
-        f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 9px;'>${round_sig_figs(t.get('entry_price', 0), 5)}<br>&rarr; ${round_sig_figs(t.get('exit_price', 0), 5)}</td>"
-        f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; color: {'#2e7d32' if t.get('realized_pnl', 0) >= 0 else '#c62828'}; font-weight: bold;'>${t.get('realized_pnl', 0):+.2f}</td>"
-        f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; color: #b45309; font-size: 9px;'>{t['exit_reason']}</td>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['symbol']}</td>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 10px;'>${round_sig_figs(t.get('entry_price', 0), 5)}<br>&rarr; ${round_sig_figs(t.get('exit_price', 0), 5)}</td>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: {'#2e7d32' if t.get('realized_pnl', 0) >= 0 else '#c62828'}; font-weight: bold;'>${t.get('realized_pnl', 0):+.2f}</td>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: #b45309; font-size: 10px;'>{t['exit_reason']}</td>"
         f"</tr>"
         for t in closed_ledger[:5]
-    ]) if closed_ledger else "<tr><td colspan='4' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
+    ]) if closed_ledger else "<tr><td colspan='4' style='padding: 12px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
 
     text_fallback = f"TR-GC-Equities-LS-01 | Pure Quantitative Sniper\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Total Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
     positions_rows = "".join([
         f"<tr>"
-        f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['symbol']}<br><span style='color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-size: 9px;'>{p['side']}</span></td>"
-        f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; font-size: 10px;'>${p['market_value']:.0f}</td>"
-        f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f}<br><span style='font-size: 9px;'>({p['roe']:+.2f}%)</span></td>"
-        f"<td style='padding: 6px 4px; border-bottom: 1px solid #eee; font-family: monospace;'><span style='color: #b45309; font-weight: bold;'>${p['stop']}</span><br><span style='color: #2e7d32; font-size: 9px;'>{p['status']}</span></td>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['symbol']}<br><span style='color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-size: 10px; font-weight: 600;'>{p['side']}</span></td>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 11px; font-weight: 600;'>${p['market_value']:.0f}</td>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f}<br><span style='font-size: 10px;'>({p['roe']:+.2f}%)</span></td>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 10px;'><span style='color: #b45309; font-weight: bold; font-family: monospace;'>${p['stop']}</span><br><span style='color: #2e7d32; font-weight: 600;'>{p['status']}</span></td>"
         f"</tr>"
         for p in positions_data
     ])
@@ -755,9 +756,9 @@ def execute_stock_engine():
         total_roe_avg = (total_pnl_sum / total_cost_basis * 100) if total_cost_basis > 0 else 0.0
         positions_rows += f"""
         <tr style="background: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
-            <td style="padding: 6px 4px;">TOTAL:</td>
-            <td style="padding: 6px 4px;">${total_market_value_sum:.0f}</td>
-            <td style="padding: 6px 4px; color: {'#2e7d32' if total_pnl_sum >= 0 else '#c62828'};">${total_pnl_sum:+.2f} ({total_roe_avg:+.2f}%)</td>
+            <td style="padding: 6px 8px;">TOTAL:</td>
+            <td style="padding: 6px 8px;">${total_market_value_sum:.0f}</td>
+            <td style="padding: 6px 8px; color: {'#2e7d32' if total_pnl_sum >= 0 else '#c62828'};">${total_pnl_sum:+.2f} ({total_roe_avg:+.2f}%)</td>
             <td></td>
         </tr>
         """
@@ -769,28 +770,37 @@ def execute_stock_engine():
       <head>
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <style>
-          body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 4px; color: #333; }}
-          .container {{ max-width: 100%; width: 100%; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); box-sizing: border-box; }}
-          .header {{ background: #0f172a; color: #ffffff; padding: 10px 12px; }}
-          .header h2 {{ margin: 0; font-size: 14px; font-weight: 600; }}
-          .header p {{ margin: 2px 0 0; font-size: 10px; color: #94a3b8; }}
-          .content {{ padding: 8px; }}
-          .net-worth-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 12px; }}
-          .net-worth-title {{ font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 2px; }}
-          .net-worth-value {{ font-size: 20px; font-weight: 700; color: #0f172a; }}
-          .net-worth-subtitle {{ font-size: 10px; color: #64748b; margin-top: 4px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px; }}
+          body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 8px; color: #333; }}
+          .container {{ max-width: 600px; width: 100%; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); box-sizing: border-box; }}
+          .header {{ background: #0f172a; color: #ffffff; padding: 14px 16px; }}
+          .header h2 {{ margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.5px; }}
+          .header p {{ margin: 3px 0 0; font-size: 11px; color: #94a3b8; }}
+          .content {{ padding: 12px; }}
+          .net-worth-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 14px; margin-bottom: 12px; }}
+          .net-worth-title {{ font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 2px; letter-spacing: 0.5px; }}
+          .net-worth-value {{ font-size: 22px; font-weight: 700; color: #0f172a; }}
+          .net-worth-subtitle {{ font-size: 10px; color: #64748b; margin-top: 6px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px; }}
           
-          .pnl-badge {{ background: {'#e6f4ea' if today_total_gain >= 0 else '#fce8e6'}; color: {'#137333' if today_total_gain >= 0 else '#c5221f'}; padding: 2px 5px; border-radius: 4px; font-weight: bold; }}
-          .lifetime-badge {{ background: #f1f5f9; color: #0f172a; padding: 2px 5px; border-radius: 4px; font-weight: bold; }}
+          .pnl-badge {{ background: {'#e6f4ea' if today_total_gain >= 0 else '#fce8e6'}; color: {'#137333' if today_total_gain >= 0 else '#c5221f'}; padding: 2px 6px; border-radius: 4px; font-weight: bold; }}
+          .lifetime-badge {{ background: #f1f5f9; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-weight: bold; }}
 
-          .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 8px 10px; margin-bottom: 12px; font-size: 10px; color: #334155; line-height: 1.4; }}
-          .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 3px; font-size: 10px; color: #0f172a; }}
-          .section-title {{ font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 4px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 2px; font-weight: 600; }}
-          .table-responsive {{ width: 100%; overflow: hidden; margin-bottom: 10px; }}
-          table {{ width: 100%; border-collapse: collapse; font-size: 10px; table-layout: fixed; }}
-          th {{ background: #f1f5f9; color: #475569; text-align: left; padding: 5px 4px; font-weight: 600; border-bottom: 2px solid #cbd5e1; font-size: 10px; }}
-          td {{ padding: 5px 4px; word-wrap: break-word; overflow-wrap: break-word; }}
-          .footer {{ text-align: center; font-size: 9px; color: #94a3b8; padding: 8px; background: #f8fafc; border-top: 1px solid #e2e8f0; }}
+          .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; font-size: 10px; color: #334155; line-height: 1.4; }}
+          .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a; letter-spacing: 0.5px; }}
+          .section-title {{ font-size: 11px; text-transform: uppercase; color: #475569; margin: 14px 0 6px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; font-weight: 600; letter-spacing: 0.5px; }}
+          .table-responsive {{ width: 100%; overflow-x: auto; margin-bottom: 12px; }}
+          table {{ width: 100%; border-collapse: collapse; font-size: 11px; }}
+          th {{ background: #f1f5f9; color: #475569; text-align: left; padding: 6px 8px; font-weight: 600; border-bottom: 2px solid #cbd5e1; font-size: 10px; }}
+          td {{ padding: 6px 8px; border-bottom: 1px solid #f1f5f9; }}
+          .footer {{ text-align: center; font-size: 9px; color: #94a3b8; padding: 10px; background: #f8fafc; border-top: 1px solid #e2e8f0; }}
+
+          @media only screen and (max-width: 600px) {{
+            body {{ padding: 2px !important; }}
+            .content {{ padding: 8px !important; }}
+            .header {{ padding: 10px !important; }}
+            .net-worth-value {{ font-size: 18px !important; }}
+            table {{ font-size: 10px !important; }}
+            th, td {{ padding: 5px 4px !important; }}
+          }}
         </style>
       </head>
       <body>
@@ -816,20 +826,20 @@ def execute_stock_engine():
               &bull; <b>Regime Mismatch Guard:</b> Instantly closes positions if SPY trend flips against open exposure<br>
               &bull; <b>Portfolio Drawdown Circuit Breaker:</b> Instantly flattens 100% to cash if total open loss hits -3.5%<br>
               &bull; <b>Active Chop Purge:</b> Automatically closes positions if market Choppiness Index (CI > 60.0) turns dead<br>
-              &bull; <b>Smart Runner Volume-Adaptation:</b> Heavy volume (>=1.5x) widens trail; stalling volume (<0.8x) locks profit<br>
-              &bull; <b>Pre-Close EOD Square-Off:</b> Automatic 100% cash liquidation at 2:40 PM CT daily<br>
-              &bull; <b>Scaled Position Sizing:</b> 13% NAV allocation per slot with 5x safe limits<br>
-              &bull; <b>Asset Universe:</b> S&P 500 & Nasdaq Momentum Equities
+              &bull; <b>Parabolic Moonshot Ladder (+100%–+300%+):</b> Dynamic breathing room caps protect multi-wave runners<br>
+              &bull; <b>Ultra-Tight Initial Stop:</b> Initial hard stop capped at -0.8% ROE max loss<br>
+              &bull; <b>Smart Runner Volume-Adaptation:</b> Stalling volume (<0.85x) locks profit; volume spikes widen trail<br>
+              &bull; <b>Pre-Close EOD Square-Off:</b> Automatic 100% cash liquidation at 2:40 PM CT daily
             </div>
 
             <div class="section-title">Active Sniper Scalps</div>
             <div class="table-responsive">
-              <table style="width: 100%;">
+              <table>
                 <thead>
                   <tr>
-                    <th style="width: 22%;">Sym</th>
+                    <th style="width: 25%;">Sym</th>
                     <th style="width: 20%;">Val ($)</th>
-                    <th style="width: 28%;">P&L (ROE)</th>
+                    <th style="width: 25%;">P&L (ROE)</th>
                     <th style="width: 30%;">Stop / Status</th>
                   </tr>
                 </thead>
@@ -839,13 +849,13 @@ def execute_stock_engine():
 
             <div class="section-title">Recently Closed Trades & Exit Telemetry</div>
             <div class="table-responsive">
-              <table style="width: 100%;">
+              <table>
                 <thead>
                   <tr>
-                    <th style="width: 20%;">Sym</th>
-                    <th style="width: 30%;">Entry &rarr; Exit</th>
-                    <th style="width: 25%;">Realized</th>
-                    <th style="width: 25%;">Reason</th>
+                    <th style="width: 22%;">Sym</th>
+                    <th style="width: 28%;">Entry &rarr; Exit</th>
+                    <th style="width: 22%;">Realized</th>
+                    <th style="width: 28%;">Reason</th>
                   </tr>
                 </thead>
                 <tbody>{closed_rows}</tbody>
