@@ -350,7 +350,7 @@ def execute_engine():
                     trade_closed_this_run = True
                 except Exception as e:
                     audit_logs.append(f"Circuit breaker close failed on {coin}: {e}")
-        state["closed_trades_ledger"] = sorted(state["closed_trades_ledger"], key=lambda x: x.get("timestamp", ""), reverse=True)[:10]
+        state["closed_trades_ledger"] = sorted(state["closed_trades_ledger"], key=lambda x: x.get("timestamp", ""), reverse=True)[:20]
         save_state(state)
         return
 
@@ -535,7 +535,7 @@ def execute_engine():
                 "pnl_usd": raw_pnl, "roe_pct": roe_pct, "side": "LONG" if is_long else "SHORT",
                 "exit_reason": reason, "timestamp": timestamp
             })
-            state["closed_trades_ledger"] = sorted(state["closed_trades_ledger"], key=lambda x: x.get("timestamp", ""), reverse=True)[:10]
+            state["closed_trades_ledger"] = sorted(state["closed_trades_ledger"], key=lambda x: x.get("timestamp", ""), reverse=True)[:20]
             trade_closed_this_run = True
 
     state["active_position_cache"] = new_active_cache
@@ -683,6 +683,60 @@ def execute_engine():
         state["last_email_timestamp"] = now_ts
         save_state(state)
 
+        # --- COMPUTE 24-HOUR PERFORMANCE SUMMARY ---
+        cutoff_ts = now_ts - 86400
+        trades_24h = []
+        for t in state.get("closed_trades_ledger", []):
+            try:
+                t_ts = time.mktime(time.strptime(t.get("timestamp", ""), "%Y-%m-%d %H:%M:%S"))
+                if t_ts >= cutoff_ts:
+                    trades_24h.append(t)
+            except Exception:
+                trades_24h.append(t)
+
+        total_24h = len(trades_24h)
+        wins_24h = [t for t in trades_24h if float(t.get("pnl_usd", 0)) > 0]
+        losses_24h = [t for t in trades_24h if float(t.get("pnl_usd", 0)) <= 0]
+        
+        win_count = len(wins_24h)
+        loss_count = len(losses_24h)
+        win_rate_24h = (win_count / total_24h * 100) if total_24h > 0 else 0.0
+        
+        avg_win_roe = (sum(float(t.get("roe_pct", 0)) for t in wins_24h) / win_count) if win_count > 0 else 0.0
+        avg_win_usd = (sum(float(t.get("pnl_usd", 0)) for t in wins_24h) / win_count) if win_count > 0 else 0.0
+        
+        avg_loss_roe = (sum(float(t.get("roe_pct", 0)) for t in losses_24h) / loss_count) if loss_count > 0 else 0.0
+        avg_loss_usd = (sum(float(t.get("pnl_usd", 0)) for t in losses_24h) / loss_count) if loss_count > 0 else 0.0
+        
+        net_24h_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_24h)
+
+        summary_card_html = f"""
+        <div class="summary-card">
+          <div class="summary-title">📊 24-Hour Performance Test Summary (30m Mode)</div>
+          <div class="summary-grid">
+            <div class="summary-item">
+              <span class="summary-label">Total Trades (24h)</span>
+              <span class="summary-val">{total_24h}</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Win / Loss Ratio</span>
+              <span class="summary-val">{win_count}W / {loss_count}L ({win_rate_24h:.1f}%)</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Avg Win</span>
+              <span class="summary-val win-color">+{avg_win_roe:.2f}% (${avg_win_usd:+.2f})</span>
+            </div>
+            <div class="summary-item">
+              <span class="summary-label">Avg Loss</span>
+              <span class="summary-val loss-color">{avg_loss_roe:.2f}% (${avg_loss_usd:+.2f})</span>
+            </div>
+          </div>
+          <div class="summary-net">
+            Net 24H Realized P&L: <span class="{'win-color' if net_24h_usd >= 0 else 'loss-color'}">${net_24h_usd:+.2f}</span>
+          </div>
+        </div>
+        """
+
         audit_section = ""
         if VERBOSE_TEST_MODE:
             audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
@@ -790,6 +844,18 @@ def execute_engine():
               .net-worth-title {{ font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 4px; letter-spacing: 0.5px; }}
               .net-worth-value {{ font-size: 24px; font-weight: 700; color: #0f172a; }}
               .net-worth-subtitle {{ font-size: 11px; color: #64748b; margin-top: 6px; }}
+              
+              .summary-card {{ background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 14px 16px; margin-bottom: 16px; }}
+              .summary-title {{ font-size: 12px; font-weight: 700; color: #15803d; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px; }}
+              .summary-grid {{ display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 10px; }}
+              .summary-item {{ flex: 1 1 40%; min-width: 130px; background: #ffffff; padding: 8px 10px; border-radius: 4px; border: 1px solid #dcfce7; }}
+              .summary-label {{ font-size: 10px; color: #166534; display: block; text-transform: uppercase; font-weight: 600; }}
+              .summary-val {{ font-size: 13px; font-weight: 700; color: #0f172a; }}
+              .summary-net {{ font-size: 12px; font-weight: 700; color: #166534; border-top: 1px dashed #bbf7d0; padding-top: 8px; margin-top: 4px; }}
+              
+              .win-color {{ color: #15803d !important; }}
+              .loss-color {{ color: #b91c1c !important; }}
+
               .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; font-size: 11px; color: #334155; line-height: 1.5; }}
               .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 11px; color: #0f172a; letter-spacing: 0.5px; }}
               .section-title {{ font-size: 12px; text-transform: uppercase; color: #475569; margin: 18px 0 6px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; font-weight: 600; letter-spacing: 0.5px; }}
@@ -805,6 +871,7 @@ def execute_engine():
                 .header {{ padding: 12px !important; }}
                 .net-worth-card {{ padding: 10px !important; }}
                 .net-worth-value {{ font-size: 20px !important; }}
+                .summary-item {{ flex: 1 1 100% !important; }}
                 table {{ font-size: 10px !important; }}
                 th, td {{ padding: 6px 6px !important; }}
               }}
@@ -822,6 +889,8 @@ def execute_engine():
                   <div class="net-worth-value">USD ${account_value:.2f}</div>
                   <div class="net-worth-subtitle">Reserve: <b>${static_usdc:.2f}</b> &bull; Margin: <b>{margin_util_pct:.1f}%</b></div>
                 </div>
+
+                {summary_card_html}
 
                 <div class="rules-card">
                   <div class="rules-title">&#9989; Active Guardrails (Dual-Speed Engine)</div>
