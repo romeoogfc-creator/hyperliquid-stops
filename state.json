@@ -49,6 +49,16 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "SUSHI",
+      "entry_price": 0.28048,
+      "exit_price": 0.27609,
+      "pnl_usd": -0.162987,
+      "roe_pct": -1.5651739874500872,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udee1\ufe0f Hard Loss Cap Triggered (-1.57%)",
+      "timestamp": "2026-09-30 17:07:10"
+    },
+    {
       "coin": "kBONK",
       "entry_price": 0.003926,
       "exit_price": 0.00386,
@@ -309,19 +319,9 @@
       "timestamp": "2026-09-29 01:55:43"
     }
   ],
-  "active_position_cache": {
-    "SUSHI": {
-      "entry_px": 0.28048,
-      "current_px": 0.27857,
-      "szi": 36.3,
-      "margin": 3.371544,
-      "side": "LONG"
-    }
-  },
-  "previous_active_coins": [
-    "SUSHI"
-  ],
-  "last_run_timestamp": "2026-09-30 16:52:33",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-09-30 17:07:14",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -331,7 +331,7 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790786031.9085257,
+  "last_email_timestamp": 1790788030.7578583,
   "last_scan_timestamp": 1790786031.9085257,
   "gemini_cache": {
     "timestamp": 1790786031.9085257,
