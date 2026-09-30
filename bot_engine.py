@@ -675,7 +675,9 @@ def execute_engine():
     elapsed_minutes = (now_ts - last_email_ts) / 60.0
     
     is_time_for_periodic_email = (elapsed_minutes >= 25.0)
-    should_send_email = is_time_for_periodic_email or trades_executed or trade_closed_this_run
+    
+    # ALWAYS DISPATCH EMAIL ON: 1) Trade Open, 2) Trade Close, 3) 1h Hourly Candle Scan Window, 4) Periodic (~25m)
+    should_send_email = is_time_for_periodic_email or trades_executed or trade_closed_this_run or is_1h_scan_window
 
     if should_send_email:
         state["last_email_timestamp"] = now_ts
