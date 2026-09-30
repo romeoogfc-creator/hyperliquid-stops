@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-09-30 15:33:40",
+  "last_run_timestamp": "2026-09-30 15:46:57",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -21,10 +21,25 @@
   "previous_active_symbols": [
     "COIN",
     "HOOD",
-    "V",
-    "UNH"
+    "V"
   ],
   "closed_trades_ledger": [
+    {
+      "symbol": "HOOD",
+      "entry_price": 114.38,
+      "exit_price": 114.45,
+      "exit_reason": "\ud83d\udcc8 Trend Invalidation (Close $114.45 > Band $113.73)",
+      "realized_pnl": -7.840000000000828,
+      "timestamp": "2026-09-30 15:46:35"
+    },
+    {
+      "symbol": "COIN",
+      "entry_price": 186.016087,
+      "exit_price": 186.55,
+      "exit_reason": "\ud83d\udcc8 Trend Invalidation (Close $186.55 > Band $186.04)",
+      "realized_pnl": -36.839997000000864,
+      "timestamp": "2026-09-30 15:46:35"
+    },
     {
       "symbol": "UNH",
       "entry_price": 367.914118,
@@ -168,64 +183,35 @@
       "exit_reason": "EOD Square-Off (100% Cash Flat)",
       "realized_pnl": 165.04011600000007,
       "timestamp": "2026-09-28 19:43:59"
-    },
-    {
-      "symbol": "NVDA",
-      "entry_price": 232.2,
-      "exit_price": 229.098,
-      "exit_reason": "Dynamic Stop Loss",
-      "realized_pnl": -170.60999999999865,
-      "timestamp": "2026-09-28 14:47:05"
-    },
-    {
-      "symbol": "DKNG",
-      "entry_price": 21.773197,
-      "exit_price": 21.435,
-      "exit_reason": "Dynamic Stop Loss",
-      "realized_pnl": -198.85983600000057,
-      "timestamp": "2026-09-28 13:46:52"
     }
   ],
   "active_position_cache": {
     "COIN": {
       "entry_px": 186.016087,
-      "current_px": 186.94,
+      "current_px": 186.55,
       "qty": 69.0,
       "side": "short",
       "peak_roe": -0.0006123825193677825,
-      "vol_ratio": 0.4015657709844857,
-      "best_target_floor_roe": -0.008,
-      "best_stop_px": 187.504215696
+      "best_target_floor_roe": -0.017406328641119854,
+      "best_stop_px": 189.25394414285716
     },
     "HOOD": {
       "entry_px": 114.38,
-      "current_px": 114.4471,
+      "current_px": 114.45,
       "qty": 112.0,
       "side": "short",
       "peak_roe": -0.0002622836160167961,
-      "vol_ratio": 0.6354561715475685,
-      "best_target_floor_roe": -0.008,
-      "best_stop_px": 115.29504
-    },
-    "UNH": {
-      "entry_px": 367.914118,
-      "current_px": 371.35,
-      "qty": 34.0,
-      "side": "short",
-      "peak_roe": -0.00023342947660417434,
-      "vol_ratio": 0.5486243530373195,
-      "best_target_floor_roe": -0.008,
-      "best_stop_px": 370.857430944
+      "best_target_floor_roe": -0.025427459845627366,
+      "best_stop_px": 117.28839285714287
     },
     "V": {
       "entry_px": 361.24,
-      "current_px": 363.08,
+      "current_px": 362.23,
       "qty": 35.0,
       "side": "short",
       "peak_roe": -0.001550215922932129,
-      "vol_ratio": 1.0724692972894412,
-      "best_target_floor_roe": -0.008,
-      "best_stop_px": 364.12992
+      "best_target_floor_roe": -0.012,
+      "best_stop_px": 365.57488
     }
   },
   "daily_starting_equity": {
