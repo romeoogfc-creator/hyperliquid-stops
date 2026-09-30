@@ -49,6 +49,26 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "NEAR",
+      "entry_price": 5.298,
+      "exit_price": 5.37355,
+      "pnl_usd": 0.21176359833899525,
+      "roe_pct": 1.4260098150245335,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Profit Lock (+1.4%)",
+      "timestamp": "2026-09-30 12:31:00"
+    },
+    {
+      "coin": "kBONK",
+      "entry_price": 0.003924,
+      "exit_price": 0.003908,
+      "pnl_usd": -0.057495,
+      "roe_pct": -4.077471967380323,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-4.1%)",
+      "timestamp": "2026-09-30 12:31:00"
+    },
+    {
       "coin": "WIF",
       "entry_price": 0.25714,
       "exit_price": 0.25471,
@@ -227,85 +247,11 @@
       "side": "SHORT",
       "exit_reason": "\ud83c\udfaf Profit Lock (+3.1%)",
       "timestamp": "2026-09-29 01:55:43"
-    },
-    {
-      "coin": "BSV",
-      "entry_price": 20.648,
-      "exit_price": 20.4825,
-      "pnl_usd": 0.6237754954474934,
-      "roe_pct": 2.4045912437039614,
-      "side": "SHORT",
-      "exit_reason": "\ud83c\udfaf Profit Lock (+2.4%)",
-      "timestamp": "2026-09-28 03:49:08"
-    },
-    {
-      "coin": "YGG",
-      "entry_price": 0.026684,
-      "exit_price": 0.026672,
-      "pnl_usd": 0.030269391995198385,
-      "roe_pct": 0.1349123070004286,
-      "side": "SHORT",
-      "exit_reason": "\ud83c\udfaf Profit Lock (+0.1%)",
-      "timestamp": "2026-09-28 03:49:08"
-    },
-    {
-      "coin": "BCH",
-      "entry_price": 325.25,
-      "exit_price": 327.16,
-      "pnl_usd": -0.4851454026133807,
-      "roe_pct": -5.8724058416603375,
-      "side": "SHORT",
-      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-5.9%)",
-      "timestamp": "2026-09-28 02:27:09"
-    },
-    {
-      "coin": "GMT",
-      "entry_price": 0.009008,
-      "exit_price": 0.008945,
-      "pnl_usd": -0.475904,
-      "roe_pct": -3.4968916518650395,
-      "side": "LONG",
-      "exit_reason": "\ud83d\uded1 BTC Bearish Flip Directional Purge",
-      "timestamp": "2026-09-28 00:56:23"
-    },
-    {
-      "coin": "ADA",
-      "entry_price": 0.25787,
-      "exit_price": 0.255665,
-      "pnl_usd": -0.53688,
-      "roe_pct": -4.27541009035563,
-      "side": "LONG",
-      "exit_reason": "\ud83d\uded1 BTC Bearish Flip Directional Purge",
-      "timestamp": "2026-09-28 00:56:23"
-    },
-    {
-      "coin": "BNB",
-      "entry_price": 782.64,
-      "exit_price": 779.905,
-      "pnl_usd": -0.268618,
-      "roe_pct": -1.7472912194623416,
-      "side": "LONG",
-      "exit_reason": "\ud83d\uded1 BTC Bearish Flip Directional Purge",
-      "timestamp": "2026-09-28 00:56:23"
     }
   ],
-  "active_position_cache": {
-    "NEAR": {
-      "entry_px": 5.298,
-      "current_px": 5.30275,
-      "szi": 2.8,
-      "peak_roe": 0.010437901094752719,
-      "margin": 14.85008,
-      "leverage": 1.0,
-      "side": "LONG",
-      "best_target_floor_roe": 0.0,
-      "best_stop_px": 5.298
-    }
-  },
-  "previous_active_coins": [
-    "NEAR"
-  ],
-  "last_run_timestamp": "2026-09-30 12:00:58",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-09-30 12:31:57",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -315,11 +261,11 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790769605.034274,
-  "last_scan_timestamp": 1790769605.034274,
+  "last_email_timestamp": 1790771460.2290354,
+  "last_scan_timestamp": 1790771460.2290354,
   "gemini_cache": {
-    "timestamp": 1790769605.034274,
+    "timestamp": 1790771460.2290354,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nDriven by persistent macroeconomic uncertainty, stringent global regulatory crackdowns, and elevated market leverage, current cryptocurrency markets face an amplified vulnerability to sudden, sharp liquidations and severe downward price volatility."
+    "briefing": "**Risk Level: HIGH**\n\nDriven by heightened macroeconomic uncertainty, regulatory crackdowns, and severe market volatility, the current crypto landscape faces extreme downside vulnerability and systemic liquidity risks."
   }
 }
