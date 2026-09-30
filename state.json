@@ -45,7 +45,7 @@
     "MINA": 2,
     "IMX": 2,
     "BTC": 3,
-    "NEAR": 1
+    "NEAR": 2
   },
   "closed_trades_ledger": [
     {
@@ -282,10 +282,10 @@
   "active_position_cache": {
     "NEAR": {
       "entry_px": 5.298,
-      "current_px": 5.3116,
+      "current_px": 5.30075,
       "szi": 2.8,
       "peak_roe": 0.008456021140052925,
-      "margin": 14.8722,
+      "margin": 14.83972,
       "leverage": 1.0,
       "side": "LONG",
       "best_target_floor_roe": -0.01,
@@ -295,7 +295,7 @@
   "previous_active_coins": [
     "NEAR"
   ],
-  "last_run_timestamp": "2026-09-30 11:24:36",
+  "last_run_timestamp": "2026-09-30 11:45:20",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -305,11 +305,11 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790767471.3635676,
-  "last_scan_timestamp": 1790766308.0567973,
+  "last_email_timestamp": 1790768666.5564673,
+  "last_scan_timestamp": 1790768666.5564673,
   "gemini_cache": {
-    "timestamp": 1790766308.0567973,
-    "risk": "MODERATE",
-    "briefing": "**Risk Level: MODERATE**\n\nCrypto markets currently face a balanced tug-of-war between favorable long-term institutional adoption trends and persistent macroeconomic headwinds, including tighter global liquidity and unpredictable regulatory scrutiny."
+    "timestamp": 1790768666.5564673,
+    "risk": "HIGH",
+    "briefing": "Risk Level: **HIGH** \u2014 Increased volatility is expected as the market navigates significant macroeconomic uncertainty, shifting regulatory landscapes, and the lingering impact of recent deleveraging events."
   }
 }
