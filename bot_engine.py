@@ -245,7 +245,7 @@ def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     now_ts = time.time()
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (All-Weather Moonshot Ratchet Mode).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (All-Weather Moonshot Ratchet Mode - Patched).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -274,9 +274,8 @@ def execute_engine():
     btc_regime, btc_change_pct = get_btc_regime(info, now_ms)
     audit_logs.append(f"BTC Directional Shield: Daily Candle is {btc_regime} ({btc_change_pct:+.2f}%).")
 
-    effective_regime = btc_regime
-    if effective_regime == "NEUTRAL":
-        effective_regime = "GREEN" if btc_change_pct >= 0 else "RED"
+    # True Neutral Sit-Out: Do not force a directional coin-flip if BTC is NEUTRAL
+    effective_regime = btc_regime  # "GREEN", "RED", or "NEUTRAL"
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -372,13 +371,11 @@ def execute_engine():
                 atr_val = calculate_atr(highs, lows, closes)
                 upper_band, lower_band, filter_line = calculate_gaussian_channel(closes)
 
-                # 1H Gaussian Band Invalidation Exit
-                if is_long and current_px < upper_band:
+                # Removed hair-trigger upper band invalidation exit on longs. 
+                # Letting ATR buffer and profit ratchet manage trades cleanly.
+                if (not is_long) and current_px > upper_band:
                     should_exit = True
-                    exit_reason = f"📉 Gaussian Upper Band Invalidation (${current_px:.4f} < ${upper_band:.4f})"
-                elif (not is_long) and current_px > filter_line:
-                    should_exit = True
-                    exit_reason = f"📈 Gaussian Filter Invalidation (${current_px:.4f} > ${filter_line:.4f})"
+                    exit_reason = f"📈 Gaussian Short Invalidation (${current_px:.4f} > ${upper_band:.4f})"
             except Exception as e:
                 audit_logs.append(f"Channel calculation warning on {coin}: {e}")
 
@@ -453,7 +450,7 @@ def execute_engine():
     else:
         base_sizing_usd = 15.0
 
-    if is_1h_scan_window and available_slots > 0:
+    if is_1h_scan_window and available_slots > 0 and effective_regime != "NEUTRAL":
         state["last_scan_timestamp"] = now_ts
         audit_logs.append(f"⏰ 1-Hour Candle Boundary Reached: Scanning (BTC Tilt: {effective_regime}, Target Size: ${base_sizing_usd:.0f})...")
 
@@ -476,14 +473,16 @@ def execute_engine():
                 lows = [float(c["l"]) for c in candles]
                 volumes = [float(c.get("v", 0)) for c in candles]
 
+                # Stricter Chop Filter: CI <= 52.0 (revising from 58.0)
                 ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
-                if ci_1h > 58.0:
+                if ci_1h > 52.0:
                     continue
 
+                # Stricter Volume Expansion Filter: Requires 1.3x institutional surge
                 avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else volumes[-3]
                 comp_vol = volumes[-2]
                 vol_ratio = comp_vol / avg_vol if avg_vol > 0 else 1.0
-                if vol_ratio < 1.1:
+                if vol_ratio < 1.3:
                     continue
 
                 upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
@@ -498,16 +497,19 @@ def execute_engine():
                         })
                         audit_logs.append(f"1H BREAKOUT MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}x, CI: {ci_1h:.1f})")
 
-                if effective_regime == "RED":
-                    if comp_close < filter_band and prev_comp_close >= filter_band:
+                elif effective_regime == "RED":
+                    # Symmetric breakdown rule: requires breaking below the LOWER deviation band, not midline
+                    if comp_close < lower and prev_comp_close >= lower:
                         market_candidates.append({
                             "coin": coin, "close": comp_close, "is_long": False, 
-                            "score": (filter_band - comp_close) / filter_band, "ci": ci_1h, "vol_ratio": vol_ratio
+                            "score": (lower - comp_close) / lower, "ci": ci_1h, "vol_ratio": vol_ratio
                         })
                         audit_logs.append(f"1H BREAKDOWN MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}x, CI: {ci_1h:.1f})")
 
             except Exception:
                 continue
+    elif effective_regime == "NEUTRAL" and is_1h_scan_window:
+        audit_logs.append(f"⏳ BTC Regime is NEUTRAL: Skipping scan to sit out sideways chop.")
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
 
@@ -639,7 +641,6 @@ def execute_engine():
                 f"</tr>"
             )
 
-        # Added Total Realized P&L Summary Row at the bottom of closed trades table
         total_pnl_color = '#2e7d32' if total_realized_pnl >= 0 else '#c62828'
         closed_rows = "".join(parsed_closed_rows) if parsed_closed_rows else "<tr><td colspan='4' style='padding: 12px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
         closed_rows += f"""
@@ -723,7 +724,7 @@ def execute_engine():
                   <div class="rules-title">&#9989; Active Guardrails (Moonshot Ratchet Engine)</div>
                   &bull; <b>Galactic Moonshot Ratchet (+300%+ Cap):</b> Locks 80% to 95% of peak gains on runners<br>
                   &bull; <b>1H ATR Volatility Buffer (1.5x ATR):</b> Provides noise room while cutting real losses<br>
-                  &bull; <b>Strict Chop Filter (CI &le; 58.0):</b> Rejects coins in sideways ranging consolidation<br>
+                  &bull; <b>Strict Chop Filter (CI &le; 52.0):</b> Rejects coins in sideways ranging consolidation<br>
                   &bull; <b>Unblocked Micro Sizing ($10–$15):</b> Keeps test loss capped at pennies ($\approx \$0.15$)
                 </div>
 
