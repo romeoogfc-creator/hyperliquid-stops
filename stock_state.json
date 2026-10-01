@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-10-01 16:44:58",
+  "last_run_timestamp": "2026-10-01 17:16:02",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,11 +19,21 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "ABBV",
+    "PFE",
     "LLY",
-    "XLF"
+    "XLF",
+    "ABBV",
+    "GOOGL"
   ],
   "closed_trades_ledger": [
+    {
+      "symbol": "PFE",
+      "entry_price": 28.22,
+      "exit_price": 28.225,
+      "exit_reason": "\ud83d\udcc8 1H Trend Invalidation (Close $28.23 > Lower Band $28.19)",
+      "realized_pnl": -1.7450000000008927,
+      "timestamp": "2026-10-01 17:15:36"
+    },
     {
       "symbol": "DIA",
       "entry_price": 509.13,
@@ -175,38 +185,48 @@
       "exit_reason": "EOD Square-Off (100% Cash Flat)",
       "realized_pnl": -64.8999999999985,
       "timestamp": "2026-09-29 19:43:45"
-    },
-    {
-      "symbol": "JNJ",
-      "entry_price": 266.5825,
-      "exit_price": 267.21,
-      "exit_reason": "\ud83d\udea8 High Choppiness Chop Purge (CI: 62.7)",
-      "realized_pnl": -30.12,
-      "timestamp": "2026-09-29 19:23:24"
     }
   ],
   "active_position_cache": {
     "ABBV": {
       "entry_px": 259.702432,
-      "current_px": 259.54,
+      "current_px": 260.345,
       "qty": 37.0,
       "side": "short",
       "peak_roe": 0.0025122290730029673,
       "best_target_floor_roe": -0.012,
       "best_stop_px": 262.818861184
     },
+    "GOOGL": {
+      "entry_px": 338.013793,
+      "current_px": 337.84,
+      "qty": 29.0,
+      "side": "short",
+      "peak_roe": 0.0005141594917105824,
+      "best_target_floor_roe": -0.012,
+      "best_stop_px": 342.06995851600004
+    },
     "LLY": {
       "entry_px": 1144.41,
-      "current_px": 1148.09,
+      "current_px": 1148.79,
       "qty": 8.0,
       "side": "short",
       "peak_roe": 0.0016777203974100827,
       "best_target_floor_roe": -0.012,
       "best_stop_px": 1158.14292
     },
+    "PFE": {
+      "entry_px": 28.22,
+      "current_px": 28.225,
+      "qty": 349.0,
+      "side": "short",
+      "peak_roe": -0.00017717930545721325,
+      "best_target_floor_roe": -0.012,
+      "best_stop_px": 28.55864
+    },
     "XLF": {
       "entry_px": 52.97,
-      "current_px": 53.33,
+      "current_px": 53.235,
       "qty": 186.0,
       "side": "short",
       "peak_roe": 0.001793468000755123,
