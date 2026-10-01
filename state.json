@@ -341,7 +341,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-01 07:37:37",
+  "last_run_timestamp": "2026-10-01 07:55:23",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -351,11 +351,11 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790840252.650919,
+  "last_email_timestamp": 1790841319.6880844,
   "last_scan_timestamp": 1790836173.198265,
   "gemini_cache": {
-    "timestamp": 1790840252.650919,
+    "timestamp": 1790841319.6880844,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH**\n\nCurrent market volatility is driven by extreme sensitivity to macroeconomic policy shifts and shifting institutional capital flows, creating a high-beta environment prone to sudden, liquidity-driven price swings."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to shifting macroeconomic data, regulatory uncertainties, and extreme volatility typical of current cyclical positioning."
   }
 }
