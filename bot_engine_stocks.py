@@ -149,6 +149,9 @@ def calculate_atr(highs, lows, closes, period=14):
         return 1.0
 
 def calculate_adaptive_stock_stop(entry_px, is_long, current_px, atr_val, peak_roe=0.0):
+    """
+    1-Hour Volatility Buffer + 50% High-Water Micro Lock & Peak Profit Ladder
+    """
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
@@ -243,11 +246,43 @@ def execute_stock_engine():
     orders_res = requests.get(f"{BASE_URL}/v2/orders?status=open", headers=HEADERS)
     open_orders = orders_res.json() if orders_res.status_code == 200 else []
 
-    # --- PORTFOLIO CIRCUIT BREAKER (-3.5%) ---
+    # --- ANTI-WIPEOUT SHIELD #1: DAILY MAX LOSS CIRCUIT BREAKER (-2.5%) ---
+    daily_loss_pct = (today_total_gain / today_start_eq) if today_start_eq > 0 else 0.0
+    is_daily_max_loss_triggered = daily_loss_pct <= -0.025  # Max -2.5% daily loss cap
+
+    if is_daily_max_loss_triggered and positions_list:
+        audit_logs.append(f"🛡️ ANTI-WIPEOUT SHIELD TRIGGERED: Daily Loss at {daily_loss_pct*100:.2f}%. Liquidating all positions to cash!")
+        for pos in positions_list:
+            sym = pos.get("symbol")
+            qty = abs(float(pos.get("qty", 0)))
+            side = pos.get("side", "long").lower()
+            close_side = "sell" if side == "long" else "buy"
+            entry_p = float(pos.get("avg_entry_price", 0))
+            exit_p = float(pos.get("current_price", entry_p))
+            realized_pnl = (exit_p - entry_p) * qty if side == "long" else (entry_p - exit_p) * qty
+            try:
+                requests.post(f"{BASE_URL}/v2/orders", json={
+                    "symbol": sym, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"
+                }, headers=HEADERS)
+                if "closed_trades_ledger" not in state:
+                    state["closed_trades_ledger"] = []
+                state["closed_trades_ledger"].insert(0, {
+                    "symbol": sym, "entry_price": entry_p, "exit_price": exit_p,
+                    "exit_reason": "🛡️ Daily Max Loss Anti-Wipeout Shield (-2.5%)",
+                    "realized_pnl": realized_pnl, "timestamp": timestamp
+                })
+            except Exception as e:
+                audit_logs.append(f"Anti-wipeout close failed on {sym}: {e}")
+        for order in open_orders:
+            requests.delete(f"{BASE_URL}/v2/orders/{order.get('id')}", headers=HEADERS)
+        save_state(state)
+        positions_list = []
+
+    # --- ANTI-WIPEOUT SHIELD #2: UNREALIZED PORTFOLIO CIRCUIT BREAKER (-3.5%) ---
     total_unrealized_pnl = sum([float(p.get("unrealized_pl", 0)) for p in positions_list])
     portfolio_pnl_pct = (total_unrealized_pnl / equity) if equity > 0 else 0.0
     if portfolio_pnl_pct <= -0.035 and positions_list:
-        audit_logs.append(f"🚨 PORTFOLIO CIRCUIT BREAKER TRIGGERED ({portfolio_pnl_pct*100:.2f}%). Flattening to cash!")
+        audit_logs.append(f"🚨 PORTFOLIO DRAWDOWN BREAKER TRIGGERED ({portfolio_pnl_pct*100:.2f}%). Flattening to cash!")
         for pos in positions_list:
             sym = pos.get("symbol")
             qty = abs(float(pos.get("qty", 0)))
@@ -533,8 +568,8 @@ def execute_stock_engine():
     audit_logs.append(f"1H Adaptive Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} validated triggers.")
 
     # --- EXECUTION GATE WITH TIME-WINDOWED CAPITAL REGULATION ---
-    if is_afternoon_lockout or is_eod_square_off or peak_giveback_lockout:
-        gate_reason = "Afternoon Cutoff (1:30 PM+ CT)" if is_afternoon_lockout else ("Peak Giveback Lockout" if peak_giveback_lockout else "EOD Square-Off")
+    if is_afternoon_lockout or is_eod_square_off or peak_giveback_lockout or is_daily_max_loss_triggered:
+        gate_reason = "Daily Max Loss Cap" if is_daily_max_loss_triggered else ("Afternoon Cutoff (1:30 PM+ CT)" if is_afternoon_lockout else ("Peak Giveback Lockout" if peak_giveback_lockout else "EOD Square-Off"))
         audit_logs.append(f"Execution Gate BLOCKED: {gate_reason}. No new entries allowed.")
     elif active_count < MAX_STOCK_SLOTS and market_candidates:
         for candidate in market_candidates[: (MAX_STOCK_SLOTS - active_count)]:
@@ -736,7 +771,7 @@ def execute_stock_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Equities-LS-01 | 1H Master Engine</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: TIME-REGULATED ADAPTIVE POWER</p>
+            <p>Timestamp: {timestamp} &bull; Mode: TIME-REGULATED POWER & ANTI-WIPEOUT</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -752,12 +787,17 @@ def execute_stock_engine():
             {summary_card_html}
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Guardrails (Time-Regulated Power Engine)</div>
-              &bull; <b>Morning Power Window (8:00–11:30 AM CT):</b> Full 10% NAV (~$10k) position sizing<br>
+              <div class="rules-title">&#9989; Active Guardrails (Full Strategy Display)</div>
+              &bull; <b>1-Hour Timeframe & Hard CI Gate (&le;58.0):</b> Eliminates noise & rejects choppy stocks<br>
+              &bull; <b>SPY Macro Regime Shield:</b> Enforces broad market direction alignment<br>
+              &bull; <b>1H Trend Invalidation & ATR Buffer:</b> Cuts losses fast on reversals with proper noise room<br>
+              &bull; <b>50% High-Water & Peak Ratchet:</b> Locks 50% of micro-gains and 80%–97% on major runners<br>
+              &bull; <b>Morning Power Window (8:00–11:30 AM CT):</b> Full 10% NAV (~$10k) sizing on clean trends<br>
               &bull; <b>Midday Micro Window (11:30 AM–1:30 PM CT):</b> Capped at $1,000 Micro Sizing<br>
               &bull; <b>Afternoon Lockout (1:30 PM CT+):</b> Strictly 0 new entries allowed<br>
               &bull; <b>1:30 PM Stagnation Clean-up:</b> Exits floating losing trades early before EOD chop<br>
-              &bull; <b>High-Water Giveback Shield:</b> Blocks trading if giving back >$150 from intra-day peak
+              &bull; <b>High-Water Giveback Shield:</b> Blocks trading if giving back >$150 from intra-day peak<br>
+              &bull; <b>Daily Anti-Wipeout Shield (-2.5% Cap):</b> Emergency flattens account if daily loss hits -2.5%
             </div>
 
             <div class="section-title">Active Sniper Scalps</div>
