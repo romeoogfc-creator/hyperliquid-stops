@@ -342,18 +342,18 @@
   "active_position_cache": {
     "WLD": {
       "entry_px": 0.49064,
-      "current_px": 0.48941,
+      "current_px": 0.49363,
       "szi": 20.4,
-      "margin": 9.984168,
+      "margin": 10.06944,
       "side": "LONG",
-      "peak_roe": -0.002506929724441564,
+      "peak_roe": 0.006094081200065206,
       "strategy": "MEAN_REVERSION"
     }
   },
   "previous_active_coins": [
     "WLD"
   ],
-  "last_run_timestamp": "2026-10-01 16:47:36",
+  "last_run_timestamp": "2026-10-01 17:03:24",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -363,12 +363,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790872114.753241,
+  "last_email_timestamp": 1790874191.5377614,
   "last_scan_timestamp": 1790870488.5086184,
   "gemini_cache": {
-    "timestamp": 1790870488.5086184,
+    "timestamp": 1790874191.5377614,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating significant macroeconomic uncertainty, regulatory scrutiny, and high volatility, making them susceptible to sudden liquidity swings and rapid trend reversals."
+    "briefing": "Risk Level: HIGH; current crypto markets are characterized by extreme sensitivity to macroeconomic policy shifts and heightened regulatory scrutiny, which, when combined with significant leverage in the derivatives space, leaves the market vulnerable to sharp, sudden volatility."
   },
   "recent_losses": [],
   "last_traded_candle": {
