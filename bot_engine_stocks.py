@@ -149,9 +149,6 @@ def calculate_atr(highs, lows, closes, period=14):
         return 1.0
 
 def calculate_adaptive_stock_stop(entry_px, is_long, current_px, atr_val, peak_roe=0.0):
-    """
-    1-Hour Volatility Buffer + 50% High-Water Micro Lock & Peak Profit Ladder
-    """
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
@@ -248,7 +245,7 @@ def execute_stock_engine():
 
     # --- ANTI-WIPEOUT SHIELD #1: DAILY MAX LOSS CIRCUIT BREAKER (-2.5%) ---
     daily_loss_pct = (today_total_gain / today_start_eq) if today_start_eq > 0 else 0.0
-    is_daily_max_loss_triggered = daily_loss_pct <= -0.025  # Max -2.5% daily loss cap
+    is_daily_max_loss_triggered = daily_loss_pct <= -0.025
 
     if is_daily_max_loss_triggered and positions_list:
         audit_logs.append(f"🛡️ ANTI-WIPEOUT SHIELD TRIGGERED: Daily Loss at {daily_loss_pct*100:.2f}%. Liquidating all positions to cash!")
@@ -357,7 +354,7 @@ def execute_stock_engine():
             current_px = float(pos.get("current_price", entry_px))
             current_roe = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
 
-            if current_roe < 0:  # If position is losing at 1:30 PM CT, exit early!
+            if current_roe < 0:
                 audit_logs.append(f"🧹 MIDDAY STAGNATION EXIT: Closing losing position on {sym} at {current_roe*100:.2f}% ROE before afternoon chop.")
                 close_side = "sell" if is_long else "buy"
                 realized_pnl = (current_px - entry_px) * qty if is_long else (entry_px - current_px) * qty
@@ -580,7 +577,6 @@ def execute_stock_engine():
 
             # --- DYNAMIC CAPITAL ALLOCATION RULE ---
             if is_prime_morning_window:
-                # Morning Power Window (8:00 AM - 11:30 AM CT): Full 10% NAV on trends, $1k on moderate chop
                 if cand_ci > 52.0 or spy_regime == "NEUTRAL":
                     target_usd = 1000.0
                     audit_logs.append(f"MORNING MICRO SIZING for {symbol}: ${target_usd} (Chop/Neutral)")
@@ -588,7 +584,6 @@ def execute_stock_engine():
                     target_usd = max(1000.0, equity * 0.10)
                     audit_logs.append(f"⚡ MORNING POWER SIZING for {symbol}: ${target_usd:.2f} (10% NAV)")
             elif is_midday_window:
-                # Midday Window (11:30 AM - 1:30 PM CT): Capped at $1,000 Micro Sizing
                 target_usd = 1000.0
                 audit_logs.append(f"🛡️ MIDDAY MICRO CAPPED SIZING for {symbol}: ${target_usd}")
 
@@ -628,36 +623,31 @@ def execute_stock_engine():
 
     closed_ledger = state.get("closed_trades_ledger", [])
     
-    cutoff_ts = now_ts - 86400
-    trades_24h = []
-    for t in closed_ledger:
-        t_str = str(t.get("timestamp", timestamp)).replace("Z", "").replace("T", " ")
-        try:
-            t_ts = time.mktime(time.strptime(t_str, "%Y-%m-%d %H:%M:%S"))
-            if t_ts >= cutoff_ts:
-                trades_24h.append(t)
-        except Exception:
-            trades_24h.append(t)
+    # --- STRICT CALENDAR DAY RESET (Clears score to 0 every morning) ---
+    trades_today = [
+        t for t in closed_ledger 
+        if today_str in str(t.get("timestamp", ""))
+    ]
 
-    total_24h = len(trades_24h)
-    wins_24h = [t for t in trades_24h if float(t.get("realized_pnl", 0)) > 0]
-    losses_24h = [t for t in trades_24h if float(t.get("realized_pnl", 0)) <= 0]
+    total_today = len(trades_today)
+    wins_today = [t for t in trades_today if float(t.get("realized_pnl", 0)) > 0]
+    losses_today = [t for t in trades_today if float(t.get("realized_pnl", 0)) <= 0]
     
-    win_count = len(wins_24h)
-    loss_count = len(losses_24h)
-    win_rate_24h = (win_count / total_24h * 100) if total_24h > 0 else 0.0
+    win_count = len(wins_today)
+    loss_count = len(losses_today)
+    win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
     
-    avg_win_usd = (sum(float(t.get("realized_pnl", 0)) for t in wins_24h) / win_count) if win_count > 0 else 0.0
-    avg_loss_usd = (sum(float(t.get("realized_pnl", 0)) for t in losses_24h) / loss_count) if loss_count > 0 else 0.0
-    net_24h_usd = sum(float(t.get("realized_pnl", 0)) for t in trades_24h)
+    avg_win_usd = (sum(float(t.get("realized_pnl", 0)) for t in wins_today) / win_count) if win_count > 0 else 0.0
+    avg_loss_usd = (sum(float(t.get("realized_pnl", 0)) for t in losses_today) / loss_count) if loss_count > 0 else 0.0
+    net_today_usd = sum(float(t.get("realized_pnl", 0)) for t in trades_today)
 
     summary_card_html = f"""
     <div class="summary-card">
-      <div class="summary-title">📊 24-Hour Performance Test Summary (1H Master Engine)</div>
+      <div class="summary-title">📊 Today's Realized Performance Summary ({today_str})</div>
       <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
         <tr>
-          <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase;">Total Trades (24h): <b style="color: #0f172a;">{total_24h}</b></td>
-          <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase; text-align: right;">Win Ratio: <b style="color: #0f172a;">{win_count}W / {loss_count}L ({win_rate_24h:.1f}%)</b></td>
+          <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase;">Total Trades Today: <b style="color: #0f172a;">{total_today}</b></td>
+          <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase; text-align: right;">Win Ratio: <b style="color: #0f172a;">{win_count}W / {loss_count}L ({win_rate_today:.1f}%)</b></td>
         </tr>
         <tr>
           <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase;">Avg Win: <b style="color: #15803d;">${avg_win_usd:+.2f}</b></td>
@@ -665,7 +655,7 @@ def execute_stock_engine():
         </tr>
       </table>
       <div class="summary-net">
-        Net 24H Realized P&L: <span class="{'win-color' if net_24h_usd >= 0 else 'loss-color'}">${net_24h_usd:+.2f}</span>
+        Today's Realized P&L: <span class="{'win-color' if net_today_usd >= 0 else 'loss-color'}">${net_today_usd:+.2f}</span>
       </div>
     </div>
     """
