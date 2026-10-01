@@ -329,9 +329,20 @@
       "timestamp": "2026-09-29 01:55:43"
     }
   ],
-  "active_position_cache": {},
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-01 01:51:47",
+  "active_position_cache": {
+    "RSR": {
+      "entry_px": 0.00169,
+      "current_px": 0.001687,
+      "szi": -5924.0,
+      "margin": 3.331262,
+      "side": "SHORT",
+      "peak_roe": 0.00177514792899419
+    }
+  },
+  "previous_active_coins": [
+    "RSR"
+  ],
+  "last_run_timestamp": "2026-10-01 02:06:54",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
