@@ -149,7 +149,7 @@ def calculate_atr(highs, lows, closes, period=14):
 
 def calculate_adaptive_stock_stop(entry_px, is_long, current_px, atr_val, peak_roe=0.0):
     """
-    1-Hour Volatility Buffer + 80%-97% Peak Profit Lock Ladder
+    1-Hour Volatility Buffer + 50% High-Water Micro Lock & Peak Profit Ladder
     """
     if is_long:
         roe = (current_px - entry_px) / entry_px
@@ -161,7 +161,7 @@ def calculate_adaptive_stock_stop(entry_px, is_long, current_px, atr_val, peak_r
 
     leash_status = f"1H ATR Noise Buffer (-{atr_roe_buffer*100:.2f}%)"
     
-    # 80%-97% Peak Profit Ratchet Ladder
+    # Peak Profit Ratchet Ladder with 50% High-Water Protection on Micro-Wins
     if peak_roe >= 0.30:  # +30%+ Parabolic Runner
         target_floor_roe = max(peak_roe * 0.95, peak_roe - 0.05)
         leash_status = f"🌌 Parabolic 95%-97% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
@@ -175,11 +175,11 @@ def calculate_adaptive_stock_stop(entry_px, is_long, current_px, atr_val, peak_r
         target_floor_roe = max(0.02, peak_roe * 0.80)
         leash_status = f"🎯 80% Peak Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
     elif peak_roe >= 0.015:  # +1.5% Winner
-        target_floor_roe = 0.010
-        leash_status = "🔒 Winner Lock (+1.0% Floor)"
-    elif peak_roe >= 0.005:  # +0.5% Micro Breakout
-        target_floor_roe = 0.0025
-        leash_status = "🛡️ Scratch Lock (+0.25% Floor)"
+        target_floor_roe = max(0.010, peak_roe * 0.60)
+        leash_status = f"🔒 Winner Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+    elif peak_roe >= 0.005:  # +0.5% Micro Breakout (50% High-Water Protection)
+        target_floor_roe = max(0.0025, peak_roe * 0.50)
+        leash_status = f"🛡️ 50% High-Water Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
     else:
         target_floor_roe = -atr_roe_buffer
 
@@ -734,7 +734,7 @@ def execute_stock_engine():
               &bull; <b>Hard Choppiness Gate (CI &le; 58.0):</b> Rejects range-bound stocks before entry<br>
               &bull; <b>Unblocked Adaptive Sizing:</b> Dynamic 10% NAV on trends, $1,000 micro-test size on chop<br>
               &bull; <b>1H ATR Volatility Buffer (1.5x ATR):</b> Provides proper breathing room against noise wicks<br>
-              &bull; <b>80%–97% Peak Profit Ratchet:</b> Automatically locks 80% to 97% of peak gains on runners
+              &bull; <b>50% High-Water & Peak Ratchet:</b> Locks 50% of micro-gains and 80%-97% on major runners
             </div>
 
             <div class="section-title">Active Sniper Scalps</div>
