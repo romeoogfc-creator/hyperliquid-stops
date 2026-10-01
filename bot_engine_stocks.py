@@ -42,7 +42,8 @@ def load_state():
         "active_position_cache": {},
         "previous_active_symbols": [],
         "last_run_timestamp": "", 
-        "daily_starting_equity": {}
+        "daily_starting_equity": {},
+        "daily_peak_equity": {}
     }
     if os.path.exists(STATE_FILE):
         try:
@@ -148,36 +149,32 @@ def calculate_atr(highs, lows, closes, period=14):
         return 1.0
 
 def calculate_adaptive_stock_stop(entry_px, is_long, current_px, atr_val, peak_roe=0.0):
-    """
-    1-Hour Volatility Buffer + 50% High-Water Micro Lock & Peak Profit Ladder
-    """
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
         roe = (entry_px - current_px) / entry_px
 
     atr_roe_buffer = (atr_val * 1.5) / entry_px if entry_px > 0 else 0.015
-    atr_roe_buffer = max(0.012, min(0.035, atr_roe_buffer))  # Clamped between 1.2% and 3.5%
+    atr_roe_buffer = max(0.012, min(0.035, atr_roe_buffer))
 
     leash_status = f"1H ATR Noise Buffer (-{atr_roe_buffer*100:.2f}%)"
     
-    # Peak Profit Ratchet Ladder with 50% High-Water Protection on Micro-Wins
-    if peak_roe >= 0.30:  # +30%+ Parabolic Runner
+    if peak_roe >= 0.30:
         target_floor_roe = max(peak_roe * 0.95, peak_roe - 0.05)
         leash_status = f"🌌 Parabolic 95%-97% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif peak_roe >= 0.15:  # +15%+ Mega Runner
+    elif peak_roe >= 0.15:
         target_floor_roe = peak_roe * 0.90
         leash_status = f"🚀 Mega Runner 90% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif peak_roe >= 0.08:  # +8%+ Strong Trend
+    elif peak_roe >= 0.08:
         target_floor_roe = peak_roe * 0.85
         leash_status = f"📈 Trend Lock 85% [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif peak_roe >= 0.03:  # +3%+ Breakout Winner
+    elif peak_roe >= 0.03:
         target_floor_roe = max(0.02, peak_roe * 0.80)
         leash_status = f"🎯 80% Peak Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-    elif peak_roe >= 0.015:  # +1.5% Winner
+    elif peak_roe >= 0.015:
         target_floor_roe = max(0.010, peak_roe * 0.60)
         leash_status = f"🔒 Winner Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-    elif peak_roe >= 0.005:  # +0.5% Micro Breakout (50% High-Water Protection)
+    elif peak_roe >= 0.005:
         target_floor_roe = max(0.0025, peak_roe * 0.50)
         leash_status = f"🛡️ 50% High-Water Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
     else:
@@ -197,7 +194,7 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Engine Started (1-Hour Timeframe Mode, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Engine Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
@@ -205,7 +202,7 @@ def execute_stock_engine():
     start_date = (datetime.now() - timedelta(days=20)).strftime('%Y-%m-%d')
 
     spy_regime, spy_open_px, spy_close_px, spy_pct = check_market_macro_regime()
-    spy_regime_str = f"{spy_regime} ({spy_pct:+.2f}%) -> {'LONG Tilt' if spy_regime == 'GREEN' else ('SHORT Tilt' if spy_regime == 'RED' else 'NEUTRAL (Adaptive Sizing Mode)')}"
+    spy_regime_str = f"{spy_regime} ({spy_pct:+.2f}%) -> {'LONG Tilt' if spy_regime == 'GREEN' else ('SHORT Tilt' if spy_regime == 'RED' else 'NEUTRAL Mode')}"
     audit_logs.append(f"SPY Macro Regime Shield: {spy_regime_str}")
 
     state = load_state()
@@ -219,19 +216,26 @@ def execute_stock_engine():
     cash = float(account_data.get("cash", 100000.0))
     margin_util_pct = ((equity - cash) / equity * 100) if equity > 0 else 0.0
 
+    # --- TRACK DAILY PEAK EQUITY & STARTING EQUITY ---
     daily_starting_dict = state.get("daily_starting_equity", {})
+    daily_peak_dict = state.get("daily_peak_equity", {})
+
     if today_str not in daily_starting_dict:
-        prev_days = [d for d in daily_starting_dict.keys() if d < today_str]
-        if prev_days:
-            latest_prev_day = max(prev_days)
-            daily_starting_dict[today_str] = daily_starting_dict[latest_prev_day]
-        else:
-            daily_starting_dict[today_str] = equity
-        state["daily_starting_equity"] = daily_starting_dict
+        daily_starting_dict[today_str] = equity
+        daily_peak_dict[today_str] = equity
+    else:
+        daily_peak_dict[today_str] = max(daily_peak_dict.get(today_str, equity), equity)
+
+    state["daily_starting_equity"] = daily_starting_dict
+    state["daily_peak_equity"] = daily_peak_dict
 
     today_start_eq = daily_starting_dict[today_str]
+    today_peak_eq = daily_peak_dict[today_str]
     today_total_gain = equity - today_start_eq
+    giveback_from_peak = today_peak_eq - equity
     lifetime_cumulative_pnl = equity - 100000.0
+
+    audit_logs.append(f"Equity Metrics: Today Start: ${today_start_eq:.2f} | Peak: ${today_peak_eq:.2f} | Current: ${equity:.2f} (Giveback: ${giveback_from_peak:.2f})")
 
     positions_res = requests.get(f"{BASE_URL}/v2/positions", headers=HEADERS)
     positions_list = positions_res.json() if positions_res.status_code == 200 else []
@@ -239,10 +243,11 @@ def execute_stock_engine():
     orders_res = requests.get(f"{BASE_URL}/v2/orders?status=open", headers=HEADERS)
     open_orders = orders_res.json() if orders_res.status_code == 200 else []
 
+    # --- PORTFOLIO CIRCUIT BREAKER (-3.5%) ---
     total_unrealized_pnl = sum([float(p.get("unrealized_pl", 0)) for p in positions_list])
     portfolio_pnl_pct = (total_unrealized_pnl / equity) if equity > 0 else 0.0
     if portfolio_pnl_pct <= -0.035 and positions_list:
-        audit_logs.append(f"🚨 PORTFOLIO CIRCUIT BREAKER TRIGGERED: Unrealized P&L at {portfolio_pnl_pct*100:.2f}%. Emergency flattening all equities to cash!")
+        audit_logs.append(f"🚨 PORTFOLIO CIRCUIT BREAKER TRIGGERED ({portfolio_pnl_pct*100:.2f}%). Flattening to cash!")
         for pos in positions_list:
             sym = pos.get("symbol")
             qty = abs(float(pos.get("qty", 0)))
@@ -269,6 +274,7 @@ def execute_stock_engine():
         save_state(state)
         positions_list = []
 
+    # --- MANDATORY EOD SQUARE-OFF (2:40 PM CT) ---
     is_eod_square_off = (ct_now.hour == 14 and ct_now.minute >= 40) or (ct_now.hour >= 15)
 
     if is_eod_square_off and positions_list:
@@ -281,19 +287,14 @@ def execute_stock_engine():
             entry_px = float(pos.get("avg_entry_price", 0))
             current_px = float(pos.get("current_price", entry_px))
             close_side = "sell" if side == "long" else "buy"
-            
             realized_pnl = (current_px - entry_px) * qty if side == "long" else (entry_px - current_px) * qty
 
-            close_payload = {
-                "symbol": sym, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"
-            }
             try:
-                close_res = requests.post(f"{BASE_URL}/v2/orders", json=close_payload, headers=HEADERS)
+                close_res = requests.post(f"{BASE_URL}/v2/orders", json={"symbol": sym, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"}, headers=HEADERS)
                 if close_res.status_code == 200:
                     audit_logs.append(f"LIQUIDATION SUCCESS: Closed {sym}")
                     if "closed_trades_ledger" not in state:
                         state["closed_trades_ledger"] = []
-                    
                     existing_symbols_today = [t['symbol'] for t in state["closed_trades_ledger"] if today_str in t.get("timestamp", "")]
                     if sym not in existing_symbols_today:
                         state["closed_trades_ledger"].insert(0, {
@@ -308,6 +309,33 @@ def execute_stock_engine():
 
         save_state(state)
         positions_list = []
+
+    # --- 1:30 PM CT MIDDAY STAGNATION CLEAN-UP (Closes floating negative trades early) ---
+    is_midday_clean_up = (ct_now.hour == 13 and ct_now.minute >= 30 and ct_now.minute < 40)
+    if is_midday_clean_up and positions_list:
+        for pos in positions_list:
+            sym = pos.get("symbol")
+            qty = abs(float(pos.get("qty", 0)))
+            side = pos.get("side", "long").lower()
+            is_long = (side == "long")
+            entry_px = float(pos.get("avg_entry_price", 0))
+            current_px = float(pos.get("current_price", entry_px))
+            current_roe = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
+
+            if current_roe < 0:  # If position is losing at 1:30 PM CT, exit early!
+                audit_logs.append(f"🧹 MIDDAY STAGNATION EXIT: Closing losing position on {sym} at {current_roe*100:.2f}% ROE before afternoon chop.")
+                close_side = "sell" if is_long else "buy"
+                realized_pnl = (current_px - entry_px) * qty if is_long else (entry_px - current_px) * qty
+                try:
+                    requests.post(f"{BASE_URL}/v2/orders", json={"symbol": sym, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"}, headers=HEADERS)
+                    if "closed_trades_ledger" not in state:
+                        state["closed_trades_ledger"] = []
+                    state["closed_trades_ledger"].insert(0, {
+                        "symbol": sym, "entry_price": entry_px, "exit_price": current_px,
+                        "exit_reason": f"🧹 Midday Stagnation Clean-up ({current_roe*100:.2f}%)", "realized_pnl": realized_pnl, "timestamp": timestamp
+                    })
+                except Exception as e:
+                    audit_logs.append(f"Midday exit failed on {sym}: {e}")
 
     active_count = len(positions_list)
     positions_data = []
@@ -345,7 +373,6 @@ def execute_stock_engine():
                     atr_val = calculate_atr(highs_1h, lows_1h, closes_1h)
                     upper_band, lower_band, filter_line = calculate_gaussian_channel(closes_1h)
 
-                    # 1H Gaussian Band Invalidation Exit Rule
                     if is_long and current_px < upper_band:
                         should_exit = True
                         exit_reason = f"📉 1H Trend Invalidation (Close ${current_px:.2f} < Upper Band ${upper_band:.2f})"
@@ -355,13 +382,11 @@ def execute_stock_engine():
         except Exception as e:
             audit_logs.append(f"Position analytics warning on {symbol}: {e}")
 
-        # SPY Regime Mismatch Guard
         regime_mismatch = (is_long and spy_regime == "RED") or ((not is_long) and spy_regime == "GREEN")
         if regime_mismatch:
             should_exit = True
             exit_reason = "🚨 SPY Macro Regime Flip Guard"
 
-        # Track Peak ROE exclusively after live entry
         prev_peak = current_active_cache.get(symbol, {}).get("peak_roe", current_roe)
         peak_roe = max(current_roe, prev_peak)
 
@@ -387,12 +412,9 @@ def execute_stock_engine():
             realized_pnl = (current_px - entry_px) * qty if is_long else (entry_px - current_px) * qty
 
             try:
-                requests.post(f"{BASE_URL}/v2/orders", json={
-                    "symbol": symbol, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"
-                }, headers=HEADERS)
+                requests.post(f"{BASE_URL}/v2/orders", json={"symbol": symbol, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"}, headers=HEADERS)
                 if "closed_trades_ledger" not in state:
                     state["closed_trades_ledger"] = []
-                
                 state["closed_trades_ledger"].insert(0, {
                     "symbol": symbol, "entry_price": entry_px, "exit_price": current_px,
                     "exit_reason": exit_reason, "realized_pnl": realized_pnl, "timestamp": timestamp
@@ -404,25 +426,26 @@ def execute_stock_engine():
                 audit_logs.append(f"Execution Failed on {symbol}: {e}")
 
         positions_data.append({
-            "bot_title": "TR-GC-Equities-LS-01",
-            "symbol": symbol,
-            "side": "LONG" if is_long else "SHORT",
-            "qty": qty,
-            "entry": entry_px,
-            "current": current_px,
-            "market_value": market_value,
-            "pnl": unrealized_pnl,
-            "roe": current_roe * 100,
-            "stop": round_sig_figs(stop_px_calc, 5),
-            "floor": target_floor_roe * 100,
-            "status": leash_status
+            "bot_title": "TR-GC-Equities-LS-01", "symbol": symbol, "side": "LONG" if is_long else "SHORT",
+            "qty": qty, "entry": entry_px, "current": current_px, "market_value": market_value,
+            "pnl": unrealized_pnl, "roe": current_roe * 100, "stop": round_sig_figs(stop_px_calc, 5),
+            "floor": target_floor_roe * 100, "status": leash_status
         })
 
     state["active_position_cache"] = new_active_cache
     state["previous_active_symbols"] = list(active_symbols)
 
     MAX_STOCK_SLOTS = 5
-    is_trading_window = (8 <= ct_now.hour < 15) or (ct_now.hour == 15 and ct_now.minute <= 30)
+    
+    # --- TIME-WINDOWED ENTRY REGULATION ---
+    is_prime_morning_window = (8 <= ct_now.hour < 11) or (ct_now.hour == 11 and ct_now.minute <= 30)  # 8:00 AM - 11:30 AM CT
+    is_midday_window = (ct_now.hour == 11 and ct_now.minute > 30) or (ct_now.hour == 12) or (ct_now.hour == 13 and ct_now.minute < 30)  # 11:30 AM - 1:30 PM CT
+    is_afternoon_lockout = (ct_now.hour == 13 and ct_now.minute >= 30) or (ct_now.hour >= 14)  # 1:30 PM CT onwards -> NO NEW ENTRIES
+
+    # --- DAILY PEAK HIGH-WATER LOCK SHIELD ($150 GIVEBACK CAP) ---
+    peak_giveback_lockout = giveback_from_peak >= 150.0 and (today_peak_eq > today_start_eq)
+    if peak_giveback_lockout:
+        audit_logs.append(f"🛡️ HIGH-WATER SHIELD ACTIVE: Gave back ${giveback_from_peak:.2f} from intra-day peak (${today_peak_eq:.2f}). Blocking new trades to preserve gains.")
 
     watchlist = [
         "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "AVGO", "QCOM",
@@ -477,7 +500,6 @@ def execute_stock_engine():
             highs = [float(b["h"]) for b in bars]
             lows = [float(b["l"]) for b in bars]
 
-            # HARD CHOPPINESS GATE: Skip coins in dead ranging consolidation (CI > 58.0)
             ci = calculate_choppiness_index(highs, lows, closes)
             if ci > 58.0:
                 continue
@@ -486,7 +508,6 @@ def execute_stock_engine():
             current_close = closes[-1]
             prev_close = closes[-2]
 
-            # Extension Cap: Skip if close is over upper * 1.025
             if current_close > upper * 1.025:
                 continue
 
@@ -497,7 +518,6 @@ def execute_stock_engine():
                         "symbol": symbol, "close": current_close, "is_long": True,
                         "score": (current_close - upper) / upper, "ci": ci
                     }
-                    audit_logs.append(f"1H LONG BREAKOUT MATCH: {symbol} @ ${current_close:.2f} (CI: {ci:.1f})")
 
             if spy_regime in ["RED", "NEUTRAL"] and candidate_obj is None:
                 if current_close < lower and prev_close >= lower:
@@ -505,7 +525,6 @@ def execute_stock_engine():
                         "symbol": symbol, "close": current_close, "is_long": False,
                         "score": (lower - current_close) / lower, "ci": ci
                     }
-                    audit_logs.append(f"1H SHORT BREAKDOWN MATCH: {symbol} @ ${current_close:.2f} (CI: {ci:.1f})")
 
             if candidate_obj:
                 market_candidates.append(candidate_obj)
@@ -513,8 +532,10 @@ def execute_stock_engine():
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
     audit_logs.append(f"1H Adaptive Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} validated triggers.")
 
-    if not is_trading_window or is_eod_square_off:
-        audit_logs.append("Execution Gate: Outside active trading hours or square-off window active.")
+    # --- EXECUTION GATE WITH TIME-WINDOWED CAPITAL REGULATION ---
+    if is_afternoon_lockout or is_eod_square_off or peak_giveback_lockout:
+        gate_reason = "Afternoon Cutoff (1:30 PM+ CT)" if is_afternoon_lockout else ("Peak Giveback Lockout" if peak_giveback_lockout else "EOD Square-Off")
+        audit_logs.append(f"Execution Gate BLOCKED: {gate_reason}. No new entries allowed.")
     elif active_count < MAX_STOCK_SLOTS and market_candidates:
         for candidate in market_candidates[: (MAX_STOCK_SLOTS - active_count)]:
             symbol = candidate["symbol"]
@@ -522,23 +543,26 @@ def execute_stock_engine():
             is_long = candidate["is_long"]
             cand_ci = candidate.get("ci", 50.0)
 
-            # Adaptive Sizing: Full 10% NAV on clean trends, $1,000 micro-sizing on neutral market regimes
-            if cand_ci > 52.0 or spy_regime == "NEUTRAL":
+            # --- DYNAMIC CAPITAL ALLOCATION RULE ---
+            if is_prime_morning_window:
+                # Morning Power Window (8:00 AM - 11:30 AM CT): Full 10% NAV on trends, $1k on moderate chop
+                if cand_ci > 52.0 or spy_regime == "NEUTRAL":
+                    target_usd = 1000.0
+                    audit_logs.append(f"MORNING MICRO SIZING for {symbol}: ${target_usd} (Chop/Neutral)")
+                else:
+                    target_usd = max(1000.0, equity * 0.10)
+                    audit_logs.append(f"⚡ MORNING POWER SIZING for {symbol}: ${target_usd:.2f} (10% NAV)")
+            elif is_midday_window:
+                # Midday Window (11:30 AM - 1:30 PM CT): Capped at $1,000 Micro Sizing
                 target_usd = 1000.0
-                audit_logs.append(f"MICRO SIZING APPLIED for {symbol}: ${target_usd} due to Moderate Chop/Neutral regime.")
-            else:
-                target_usd = max(1000.0, equity * 0.10)
+                audit_logs.append(f"🛡️ MIDDAY MICRO CAPPED SIZING for {symbol}: ${target_usd}")
 
             raw_qty = target_usd / px
             qty = max(1, int(raw_qty))
             order_side = "buy" if is_long else "sell"
 
             order_payload = {
-                "symbol": symbol,
-                "qty": str(qty),
-                "side": order_side,
-                "type": "market",
-                "time_in_force": "day"
+                "symbol": symbol, "qty": str(qty), "side": order_side, "type": "market", "time_in_force": "day"
             }
             try:
                 order_res = requests.post(f"{BASE_URL}/v2/orders", json=order_payload, headers=HEADERS)
@@ -569,7 +593,6 @@ def execute_stock_engine():
 
     closed_ledger = state.get("closed_trades_ledger", [])
     
-    # 24-Hour Performance Metrics Calculations
     cutoff_ts = now_ts - 86400
     trades_24h = []
     for t in closed_ledger:
@@ -713,7 +736,7 @@ def execute_stock_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Equities-LS-01 | 1H Master Engine</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: 1-HOUR UNBLOCKED ADAPTIVE</p>
+            <p>Timestamp: {timestamp} &bull; Mode: TIME-REGULATED ADAPTIVE POWER</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -729,12 +752,12 @@ def execute_stock_engine():
             {summary_card_html}
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Guardrails (1-Hour Master Engine)</div>
-              &bull; <b>1-Hour Candle Timeframe (`1Hour`):</b> Eliminates ~60% of intraday noise wicks<br>
-              &bull; <b>Hard Choppiness Gate (CI &le; 58.0):</b> Rejects range-bound stocks before entry<br>
-              &bull; <b>Unblocked Adaptive Sizing:</b> Dynamic 10% NAV on trends, $1,000 micro-test size on chop<br>
-              &bull; <b>1H ATR Volatility Buffer (1.5x ATR):</b> Provides proper breathing room against noise wicks<br>
-              &bull; <b>50% High-Water & Peak Ratchet:</b> Locks 50% of micro-gains and 80%-97% on major runners
+              <div class="rules-title">&#9989; Active Guardrails (Time-Regulated Power Engine)</div>
+              &bull; <b>Morning Power Window (8:00–11:30 AM CT):</b> Full 10% NAV (~$10k) position sizing<br>
+              &bull; <b>Midday Micro Window (11:30 AM–1:30 PM CT):</b> Capped at $1,000 Micro Sizing<br>
+              &bull; <b>Afternoon Lockout (1:30 PM CT+):</b> Strictly 0 new entries allowed<br>
+              &bull; <b>1:30 PM Stagnation Clean-up:</b> Exits floating losing trades early before EOD chop<br>
+              &bull; <b>High-Water Giveback Shield:</b> Blocks trading if giving back >$150 from intra-day peak
             </div>
 
             <div class="section-title">Active Sniper Scalps</div>
