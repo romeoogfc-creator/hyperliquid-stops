@@ -1,6 +1,7 @@
 import os
 import json
 import time
+from datetime import datetime, timedelta
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -20,6 +21,17 @@ STATE_FILE = "state.json"
 
 VERBOSE_TEST_MODE = True
 
+def get_central_time():
+    utc_now = datetime.utcnow()
+    year = utc_now.year
+    dst_start = datetime(year, 3, 8)
+    dst_start += timedelta(days=(6 - dst_start.weekday()) % 7)
+    dst_end = datetime(year, 11, 1)
+    dst_end += timedelta(days=(6 - dst_end.weekday()) % 7)
+    is_dst = dst_start <= utc_now < dst_end
+    offset = -5 if is_dst else -6
+    return utc_now + timedelta(hours=offset)
+
 def load_state():
     default_state = {
         "cooldown_blocklist": {},      # 24H Post-loss cooldown: {coin: expire_timestamp}
@@ -32,7 +44,8 @@ def load_state():
         "last_run_timestamp": "",
         "last_email_timestamp": 0,
         "last_scan_timestamp": 0,
-        "gemini_cache": {}
+        "gemini_cache": {},
+        "daily_starting_equity": {}
     }
     if os.path.exists(STATE_FILE):
         try:
@@ -344,6 +357,9 @@ def get_btc_regime(info, now_ms):
 def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     now_ts = time.time()
+    ct_now = get_central_time()
+    today_str = ct_now.strftime('%Y-%m-%d')
+
     audit_logs = []
     audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (V3 Hybrid Regime Switcher).")
 
@@ -428,6 +444,14 @@ def execute_engine():
     margin_summary = user_state.get("marginSummary", {})
     fallback_val = float(margin_summary.get("accountValue", 0.0))
     account_value = total_spot_net_worth if total_spot_net_worth > 0 else fallback_val
+
+    # Tracking Daily Starting Equity
+    daily_starting_dict = state.get("daily_starting_equity", {})
+    if today_str not in daily_starting_dict:
+        daily_starting_dict[today_str] = account_value
+    state["daily_starting_equity"] = daily_starting_dict
+    today_start_eq = daily_starting_dict[today_str]
+    today_total_gain = account_value - today_start_eq
 
     if asset_positions:
         for pos_item in asset_positions:
@@ -675,7 +699,6 @@ def execute_engine():
                         comp_close = closes[-1]
 
                         if effective_regime == "GREEN" or effective_regime == "NEUTRAL":
-                            # Buy Oversold Dip at Lower Bollinger Band
                             if comp_close <= bb_lower * 1.002 and rsi_1h <= 35.0:
                                 market_candidates.append({
                                     "coin": coin, "close": comp_close, "is_long": True,
@@ -685,7 +708,6 @@ def execute_engine():
                                 audit_logs.append(f"1H MEAN-REVERSION DIP BUY: {coin} @ ${comp_close:.4f} (RSI: {rsi_1h:.1f} <= 35, Price <= Lower Band)")
 
                         if effective_regime == "RED" or effective_regime == "NEUTRAL":
-                            # Sell Overbought Spike at Upper Bollinger Band
                             if comp_close >= bb_upper * 0.998 and rsi_1h >= 65.0:
                                 market_candidates.append({
                                     "coin": coin, "close": comp_close, "is_long": False,
@@ -759,42 +781,37 @@ def execute_engine():
         state["last_email_timestamp"] = now_ts
         save_state(state)
 
-        cutoff_ts = now_ts - 86400
-        trades_24h = []
-        for t in state.get("closed_trades_ledger", []):
-            t_str = str(t.get("timestamp", timestamp)).replace("Z", "").replace("T", " ")
-            try:
-                t_ts = time.mktime(time.strptime(t_str, "%Y-%m-%d %H:%M:%S"))
-                if t_ts >= cutoff_ts:
-                    trades_24h.append(t)
-            except Exception:
-                trades_24h.append(t)
+        # --- STRICT CALENDAR DAY RESET (Clears score to 0 every midnight CT) ---
+        trades_today = [
+            t for t in state.get("closed_trades_ledger", [])
+            if today_str in str(t.get("timestamp", ""))
+        ]
 
-        total_24h = len(trades_24h)
-        wins_24h = [t for t in trades_24h if float(t.get("pnl_usd", 0)) > 0]
-        losses_24h = [t for t in trades_24h if float(t.get("pnl_usd", 0)) <= 0]
+        total_today = len(trades_today)
+        wins_today = [t for t in trades_today if float(t.get("pnl_usd", 0)) > 0]
+        losses_today = [t for t in trades_today if float(t.get("pnl_usd", 0)) <= 0]
         
-        win_count = len(wins_24h)
-        loss_count = len(losses_24h)
-        win_rate_24h = (win_count / total_24h * 100) if total_24h > 0 else 0.0
+        win_count = len(wins_today)
+        loss_count = len(losses_today)
+        win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         
-        avg_win_roe = (sum(float(t.get("roe_pct", 0)) for t in wins_24h) / win_count) if win_count > 0 else 0.0
-        avg_win_usd = (sum(float(t.get("pnl_usd", 0)) for t in wins_24h) / win_count) if win_count > 0 else 0.0
+        avg_win_roe = (sum(float(t.get("roe_pct", 0)) for t in wins_today) / win_count) if win_count > 0 else 0.0
+        avg_win_usd = (sum(float(t.get("pnl_usd", 0)) for t in wins_today) / win_count) if win_count > 0 else 0.0
         
-        avg_loss_roe = (sum(float(t.get("roe_pct", 0)) for t in losses_24h) / loss_count) if loss_count > 0 else 0.0
-        avg_loss_usd = (sum(float(t.get("pnl_usd", 0)) for t in losses_24h) / loss_count) if loss_count > 0 else 0.0
+        avg_loss_roe = (sum(float(t.get("roe_pct", 0)) for t in losses_today) / loss_count) if loss_count > 0 else 0.0
+        avg_loss_usd = (sum(float(t.get("pnl_usd", 0)) for t in losses_today) / loss_count) if loss_count > 0 else 0.0
         
-        net_24h_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_24h)
+        net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
         text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/2"
 
         summary_card_html = f"""
         <div class="summary-card">
-          <div class="summary-title">📊 24-Hour Performance Summary (V3 Hybrid Regime Engine)</div>
+          <div class="summary-title">📊 Today's Realized Performance Summary ({today_str})</div>
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
             <tr>
-              <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase;">Total Trades (24h): <b style="color: #0f172a;">{total_24h}</b></td>
-              <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase; text-align: right;">Win Ratio: <b style="color: #0f172a;">{win_count}W / {loss_count}L ({win_rate_24h:.1f}%)</b></td>
+              <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase;">Total Trades Today: <b style="color: #0f172a;">{total_today}</b></td>
+              <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase; text-align: right;">Win Ratio: <b style="color: #0f172a;">{win_count}W / {loss_count}L ({win_rate_today:.1f}%)</b></td>
             </tr>
             <tr>
               <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase;">Avg Win: <b style="color: #15803d;">+{avg_win_roe:.2f}% (${avg_win_usd:+.2f})</b></td>
@@ -802,7 +819,7 @@ def execute_engine():
             </tr>
           </table>
           <div class="summary-net">
-            Net 24H Realized P&L: <span class="{'win-color' if net_24h_usd >= 0 else 'loss-color'}">${net_24h_usd:+.2f}</span>
+            Today's Realized P&L: <span class="{'win-color' if net_today_usd >= 0 else 'loss-color'}">${net_today_usd:+.2f}</span>
           </div>
         </div>
         """
@@ -878,7 +895,7 @@ def execute_engine():
               .net-worth-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 14px; margin-bottom: 12px; }}
               .net-worth-title {{ font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 2px; letter-spacing: 0.5px; }}
               .net-worth-value {{ font-size: 22px; font-weight: 700; color: #0f172a; }}
-              .net-worth-subtitle {{ font-size: 10px; color: #64748b; margin-top: 4px; }}
+              .net-worth-subtitle {{ font-size: 10px; color: #64748b; margin-top: 4px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px; }}
               
               .summary-card {{ background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px; margin-bottom: 12px; }}
               .summary-title {{ font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }}
@@ -886,6 +903,8 @@ def execute_engine():
               
               .win-color {{ color: #15803d !important; }}
               .loss-color {{ color: #b91c1c !important; }}
+
+              .pnl-badge {{ background: {'#e6f4ea' if today_total_gain >= 0 else '#fce8e6'}; color: {'#137333' if today_total_gain >= 0 else '#c5221f'}; padding: 2px 6px; border-radius: 4px; font-weight: bold; }}
 
               .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; font-size: 10px; color: #334155; line-height: 1.4; }}
               .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a; letter-spacing: 0.5px; }}
@@ -909,24 +928,34 @@ def execute_engine():
           <body>
             <div class="container">
               <div class="header">
-                <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
+                <h2>TR-GC-Crypto-LS-23-V2 | Telemetry Dashboard</h2>
                 <p>Timestamp: {timestamp} (V3 Hybrid Regime Engine Active)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
                   <div class="net-worth-title">Total Net Worth</div>
                   <div class="net-worth-value">USD ${account_value:.2f}</div>
-                  <div class="net-worth-subtitle">Reserve: <b>${static_usdc:.2f}</b> &bull; Margin: <b>{margin_util_pct:.1f}%</b></div>
+                  <div class="net-worth-subtitle">
+                    <span>Reserve: <b>${static_usdc:.2f}</b></span>
+                    <span>Margin: <b>{margin_util_pct:.1f}%</b></span>
+                    <span>Today's Gain: <span class="pnl-badge">${today_total_gain:+,.2f}</span></span>
+                  </div>
                 </div>
 
                 {summary_card_html}
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Dynamic Regime Safeguards</div>
-                  &bull; <b>Trending Mode (CI &lt; 48 & ADX &gt; 22):</b> Rides Gaussian Breakouts with Volume Expansion<br>
-                  &bull; <b>Ranging Mode (48 &le; CI &le; 62):</b> Mean-Reversion Dip Buy (RSI &le; 35 @ Lower BB) & Rally Sell (RSI &ge; 65 @ Upper BB)<br>
-                  &bull; <b>Extreme Chop Defense (CI &gt; 62):</b> 100% Cash Defense; blocks fakeout trade entries<br>
-                  &bull; <b>Hardened Execution Gates:</b> Orderbook Spread Gate (&le; 0.30%), 24H Cooldowns, Slippage Caps (&le; 0.20%)
+                  <div class="rules-title">&#9989; Active Guardrails (Full Crypto Strategy Display)</div>
+                  &bull; <b>V3 Hybrid Regime Switcher:</b> Trending (CI &lt; 48) / Ranging (48 &le; CI &le; 62) / Extreme Chop (CI &gt; 62)<br>
+                  &bull; <b>BTC Directional Shield:</b> Enforces broad market alignment (GREEN = LONGs only, RED = SHORTs only)<br>
+                  &bull; <b>Gemini AI Macro Volatility Shield:</b> Scans live macro sentiment & liquidity risk<br>
+                  &bull; <b>Galactic Moonshot Profit Ratchet:</b> Locks 50% on scratch wins, 80% at +3% ROE, and 95% at +300%+ ROE<br>
+                  &bull; <b>Smart Downside Adaptive Stop:</b> 1.5x ATR volatility buffer (-1.5% to -4.0% ROE floor)<br>
+                  &bull; <b>Micro-Capital Allocation:</b> $10 floor per slot; capped at 1 slot if NAV &lt; $20<br>
+                  &bull; <b>Orderbook Spread & Depth Gate:</b> Rejects spread &gt; 0.30% or 0.5% depth &lt; $10,000 USD<br>
+                  &bull; <b>24H Post-Loss Cooldown Blocklist:</b> Bans any coin closed at a loss for 24 hours in state.json<br>
+                  &bull; <b>Single-Candle Lockout:</b> Restricts assets to max 1 entry per candle bar<br>
+                  &bull; <b>Rolling Loss Circuit Breaker:</b> Triggers 12-hour hibernation if 3 losses occur within rolling 60m
                 </div>
 
                 <div class="section-title">Positions per Bot (USD)</div>
