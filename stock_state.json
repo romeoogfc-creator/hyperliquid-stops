@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-10-01 18:19:46",
+  "last_run_timestamp": "2026-10-01 18:48:47",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -188,7 +188,7 @@
   "active_position_cache": {
     "ABBV": {
       "entry_px": 259.702432,
-      "current_px": 260.89,
+      "current_px": 260.415,
       "qty": 37.0,
       "side": "short",
       "peak_roe": 0.0025122290730029673,
@@ -197,7 +197,7 @@
     },
     "LLY": {
       "entry_px": 1144.41,
-      "current_px": 1146.3701,
+      "current_px": 1148.37,
       "qty": 8.0,
       "side": "short",
       "peak_roe": 0.0016777203974100827,
@@ -206,7 +206,7 @@
     },
     "XLF": {
       "entry_px": 52.97,
-      "current_px": 53.335,
+      "current_px": 53.28,
       "qty": 186.0,
       "side": "short",
       "peak_roe": 0.001793468000755123,
