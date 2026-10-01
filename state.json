@@ -342,9 +342,9 @@
   "active_position_cache": {
     "WLD": {
       "entry_px": 0.49064,
-      "current_px": 0.48905,
+      "current_px": 0.48751,
       "szi": 20.4,
-      "margin": 9.976824,
+      "margin": 9.943572,
       "side": "LONG",
       "peak_roe": -0.0032406652535464614,
       "strategy": "MEAN_REVERSION"
@@ -353,7 +353,7 @@
   "previous_active_coins": [
     "WLD"
   ],
-  "last_run_timestamp": "2026-10-01 16:07:38",
+  "last_run_timestamp": "2026-10-01 16:28:36",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -363,7 +363,7 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790870488.5086184,
+  "last_email_timestamp": 1790872114.753241,
   "last_scan_timestamp": 1790870488.5086184,
   "gemini_cache": {
     "timestamp": 1790870488.5086184,
