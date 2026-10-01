@@ -22,7 +22,9 @@ VERBOSE_TEST_MODE = True
 
 def load_state():
     default_state = {
-        "cooldown_blocklist": {}, 
+        "cooldown_blocklist": {},      # 24H Post-loss cooldown: {coin: expire_timestamp}
+        "last_traded_candle": {},      # Single-candle entry lock: {coin: candle_timestamp}
+        "hibernating_until": 0,        # Emergency 12H hibernation lock
         "stagnation_tracker": {}, 
         "closed_trades_ledger": [], 
         "active_position_cache": {},
@@ -92,6 +94,43 @@ def round_sig_figs(val, sig_figs=5):
         return 0
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
+def check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=10000.0):
+    """
+    Guardrail #1: Bid-Ask Spread & Orderbook Depth Filter
+    Rejects any asset with spread > 0.30% or orderbook depth < $10k within 0.5% of mid.
+    """
+    try:
+        l2_book = api_retry(info.l2_snapshot, name=coin)
+        levels = l2_book.get("levels", [[], []])
+        bids = levels[0] if len(levels) > 0 else []
+        asks = levels[1] if len(levels) > 1 else []
+
+        if not bids or not asks:
+            return False, "Empty Orderbook"
+
+        best_bid = float(bids[0]["px"])
+        best_ask = float(asks[0]["px"])
+
+        if best_bid <= 0 or best_ask <= 0:
+            return False, "Invalid Orderbook Prices"
+
+        mid_px = (best_bid + best_ask) / 2.0
+        spread_pct = (best_ask - best_bid) / mid_px
+
+        if spread_pct > max_spread:
+            return False, f"Wide Spread ({spread_pct*100:.2f}% > {max_spread*100:.2f}%)"
+
+        bid_depth = sum(float(b["px"]) * float(b["sz"]) for b in bids if float(b["px"]) >= mid_px * 0.995)
+        ask_depth = sum(float(a["px"]) * float(a["sz"]) for a in asks if float(a["px"]) <= mid_px * 1.005)
+        total_depth = min(bid_depth, ask_depth)
+
+        if total_depth < min_depth_usd:
+            return False, f"Low Orderbook Depth (${total_depth:,.0f} < ${min_depth_usd:,.0f})"
+
+        return True, f"OK (Spread: {spread_pct*100:.2f}%, Depth: ${total_depth:,.0f})"
+    except Exception as e:
+        return False, f"Liquidity Check Error: {e}"
+
 def calculate_gaussian_channel(closes, poles=4, period=144, mult=1.414):
     s = pd.Series(closes)
     alpha = (2.0 / (period + 1)) * (poles ** 0.5)
@@ -127,42 +166,38 @@ def calculate_atr(highs, lows, closes, period=14):
         return 1.0
 
 def calculate_moonshot_ratchet_stop(entry_px, is_long, current_px, atr_val, peak_roe=0.0):
-    """
-    1H ATR Volatility Buffer + Galactic Moonshot Ratchet (+300%+ Cap)
-    """
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
         roe = (entry_px - current_px) / entry_px
 
     atr_roe_buffer = (atr_val * 1.5) / entry_px if entry_px > 0 else 0.020
-    atr_roe_buffer = max(0.015, min(0.040, atr_roe_buffer))  # Clamped between 1.5% and 4.0% ROE
+    atr_roe_buffer = max(0.015, min(0.040, atr_roe_buffer))
 
     leash_status = f"1H ATR Noise Buffer (-{atr_roe_buffer*100:.2f}%)"
     
-    # Galactic Moonshot & Parabolic Ratchet Ladder (+300% to Moon Cap)
-    if peak_roe >= 3.00:  # +300%+ MOONSHOT RUNNER
+    if peak_roe >= 3.00:
         target_floor_roe = max(peak_roe * 0.95, peak_roe - 0.20)
         leash_status = f"🚀 GALACTIC MOONSHOT 95% Lock [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
-    elif peak_roe >= 1.50:  # +150% Parabolic Wave
+    elif peak_roe >= 1.50:
         target_floor_roe = max(peak_roe * 0.92, peak_roe - 0.12)
         leash_status = f"🌌 Parabolic Wave 92% Lock [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
-    elif peak_roe >= 0.75:  # +75% Major Runner
+    elif peak_roe >= 0.75:
         target_floor_roe = peak_roe * 0.90
         leash_status = f"🌕 Major Runner 90% Lock [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
-    elif peak_roe >= 0.30:  # +30% Strong Trend
+    elif peak_roe >= 0.30:
         target_floor_roe = max(peak_roe * 0.88, peak_roe - 0.05)
         leash_status = f"📈 Strong Trend 88% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif peak_roe >= 0.15:  # +15% Breakout
+    elif peak_roe >= 0.15:
         target_floor_roe = peak_roe * 0.85
         leash_status = f"🚀 Breakout 85% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif peak_roe >= 0.03:  # +3% Winner
+    elif peak_roe >= 0.03:
         target_floor_roe = max(0.02, peak_roe * 0.80)
         leash_status = f"🎯 80% Peak Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-    elif peak_roe >= 0.015:  # +1.5% Winner
+    elif peak_roe >= 0.015:
         target_floor_roe = 0.010
         leash_status = "🔒 Winner Lock (+1.0% Floor)"
-    elif peak_roe >= 0.005:  # +0.5% Micro Breakout
+    elif peak_roe >= 0.005:
         target_floor_roe = 0.0025
         leash_status = "🛡️ Scratch Lock (+0.25% Floor)"
     else:
@@ -245,14 +280,35 @@ def execute_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     now_ts = time.time()
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (All-Weather Moonshot Ratchet Mode - Patched).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Hardened Architecture V2).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
 
     state = load_state()
+
+    # Guardrail #5: Hibernation Mode Check
+    if now_ts < float(state.get("hibernating_until", 0)):
+        remaining_hrs = (float(state["hibernating_until"]) - now_ts) / 3600.0
+        print(f"[{timestamp}] 🚨 BOT IN 12H EMERGENCY HIBERNATION ({remaining_hrs:.1f}h remaining). Execution halted.", flush=True)
+        return
+
+    # Guardrail #5: Rolling 1-Hour Loss Circuit Breaker
+    one_hour_ago = now_ts - 3600
+    recent_losses = [
+        t for t in state.get("closed_trades_ledger", [])
+        if float(t.get("pnl_usd", 0)) < 0 and float(t.get("ts_sec", 0)) >= one_hour_ago
+    ]
+
+    if len(recent_losses) >= 3:
+        state["hibernating_until"] = now_ts + 43200  # 12-Hour Hibernation
+        save_state(state)
+        err_body = f"🚨 ROLLING CIRCUIT BREAKER TRIGGERED: 3 losses recorded within the last 60 minutes. Bot entering 12-hour hibernation to prevent execution loops."
+        print(f"[{timestamp}] {err_body}", flush=True)
+        send_html_dashboard_email("🚨 EMERGENCY HALT: Rolling Circuit Breaker Active", f"<h3>{err_body}</h3>", err_body)
+        return
+
     wallet = eth_account.Account.from_key(SECRET_KEY)
-    
     exchange = api_retry(Exchange, wallet, constants.MAINNET_API_URL, account_address=ACCOUNT_ADDRESS)
     info = api_retry(Info, constants.MAINNET_API_URL, skip_ws=True)
 
@@ -274,8 +330,7 @@ def execute_engine():
     btc_regime, btc_change_pct = get_btc_regime(info, now_ms)
     audit_logs.append(f"BTC Directional Shield: Daily Candle is {btc_regime} ({btc_change_pct:+.2f}%).")
 
-    # True Neutral Sit-Out: Do not force a directional coin-flip if BTC is NEUTRAL
-    effective_regime = btc_regime  # "GREEN", "RED", or "NEUTRAL"
+    effective_regime = btc_regime
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -329,10 +384,15 @@ def execute_engine():
                     pnl = float(pos.get("unrealizedPnl", 0))
                     roe = (pnl / float(pos.get("marginUsed", 1))) * 100
                     exchange.market_close(coin)
+
+                    # Guardrail #2: Add to 24-Hour Post-Loss Cooldown Blocklist
+                    if pnl < 0:
+                        state["cooldown_blocklist"][coin] = now_ts + 86400
+
                     state["closed_trades_ledger"].insert(0, {
                         "coin": coin, "entry_price": entry_px, "exit_price": exit_px,
                         "pnl_usd": pnl, "roe_pct": roe, "side": "LONG" if szi > 0 else "SHORT",
-                        "exit_reason": "🚨 Portfolio Circuit Breaker (-3.5%)", "timestamp": timestamp
+                        "exit_reason": "🚨 Portfolio Circuit Breaker (-3.5%)", "timestamp": timestamp, "ts_sec": now_ts
                     })
                     trade_closed_this_run = True
                 except Exception as e:
@@ -371,8 +431,6 @@ def execute_engine():
                 atr_val = calculate_atr(highs, lows, closes)
                 upper_band, lower_band, filter_line = calculate_gaussian_channel(closes)
 
-                # Removed hair-trigger upper band invalidation exit on longs. 
-                # Letting ATR buffer and profit ratchet manage trades cleanly.
                 if (not is_long) and current_px > upper_band:
                     should_exit = True
                     exit_reason = f"📈 Gaussian Short Invalidation (${current_px:.4f} > ${upper_band:.4f})"
@@ -386,7 +444,6 @@ def execute_engine():
                 should_exit = True
                 exit_reason = "🟢 BTC Daily Bullish Flip Purge"
 
-            # Track Peak ROE exclusively after live entry
             prev_peak = current_active_cache.get(coin, {}).get("peak_roe", current_roe)
             peak_roe = max(current_roe, prev_peak)
 
@@ -405,10 +462,16 @@ def execute_engine():
                 try:
                     audit_logs.append(f"🎯 EXIT TRIGGERED: Closing {coin} {'LONG' if is_long else 'SHORT'} @ ${current_px:.5f} ({exit_reason}).")
                     exchange.market_close(coin)
+
+                    # Guardrail #2: Add to 24-Hour Post-Loss Cooldown Blocklist if exited at loss
+                    if unrealized_pnl < 0 or current_roe < 0:
+                        state["cooldown_blocklist"][coin] = now_ts + 86400
+                        audit_logs.append(f"⛔ Added {coin} to 24H Cooldown Blocklist (Closed at Loss)")
+
                     state["closed_trades_ledger"].insert(0, {
                         "coin": coin, "entry_price": entry_px, "exit_price": current_px,
                         "pnl_usd": unrealized_pnl, "roe_pct": current_roe * 100, "side": "LONG" if is_long else "SHORT",
-                        "exit_reason": exit_reason, "timestamp": timestamp
+                        "exit_reason": exit_reason, "timestamp": timestamp, "ts_sec": now_ts
                     })
                     trade_closed_this_run = True
                     continue
@@ -440,15 +503,12 @@ def execute_engine():
 
     universe = [asset["name"] for asset in meta.get("universe", [])][:100]
     market_candidates = []
-    scanned_count = 0
 
-    MAX_CRYPTO_SLOTS = 2
+    # Dynamic slot calculation (Max 1 slot if balance < $20, else 2 slots)
+    MAX_CRYPTO_SLOTS = 1 if account_value < 20.0 else 2
     available_slots = MAX_CRYPTO_SLOTS - active_count
 
-    if gemini_risk == "HIGH":
-        base_sizing_usd = 10.0
-    else:
-        base_sizing_usd = 15.0
+    base_sizing_usd = 10.0
 
     if is_1h_scan_window and available_slots > 0 and effective_regime != "NEUTRAL":
         state["last_scan_timestamp"] = now_ts
@@ -457,6 +517,13 @@ def execute_engine():
         for coin in universe:
             if coin in active_coins or coin in ["USDC", "USDT"]:
                 continue
+
+            # Guardrail #2: Check 24-Hour Cooldown Blocklist
+            cooldown_expiry = float(state.get("cooldown_blocklist", {}).get(coin, 0))
+            if now_ts < cooldown_expiry:
+                rem_hrs = (cooldown_expiry - now_ts) / 3600.0
+                continue
+
             try:
                 px = float(all_mids.get(coin, 0))
                 if px <= 0:
@@ -466,19 +533,26 @@ def execute_engine():
                 candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
                 if not candles or len(candles) < 50:
                     continue
-                scanned_count += 1
+
+                # Guardrail #3: Single-Candle Entry Lock
+                current_candle_ts = candles[-1]["t"]
+                if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
+                    continue
+
+                # Guardrail #1: Orderbook Spread & Depth Check
+                is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=10000.0)
+                if not is_liquid:
+                    continue
 
                 closes = [float(c["c"]) for c in candles]
                 highs = [float(c["h"]) for c in candles]
                 lows = [float(c["l"]) for c in candles]
                 volumes = [float(c.get("v", 0)) for c in candles]
 
-                # Stricter Chop Filter: CI <= 52.0 (revising from 58.0)
                 ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
                 if ci_1h > 52.0:
                     continue
 
-                # Stricter Volume Expansion Filter: Requires 1.3x institutional surge
                 avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else volumes[-3]
                 comp_vol = volumes[-2]
                 vol_ratio = comp_vol / avg_vol if avg_vol > 0 else 1.0
@@ -493,23 +567,22 @@ def execute_engine():
                     if comp_close > upper and prev_comp_close <= upper:
                         market_candidates.append({
                             "coin": coin, "close": comp_close, "is_long": True, 
-                            "score": (comp_close - upper) / upper, "ci": ci_1h, "vol_ratio": vol_ratio
+                            "score": (comp_close - upper) / upper, "ci": ci_1h, "vol_ratio": vol_ratio,
+                            "candle_ts": current_candle_ts
                         })
                         audit_logs.append(f"1H BREAKOUT MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}x, CI: {ci_1h:.1f})")
 
                 elif effective_regime == "RED":
-                    # Symmetric breakdown rule: requires breaking below the LOWER deviation band, not midline
                     if comp_close < lower and prev_comp_close >= lower:
                         market_candidates.append({
                             "coin": coin, "close": comp_close, "is_long": False, 
-                            "score": (lower - comp_close) / lower, "ci": ci_1h, "vol_ratio": vol_ratio
+                            "score": (lower - comp_close) / lower, "ci": ci_1h, "vol_ratio": vol_ratio,
+                            "candle_ts": current_candle_ts
                         })
                         audit_logs.append(f"1H BREAKDOWN MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}x, CI: {ci_1h:.1f})")
 
             except Exception:
                 continue
-    elif effective_regime == "NEUTRAL" and is_1h_scan_window:
-        audit_logs.append(f"⏳ BTC Regime is NEUTRAL: Skipping scan to sit out sideways chop.")
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
 
@@ -519,6 +592,7 @@ def execute_engine():
             coin = candidate["coin"]
             px = candidate["close"]
             is_long = candidate["is_long"]
+            candle_ts = candidate["candle_ts"]
             
             decimals = sz_decimals_map.get(coin, 4)
             raw_sz = base_sizing_usd / px
@@ -532,11 +606,20 @@ def execute_engine():
                 except Exception:
                     pass
 
-                res = exchange.market_open(coin, is_long, sz, px * (1.01 if is_long else 0.99))
+                # Guardrail #4: Slippage-Capped Entry Order (0.20% Max Slippage Buffer)
+                capped_px = px * (1.0020 if is_long else 0.9980)
+                res = exchange.market_open(coin, is_long, sz, capped_px, slippage=0.002)
+
                 if res.get("status") == "ok":
                     active_count += 1
                     active_coins.add(coin)
                     trades_executed = True
+
+                    # Guardrail #3: Lock Candle Timestamp Upon Successful Entry
+                    if "last_traded_candle" not in state:
+                        state["last_traded_candle"] = {}
+                    state["last_traded_candle"][coin] = candle_ts
+
                     audit_logs.append(f"1H EXECUTION SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {coin} (Size: {sz} ~${base_sizing_usd:.2f})")
 
             except Exception as e:
@@ -589,7 +672,7 @@ def execute_engine():
 
         summary_card_html = f"""
         <div class="summary-card">
-          <div class="summary-title">📊 24-Hour Performance Test Summary (Moonshot Ratchet Mode)</div>
+          <div class="summary-title">📊 24-Hour Performance Summary (Hardened Architecture)</div>
           <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
             <tr>
               <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase;">Total Trades (24h): <b style="color: #0f172a;">{total_24h}</b></td>
@@ -709,7 +792,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Moonshot Ratchet + ATR Buffer Active)</p>
+                <p>Timestamp: {timestamp} (Hardened Architecture V2 Active)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -721,11 +804,12 @@ def execute_engine():
                 {summary_card_html}
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (Moonshot Ratchet Engine)</div>
-                  &bull; <b>Galactic Moonshot Ratchet (+300%+ Cap):</b> Locks 80% to 95% of peak gains on runners<br>
-                  &bull; <b>1H ATR Volatility Buffer (1.5x ATR):</b> Provides noise room while cutting real losses<br>
-                  &bull; <b>Strict Chop Filter (CI &le; 52.0):</b> Rejects coins in sideways ranging consolidation<br>
-                  &bull; <b>Unblocked Micro Sizing ($10–$15):</b> Keeps test loss capped at pennies ($\approx \$0.15$)
+                  <div class="rules-title">&#9989; Hardened Execution Safeguards</div>
+                  &bull; <b>Orderbook Spread Gate (&le; 0.30%):</b> Rejects thin assets with wide spreads<br>
+                  &bull; <b>24H Post-Loss Cooldown:</b> Automatically bans stopped-out assets for 24 hours<br>
+                  &bull; <b>Single-Candle Lockout:</b> Restricts assets to 1 entry per 1H candle bar<br>
+                  &bull; <b>Slippage-Capped Orders (&le; 0.20%):</b> Enforces strict price bounds on market fills<br>
+                  &bull; <b>1-Hour Circuit Breaker:</b> Enters 12H hibernation if 3 losses occur in 60 minutes
                 </div>
 
                 <div class="section-title">Positions per Bot (USD)</div>
