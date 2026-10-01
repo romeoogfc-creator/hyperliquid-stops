@@ -357,5 +357,6 @@
     "timestamp": 1790861953.4076405,
     "risk": "HIGH",
     "briefing": "**Risk Level: HIGH**\n\nCrypto markets currently face significant volatility driven by macroeconomic uncertainty, regulatory scrutiny, and a precarious technical setup following recent price fluctuations, necessitating extreme caution for leveraged positions."
-  }
+  },
+  "recent_losses": []
 }
