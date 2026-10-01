@@ -771,11 +771,8 @@ def execute_engine():
     static_usdc = max(0.0, account_value - total_margin_used)
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
-    last_email_ts = float(state.get("last_email_timestamp", 0))
-    elapsed_minutes = (now_ts - last_email_ts) / 60.0
-    
-    is_time_for_periodic_email = (elapsed_minutes >= 25.0)
-    should_send_email = is_time_for_periodic_email or trades_executed or trade_closed_this_run or is_1h_scan_window
+    # --- DISPATCH EMAIL DASHBOARD ON EVERY SINGLE RUN ---
+    should_send_email = True
 
     if should_send_email:
         state["last_email_timestamp"] = now_ts
@@ -998,9 +995,6 @@ def execute_engine():
         """
 
         send_html_dashboard_email(f"Hyperliquid Report — USD ${account_value:.2f}", html_content, text_fallback)
-    else:
-        save_state(state)
-        print(f"[{timestamp}] Hybrid cycle complete ({elapsed_minutes:.1f}m since last report). Skipping email dispatch.", flush=True)
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
