@@ -341,11 +341,19 @@
   ],
   "active_position_cache": {
     "WLD": {
+      "entry_px": 0.49064,
+      "current_px": 0.48905,
+      "szi": 20.4,
+      "margin": 9.976824,
+      "side": "LONG",
+      "peak_roe": -0.0032406652535464614,
       "strategy": "MEAN_REVERSION"
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-01 16:02:28",
+  "previous_active_coins": [
+    "WLD"
+  ],
+  "last_run_timestamp": "2026-10-01 16:07:38",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
