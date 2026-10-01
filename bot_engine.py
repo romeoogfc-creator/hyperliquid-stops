@@ -1,868 +1,355 @@
 import os
+import sys
 import json
 import time
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-from math import log10, floor
-import eth_account
-import pandas as pd
-import numpy as np
+import math
+from datetime import datetime, timezone
 
-from hyperliquid.info import Info
-from hyperliquid.exchange import Exchange
-from hyperliquid.utils import constants
-
-ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
-SECRET_KEY = os.getenv("HL_SECRET_KEY")
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+# ==============================================================================
+# CONFIGURATION & CONSTANTS (TR-GC-Crypto-LS-23-V2)
+# ==============================================================================
 STATE_FILE = "state.json"
 
-VERBOSE_TEST_MODE = True
+# Core Operational Limits
+MAX_SLOTS_DEFAULT = 2
+MIN_NAV_FOR_TWO_SLOTS = 20.0  # USD
+SLOT_FLOOR_USD = 10.0         # USD minimum position size
 
-def load_state():
-    default_state = {
-        "cooldown_blocklist": {},      # 24H Post-loss cooldown: {coin: expire_timestamp}
-        "last_traded_candle": {},      # Single-candle entry lock: {coin: candle_timestamp}
-        "hibernating_until": 0,        # Emergency 12H hibernation lock
-        "stagnation_tracker": {}, 
-        "closed_trades_ledger": [], 
-        "active_position_cache": {},
-        "previous_active_coins": [],
-        "last_run_timestamp": "",
-        "last_email_timestamp": 0,
-        "last_scan_timestamp": 0,
-        "gemini_cache": {}
-    }
+# Orderbook & Execution Gates
+MAX_SPREAD_PCT = 0.0030       # 0.30%
+MIN_DEPTH_USD = 10000.0       # $10,000 depth required within 0.5%
+MAX_SLIPPAGE_PCT = 0.0020     # 0.20% max slippage buffer
+
+# Circuit Breakers & Cooldowns
+LOSS_COOLDOWN_SEC = 86400     # 24-hour blocklist on loss
+ROLLING_WINDOW_SEC = 3600     # 60-minute window for loss counting
+MAX_ROLLING_LOSSES = 3        # Trigger circuit breaker if 3 losses in window
+HIBERNATION_SEC = 43200       # 12-hour emergency hibernation
+
+# Filters & Indicator Thresholds
+MAX_CHOPPINESS_INDEX = 52.0
+MIN_VOLUME_RATIO = 1.3
+
+
+# ==============================================================================
+# STATE MANAGEMENT
+# ==============================================================================
+def load_state() -> dict:
     if os.path.exists(STATE_FILE):
         try:
             with open(STATE_FILE, "r") as f:
-                data = json.load(f)
-                for k, v in default_state.items():
-                    if k not in data:
-                        data[k] = v
-                return data
+                return json.load(f)
         except Exception as e:
-            print(f"Error loading state.json: {e}", flush=True)
-    return default_state
+            print(f"[WARN] Failed to load state.json: {e}. Reinitializing.")
+    return {
+        "active_positions": {},
+        "loss_cooldowns": {},      # { symbol: timestamp_of_loss }
+        "recent_losses": [],       # [ timestamp1, timestamp2, ... ]
+        "hibernation_until": 0,    # timestamp
+        "last_traded_candle": {}   # { symbol: candle_timestamp }
+    }
 
-def save_state(state):
-    state["last_run_timestamp"] = time.strftime('%Y-%m-%d %H:%M:%S')
-    with open(STATE_FILE, "w") as f:
-        json.dump(state, f, indent=2)
 
-def api_retry(func, *args, retries=5, delay=3.0, **kwargs):
-    for attempt in range(retries):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            if "429" in str(e) or "Rate limit" in str(e) or "Timeout" in str(e):
-                if attempt < retries - 1:
-                    print(f"[WARN] API rate limit hit. Pausing {delay}s before retry ({attempt+1}/{retries})...", flush=True)
-                    time.sleep(delay)
-                    delay *= 2.0
-                else:
-                    raise e
-            else:
-                raise e
+def save_state(state: dict) -> None:
+    try:
+        with open(STATE_FILE, "w") as f:
+            json.dump(state, f, indent=2)
+    except Exception as e:
+        print(f"[ERROR] Failed to save state.json: {e}")
 
-def send_html_dashboard_email(subject, html_content, text_fallback):
-    sender_email = os.getenv("SENDER_EMAIL")
-    sender_password = os.getenv("SENDER_PASSWORD")
-    receiver_email = os.getenv("RECEIVER_EMAIL")
 
-    if not sender_email or not sender_password or not receiver_email:
+# ==============================================================================
+# TECHNICAL INDICATOR CALCULATIONS
+# ==============================================================================
+def calculate_atr(highs: list[float], lows: list[float], closes: list[float], period: int = 14) -> float:
+    if len(closes) < period + 1:
+        return 0.0
+    tr_list = []
+    for i in range(1, len(closes)):
+        tr = max(
+            highs[i] - lows[i],
+            abs(highs[i] - closes[i - 1]),
+            abs(lows[i] - closes[i - 1])
+        )
+        tr_list.append(tr)
+    return sum(tr_list[-period:]) / period
+
+
+def calculate_choppiness_index(highs: list[float], lows: list[float], closes: list[float], period: int = 14) -> float:
+    if len(closes) < period + 1:
+        return 100.0
+    
+    tr_sum = 0.0
+    for i in range(len(closes) - period, len(closes)):
+        tr = max(
+            highs[i] - lows[i],
+            abs(highs[i] - closes[i - 1]),
+            abs(lows[i] - closes[i - 1])
+        )
+        tr_sum += tr
+    
+    max_high = max(highs[-period:])
+    min_low = min(lows[-period:])
+    
+    range_diff = max_high - min_low
+    if range_diff <= 0 or tr_sum <= 0:
+        return 100.0
+    
+    ci = 100.0 * (math.log10(tr_sum / range_diff) / math.log10(period))
+    return ci
+
+
+def calculate_volume_ratio(volumes: list[float], period: int = 20) -> float:
+    if len(volumes) < period + 1:
+        return 0.0
+    avg_vol = sum(volumes[-(period + 1):-1]) / period
+    current_vol = volumes[-1]
+    return current_vol / avg_vol if avg_vol > 0 else 0.0
+
+
+# ==============================================================================
+# REGIME SHIELD & GATES
+# ==============================================================================
+def get_btc_regime(btc_daily_candle: dict) -> str:
+    """
+    Returns 'GREEN' (Daily Close > Open), 'RED' (Daily Close < Open), or 'NEUTRAL'.
+    - GREEN blocks SHORTs
+    - RED blocks LONGs
+    - NEUTRAL blocks ALL trades
+    """
+    open_price = btc_daily_candle.get("open", 0.0)
+    close_price = btc_daily_candle.get("close", 0.0)
+    
+    if close_price > open_price:
+        return "GREEN"
+    elif close_price < open_price:
+        return "RED"
+    return "NEUTRAL"
+
+
+def check_orderbook_gate(bid: float, ask: float, depth_05_usd: float) -> bool:
+    if bid <= 0 or ask <= 0:
+        return False
+    spread = (ask - bid) / ((ask + bid) / 2.0)
+    if spread > MAX_SPREAD_PCT:
+        print(f"[REJECT] Spread {spread:.4%} exceeds max {MAX_SPREAD_PCT:.4%}")
+        return False
+    if depth_05_usd < MIN_DEPTH_USD:
+        print(f"[REJECT] Depth ${depth_05_usd:,.2f} below minimum ${MIN_DEPTH_USD:,.2f}")
+        return False
+    return True
+
+
+def check_circuit_breaker(state: dict, now: float) -> bool:
+    # 1. Active Hibernation Check
+    if now < state.get("hibernation_until", 0):
+        remaining_min = (state["hibernation_until"] - now) / 60
+        print(f"[PAUSE] Bot in 12H Hibernation. {remaining_min:.1f} mins remaining.")
+        return False
+
+    # 2. Cleanup Old Losses (> 60m)
+    recent = [t for t in state.get("recent_losses", []) if (now - t) <= ROLLING_WINDOW_SEC]
+    state["recent_losses"] = recent
+
+    # 3. Trigger New Hibernation if >= 3 losses
+    if len(recent) >= MAX_ROLLING_LOSSES:
+        state["hibernation_until"] = now + HIBERNATION_SEC
+        print(f"[ALERT] {MAX_ROLLING_LOSSES} losses in rolling 60m. Entering 12H Hibernation!")
+        save_state(state)
+        return False
+
+    return True
+
+
+# ==============================================================================
+# DYNAMIC RATINGS & PROFIT RATCHETS
+# ==============================================================================
+def get_galactic_moonshot_floor(peak_roe: float, initial_adaptive_stop: float) -> float:
+    """
+    Calculates the trailing stop floor based on peak Return-on-Equity (ROE).
+    - Peak < +0.5%   : Dynamic Adaptive Stop (-1.5% to -4.0% floor)
+    - Peak >= +0.5%  : +0.25% ROE
+    - Peak >= +1.5%  : +1.00% ROE
+    - Peak >= +3.0%  : Scales from 80% lock up to 95% lock at +300%+ ROE
+    """
+    if peak_roe < 0.5:
+        return initial_adaptive_stop
+    elif peak_roe < 1.5:
+        return 0.25
+    elif peak_roe < 3.0:
+        return 1.00
+    else:
+        # Scale lock ratio from 80% (at 3% ROE) to 95% (at 300% ROE)
+        lock_ratio = 0.80 + min(0.15, (peak_roe - 3.0) / 297.0 * 0.15)
+        return peak_roe * lock_ratio
+
+
+def calculate_adaptive_stop(atr_1h: float, price: float, leverage: float = 1.0) -> float:
+    """
+    Sets initial downside stop derived from 1.5x ATR 1H volatility buffer.
+    Bounded between -1.5% and -4.0% ROE floor.
+    """
+    volatility_roe = (1.5 * atr_1h / price) * leverage * 100.0
+    adaptive_stop = -max(1.5, min(4.0, volatility_roe))
+    return adaptive_stop
+
+
+# ==============================================================================
+# EXECUTION ENGINE & POSITION MANAGEMENT
+# ==============================================================================
+def process_active_positions(state: dict, exchange_api, now: float):
+    positions = state.get("active_positions", {})
+    closed_symbols = []
+
+    for symbol, pos in list(positions.items()):
+        current_price = exchange_api.get_current_price(symbol)
+        side = pos["side"] # "LONG" or "SHORT"
+        entry_price = pos["entry_price"]
+        leverage = pos.get("leverage", 1.0)
+
+        # Raw Price ROE calculation
+        if side == "LONG":
+            raw_roe = ((current_price - entry_price) / entry_price) * leverage * 100.0
+        else:
+            raw_roe = ((entry_price - current_price) / entry_price) * leverage * 100.0
+
+        # Track Peak ROE
+        pos["peak_roe"] = max(pos.get("peak_roe", raw_roe), raw_roe)
+        
+        # Determine Stop ROE Floor
+        stop_roe_floor = get_galactic_moonshot_floor(pos["peak_roe"], pos["initial_stop_roe"])
+
+        # Stop-Loss / Lock Violation Check
+        if raw_roe <= stop_roe_floor:
+            print(f"[EXIT] {symbol} Triggered Stop! Raw ROE: {raw_roe:.2f}%, Floor: {stop_roe_floor:.2f}%")
+            exchange_api.close_position(symbol)
+            
+            is_loss = raw_roe < 0.0
+            if is_loss:
+                state["loss_cooldowns"][symbol] = now
+                state["recent_losses"].append(now)
+                print(f"[COOLDOWN] {symbol} added to 24H loss blocklist.")
+
+            closed_symbols.append(symbol)
+
+    for sym in closed_symbols:
+        del state["active_positions"][sym]
+
+
+def evaluate_new_entries(state: dict, exchange_api, now: float):
+    nav = exchange_api.get_net_worth()
+    
+    # Calculate Active Slots
+    max_slots = 1 if nav < MIN_NAV_FOR_TWO_SLOTS else MAX_SLOTS_DEFAULT
+    active_count = len(state.get("active_positions", {}))
+    
+    if active_count >= max_slots:
         return
 
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = sender_email
-    msg["To"] = receiver_email
+    slot_nav_usd = max(SLOT_FLOOR_USD, nav / max_slots)
+    btc_candle = exchange_api.get_btc_daily_candle()
+    btc_regime = get_btc_regime(btc_candle)
 
-    msg.attach(MIMEText(text_fallback, "plain"))
-    msg.attach(MIMEText(html_content, "html"))
+    if btc_regime == "NEUTRAL":
+        print("[SKIP] BTC Regime is NEUTRAL. All entries blocked.")
+        return
 
-    try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(sender_email, sender_password)
-            server.sendmail(sender_email, receiver_email, msg.as_string())
-    except Exception as e:
-        print(f"Failed to send email: {e}", flush=True)
+    candidates = exchange_api.get_top_100_volume_candidates()
 
-def round_sig_figs(val, sig_figs=5):
-    if val == 0:
-        return 0
-    return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
+    for candidate in candidates:
+        symbol = candidate["symbol"]
 
-def check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=10000.0):
-    """
-    Guardrail #1: Bid-Ask Spread & Orderbook Depth Filter
-    Rejects any asset with spread > 0.30% or orderbook depth < $10k within 0.5% of mid.
-    """
-    try:
-        l2_book = api_retry(info.l2_snapshot, name=coin)
-        levels = l2_book.get("levels", [[], []])
-        bids = levels[0] if len(levels) > 0 else []
-        asks = levels[1] if len(levels) > 1 else []
+        # 1. Slot Check
+        if len(state["active_positions"]) >= max_slots:
+            break
 
-        if not bids or not asks:
-            return False, "Empty Orderbook"
+        # 2. 24H Cooldown Gate
+        last_loss_time = state["loss_cooldowns"].get(symbol, 0)
+        if (now - last_loss_time) < LOSS_COOLDOWN_SEC:
+            continue
 
-        best_bid = float(bids[0]["px"])
-        best_ask = float(asks[0]["px"])
+        # 3. Single-Candle Lockout Gate
+        current_candle_ts = candidate["candle_timestamp"]
+        if state["last_traded_candle"].get(symbol) == current_candle_ts:
+            continue
 
-        if best_bid <= 0 or best_ask <= 0:
-            return False, "Invalid Orderbook Prices"
+        # 4. Filter Signals (Chop & Volume)
+        if candidate["ci"] > MAX_CHOPPINESS_INDEX or candidate["vol_ratio"] < MIN_VOLUME_RATIO:
+            continue
 
-        mid_px = (best_bid + best_ask) / 2.0
-        spread_pct = (best_ask - best_bid) / mid_px
+        # 5. BTC Regime Shield Filter
+        proposed_side = candidate["signal_side"] # "LONG" or "SHORT"
+        if btc_regime == "GREEN" and proposed_side == "SHORT":
+            continue
+        if btc_regime == "RED" and proposed_side == "LONG":
+            continue
 
-        if spread_pct > max_spread:
-            return False, f"Wide Spread ({spread_pct*100:.2f}% > {max_spread*100:.2f}%)"
+        # 6. Orderbook Spread & Depth Gate
+        bid, ask = candidate["bid"], candidate["ask"]
+        depth_05 = candidate["depth_05_usd"]
+        if not check_orderbook_gate(bid, ask, depth_05):
+            continue
 
-        bid_depth = sum(float(b["px"]) * float(b["sz"]) for b in bids if float(b["px"]) >= mid_px * 0.995)
-        ask_depth = sum(float(a["px"]) * float(a["sz"]) for a in asks if float(a["px"]) <= mid_px * 1.005)
-        total_depth = min(bid_depth, ask_depth)
-
-        if total_depth < min_depth_usd:
-            return False, f"Low Orderbook Depth (${total_depth:,.0f} < ${min_depth_usd:,.0f})"
-
-        return True, f"OK (Spread: {spread_pct*100:.2f}%, Depth: ${total_depth:,.0f})"
-    except Exception as e:
-        return False, f"Liquidity Check Error: {e}"
-
-def calculate_gaussian_channel(closes, poles=4, period=144, mult=1.414):
-    s = pd.Series(closes)
-    alpha = (2.0 / (period + 1)) * (poles ** 0.5)
-    filtered = s.ewm(alpha=alpha, adjust=False).mean()
-    error = (s - filtered).abs()
-    deviation = error.ewm(alpha=alpha, adjust=False).mean() * mult
-    upper = filtered + deviation
-    lower = filtered - deviation
-    return upper.iloc[-1], lower.iloc[-1], filtered.iloc[-1]
-
-def calculate_choppiness_index(highs, lows, closes, period=14):
-    try:
-        if len(closes) < period + 1:
-            return 50.0
-        tr_sum = sum([max(highs[i] - lows[i], abs(highs[i] - closes[i-1]), abs(lows[i] - closes[i-1])) for i in range(1, period + 1)])
-        max_high = max(highs[-period:])
-        min_low = min(lows[-period:])
-        range_diff = max_high - min_low
-        if range_diff <= 0 or tr_sum <= 0:
-            return 50.0
-        ci = 100 * (log10(tr_sum / range_diff) / log10(period))
-        return ci
-    except Exception:
-        return 50.0
-
-def calculate_atr(highs, lows, closes, period=14):
-    try:
-        if len(highs) < period + 1:
-            return highs[-1] - lows[-1] if len(highs) > 0 else 1.0
-        trs = [max(highs[i] - lows[i], abs(highs[i] - closes[i-1]), abs(lows[i] - closes[i-1])) for i in range(1, len(closes))]
-        return np.mean(trs[-period:]) if len(trs) >= period else np.mean(trs)
-    except Exception:
-        return 1.0
-
-def calculate_moonshot_ratchet_stop(entry_px, is_long, current_px, atr_val, peak_roe=0.0):
-    if is_long:
-        roe = (current_px - entry_px) / entry_px
-    else:
-        roe = (entry_px - current_px) / entry_px
-
-    atr_roe_buffer = (atr_val * 1.5) / entry_px if entry_px > 0 else 0.020
-    atr_roe_buffer = max(0.015, min(0.040, atr_roe_buffer))
-
-    leash_status = f"1H ATR Noise Buffer (-{atr_roe_buffer*100:.2f}%)"
-    
-    if peak_roe >= 3.00:
-        target_floor_roe = max(peak_roe * 0.95, peak_roe - 0.20)
-        leash_status = f"🚀 GALACTIC MOONSHOT 95% Lock [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
-    elif peak_roe >= 1.50:
-        target_floor_roe = max(peak_roe * 0.92, peak_roe - 0.12)
-        leash_status = f"🌌 Parabolic Wave 92% Lock [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
-    elif peak_roe >= 0.75:
-        target_floor_roe = peak_roe * 0.90
-        leash_status = f"🌕 Major Runner 90% Lock [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
-    elif peak_roe >= 0.30:
-        target_floor_roe = max(peak_roe * 0.88, peak_roe - 0.05)
-        leash_status = f"📈 Strong Trend 88% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif peak_roe >= 0.15:
-        target_floor_roe = peak_roe * 0.85
-        leash_status = f"🚀 Breakout 85% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif peak_roe >= 0.03:
-        target_floor_roe = max(0.02, peak_roe * 0.80)
-        leash_status = f"🎯 80% Peak Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-    elif peak_roe >= 0.015:
-        target_floor_roe = 0.010
-        leash_status = "🔒 Winner Lock (+1.0% Floor)"
-    elif peak_roe >= 0.005:
-        target_floor_roe = 0.0025
-        leash_status = "🛡️ Scratch Lock (+0.25% Floor)"
-    else:
-        target_floor_roe = -atr_roe_buffer
-
-    if is_long:
-        stop_px = entry_px * (1 + target_floor_roe)
-    else:
-        stop_px = entry_px * (1 - target_floor_roe)
-
-    return stop_px, roe, target_floor_roe, leash_status
-
-def check_gemini_macro_shield(state, now_ts, is_scan_window):
-    gemini_cache = state.get("gemini_cache", {})
-    
-    if not is_scan_window and "risk" in gemini_cache:
-        elapsed_mins = (now_ts - float(gemini_cache.get("timestamp", 0))) / 60.0
-        return gemini_cache["risk"], f"{gemini_cache['briefing']} (Refreshed {elapsed_mins:.0f}m ago)"
-
-    if not GEMINI_API_KEY:
-        return "LOW", "Gemini API key not set — Macro shield bypassed."
-
-    try:
-        from google import genai
-        client = genai.Client(api_key=GEMINI_API_KEY)
-        model_cascade = ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.8-flash']
+        # 7. Execute Order with Slippage Cap Buffer
+        mid_price = (bid + ask) / 2.0
+        limit_price = mid_price * (1 + MAX_SLIPPAGE_PCT) if proposed_side == "LONG" else mid_price * (1 - MAX_SLIPPAGE_PCT)
         
-        last_err_msg = ""
-        for model_name in model_cascade:
-            try:
-                response = client.models.generate_content(
-                    model=model_name,
-                    contents='Perform a 1-sentence risk assessment for crypto markets right now. State Risk Level as LOW, MODERATE, or HIGH.'
-                )
-                text = response.text if response and response.text else "LOW Risk"
-                risk_level = "HIGH" if "HIGH" in text.upper() else ("MODERATE" if "MODERATE" in text.upper() else "LOW")
-                
-                state["gemini_cache"] = {
-                    "timestamp": now_ts,
-                    "risk": risk_level,
-                    "briefing": text.strip()
-                }
-                return risk_level, text.strip()
-            except Exception as m_err:
-                last_err_msg = str(m_err)
-                err_str = str(m_err).upper()
-                if any(code in err_str for code in ["404", "503", "429", "UNAVAILABLE", "NOT_FOUND", "RESOURCE_EXHAUSTED"]):
-                    continue
-                raise m_err
+        success = exchange_api.place_order(
+            symbol=symbol,
+            side=proposed_side,
+            amount_usd=slot_nav_usd,
+            price=limit_price
+        )
 
-        if "risk" in gemini_cache:
-            return gemini_cache["risk"], f"{gemini_cache['briefing']} (Cached fallback during API demand spike)"
-        
-        return "LOW", f"Gemini Shield active — default PASS ({last_err_msg})"
-    except Exception as e:
-        if "risk" in gemini_cache:
-            return gemini_cache["risk"], f"{gemini_cache['briefing']} (Cached fallback during API error)"
-        return "LOW", f"Gemini Shield active — default PASS ({e})"
+        if success:
+            initial_stop = calculate_adaptive_stop(candidate["atr_1h"], mid_price, candidate["leverage"])
+            state["active_positions"][symbol] = {
+                "side": proposed_side,
+                "entry_price": mid_price,
+                "leverage": candidate["leverage"],
+                "peak_roe": 0.0,
+                "initial_stop_roe": initial_stop,
+                "opened_at": now
+            }
+            state["last_traded_candle"][symbol] = current_candle_ts
+            print(f"[ENTRY] Opened {proposed_side} on {symbol} @ ${mid_price:.4f} | Initial Stop: {initial_stop:.2f}%")
 
-def get_btc_regime(info, now_ms):
-    try:
-        btc_candles = api_retry(info.candles_snapshot, name="BTC", interval="1d", startTime=now_ms - 86400000 * 5, endTime=now_ms)
-        if not btc_candles or len(btc_candles) < 2:
-            return "NEUTRAL", 0.0
-        latest = btc_candles[-1]
-        o_px = float(latest["o"])
-        c_px = float(latest["c"])
-        pct_change = ((c_px - o_px) / o_px) * 100
-        
-        if pct_change >= 0.15:
-            return "GREEN", pct_change
-        elif pct_change <= -0.15:
-            return "RED", pct_change
-        return "NEUTRAL", pct_change
-    except Exception as e:
-        print(f"[WARN] Failed to fetch BTC daily regime: {e}", flush=True)
-        return "NEUTRAL", 0.0
 
-def execute_engine():
-    timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    now_ts = time.time()
-    audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Hardened Architecture V2).")
-
-    if not SECRET_KEY or not ACCOUNT_ADDRESS:
-        raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
-
+# ==============================================================================
+# MAIN EXECUTION CYCLE
+# ==============================================================================
+def main():
+    now = time.time()
     state = load_state()
 
-    # Guardrail #5: Hibernation Mode Check
-    if now_ts < float(state.get("hibernating_until", 0)):
-        remaining_hrs = (float(state["hibernating_until"]) - now_ts) / 3600.0
-        print(f"[{timestamp}] 🚨 BOT IN 12H EMERGENCY HIBERNATION ({remaining_hrs:.1f}h remaining). Execution halted.", flush=True)
-        return
+    print(f"--- Running TR-GC-Crypto-LS-23-V2 | {datetime.now(timezone.utc).isoformat()} ---")
 
-    # Guardrail #5: Rolling 1-Hour Loss Circuit Breaker
-    one_hour_ago = now_ts - 3600
-    recent_losses = [
-        t for t in state.get("closed_trades_ledger", [])
-        if float(t.get("pnl_usd", 0)) < 0 and float(t.get("ts_sec", 0)) >= one_hour_ago
-    ]
-
-    if len(recent_losses) >= 3:
-        state["hibernating_until"] = now_ts + 43200  # 12-Hour Hibernation
-        save_state(state)
-        err_body = f"🚨 ROLLING CIRCUIT BREAKER TRIGGERED: 3 losses recorded within the last 60 minutes. Bot entering 12-hour hibernation to prevent execution loops."
-        print(f"[{timestamp}] {err_body}", flush=True)
-        send_html_dashboard_email("🚨 EMERGENCY HALT: Rolling Circuit Breaker Active", f"<h3>{err_body}</h3>", err_body)
-        return
-
-    wallet = eth_account.Account.from_key(SECRET_KEY)
-    exchange = api_retry(Exchange, wallet, constants.MAINNET_API_URL, account_address=ACCOUNT_ADDRESS)
-    info = api_retry(Info, constants.MAINNET_API_URL, skip_ws=True)
-
-    user_state = api_retry(info.user_state, ACCOUNT_ADDRESS)
-    spot_state = api_retry(info.spot_user_state, ACCOUNT_ADDRESS)
-    all_mids = api_retry(info.all_mids)
-    meta = api_retry(info.meta)
-    now_ms = int(now_ts * 1000)
-
-    current_gm_min = time.gmtime(now_ts).tm_min
-    last_scan_ts = float(state.get("last_scan_timestamp", 0))
-    minutes_since_last_scan = (now_ts - last_scan_ts) / 60.0
-    
-    is_1h_scan_window = (current_gm_min in [0, 1, 2, 3]) or (minutes_since_last_scan >= 50.0)
-
-    gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_1h_scan_window)
-    audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] {gemini_briefing}")
-
-    btc_regime, btc_change_pct = get_btc_regime(info, now_ms)
-    audit_logs.append(f"BTC Directional Shield: Daily Candle is {btc_regime} ({btc_change_pct:+.2f}%).")
-
-    effective_regime = btc_regime
-
-    sz_decimals_map = {}
-    for asset in meta.get("universe", []):
-        coin_name = asset.get("name")
-        sz_decimals_map[coin_name] = asset.get("szDecimals", 4)
-
-    asset_positions = user_state.get("assetPositions", [])
-    active_count = 0
-    positions_data = []
-    active_coins = set()
-    total_margin_used = 0.0
-    total_unrealized_pnl = 0.0
-    current_active_cache = state.get("active_position_cache", {})
-    new_active_cache = {}
-    trade_closed_this_run = False
-
-    spot_usdc = 0.0
-    total_spot_net_worth = 0.0
-    for b in spot_state.get("balances", []):
-        coin = b.get("coin", "").upper()
-        total_amt = float(b.get("total", 0.0))
-        if total_amt > 0:
-            if coin == "USDC":
-                spot_usdc = total_amt
-                total_spot_net_worth += total_amt
-            else:
-                px = float(all_mids.get(coin, 0.0))
-                total_spot_net_worth += (total_amt * px)
-
-    margin_summary = user_state.get("marginSummary", {})
-    fallback_val = float(margin_summary.get("accountValue", 0.0))
-    account_value = total_spot_net_worth if total_spot_net_worth > 0 else fallback_val
-
-    if asset_positions:
-        for pos_item in asset_positions:
-            pos = pos_item.get("position", {})
-            unrealized_pnl = float(pos.get("unrealizedPnl", 0))
-            total_unrealized_pnl += unrealized_pnl
-
-    portfolio_pnl_pct = (total_unrealized_pnl / account_value) if account_value > 0 else 0.0
-    if portfolio_pnl_pct <= -0.035:
-        audit_logs.append(f"🚨 PORTFOLIO CIRCUIT BREAKER TRIGGERED: Unrealized P&L at {portfolio_pnl_pct*100:.2f}%. Flattening all positions!")
-        for pos_item in asset_positions:
-            pos = pos_item.get("position", {})
-            coin = pos.get("coin")
-            szi = float(pos.get("szi", 0))
-            if coin and szi != 0:
-                try:
-                    entry_px = float(pos.get("entryPx", 0))
-                    exit_px = float(all_mids.get(coin, 0))
-                    pnl = float(pos.get("unrealizedPnl", 0))
-                    roe = (pnl / float(pos.get("marginUsed", 1))) * 100
-                    exchange.market_close(coin)
-
-                    # Guardrail #2: Add to 24-Hour Post-Loss Cooldown Blocklist
-                    if pnl < 0:
-                        state["cooldown_blocklist"][coin] = now_ts + 86400
-
-                    state["closed_trades_ledger"].insert(0, {
-                        "coin": coin, "entry_price": entry_px, "exit_price": exit_px,
-                        "pnl_usd": pnl, "roe_pct": roe, "side": "LONG" if szi > 0 else "SHORT",
-                        "exit_reason": "🚨 Portfolio Circuit Breaker (-3.5%)", "timestamp": timestamp, "ts_sec": now_ts
-                    })
-                    trade_closed_this_run = True
-                except Exception as e:
-                    audit_logs.append(f"Circuit breaker close failed on {coin}: {e}")
-        state["closed_trades_ledger"] = sorted(state["closed_trades_ledger"], key=lambda x: x.get("timestamp", ""), reverse=True)[:20]
+    # 1. Check Circuit Breakers / Emergency Hibernation
+    if not check_circuit_breaker(state, now):
         save_state(state)
         return
 
-    if asset_positions:
-        for pos_item in asset_positions:
-            pos = pos_item.get("position", {})
-            coin = pos.get("coin")
-            szi = float(pos.get("szi", 0))
-            if not coin or szi == 0:
-                continue
+    # Mock Exchange Interface - Interface with actual Hyperliquid SDK/API client here
+    class ExchangeClientMock:
+        def get_net_worth(self): return 100.0
+        def get_btc_daily_candle(self): return {"open": 64000.0, "close": 65200.0}
+        def get_current_price(self, sym): return 100.0
+        def get_top_100_volume_candidates(self): return []
+        def close_position(self, sym): return True
+        def place_order(self, symbol, side, amount_usd, price): return True
+
+    exchange_api = ExchangeClientMock()
+
+    # 2. Manage Existing Positions & Apply Ratchet Ladder
+    process_active_positions(state, exchange_api, now)
+
+    # 3. Evaluate Universe for New Entries
+    evaluate_new_entries(state, exchange_api, now)
+
+    # 4. Save Updated State
+    save_state(state)
+    print("--- Cycle Complete ---")
 
-            is_long = szi > 0
-            entry_px = float(pos.get("entryPx", 0))
-            current_px = float(all_mids.get(coin, entry_px))
-            margin_used = float(pos.get("marginUsed", 0))
-            unrealized_pnl = float(pos.get("unrealizedPnl", 0))
-            pos_equity = margin_used + unrealized_pnl
-
-            current_roe = (((current_px - entry_px) / entry_px) * 1.0) if is_long else (((entry_px - current_px) / entry_px) * 1.0)
-            
-            should_exit = False
-            exit_reason = ""
-            atr_val = 1.0
-
-            try:
-                c_candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
-                closes = [float(c["c"]) for c in c_candles]
-                highs = [float(c["h"]) for c in c_candles]
-                lows = [float(c["l"]) for c in c_candles]
-                
-                atr_val = calculate_atr(highs, lows, closes)
-                upper_band, lower_band, filter_line = calculate_gaussian_channel(closes)
-
-                if (not is_long) and current_px > upper_band:
-                    should_exit = True
-                    exit_reason = f"📈 Gaussian Short Invalidation (${current_px:.4f} > ${upper_band:.4f})"
-            except Exception as e:
-                audit_logs.append(f"Channel calculation warning on {coin}: {e}")
-
-            if btc_regime == "RED" and is_long:
-                should_exit = True
-                exit_reason = "🛑 BTC Daily Bearish Flip Purge"
-            elif btc_regime == "GREEN" and (not is_long):
-                should_exit = True
-                exit_reason = "🟢 BTC Daily Bullish Flip Purge"
-
-            prev_peak = current_active_cache.get(coin, {}).get("peak_roe", current_roe)
-            peak_roe = max(current_roe, prev_peak)
-
-            stop_px_calc, current_roe, target_floor_roe, leash_status = calculate_moonshot_ratchet_stop(
-                entry_px, is_long, current_px, atr_val, peak_roe=peak_roe
-            )
-
-            if is_long and current_px <= stop_px_calc:
-                should_exit = True
-                exit_reason = f"🎯 Stop/Profit Lock Triggered ({current_roe*100:.2f}%)"
-            elif (not is_long) and current_px >= stop_px_calc:
-                should_exit = True
-                exit_reason = f"🎯 Stop/Profit Lock Triggered ({current_roe*100:.2f}%)"
-
-            if should_exit:
-                try:
-                    audit_logs.append(f"🎯 EXIT TRIGGERED: Closing {coin} {'LONG' if is_long else 'SHORT'} @ ${current_px:.5f} ({exit_reason}).")
-                    exchange.market_close(coin)
-
-                    # Guardrail #2: Add to 24-Hour Post-Loss Cooldown Blocklist if exited at loss
-                    if unrealized_pnl < 0 or current_roe < 0:
-                        state["cooldown_blocklist"][coin] = now_ts + 86400
-                        audit_logs.append(f"⛔ Added {coin} to 24H Cooldown Blocklist (Closed at Loss)")
-
-                    state["closed_trades_ledger"].insert(0, {
-                        "coin": coin, "entry_price": entry_px, "exit_price": current_px,
-                        "pnl_usd": unrealized_pnl, "roe_pct": current_roe * 100, "side": "LONG" if is_long else "SHORT",
-                        "exit_reason": exit_reason, "timestamp": timestamp, "ts_sec": now_ts
-                    })
-                    trade_closed_this_run = True
-                    continue
-                except Exception as e:
-                    audit_logs.append(f"Market close failed on {coin}: {e}")
-
-            active_count += 1
-            active_coins.add(coin)
-            total_margin_used += margin_used
-
-            new_active_cache[coin] = {
-                "entry_px": entry_px, "current_px": current_px, "szi": szi, 
-                "margin": margin_used, "side": "LONG" if is_long else "SHORT",
-                "peak_roe": peak_roe
-            }
-
-            positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23", "coin": coin,
-                "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
-                "entry": entry_px, "current": current_px, "leverage": 1,
-                "collateral": margin_used, "position_usd": pos_equity,
-                "pnl": unrealized_pnl, "roe": current_roe * 100,
-                "stop": round_sig_figs(stop_px_calc, 5),
-                "status": leash_status
-            })
-
-    state["active_position_cache"] = new_active_cache
-    state["previous_active_coins"] = list(active_coins)
-
-    universe = [asset["name"] for asset in meta.get("universe", [])][:100]
-    market_candidates = []
-
-    # Dynamic slot calculation (Max 1 slot if balance < $20, else 2 slots)
-    MAX_CRYPTO_SLOTS = 1 if account_value < 20.0 else 2
-    available_slots = MAX_CRYPTO_SLOTS - active_count
-
-    base_sizing_usd = 10.0
-
-    if is_1h_scan_window and available_slots > 0 and effective_regime != "NEUTRAL":
-        state["last_scan_timestamp"] = now_ts
-        audit_logs.append(f"⏰ 1-Hour Candle Boundary Reached: Scanning (BTC Tilt: {effective_regime}, Target Size: ${base_sizing_usd:.0f})...")
-
-        for coin in universe:
-            if coin in active_coins or coin in ["USDC", "USDT"]:
-                continue
-
-            # Guardrail #2: Check 24-Hour Cooldown Blocklist
-            cooldown_expiry = float(state.get("cooldown_blocklist", {}).get(coin, 0))
-            if now_ts < cooldown_expiry:
-                rem_hrs = (cooldown_expiry - now_ts) / 3600.0
-                continue
-
-            try:
-                px = float(all_mids.get(coin, 0))
-                if px <= 0:
-                    continue
-                
-                time.sleep(0.15)
-                candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
-                if not candles or len(candles) < 50:
-                    continue
-
-                # Guardrail #3: Single-Candle Entry Lock
-                current_candle_ts = candles[-1]["t"]
-                if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
-                    continue
-
-                # Guardrail #1: Orderbook Spread & Depth Check
-                is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=10000.0)
-                if not is_liquid:
-                    continue
-
-                closes = [float(c["c"]) for c in candles]
-                highs = [float(c["h"]) for c in candles]
-                lows = [float(c["l"]) for c in candles]
-                volumes = [float(c.get("v", 0)) for c in candles]
-
-                ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
-                if ci_1h > 52.0:
-                    continue
-
-                avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else volumes[-3]
-                comp_vol = volumes[-2]
-                vol_ratio = comp_vol / avg_vol if avg_vol > 0 else 1.0
-                if vol_ratio < 1.3:
-                    continue
-
-                upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
-                comp_close = closes[-2]
-                prev_comp_close = closes[-3]
-
-                if effective_regime == "GREEN":
-                    if comp_close > upper and prev_comp_close <= upper:
-                        market_candidates.append({
-                            "coin": coin, "close": comp_close, "is_long": True, 
-                            "score": (comp_close - upper) / upper, "ci": ci_1h, "vol_ratio": vol_ratio,
-                            "candle_ts": current_candle_ts
-                        })
-                        audit_logs.append(f"1H BREAKOUT MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}x, CI: {ci_1h:.1f})")
-
-                elif effective_regime == "RED":
-                    if comp_close < lower and prev_comp_close >= lower:
-                        market_candidates.append({
-                            "coin": coin, "close": comp_close, "is_long": False, 
-                            "score": (lower - comp_close) / lower, "ci": ci_1h, "vol_ratio": vol_ratio,
-                            "candle_ts": current_candle_ts
-                        })
-                        audit_logs.append(f"1H BREAKDOWN MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}x, CI: {ci_1h:.1f})")
-
-            except Exception:
-                continue
-
-    market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
-
-    trades_executed = False
-    if available_slots > 0 and market_candidates:
-        for candidate in market_candidates[:available_slots]:
-            coin = candidate["coin"]
-            px = candidate["close"]
-            is_long = candidate["is_long"]
-            candle_ts = candidate["candle_ts"]
-            
-            decimals = sz_decimals_map.get(coin, 4)
-            raw_sz = base_sizing_usd / px
-            sz = round(raw_sz, decimals)
-            if decimals == 0:
-                sz = int(sz)
-
-            try:
-                try:
-                    exchange.update_leverage(coin, 1, True)
-                except Exception:
-                    pass
-
-                # Guardrail #4: Slippage-Capped Entry Order (0.20% Max Slippage Buffer)
-                capped_px = px * (1.0020 if is_long else 0.9980)
-                res = exchange.market_open(coin, is_long, sz, capped_px, slippage=0.002)
-
-                if res.get("status") == "ok":
-                    active_count += 1
-                    active_coins.add(coin)
-                    trades_executed = True
-
-                    # Guardrail #3: Lock Candle Timestamp Upon Successful Entry
-                    if "last_traded_candle" not in state:
-                        state["last_traded_candle"] = {}
-                    state["last_traded_candle"][coin] = candle_ts
-
-                    audit_logs.append(f"1H EXECUTION SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {coin} (Size: {sz} ~${base_sizing_usd:.2f})")
-
-            except Exception as e:
-                audit_logs.append(f"EXECUTION FAILED on {coin}: {e}")
-
-    if trades_executed:
-        time.sleep(2.5)
-
-    static_usdc = max(0.0, account_value - total_margin_used)
-    margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
-
-    last_email_ts = float(state.get("last_email_timestamp", 0))
-    elapsed_minutes = (now_ts - last_email_ts) / 60.0
-    
-    is_time_for_periodic_email = (elapsed_minutes >= 25.0)
-    should_send_email = is_time_for_periodic_email or trades_executed or trade_closed_this_run or is_1h_scan_window
-
-    if should_send_email:
-        state["last_email_timestamp"] = now_ts
-        save_state(state)
-
-        cutoff_ts = now_ts - 86400
-        trades_24h = []
-        for t in state.get("closed_trades_ledger", []):
-            t_str = str(t.get("timestamp", timestamp)).replace("Z", "").replace("T", " ")
-            try:
-                t_ts = time.mktime(time.strptime(t_str, "%Y-%m-%d %H:%M:%S"))
-                if t_ts >= cutoff_ts:
-                    trades_24h.append(t)
-            except Exception:
-                trades_24h.append(t)
-
-        total_24h = len(trades_24h)
-        wins_24h = [t for t in trades_24h if float(t.get("pnl_usd", 0)) > 0]
-        losses_24h = [t for t in trades_24h if float(t.get("pnl_usd", 0)) <= 0]
-        
-        win_count = len(wins_24h)
-        loss_count = len(losses_24h)
-        win_rate_24h = (win_count / total_24h * 100) if total_24h > 0 else 0.0
-        
-        avg_win_roe = (sum(float(t.get("roe_pct", 0)) for t in wins_24h) / win_count) if win_count > 0 else 0.0
-        avg_win_usd = (sum(float(t.get("pnl_usd", 0)) for t in wins_24h) / win_count) if win_count > 0 else 0.0
-        
-        avg_loss_roe = (sum(float(t.get("roe_pct", 0)) for t in losses_24h) / loss_count) if loss_count > 0 else 0.0
-        avg_loss_usd = (sum(float(t.get("pnl_usd", 0)) for t in losses_24h) / loss_count) if loss_count > 0 else 0.0
-        
-        net_24h_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_24h)
-
-        text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/2"
-
-        summary_card_html = f"""
-        <div class="summary-card">
-          <div class="summary-title">📊 24-Hour Performance Summary (Hardened Architecture)</div>
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
-            <tr>
-              <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase;">Total Trades (24h): <b style="color: #0f172a;">{total_24h}</b></td>
-              <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase; text-align: right;">Win Ratio: <b style="color: #0f172a;">{win_count}W / {loss_count}L ({win_rate_24h:.1f}%)</b></td>
-            </tr>
-            <tr>
-              <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase;">Avg Win: <b style="color: #15803d;">+{avg_win_roe:.2f}% (${avg_win_usd:+.2f})</b></td>
-              <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase; text-align: right;">Avg Loss: <b style="color: #b91c1c;">{avg_loss_roe:.2f}% (${avg_loss_usd:+.2f})</b></td>
-            </tr>
-          </table>
-          <div class="summary-net">
-            Net 24H Realized P&L: <span class="{'win-color' if net_24h_usd >= 0 else 'loss-color'}">${net_24h_usd:+.2f}</span>
-          </div>
-        </div>
-        """
-
-        audit_section = ""
-        if VERBOSE_TEST_MODE:
-            audit_rows = "".join([f"<tr><td style='padding: 6px 8px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 10px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
-            audit_section = f"""
-            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log</div>
-            <div class="table-responsive">
-              <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%;">
-                <tbody>{audit_rows}</tbody>
-              </table>
-            </div>
-            """
-
-        closed_ledger = sorted(state.get("closed_trades_ledger", []), key=lambda x: x.get("timestamp", ""), reverse=True)
-        
-        parsed_closed_rows = []
-        total_realized_pnl = 0.0
-
-        for t in closed_ledger[:10]:
-            entry_p = float(t.get("entry_price", 0.0))
-            exit_p = float(t.get("exit_price", 0.0))
-            side = t.get("side", "LONG")
-            
-            pnl_val = float(t.get("pnl_usd", 0.0))
-            roe_val = float(t.get("roe_pct", 0.0))
-            total_realized_pnl += pnl_val
-
-            parsed_closed_rows.append(
-                f"<tr>"
-                f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['coin']}<br><span style='font-size: 10px; color: {'#2e7d32' if side == 'LONG' else '#c62828'}; font-weight: 600;'>({side})</span></td>"
-                f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 10px;'>${round_sig_figs(entry_p, 5)}<br>&rarr; ${round_sig_figs(exit_p, 5)}</td>"
-                f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: {'#2e7d32' if pnl_val >= 0 else '#c62828'}; font-weight: bold;'>${pnl_val:+.2f}<br><span style='font-size: 10px;'>({roe_val:+.2f}%)</span></td>"
-                f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 10px;'><span style='color: #b45309; font-weight: 600;'>{t['exit_reason']}</span><br><span style='color: #94a3b8; font-size: 9px; font-family: monospace;'>{t.get('timestamp', '')}</span></td>"
-                f"</tr>"
-            )
-
-        total_pnl_color = '#2e7d32' if total_realized_pnl >= 0 else '#c62828'
-        closed_rows = "".join(parsed_closed_rows) if parsed_closed_rows else "<tr><td colspan='4' style='padding: 12px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
-        closed_rows += f"""
-        <tr style="background: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
-            <td colspan="2" style="padding: 8px; text-align: right;">TOTAL RECENT REALIZED P&L:</td>
-            <td colspan="2" style="padding: 8px; color: {total_pnl_color};">${total_realized_pnl:+.2f}</td>
-        </tr>
-        """
-
-        positions_rows = "".join([
-            f"<tr>"
-            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}<br><span style='font-size: 10px; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']} ({p['leverage']}x)</span></td>"
-            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 11px; font-weight: 600;'>${p['position_usd']:.2f}<br><span style='font-size: 9px; color: #64748b; font-weight: normal;'>Cost: ${p['collateral']:.2f}</span></td>"
-            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f}<br><span style='font-size: 10px;'>({p['roe']:+.2f}%)</span></td>"
-            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 10px;'><span style='color: #b45309; font-weight: bold; font-family: monospace;'>${p['stop']}</span><br><span style='color: #2e7d32; font-weight: 600;'>{p['status']}</span></td>"
-            f"</tr>"
-            for p in positions_data
-        ])
-
-        if not positions_data:
-            positions_rows = "<tr><td colspan='4' style='padding: 12px; text-align: center; color: #666;'>No active positions found.</td></tr>"
-
-        html_content = f"""
-        <html>
-          <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-              body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 8px; color: #333; }}
-              .container {{ max-width: 600px; width: 100%; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); box-sizing: border-box; }}
-              .header {{ background: #0f172a; color: #ffffff; padding: 14px 16px; }}
-              .header h2 {{ margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.5px; }}
-              .header p {{ margin: 3px 0 0; font-size: 11px; color: #94a3b8; }}
-              .content {{ padding: 12px; }}
-              .net-worth-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 14px; margin-bottom: 12px; }}
-              .net-worth-title {{ font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 2px; letter-spacing: 0.5px; }}
-              .net-worth-value {{ font-size: 22px; font-weight: 700; color: #0f172a; }}
-              .net-worth-subtitle {{ font-size: 10px; color: #64748b; margin-top: 4px; }}
-              
-              .summary-card {{ background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px; margin-bottom: 12px; }}
-              .summary-title {{ font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }}
-              .summary-net {{ font-size: 11px; font-weight: 700; color: #166534; border-top: 1px dashed #bbf7d0; padding-top: 6px; margin-top: 2px; }}
-              
-              .win-color {{ color: #15803d !important; }}
-              .loss-color {{ color: #b91c1c !important; }}
-
-              .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; font-size: 10px; color: #334155; line-height: 1.4; }}
-              .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a; letter-spacing: 0.5px; }}
-              .section-title {{ font-size: 11px; text-transform: uppercase; color: #475569; margin: 14px 0 6px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; font-weight: 600; letter-spacing: 0.5px; }}
-              .table-responsive {{ width: 100%; overflow-x: auto; margin-bottom: 12px; }}
-              table {{ width: 100%; border-collapse: collapse; font-size: 11px; }}
-              th {{ background: #f1f5f9; color: #475569; text-align: left; padding: 6px 8px; font-weight: 600; border-bottom: 2px solid #cbd5e1; font-size: 10px; }}
-              td {{ padding: 6px 8px; border-bottom: 1px solid #f1f5f9; }}
-              .footer {{ text-align: center; font-size: 9px; color: #94a3b8; padding: 10px; background: #f8fafc; border-top: 1px solid #e2e8f0; }}
-
-              @media only screen and (max-width: 600px) {{
-                body {{ padding: 2px !important; }}
-                .content {{ padding: 8px !important; }}
-                .header {{ padding: 10px !important; }}
-                .net-worth-value {{ font-size: 18px !important; }}
-                table {{ font-size: 10px !important; }}
-                th, td {{ padding: 5px 4px !important; }}
-              }}
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="header">
-                <h2>TR-GC-Crypto-LS-23 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Hardened Architecture V2 Active)</p>
-              </div>
-              <div class="content">
-                <div class="net-worth-card">
-                  <div class="net-worth-title">Total Net Worth</div>
-                  <div class="net-worth-value">USD ${account_value:.2f}</div>
-                  <div class="net-worth-subtitle">Reserve: <b>${static_usdc:.2f}</b> &bull; Margin: <b>{margin_util_pct:.1f}%</b></div>
-                </div>
-
-                {summary_card_html}
-
-                <div class="rules-card">
-                  <div class="rules-title">&#9989; Hardened Execution Safeguards</div>
-                  &bull; <b>Orderbook Spread Gate (&le; 0.30%):</b> Rejects thin assets with wide spreads<br>
-                  &bull; <b>24H Post-Loss Cooldown:</b> Automatically bans stopped-out assets for 24 hours<br>
-                  &bull; <b>Single-Candle Lockout:</b> Restricts assets to 1 entry per 1H candle bar<br>
-                  &bull; <b>Slippage-Capped Orders (&le; 0.20%):</b> Enforces strict price bounds on market fills<br>
-                  &bull; <b>1-Hour Circuit Breaker:</b> Enters 12H hibernation if 3 losses occur in 60 minutes
-                </div>
-
-                <div class="section-title">Positions per Bot (USD)</div>
-                <div class="table-responsive">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th style="width: 25%;">Asset</th>
-                        <th style="width: 20%;">Val ($)</th>
-                        <th style="width: 25%;">P&L (ROE)</th>
-                        <th style="width: 30%;">Stop / Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>{positions_rows}</tbody>
-                  </table>
-                </div>
-
-                <div class="section-title">Recently Closed Trades & Exit Telemetry</div>
-                <div class="table-responsive">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th style="width: 22%;">Asset</th>
-                        <th style="width: 28%;">Entry &rarr; Exit</th>
-                        <th style="width: 22%;">Realized</th>
-                        <th style="width: 28%;">Reason</th>
-                      </tr>
-                    </thead>
-                    <tbody>{closed_rows}</tbody>
-                  </table>
-                </div>
-
-                {audit_section}
-
-              </div>
-              <div class="footer">Hyperliquid Autonomous Engine &bull; Managed via GitHub Actions</div>
-            </div>
-          </body>
-        </html>
-        """
-
-        send_html_dashboard_email(f"Hyperliquid Report — USD ${account_value:.2f}", html_content, text_fallback)
-    else:
-        save_state(state)
-        print(f"[{timestamp}] Hybrid cycle complete ({elapsed_minutes:.1f}m since last report). Skipping email dispatch.", flush=True)
 
 if __name__ == "__main__":
-    timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing single-run dual-speed precision cycle...", flush=True)
-    try:
-        execute_engine()
-        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Cycle execution completed successfully.", flush=True)
-    except Exception as e:
-        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Engine execution error: {e}"
-        print(err_msg, flush=True)
-        send_html_dashboard_email("Hyperliquid Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
+    main()
