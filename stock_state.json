@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-10-01 15:16:23",
+  "last_run_timestamp": "2026-10-01 15:46:44",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,11 +19,11 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "LLY",
-    "XLF",
-    "WMT",
     "DIA",
-    "ABBV"
+    "XLF",
+    "ABBV",
+    "AAPL",
+    "LLY"
   ],
   "closed_trades_ledger": [
     {
@@ -188,9 +188,18 @@
     }
   ],
   "active_position_cache": {
+    "AAPL": {
+      "entry_px": 329.29,
+      "current_px": 326.745,
+      "qty": 29.0,
+      "side": "short",
+      "peak_roe": 0.007728749734276825,
+      "best_target_floor_roe": 0.0025,
+      "best_stop_px": 328.46677500000004
+    },
     "ABBV": {
       "entry_px": 259.702432,
-      "current_px": 261.025,
+      "current_px": 260.1,
       "qty": 37.0,
       "side": "short",
       "peak_roe": -0.0013190789064309895,
@@ -199,7 +208,7 @@
     },
     "DIA": {
       "entry_px": 509.13,
-      "current_px": 505.48,
+      "current_px": 505.79,
       "qty": 19.0,
       "side": "short",
       "peak_roe": 0.0071690923732641515,
@@ -208,25 +217,16 @@
     },
     "LLY": {
       "entry_px": 1144.41,
-      "current_px": 1151.872,
+      "current_px": 1147.0751,
       "qty": 8.0,
       "side": "short",
       "peak_roe": -0.0012801356157320523,
       "best_target_floor_roe": -0.012,
       "best_stop_px": 1158.14292
     },
-    "WMT": {
-      "entry_px": 104.723085,
-      "current_px": 104.72,
-      "qty": 94.0,
-      "side": "short",
-      "peak_roe": 0.009435216695535641,
-      "best_target_floor_roe": 0.0025,
-      "best_stop_px": 104.4612772875
-    },
     "XLF": {
       "entry_px": 52.97,
-      "current_px": 52.875,
+      "current_px": 53.035,
       "qty": 186.0,
       "side": "short",
       "peak_roe": 0.001793468000755123,
