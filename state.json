@@ -332,9 +332,9 @@
   "active_position_cache": {
     "RSR": {
       "entry_px": 0.00169,
-      "current_px": 0.001685,
+      "current_px": 0.001688,
       "szi": -5924.0,
-      "margin": 3.327313,
+      "margin": 3.335212,
       "side": "SHORT",
       "peak_roe": 0.0029585798816568125
     }
@@ -342,7 +342,7 @@
   "previous_active_coins": [
     "RSR"
   ],
-  "last_run_timestamp": "2026-10-01 02:27:07",
+  "last_run_timestamp": "2026-10-01 02:48:22",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -352,11 +352,11 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790821625.916969,
-  "last_scan_timestamp": 1790819460.7002797,
+  "last_email_timestamp": 1790822855.8063838,
+  "last_scan_timestamp": 1790822855.8063838,
   "gemini_cache": {
-    "timestamp": 1790819460.7002797,
+    "timestamp": 1790822855.8063838,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains significantly exposed to heightened volatility driven by macroeconomic policy uncertainty, shifting regulatory landscapes, and speculative leverage."
+    "briefing": "Risk Level: HIGH; while institutional interest remains robust, the market is currently navigating significant volatility driven by macroeconomic uncertainty, regulatory ambiguity, and heightened sensitivity to shifting monetary policies."
   }
 }
