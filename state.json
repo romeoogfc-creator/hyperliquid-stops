@@ -342,26 +342,26 @@
   "active_position_cache": {
     "ETH": {
       "entry_px": 2706.4,
-      "current_px": 2715.15,
+      "current_px": 2716.85,
       "szi": 0.0037,
-      "margin": 10.045426,
+      "margin": 10.05253,
       "side": "LONG",
-      "peak_roe": 0.0032330771504581733
+      "peak_roe": 0.0038612178539756937
     },
     "ADA": {
       "entry_px": 0.25237,
-      "current_px": 0.25262,
+      "current_px": 0.253275,
       "szi": 40.0,
-      "margin": 10.1052,
+      "margin": 10.1272,
       "side": "LONG",
-      "peak_roe": 0.0026944565518881563
+      "peak_roe": 0.003586004675674562
     }
   },
   "previous_active_coins": [
     "ADA",
     "ETH"
   ],
-  "last_run_timestamp": "2026-10-01 05:23:15",
+  "last_run_timestamp": "2026-10-01 05:42:52",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -371,7 +371,7 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790830873.7562113,
+  "last_email_timestamp": 1790833370.0801556,
   "last_scan_timestamp": 1790830873.7562113,
   "gemini_cache": {
     "timestamp": 1790830873.7562113,
