@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-10-01 19:16:27",
+  "last_run_timestamp": "2026-10-01 19:43:37",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -18,13 +18,32 @@
     "timestamp": "2026-09-24 04:34:54",
     "scan_date": "2026-09-24"
   },
-  "previous_active_symbols": [
-    "ABBV",
-    "XLF",
-    "LLY",
-    "PFE"
-  ],
+  "previous_active_symbols": [],
   "closed_trades_ledger": [
+    {
+      "symbol": "XLF",
+      "entry_price": 52.97,
+      "exit_price": 53.4401,
+      "exit_reason": "EOD Square-Off (100% Cash Flat)",
+      "realized_pnl": -87.4386000000004,
+      "timestamp": "2026-10-01 19:43:27"
+    },
+    {
+      "symbol": "LLY",
+      "entry_price": 1144.41,
+      "exit_price": 1154.63,
+      "exit_reason": "EOD Square-Off (100% Cash Flat)",
+      "realized_pnl": -81.76000000000022,
+      "timestamp": "2026-10-01 19:43:27"
+    },
+    {
+      "symbol": "ABBV",
+      "entry_price": 259.702432,
+      "exit_price": 260.155,
+      "exit_reason": "EOD Square-Off (100% Cash Flat)",
+      "realized_pnl": -16.745015999999453,
+      "timestamp": "2026-10-01 19:43:27"
+    },
     {
       "symbol": "GOOGL",
       "entry_price": 338.013793,
@@ -186,44 +205,7 @@
       "timestamp": "2026-09-30 13:45:05"
     }
   ],
-  "active_position_cache": {
-    "ABBV": {
-      "entry_px": 259.702432,
-      "current_px": 260.21,
-      "qty": 37.0,
-      "side": "short",
-      "peak_roe": 0.0025122290730029673,
-      "best_target_floor_roe": -0.012,
-      "best_stop_px": 262.818861184
-    },
-    "LLY": {
-      "entry_px": 1144.41,
-      "current_px": 1153.77,
-      "qty": 8.0,
-      "side": "short",
-      "peak_roe": 0.0016777203974100827,
-      "best_target_floor_roe": -0.012,
-      "best_stop_px": 1158.14292
-    },
-    "PFE": {
-      "entry_px": 28.15,
-      "current_px": 28.14,
-      "qty": 350.0,
-      "side": "short",
-      "peak_roe": 0.00035523978685605723,
-      "best_target_floor_roe": -0.012,
-      "best_stop_px": 28.4878
-    },
-    "XLF": {
-      "entry_px": 52.97,
-      "current_px": 53.405,
-      "qty": 186.0,
-      "side": "short",
-      "peak_roe": 0.001793468000755123,
-      "best_target_floor_roe": -0.012,
-      "best_stop_px": 53.60564
-    }
-  },
+  "active_position_cache": {},
   "daily_starting_equity": {
     "2026-09-22": 101022.53,
     "2026-09-23": 100687.3,
