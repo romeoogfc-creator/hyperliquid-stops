@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-10-01 19:56:24",
+  "last_run_timestamp": "2026-10-01 21:01:44",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -215,5 +215,8 @@
     "2026-09-29": 100687.3,
     "2026-09-30": 100687.3,
     "2026-10-01": 100687.3
+  },
+  "daily_peak_equity": {
+    "2026-10-01": 98501.9
   }
 }
