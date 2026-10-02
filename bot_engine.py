@@ -108,7 +108,7 @@ def round_sig_figs(val, sig_figs=5):
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
 def check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=5000.0):
-    """Guardrail #1: Bid-Ask Spread & Depth Filter (Active Profile: $5,000 USD min depth)"""
+    """Guardrail #1: Bid-Ask Spread & Depth Filter ($5,000 USD min depth)"""
     try:
         l2_book = api_retry(info.l2_snapshot, name=coin)
         levels = l2_book.get("levels", [[], []])
@@ -677,31 +677,34 @@ def execute_engine():
 
                     upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
                     comp_close = closes[-2]
-                    prev_comp_close = closes[-3]
 
-                    # STRATEGY A: TRENDING BREAKOUT ENGINE (Active Battle Profile: VolRatio >= 1.15x & CI <= 58.0)
+                    # STRATEGY A: TRENDING BREAKOUT ENGINE (Active Profile: Extension Cap <= +2.0%, VolRatio >= 1.15x, CI <= 58.0)
                     if market_mode == "TRENDING" or (market_mode == "RANGING" and vol_ratio >= 1.15):
                         ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
                         if ci_1h <= 58.0 and vol_ratio >= 1.15:
                             if effective_regime == "GREEN":
-                                if comp_close > upper and prev_comp_close <= upper:
+                                # LONG: Fresh close above upper band, capped at +2.0% over-extension
+                                if comp_close > upper and comp_close <= (upper * 1.020):
+                                    extension_pct = ((comp_close - upper) / upper) * 100
                                     market_candidates.append({
                                         "coin": coin, "close": comp_close, "is_long": True, 
                                         "score": (comp_close - upper) / upper, "candle_ts": current_candle_ts,
                                         "strategy": "BREAKOUT"
                                     })
-                                    audit_logs.append(f"1H BREAKOUT MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}x)")
+                                    audit_logs.append(f"1H BREAKOUT MATCH: {coin} @ ${comp_close:.4f} (Ext: +{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
 
                             elif effective_regime == "RED":
-                                if comp_close < lower and prev_comp_close >= lower:
+                                # SHORT: Fresh close below lower band, capped at -2.0% over-extension
+                                if comp_close < lower and comp_close >= (lower * 0.980):
+                                    extension_pct = ((lower - comp_close) / lower) * 100
                                     market_candidates.append({
                                         "coin": coin, "close": comp_close, "is_long": False, 
                                         "score": (lower - comp_close) / lower, "candle_ts": current_candle_ts,
                                         "strategy": "BREAKOUT"
                                     })
-                                    audit_logs.append(f"1H BREAKDOWN MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}x)")
+                                    audit_logs.append(f"1H BREAKDOWN MATCH: {coin} @ ${comp_close:.4f} (Ext: -{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
 
-                    # STRATEGY B: RANGING VWAP + BOLLINGER MEAN-REVERSION (Active Battle Profile: RSI <= 46 / RSI >= 54)
+                    # STRATEGY B: RANGING VWAP + BOLLINGER MEAN-REVERSION (Active Profile: RSI <= 46 / RSI >= 54)
                     if market_mode == "RANGING":
                         comp_close_curr = closes[-1]
 
