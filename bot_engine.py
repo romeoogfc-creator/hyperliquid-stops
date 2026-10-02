@@ -299,7 +299,7 @@ def calculate_atr(highs, lows, closes, period=14):
         return 1.0
 
 # ==============================================================================
-# BIDIRECTIONAL ULTRA-TIGHT MICRO-RATCHET ENGINE
+# BIDIRECTIONAL FAST-CUT RATCHET ENGINE
 # ==============================================================================
 def calculate_moonshot_ratchet_stop(entry_px, is_long, current_px, atr_val, peak_roe=0.0):
     if is_long:
@@ -307,9 +307,9 @@ def calculate_moonshot_ratchet_stop(entry_px, is_long, current_px, atr_val, peak
     else:
         roe = (entry_px - current_px) / entry_px
 
-    # NOISE-TUNED INITIAL DOWNSIDE RISK CAP: -1.50% to -2.50% max ROE loss
-    atr_roe_buffer = (atr_val * 1.5) / entry_px if entry_px > 0 else 0.020
-    atr_roe_buffer = max(0.0150, min(0.0250, atr_roe_buffer))
+    # FAST-CUT INITIAL RISK BUFFER: -0.80% to -1.20% max ROE loss (Cut losers fast)
+    atr_roe_buffer = (atr_val * 0.8) / entry_px if entry_px > 0 else 0.010
+    atr_roe_buffer = max(0.0080, min(0.0120, atr_roe_buffer))
 
     # 1. Galactic & Parabolic Moonshots (+3.00+ to +1000%+ ROE - Infinite Upside)
     if peak_roe >= 3.00:
@@ -320,7 +320,7 @@ def calculate_moonshot_ratchet_stop(entry_px, is_long, current_px, atr_val, peak
         leash_status = f"🌕 Major Runner 90% Lock [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
     elif peak_roe >= 0.30:
         target_floor_roe = max(peak_roe * 0.88, peak_roe - 0.05)
-        leash_status = f"📈 Strong Trend 88% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
+        leash_status = f"📈 Strong Trend 88% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
     elif peak_roe >= 0.0150:
         target_floor_roe = peak_roe * 0.85
         leash_status = f"🎯 Core Profit 85% Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
@@ -340,7 +340,7 @@ def calculate_moonshot_ratchet_stop(entry_px, is_long, current_px, atr_val, peak
 
     else:
         target_floor_roe = -atr_roe_buffer
-        leash_status = f"⚡ Noise Buffer (-{atr_roe_buffer*100:.2f}%)"
+        leash_status = f"⚡ Fast-Cut Risk Buffer (-{atr_roe_buffer*100:.2f}%)"
 
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
@@ -421,7 +421,7 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (True Body Momentum Gate Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Fast-Cut Risk Buffer Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -735,9 +735,7 @@ def execute_engine():
                     lows = [float(c["l"]) for c in candles]
                     volumes = [float(c.get("v", 0)) for c in candles]
 
-                    # ==========================================================
                     # TRUE BODY STRENGTH & MOMENTUM GATE (NO WOBBLY WICKS)
-                    # ==========================================================
                     c_open = float(candles[-1]["o"])
                     c_high = float(candles[-1]["h"])
                     c_low = float(candles[-1]["l"])
@@ -747,7 +745,6 @@ def execute_engine():
                     prev_open = float(candles[-2]["o"])
                     prev_close = float(candles[-2]["c"])
 
-                    # Require forming candle body to be >= 35% of total range, plus back-to-back candle agreement
                     is_true_green = (curr_live_px > c_open) and (live_body / c_range >= 0.35) and (prev_close > prev_open)
                     is_true_red = (curr_live_px < c_open) and (live_body / c_range >= 0.35) and (prev_close < prev_open)
 
@@ -865,7 +862,7 @@ def execute_engine():
                         state["active_position_cache"] = {}
                     state["active_position_cache"][coin] = {"strategy": strat_used}
 
-                    initial_stop_px = px * 0.985 if is_long else px * 1.015
+                    initial_stop_px = px * 0.992 if is_long else px * 1.008
                     sync_native_trigger_stop(exchange, info, coin, is_long, sz, initial_stop_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
@@ -875,7 +872,7 @@ def execute_engine():
                         "collateral": base_sizing_usd, "position_usd": base_sizing_usd,
                         "pnl": 0.0, "roe": 0.0,
                         "stop": round_sig_figs(initial_stop_px, 5),
-                        "status": "⚡ Fresh Execution (True Body & Noise-Tuned TPSL Active)"
+                        "status": "⚡ Fast-Cut Execution (Native Orderbook TPSL Active)"
                     })
 
                     audit_logs.append(f"1H EXECUTION SUCCESS [{strat_used}]: Opened {'LONG' if is_long else 'SHORT'} on {coin} (Size: {sz} ~${base_sizing_usd:.2f})")
@@ -1042,7 +1039,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23-V2 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (True Body Momentum Engine Active)</p>
+                <p>Timestamp: {timestamp} (Fast-Cut Momentum Engine Active)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -1059,9 +1056,9 @@ def execute_engine():
 
                 <div class="rules-card">
                   <div class="rules-title">&#9989; Active Guardrails (Full Crypto Strategy Display)</div>
-                  &bull; <b>True Body Momentum Gate:</b> Requires solid candle bodies (&gt;35% range) and back-to-back 1H candle commitment<br>
+                  &bull; <b>Fast-Cut Initial Risk Buffer:</b> Snips losing trades quickly at -0.80% to -1.20% ROE max loss<br>
+                  &bull; <b>True Body Momentum Gate:</b> Requires solid candle bodies (&gt;35% range) and multi-candle commitment<br>
                   &bull; <b>Native Orderbook Trigger Stop-Market Orders:</b> Auto-places & ratchets resting TPSL directly on exchange orderbook<br>
-                  &bull; <b>Noise-Tuned Buffer:</b> Initial risk cap set to -1.50% to -2.50% ROE to survive normal wiggles<br>
                   &bull; <b>Bidirectional Live Candle Confirmation Gate:</b> Green for LONGs, Red for SHORTs with 1H Hold Confirmation<br>
                   &bull; <b>100% Market Execution:</b> All exits execute via direct Taker Market Orders<br>
                   &bull; <b>Ultra-Tight Micro-Ratchet Ladder:</b> Micro BE at +0.15%, 75% at +0.35%, 80% at +0.80%, 85% at +1.50%<br>
@@ -1119,7 +1116,7 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing single-run True Body Momentum cycle...", flush=True)
+    print(f"[{timestamp}] Executing single-run Fast-Cut Momentum cycle...", flush=True)
     try:
         execute_engine()
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Cycle execution completed successfully.", flush=True)
