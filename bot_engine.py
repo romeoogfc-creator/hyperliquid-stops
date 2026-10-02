@@ -478,7 +478,9 @@ def execute_engine():
                     exit_px = float(all_mids.get(coin, 0))
                     pnl = float(pos.get("unrealizedPnl", 0))
                     roe = (pnl / float(pos.get("marginUsed", 1))) * 100
-                    exchange.market_close(coin)
+                    
+                    # DIRECT TAKER MARKET ORDER EXIT (1.0% Slippage Buffer)
+                    exchange.market_close(coin, slippage=0.01)
 
                     if pnl < 0:
                         state["cooldown_blocklist"][coin] = now_ts + 86400
@@ -564,7 +566,9 @@ def execute_engine():
             if should_exit:
                 try:
                     audit_logs.append(f"🎯 EXIT TRIGGERED: Closing {coin} {'LONG' if is_long else 'SHORT'} @ ${current_px:.5f} ({exit_reason}).")
-                    exchange.market_close(coin)
+                    
+                    # DIRECT TAKER MARKET ORDER EXIT (1.0% Slippage Buffer)
+                    exchange.market_close(coin, slippage=0.01)
 
                     if unrealized_pnl < 0 or current_roe < 0:
                         state["cooldown_blocklist"][coin] = now_ts + 86400
@@ -678,7 +682,7 @@ def execute_engine():
                     upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
                     comp_close = closes[-2]
 
-                    # STRATEGY A: TRENDING BREAKOUT ENGINE (Active Profile: Extension Cap <= +2.0%, VolRatio >= 1.15x, CI <= 58.0)
+                    # STRATEGY A: TRENDING BREAKOUT ENGINE (Extension Cap <= +2.0%, VolRatio >= 1.15x, CI <= 58.0)
                     if market_mode == "TRENDING" or (market_mode == "RANGING" and vol_ratio >= 1.15):
                         ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
                         if ci_1h <= 58.0 and vol_ratio >= 1.15:
@@ -762,8 +766,8 @@ def execute_engine():
                 except Exception:
                     pass
 
-                capped_px = px * (1.0020 if is_long else 0.9980)
-                res = exchange.market_open(coin, is_long, sz, capped_px, slippage=0.002)
+                # GUARANTEED TAKER MARKET ORDER ENTRY (1.0% Market Execution Buffer)
+                res = exchange.market_open(coin, is_long, sz, px, slippage=0.01)
 
                 if res.get("status") == "ok":
                     active_count += 1
