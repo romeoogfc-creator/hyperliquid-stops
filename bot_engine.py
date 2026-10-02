@@ -141,6 +141,53 @@ def check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=6000
         return False, f"Liquidity Check Error: {e}"
 
 # ==============================================================================
+# NATIVE EXCHANGE TRIGGER ORDER MANAGERS
+# ==============================================================================
+def cancel_native_trigger_orders(exchange, info, coin, account_address):
+    try:
+        open_orders = api_retry(info.frontend_open_orders, account_address)
+        for o in open_orders:
+            if o.get("coin") == coin:
+                try:
+                    exchange.cancel(coin, int(o["oid"]))
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+def sync_native_trigger_stop(exchange, info, coin, is_long, sz, stop_px, account_address, audit_logs=None):
+    try:
+        clean_stop_px = float(round_sig_figs(stop_px, 5))
+        is_buy = not is_long  # To close LONG -> SELL (False); to close SHORT -> BUY (True)
+
+        open_orders = api_retry(info.frontend_open_orders, account_address)
+        coin_trigger_orders = [
+            o for o in open_orders 
+            if o.get("coin") == coin and (o.get("isTrigger") or "trigger" in str(o.get("orderType", "")).lower())
+        ]
+
+        needs_update = True
+        for o in coin_trigger_orders:
+            existing_px = float(o.get("triggerPx", 0.0))
+            if abs(existing_px - clean_stop_px) / max(clean_stop_px, 1e-8) < 0.0005:
+                needs_update = False
+                break
+            else:
+                try:
+                    exchange.cancel(coin, int(o["oid"]))
+                except Exception:
+                    pass
+
+        if needs_update:
+            order_type = {"trigger": {"isMarket": True, "triggerPx": clean_stop_px, "tpsl": "sl"}}
+            res = exchange.order(coin, is_buy, sz, clean_stop_px, order_type, reduce_only=True)
+            if audit_logs is not None:
+                audit_logs.append(f"🛡️ NATIVE ORDERBOOK TPSL SYNC [{coin}]: Placed Resting Trigger Stop @ ${clean_stop_px:.5f}")
+    except Exception as e:
+        if audit_logs is not None:
+            audit_logs.append(f"⚠️ Native TPSL sync warning on {coin}: {e}")
+
+# ==============================================================================
 # TECHNICAL INDICATORS
 # ==============================================================================
 def calculate_vwap(candles):
@@ -260,7 +307,7 @@ def calculate_moonshot_ratchet_stop(entry_px, is_long, current_px, atr_val, peak
     else:
         roe = (entry_px - current_px) / entry_px
 
-    # ULTRA-TIGHT INITIAL DOWNSIDE RISK CAP: -0.50% to -1.00% max ROE loss (Cuts early!)
+    # ULTRA-TIGHT INITIAL DOWNSIDE RISK CAP: -0.50% to -1.00% max ROE loss
     atr_roe_buffer = (atr_val * 0.8) / entry_px if entry_px > 0 else 0.008
     atr_roe_buffer = max(0.0050, min(0.0100, atr_roe_buffer))
 
@@ -491,7 +538,7 @@ def execute_engine():
                     pnl = float(pos.get("unrealizedPnl", 0))
                     roe = (pnl / float(pos.get("marginUsed", 1))) * 100
                     
-                    # 100% DIRECT TAKER MARKET ORDER EXIT
+                    cancel_native_trigger_orders(exchange, info, coin, ACCOUNT_ADDRESS)
                     exchange.market_close(coin, slippage=0.01)
 
                     if pnl < 0:
@@ -579,7 +626,7 @@ def execute_engine():
                 try:
                     audit_logs.append(f"🎯 EXIT TRIGGERED: Closing {coin} {'LONG' if is_long else 'SHORT'} @ ${current_px:.5f} ({exit_reason}).")
                     
-                    # DIRECT TAKER MARKET ORDER EXIT (100% Guaranteed Execution)
+                    cancel_native_trigger_orders(exchange, info, coin, ACCOUNT_ADDRESS)
                     exchange.market_close(coin, slippage=0.01)
 
                     if unrealized_pnl < 0 or current_roe < 0:
@@ -595,6 +642,9 @@ def execute_engine():
                     continue
                 except Exception as e:
                     audit_logs.append(f"Market close failed on {coin}: {e}")
+
+            # POSITION REMAINS ACTIVE -> SYNC RESTING NATIVE TPSL TRIGGER ORDER ON HYPERLIQUID ORDERBOOK
+            sync_native_trigger_stop(exchange, info, coin, is_long, abs(szi), stop_px_calc, ACCOUNT_ADDRESS, audit_logs)
 
             active_count += 1
             active_coins.add(coin)
@@ -798,14 +848,17 @@ def execute_engine():
                         state["active_position_cache"] = {}
                     state["active_position_cache"][coin] = {"strategy": strat_used}
 
+                    initial_stop_px = px * 0.995 if is_long else px * 1.005
+                    sync_native_trigger_stop(exchange, info, coin, is_long, sz, initial_stop_px, ACCOUNT_ADDRESS, audit_logs)
+
                     positions_data.append({
                         "bot_title": "TR-GC-Crypto-LS-23", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 1,
                         "collateral": base_sizing_usd, "position_usd": base_sizing_usd,
                         "pnl": 0.0, "roe": 0.0,
-                        "stop": round_sig_figs(px * 0.995 if is_long else px * 1.005, 5),
-                        "status": "⚡ Fresh Execution (Bidirectional Live Candle Confirmed)"
+                        "stop": round_sig_figs(initial_stop_px, 5),
+                        "status": "⚡ Fresh Execution (Native Orderbook TPSL Active)"
                     })
 
                     audit_logs.append(f"1H EXECUTION SUCCESS [{strat_used}]: Opened {'LONG' if is_long else 'SHORT'} on {coin} (Size: {sz} ~${base_sizing_usd:.2f})")
@@ -990,6 +1043,7 @@ def execute_engine():
                 <div class="rules-card">
                   <div class="rules-title">&#9989; Active Guardrails (Full Crypto Strategy Display)</div>
                   &bull; <b>V3 Hybrid Regime Switcher:</b> Trending (CI &lt; 48) / Ranging (48 &le; CI &le; 62) / Extreme Chop (CI &gt; 62)<br>
+                  &bull; <b>Native Orderbook Trigger Stop-Market Orders:</b> Auto-places & ratchets resting TPSL directly on exchange orderbook<br>
                   &bull; <b>Bidirectional Live Candle Confirmation Gate:</b> Green for LONGs, Red for SHORTs<br>
                   &bull; <b>100% Market Execution:</b> All exits execute via direct Taker Market Orders<br>
                   &bull; <b>Ultra-Tight Downside Risk Buffer:</b> Max -0.50% to -1.00% ROE loss cap<br>
