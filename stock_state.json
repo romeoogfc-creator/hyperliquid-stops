@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-10-02 16:47:10",
+  "last_run_timestamp": "2026-10-02 16:50:25",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,8 +19,8 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "ORCL",
-    "NVDA"
+    "NVDA",
+    "ORCL"
   ],
   "closed_trades_ledger": [
     {
@@ -187,7 +187,7 @@
   "active_position_cache": {
     "NVDA": {
       "entry_px": 236.520732,
-      "current_px": 235.465,
+      "current_px": 235.135,
       "qty": 41.0,
       "side": "long",
       "peak_roe": -0.004463591800485406,
@@ -196,7 +196,7 @@
     },
     "ORCL": {
       "entry_px": 141.72,
-      "current_px": 140.93,
+      "current_px": 140.8,
       "qty": 69.0,
       "side": "long",
       "peak_roe": -0.0055743720011289305,
