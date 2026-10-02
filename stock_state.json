@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-10-02 13:17:03",
+  "last_run_timestamp": "2026-10-02 13:46:57",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -18,8 +18,22 @@
     "timestamp": "2026-09-24 04:34:54",
     "scan_date": "2026-09-24"
   },
-  "previous_active_symbols": [],
+  "previous_active_symbols": [
+    "MU",
+    "ARM",
+    "NVDA",
+    "MCHP",
+    "SMH"
+  ],
   "closed_trades_ledger": [
+    {
+      "symbol": "ARM",
+      "entry_price": 306.144062,
+      "exit_price": 306.24,
+      "exit_reason": "\ud83d\udcc9 1H Trend Invalidation (Close $306.24 < Upper Band $308.91)",
+      "realized_pnl": 3.0700159999996686,
+      "timestamp": "2026-10-02 13:46:46"
+    },
     {
       "symbol": "XLF",
       "entry_price": 52.97,
@@ -171,41 +185,55 @@
       "exit_reason": "\ud83d\udcc8 Trend Invalidation (Close $114.45 > Band $113.73)",
       "realized_pnl": -7.840000000000828,
       "timestamp": "2026-09-30 15:46:35"
-    },
-    {
-      "symbol": "COIN",
-      "entry_price": 186.016087,
-      "exit_price": 186.55,
-      "exit_reason": "\ud83d\udcc8 Trend Invalidation (Close $186.55 > Band $186.04)",
-      "realized_pnl": -36.839997000000864,
-      "timestamp": "2026-09-30 15:46:35"
-    },
-    {
-      "symbol": "UNH",
-      "entry_price": 367.914118,
-      "exit_price": 371.35,
-      "exit_reason": "\ud83d\udee1\ufe0f Stop Loss (-0.93%)",
-      "realized_pnl": -116.81998800000167,
-      "timestamp": "2026-09-30 15:33:26"
-    },
-    {
-      "symbol": "GE",
-      "entry_price": 312.54,
-      "exit_price": 315.35,
-      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-0.90%)",
-      "realized_pnl": -115.2100000000001,
-      "timestamp": "2026-09-30 15:19:09"
-    },
-    {
-      "symbol": "DKNG",
-      "entry_price": 19.572332,
-      "exit_price": 19.485,
-      "exit_reason": "\u26a1 Volume Stall Profit Take (+0.45%)",
-      "realized_pnl": 57.289792,
-      "timestamp": "2026-09-30 13:45:05"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "ARM": {
+      "entry_px": 306.144062,
+      "current_px": 306.24,
+      "qty": 32.0,
+      "side": "long",
+      "peak_roe": 0.00031337534157363354,
+      "best_target_floor_roe": -0.02324360894232489,
+      "best_stop_px": 299.02816914285717
+    },
+    "MCHP": {
+      "entry_px": 81.303388,
+      "current_px": 81.9,
+      "qty": 121.0,
+      "side": "long",
+      "peak_roe": 0.007338095184914157,
+      "best_target_floor_roe": 0.0036690475924570786,
+      "best_stop_px": 81.601694
+    },
+    "MU": {
+      "entry_px": 1088.7125,
+      "current_px": 1091.66,
+      "qty": 8.0,
+      "side": "long",
+      "peak_roe": 0.0027073263143391766,
+      "best_target_floor_roe": -0.018570920107138338,
+      "best_stop_px": 1068.4941071428573
+    },
+    "NVDA": {
+      "entry_px": 235.68,
+      "current_px": 237.26,
+      "qty": 41.0,
+      "side": "long",
+      "peak_roe": 0.00670400543109294,
+      "best_target_floor_roe": 0.00335200271554647,
+      "best_stop_px": 236.47
+    },
+    "SMH": {
+      "entry_px": 630.224,
+      "current_px": 634.57,
+      "qty": 15.0,
+      "side": "long",
+      "peak_roe": 0.00689596080123893,
+      "best_target_floor_roe": 0.003447980400619465,
+      "best_stop_px": 632.397
+    }
+  },
   "daily_starting_equity": {
     "2026-09-22": 101022.53,
     "2026-09-23": 100687.3,
@@ -219,6 +247,6 @@
   },
   "daily_peak_equity": {
     "2026-10-01": 98501.9,
-    "2026-10-02": 98500.07
+    "2026-10-02": 98729.43
   }
 }
