@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-10-02 14:33:38",
+  "last_run_timestamp": "2026-10-02 14:47:51",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -20,12 +20,36 @@
   },
   "previous_active_symbols": [
     "NVDA",
-    "SMH",
-    "MCHP",
+    "MU",
     "AMD",
-    "MU"
+    "MCHP",
+    "SMH"
   ],
   "closed_trades_ledger": [
+    {
+      "symbol": "NVDA",
+      "entry_price": 235.68,
+      "exit_price": 236.93,
+      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.53%)",
+      "realized_pnl": 51.25,
+      "timestamp": "2026-10-02 14:47:38"
+    },
+    {
+      "symbol": "MU",
+      "entry_price": 1088.7125,
+      "exit_price": 1086.45,
+      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.21%)",
+      "realized_pnl": -18.100000000000364,
+      "timestamp": "2026-10-02 14:47:38"
+    },
+    {
+      "symbol": "AMD",
+      "entry_price": 635.97,
+      "exit_price": 638.435,
+      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.39%)",
+      "realized_pnl": 36.97499999999877,
+      "timestamp": "2026-10-02 14:47:38"
+    },
     {
       "symbol": "ARM",
       "entry_price": 306.144062,
@@ -161,36 +185,12 @@
       "exit_reason": "\ud83d\udcc9 Trend Invalidation (Close $251.49 < Band $251.53)",
       "realized_pnl": -1.169999999999959,
       "timestamp": "2026-09-30 16:45:44"
-    },
-    {
-      "symbol": "SBUX",
-      "entry_price": 94.7,
-      "exit_price": 95.16,
-      "exit_reason": "\ud83d\udcc8 Trend Invalidation (Close $95.16 > Band $94.94)",
-      "realized_pnl": -4.5999999999999375,
-      "timestamp": "2026-09-30 16:17:42"
-    },
-    {
-      "symbol": "GE",
-      "entry_price": 314.25,
-      "exit_price": 314.15,
-      "exit_reason": "\ud83d\udcc8 Trend Invalidation (Close $314.15 > Band $314.09)",
-      "realized_pnl": 0.3000000000000682,
-      "timestamp": "2026-09-30 15:47:31"
-    },
-    {
-      "symbol": "HOOD",
-      "entry_price": 114.38,
-      "exit_price": 114.45,
-      "exit_reason": "\ud83d\udcc8 Trend Invalidation (Close $114.45 > Band $113.73)",
-      "realized_pnl": -7.840000000000828,
-      "timestamp": "2026-09-30 15:46:35"
     }
   ],
   "active_position_cache": {
     "AMD": {
       "entry_px": 635.97,
-      "current_px": 639.63,
+      "current_px": 638.435,
       "qty": 15.0,
       "side": "long",
       "peak_roe": 0.0057549884428510275,
@@ -199,16 +199,16 @@
     },
     "MCHP": {
       "entry_px": 81.303388,
-      "current_px": 82.08,
+      "current_px": 82.15,
       "qty": 121.0,
       "side": "long",
-      "peak_roe": 0.00955202506444135,
-      "best_target_floor_roe": 0.00764162005155308,
-      "best_stop_px": 81.9246776
+      "peak_roe": 0.010412997795368717,
+      "best_target_floor_roe": 0.009371698015831846,
+      "best_stop_px": 82.0653388
     },
     "MU": {
       "entry_px": 1088.7125,
-      "current_px": 1092.13,
+      "current_px": 1086.45,
       "qty": 8.0,
       "side": "long",
       "peak_roe": 0.0031390288988139823,
@@ -217,7 +217,7 @@
     },
     "NVDA": {
       "entry_px": 235.68,
-      "current_px": 236.975,
+      "current_px": 236.93,
       "qty": 41.0,
       "side": "long",
       "peak_roe": 0.00670400543109294,
@@ -226,7 +226,7 @@
     },
     "SMH": {
       "entry_px": 630.224,
-      "current_px": 634.95,
+      "current_px": 634.075,
       "qty": 15.0,
       "side": "long",
       "peak_roe": 0.007498921018558479,
