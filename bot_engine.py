@@ -108,7 +108,6 @@ def round_sig_figs(val, sig_figs=5):
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
 def check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=6000.0):
-    """Balanced Liquidity Floor: $6,000 USD min depth & 0.30% max spread"""
     try:
         l2_book = api_retry(info.l2_snapshot, name=coin)
         levels = l2_book.get("levels", [[], []])
@@ -253,7 +252,7 @@ def calculate_atr(highs, lows, closes, period=14):
         return 1.0
 
 # ==============================================================================
-# CRYPTO MICRO-RATCHET LADDER ENGINE (UNCAPPED MOONSHOT UPSIDE)
+# BIDIRECTIONAL ULTRA-TIGHT MICRO-RATCHET ENGINE
 # ==============================================================================
 def calculate_moonshot_ratchet_stop(entry_px, is_long, current_px, atr_val, peak_roe=0.0):
     if is_long:
@@ -261,9 +260,9 @@ def calculate_moonshot_ratchet_stop(entry_px, is_long, current_px, atr_val, peak
     else:
         roe = (entry_px - current_px) / entry_px
 
-    # Tighter downside initial buffer: Capped at -0.8% to -1.5% max ROE loss
-    atr_roe_buffer = (atr_val * 1.2) / entry_px if entry_px > 0 else 0.010
-    atr_roe_buffer = max(0.008, min(0.015, atr_roe_buffer))
+    # ULTRA-TIGHT INITIAL DOWNSIDE RISK CAP: -0.50% to -1.00% max ROE loss (Cuts early!)
+    atr_roe_buffer = (atr_val * 0.8) / entry_px if entry_px > 0 else 0.008
+    atr_roe_buffer = max(0.0050, min(0.0100, atr_roe_buffer))
 
     # 1. Galactic & Parabolic Moonshots (+3.00+ to +1000%+ ROE - Infinite Upside)
     if peak_roe >= 3.00:
@@ -275,23 +274,26 @@ def calculate_moonshot_ratchet_stop(entry_px, is_long, current_px, atr_val, peak
     elif peak_roe >= 0.30:
         target_floor_roe = max(peak_roe * 0.88, peak_roe - 0.05)
         leash_status = f"📈 Strong Trend 88% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif peak_roe >= 0.015:
-        target_floor_roe = peak_roe * 0.80
-        leash_status = f"🎯 Core Profit 80% Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+    elif peak_roe >= 0.0150:
+        target_floor_roe = peak_roe * 0.85
+        leash_status = f"🎯 Core Profit 85% Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
         
-    # 2. Micro Lock 70% (+0.50% Peak ROE)
-    elif peak_roe >= 0.0050:
-        target_floor_roe = peak_roe * 0.70
-        leash_status = f"📈 Micro Lock 70% [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+    # 2. Fast Profit Locks
+    elif peak_roe >= 0.0080:
+        target_floor_roe = peak_roe * 0.80
+        leash_status = f"⚡ Fast Lock 80% [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+    elif peak_roe >= 0.0035:
+        target_floor_roe = peak_roe * 0.75
+        leash_status = f"📈 Micro Lock 75% [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
 
-    # 3. Micro Break-Even Shield (+0.25% Peak ROE -> Soft BE Floor +0.05%)
-    elif peak_roe >= 0.0025:
-        target_floor_roe = 0.0005  # +0.05% ROE Floor (Guarantees Risk-Free Scratch/Profit)
+    # 3. Micro Break-Even Shield (+0.15% Peak ROE -> Soft BE Floor +0.03%)
+    elif peak_roe >= 0.0015:
+        target_floor_roe = 0.0003  # +0.03% ROE Floor (Risk-Free Scratch/Profit)
         leash_status = f"🛡️ Micro Break-Even Shield [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
 
     else:
         target_floor_roe = -atr_roe_buffer
-        leash_status = f"1H ATR Noise Buffer (-{atr_roe_buffer*100:.2f}%)"
+        leash_status = f"⚡ Ultra-Tight Loss Buffer (-{atr_roe_buffer*100:.2f}%)"
 
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
@@ -415,11 +417,8 @@ def execute_engine():
     gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_1h_scan_window)
     audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] {gemini_briefing}")
 
-    # ==============================================================================
-    # ADAPTIVE GEMINI VOLUME GATE (MIDDLE-GROUND FRAMEWORK)
-    # ==============================================================================
     if gemini_risk == "HIGH":
-        required_vol_ratio = 1.30  # Require slightly higher volume confirmation on macro-volatile days
+        required_vol_ratio = 1.30
         audit_logs.append(f"⚠️ Gemini Macro Risk HIGH: Scaling breakout volume gate to >= {required_vol_ratio:.2f}x")
     elif gemini_risk == "MODERATE":
         required_vol_ratio = 1.20
@@ -465,7 +464,6 @@ def execute_engine():
     fallback_val = float(margin_summary.get("accountValue", 0.0))
     account_value = total_spot_net_worth if total_spot_net_worth > 0 else fallback_val
 
-    # Tracking Daily Starting Equity
     daily_starting_dict = state.get("daily_starting_equity", {})
     if today_str not in daily_starting_dict:
         daily_starting_dict[today_str] = account_value
@@ -493,7 +491,7 @@ def execute_engine():
                     pnl = float(pos.get("unrealizedPnl", 0))
                     roe = (pnl / float(pos.get("marginUsed", 1))) * 100
                     
-                    # DIRECT TAKER MARKET ORDER EXIT (1.0% Slippage Buffer)
+                    # 100% DIRECT TAKER MARKET ORDER EXIT
                     exchange.market_close(coin, slippage=0.01)
 
                     if pnl < 0:
@@ -511,7 +509,7 @@ def execute_engine():
         save_state(state)
         return
 
-    # Position Management & Exits
+    # Position Management & Exits (LONG & SHORT Bidirectional Evaluation)
     if asset_positions:
         for pos_item in asset_positions:
             pos = pos_item.get("position", {})
@@ -569,6 +567,7 @@ def execute_engine():
                 entry_px, is_long, current_px, atr_val, peak_roe=peak_roe
             )
 
+            # BIDIRECTIONAL STOP / PROFIT LATCH TRIGGER
             if is_long and current_px <= stop_px_calc:
                 should_exit = True
                 exit_reason = f"🎯 Stop/Profit Lock Triggered ({current_roe*100:.2f}%)"
@@ -580,7 +579,7 @@ def execute_engine():
                 try:
                     audit_logs.append(f"🎯 EXIT TRIGGERED: Closing {coin} {'LONG' if is_long else 'SHORT'} @ ${current_px:.5f} ({exit_reason}).")
                     
-                    # DIRECT TAKER MARKET ORDER EXIT (1.0% Slippage Buffer)
+                    # DIRECT TAKER MARKET ORDER EXIT (100% Guaranteed Execution)
                     exchange.market_close(coin, slippage=0.01)
 
                     if unrealized_pnl < 0 or current_roe < 0:
@@ -658,8 +657,8 @@ def execute_engine():
                     continue
 
                 try:
-                    px = float(all_mids.get(coin, 0))
-                    if px <= 0:
+                    curr_live_px = float(all_mids.get(coin, 0))
+                    if curr_live_px <= 0:
                         continue
                     
                     time.sleep(0.12)
@@ -671,7 +670,6 @@ def execute_engine():
                     if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
                         continue
 
-                    # Optimal Depth Gate: $6,000 USD min depth floor
                     is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=6000.0)
                     if not is_liquid:
                         continue
@@ -680,6 +678,11 @@ def execute_engine():
                     highs = [float(c["h"]) for c in candles]
                     lows = [float(c["l"]) for c in candles]
                     volumes = [float(c.get("v", 0)) for c in candles]
+
+                    # LIVE CANDLE DIRECTION CONFIRMATION (LONG & SHORT)
+                    live_candle_open = float(candles[-1]["o"])
+                    is_candle_green = curr_live_px > live_candle_open
+                    is_candle_red = curr_live_px < live_candle_open
 
                     rsi_1h = calculate_rsi(closes)
                     bb_upper, bb_lower, bb_mid = calculate_bollinger_bands(closes)
@@ -692,51 +695,58 @@ def execute_engine():
                     upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
                     comp_close = closes[-2]
 
-                    # STRATEGY A: TRENDING BREAKOUT ENGINE (Adaptive VolRatio >= required_vol_ratio)
+                    is_holding_breakout = curr_live_px >= comp_close
+                    is_holding_breakdown = curr_live_px <= comp_close
+
+                    # STRATEGY A: TRENDING BREAKOUT / BREAKDOWN ENGINE (LONG & SHORT)
                     if market_mode == "TRENDING" or (market_mode == "RANGING" and vol_ratio >= required_vol_ratio):
                         ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
                         if ci_1h <= 58.0 and vol_ratio >= required_vol_ratio:
                             if effective_regime == "GREEN":
+                                # LONG Entry Gate: Live candle MUST be Green & holding breakout level
                                 if comp_close > upper and comp_close <= (upper * 1.020):
-                                    extension_pct = ((comp_close - upper) / upper) * 100
-                                    market_candidates.append({
-                                        "coin": coin, "close": comp_close, "is_long": True, 
-                                        "score": (comp_close - upper) / upper, "candle_ts": current_candle_ts,
-                                        "strategy": "BREAKOUT"
-                                    })
-                                    audit_logs.append(f"1H BREAKOUT MATCH: {coin} @ ${comp_close:.4f} (Ext: +{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x >= {required_vol_ratio:.2f}x)")
+                                    if is_candle_green and is_holding_breakout:
+                                        extension_pct = ((comp_close - upper) / upper) * 100
+                                        market_candidates.append({
+                                            "coin": coin, "close": curr_live_px, "is_long": True, 
+                                            "score": (curr_live_px - upper) / upper, "candle_ts": current_candle_ts,
+                                            "strategy": "BREAKOUT"
+                                        })
+                                        audit_logs.append(f"1H GREEN BREAKOUT MATCH (LONG): {coin} @ ${curr_live_px:.4f} (Live Green, Ext: +{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x >= {required_vol_ratio:.2f}x)")
 
                             elif effective_regime == "RED":
+                                # SHORT Entry Gate: Live candle MUST be Red & holding breakdown level
                                 if comp_close < lower and comp_close >= (lower * 0.980):
-                                    extension_pct = ((lower - comp_close) / lower) * 100
-                                    market_candidates.append({
-                                        "coin": coin, "close": comp_close, "is_long": False, 
-                                        "score": (lower - comp_close) / lower, "candle_ts": current_candle_ts,
-                                        "strategy": "BREAKOUT"
-                                    })
-                                    audit_logs.append(f"1H BREAKDOWN MATCH: {coin} @ ${comp_close:.4f} (Ext: -{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x >= {required_vol_ratio:.2f}x)")
+                                    if is_candle_red and is_holding_breakdown:
+                                        extension_pct = ((lower - comp_close) / lower) * 100
+                                        market_candidates.append({
+                                            "coin": coin, "close": curr_live_px, "is_long": False, 
+                                            "score": (lower - curr_live_px) / lower, "candle_ts": current_candle_ts,
+                                            "strategy": "BREAKOUT"
+                                        })
+                                        audit_logs.append(f"1H RED BREAKDOWN MATCH (SHORT): {coin} @ ${curr_live_px:.4f} (Live Red, Ext: -{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x >= {required_vol_ratio:.2f}x)")
 
-                    # STRATEGY B: RANGING VWAP + BOLLINGER MEAN-REVERSION
+                    # STRATEGY B: RANGING MEAN-REVERSION (LONG & SHORT)
                     if market_mode == "RANGING":
-                        comp_close_curr = closes[-1]
-
                         if effective_regime in ["GREEN", "NEUTRAL"]:
-                            if comp_close_curr <= bb_lower * 1.005 and comp_close_curr < vwap_val and rsi_1h <= 46.0:
+                            # LONG Dip Buy Gate: Requires live candle to turn GREEN (Confirming Bounce)
+                            if curr_live_px <= bb_lower * 1.005 and curr_live_px < vwap_val and rsi_1h <= 46.0 and is_candle_green:
                                 market_candidates.append({
-                                    "coin": coin, "close": comp_close_curr, "is_long": True,
-                                    "score": (vwap_val - comp_close_curr) / vwap_val, "candle_ts": current_candle_ts,
+                                    "coin": coin, "close": curr_live_px, "is_long": True,
+                                    "score": (vwap_val - curr_live_px) / vwap_val, "candle_ts": current_candle_ts,
                                     "strategy": "MEAN_REVERSION"
                                 })
-                                audit_logs.append(f"1H VWAP DIP BUY: {coin} @ ${comp_close_curr:.4f} (Below VWAP ${vwap_val:.4f}, RSI: {rsi_1h:.1f} <= 46)")
+                                audit_logs.append(f"1H VWAP DIP BOUNCE BUY (LONG): {coin} @ ${curr_live_px:.4f} (Live Green Bounce Below VWAP ${vwap_val:.4f}, RSI: {rsi_1h:.1f})")
 
                         if effective_regime in ["RED", "NEUTRAL"]:
-                            if comp_close_curr >= bb_upper * 0.995 and comp_close_curr > vwap_val and rsi_1h >= 54.0:
+                            # SHORT Fade High Gate: Requires live candle to turn RED (Confirming Rejection)
+                            if curr_live_px >= bb_upper * 0.995 and curr_live_px > vwap_val and rsi_1h >= 54.0 and is_candle_red:
                                 market_candidates.append({
-                                    "coin": coin, "close": comp_close_curr, "is_long": False,
-                                    "score": (comp_close_curr - vwap_val) / vwap_val, "candle_ts": current_candle_ts,
+                                    "coin": coin, "close": curr_live_px, "is_long": False,
+                                    "score": (curr_live_px - vwap_val) / vwap_val, "candle_ts": current_candle_ts,
                                     "strategy": "MEAN_REVERSION"
                                 })
-                                audit_logs.append(f"1H VWAP SHORT FADE: {coin} @ ${comp_close_curr:.4f} (Above VWAP ${vwap_val:.4f}, RSI: {rsi_1h:.1f} >= 54)")
+                                audit_logs.append(f"1H VWAP SHORT FADE (SHORT): {coin} @ ${curr_live_px:.4f} (Live Red Reject Above VWAP ${vwap_val:.4f}, RSI: {rsi_1h:.1f})")
 
                 except Exception:
                     continue
@@ -772,7 +782,7 @@ def execute_engine():
                 except Exception:
                     pass
 
-                # GUARANTEED TAKER MARKET ORDER ENTRY (1.0% Market Execution Buffer)
+                # GUARANTEED TAKER MARKET ORDER ENTRY
                 res = exchange.market_open(coin, is_long, sz, px, slippage=0.01)
 
                 if res.get("status") == "ok":
@@ -788,15 +798,14 @@ def execute_engine():
                         state["active_position_cache"] = {}
                     state["active_position_cache"][coin] = {"strategy": strat_used}
 
-                    # IMMEDIATELY APPEND TO POSITIONS_DATA FOR SAME-RUN DASHBOARD DISPLAY
                     positions_data.append({
                         "bot_title": "TR-GC-Crypto-LS-23", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 1,
                         "collateral": base_sizing_usd, "position_usd": base_sizing_usd,
                         "pnl": 0.0, "roe": 0.0,
-                        "stop": round_sig_figs(px * 0.992 if is_long else px * 1.008, 5),
-                        "status": "⚡ Fresh Execution (Micro-Ratchet Active)"
+                        "stop": round_sig_figs(px * 0.995 if is_long else px * 1.005, 5),
+                        "status": "⚡ Fresh Execution (Bidirectional Live Candle Confirmed)"
                     })
 
                     audit_logs.append(f"1H EXECUTION SUCCESS [{strat_used}]: Opened {'LONG' if is_long else 'SHORT'} on {coin} (Size: {sz} ~${base_sizing_usd:.2f})")
@@ -981,10 +990,12 @@ def execute_engine():
                 <div class="rules-card">
                   <div class="rules-title">&#9989; Active Guardrails (Full Crypto Strategy Display)</div>
                   &bull; <b>V3 Hybrid Regime Switcher:</b> Trending (CI &lt; 48) / Ranging (48 &le; CI &le; 62) / Extreme Chop (CI &gt; 62)<br>
+                  &bull; <b>Bidirectional Live Candle Confirmation Gate:</b> Green for LONGs, Red for SHORTs<br>
+                  &bull; <b>100% Market Execution:</b> All exits execute via direct Taker Market Orders<br>
+                  &bull; <b>Ultra-Tight Downside Risk Buffer:</b> Max -0.50% to -1.00% ROE loss cap<br>
+                  &bull; <b>Ultra-Tight Micro-Ratchet Ladder:</b> Micro BE at +0.15%, 75% at +0.35%, 80% at +0.80%, 85% at +1.50%<br>
                   &bull; <b>BTC Directional Shield:</b> Enforces broad market alignment (GREEN = LONGs only, RED = SHORTs only)<br>
                   &bull; <b>Adaptive Gemini Volume Gate:</b> Dynamically scales volume confirmation (LOW: 1.15x, MODERATE: 1.20x, HIGH: 1.30x)<br>
-                  &bull; <b>Crypto Micro-Ratchet Ladder:</b> Micro BE at +0.25%, 70% at +0.50%, 80% at +1.5%, 90-95% on Moonshots<br>
-                  &bull; <b>Tighter Downside Risk Cap:</b> 1.2x ATR buffer capped at max -0.8% to -1.5% ROE loss<br>
                   &bull; <b>Unrestricted Scanner:</b> 100-coin scanning universe remains 100% open for moonshot detection<br>
                   &bull; <b>Uncapped Moonshot Upside:</b> Zero take-profit caps—lets parabolic runners fly infinitely<br>
                   &bull; <b>Single-Slot Capital Preservation:</b> Strictly capped at 1 active trade ($10 floor)<br>
