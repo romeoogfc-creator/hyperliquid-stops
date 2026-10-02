@@ -782,6 +782,17 @@ def execute_engine():
                         state["active_position_cache"] = {}
                     state["active_position_cache"][coin] = {"strategy": strat_used}
 
+                    # IMMEDIATELY APPEND TO POSITIONS_DATA FOR SAME-RUN DASHBOARD DISPLAY
+                    positions_data.append({
+                        "bot_title": "TR-GC-Crypto-LS-23", "coin": coin,
+                        "side": "LONG" if is_long else "SHORT", "sz": sz,
+                        "entry": px, "current": px, "leverage": 1,
+                        "collateral": base_sizing_usd, "position_usd": base_sizing_usd,
+                        "pnl": 0.0, "roe": 0.0,
+                        "stop": round_sig_figs(px * 0.985 if is_long else px * 1.015, 5),
+                        "status": "⚡ Fresh Execution (Pending Next 20m Ratchet)"
+                    })
+
                     audit_logs.append(f"1H EXECUTION SUCCESS [{strat_used}]: Opened {'LONG' if is_long else 'SHORT'} on {coin} (Size: {sz} ~${base_sizing_usd:.2f})")
 
             except Exception as e:
