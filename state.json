@@ -387,13 +387,9 @@
       "timestamp": "2026-09-29 01:55:43"
     }
   ],
-  "active_position_cache": {
-    "JTO": {
-      "strategy": "BREAKOUT"
-    }
-  },
+  "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-02 18:22:23",
+  "last_run_timestamp": "2026-10-02 18:28:08",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -403,12 +399,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790965291.3584955,
-  "last_scan_timestamp": 1790965291.3584955,
+  "last_email_timestamp": 1790965636.794742,
+  "last_scan_timestamp": 1790965636.794742,
   "gemini_cache": {
-    "timestamp": 1790965291.3584955,
+    "timestamp": 1790965636.794742,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Increased macroeconomic volatility and regulatory uncertainty, coupled with potential profit-taking following recent price surges, suggest a heightened vulnerability to sudden, significant market corrections."
+    "briefing": "Risk Level: **HIGH** \u2014 Increased market volatility, regulatory uncertainty, and macro-economic pressures create a landscape where rapid price fluctuations and potential downside risks remain significant for investors."
   },
   "recent_losses": [],
   "last_traded_candle": {
