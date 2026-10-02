@@ -113,6 +113,63 @@ def round_sig_figs(val, sig_figs=5):
         return 0
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
+# ==============================================================================
+# NATIVE ALPACA ORDERBOOK TRIGGER STOP MANAGERS
+# ==============================================================================
+def cancel_alpaca_native_orders(symbol, open_orders):
+    """Cancels any open resting orders for a specific symbol on Alpaca."""
+    for o in open_orders:
+        if o.get("symbol") == symbol:
+            try:
+                requests.delete(f"{BASE_URL}/v2/orders/{o.get('id')}", headers=HEADERS)
+            except Exception:
+                pass
+
+def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, audit_logs=None):
+    """
+    Submits and syncs a native resting stop order directly on Alpaca's matching engine.
+    Ensures millisecond execution while the Python script sleeps.
+    """
+    try:
+        clean_stop_px = round(stop_px, 2)
+        close_side = "sell" if is_long else "buy"
+
+        existing_stop_orders = [
+            o for o in open_orders 
+            if o.get("symbol") == symbol and o.get("type") in ["stop", "stop_limit", "trailing_stop"]
+        ]
+
+        needs_update = True
+        for o in existing_stop_orders:
+            existing_stop_px = float(o.get("stop_price", 0.0) or 0.0)
+            if abs(existing_stop_px - clean_stop_px) < 0.01:
+                needs_update = False
+                break
+            else:
+                try:
+                    requests.delete(f"{BASE_URL}/v2/orders/{o.get('id')}", headers=HEADERS)
+                except Exception:
+                    pass
+
+        if needs_update:
+            stop_order_payload = {
+                "symbol": symbol,
+                "qty": str(abs(int(qty))),
+                "side": close_side,
+                "type": "stop",
+                "stop_price": f"{clean_stop_px:.2f}",
+                "time_in_force": "day"
+            }
+            res = requests.post(f"{BASE_URL}/v2/orders", json=stop_order_payload, headers=HEADERS)
+            if res.status_code == 200 and audit_logs is not None:
+                audit_logs.append(f"🛡️ NATIVE ALPACA STOP SYNC [{symbol}]: Placed Resting Trigger Stop @ ${clean_stop_px:.2f}")
+    except Exception as e:
+        if audit_logs is not None:
+            audit_logs.append(f"⚠️ Alpaca Native Stop Sync warning on {symbol}: {e}")
+
+# ==============================================================================
+# TECHNICAL INDICATORS & RATCHET ENGINE
+# ==============================================================================
 def calculate_gaussian_channel(closes, poles=4, period=50, mult=1.414):
     s = pd.Series(closes)
     effective_period = min(period, max(5, len(closes) - 1))
@@ -158,7 +215,6 @@ def calculate_adaptive_stock_stop(entry_px, is_long, current_px, atr_val, peak_r
     atr_roe_buffer = (atr_val * 0.8) / entry_px if entry_px > 0 else 0.005
     atr_roe_buffer = max(0.0040, min(0.0080, atr_roe_buffer))
 
-    # Check if we have passed 10:30 AM Central Time
     is_post_1030_ct = False
     if ct_now:
         is_post_1030_ct = (ct_now.hour > 10) or (ct_now.hour == 10 and ct_now.minute >= 30)
@@ -195,7 +251,7 @@ def calculate_adaptive_stock_stop(entry_px, is_long, current_px, atr_val, peak_r
 
     # 7. Micro Break-Even Shield (+0.20% Peak -> Soft BE Floor +0.05%)
     elif peak_roe >= 0.0020:
-        target_floor_roe = 0.0005  # +0.05% ROE Floor (Guarantees Risk-Free Scratch/Profit)
+        target_floor_roe = 0.0005
         leash_status = f"🛡️ Micro Break-Even Shield [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
 
     else:
@@ -271,6 +327,9 @@ def execute_stock_engine():
 
     if is_daily_max_loss_triggered and positions_list:
         audit_logs.append(f"🛡️ ANTI-WIPEOUT SHIELD TRIGGERED: Daily Loss at {daily_loss_pct*100:.2f}%. Liquidating all positions to cash!")
+        for order in open_orders:
+            requests.delete(f"{BASE_URL}/v2/orders/{order.get('id')}", headers=HEADERS)
+
         for pos in positions_list:
             sym = pos.get("symbol")
             qty = abs(float(pos.get("qty", 0)))
@@ -292,8 +351,6 @@ def execute_stock_engine():
                 })
             except Exception as e:
                 audit_logs.append(f"Anti-wipeout close failed on {sym}: {e}")
-        for order in open_orders:
-            requests.delete(f"{BASE_URL}/v2/orders/{order.get('id')}", headers=HEADERS)
         save_state(state)
         positions_list = []
 
@@ -302,6 +359,9 @@ def execute_stock_engine():
     portfolio_pnl_pct = (total_unrealized_pnl / equity) if equity > 0 else 0.0
     if portfolio_pnl_pct <= -0.035 and positions_list:
         audit_logs.append(f"🚨 PORTFOLIO DRAWDOWN BREAKER TRIGGERED ({portfolio_pnl_pct*100:.2f}%). Flattening to cash!")
+        for order in open_orders:
+            requests.delete(f"{BASE_URL}/v2/orders/{order.get('id')}", headers=HEADERS)
+
         for pos in positions_list:
             sym = pos.get("symbol")
             qty = abs(float(pos.get("qty", 0)))
@@ -323,8 +383,6 @@ def execute_stock_engine():
                 })
             except Exception as e:
                 audit_logs.append(f"Circuit breaker close failed on {sym}: {e}")
-        for order in open_orders:
-            requests.delete(f"{BASE_URL}/v2/orders/{order.get('id')}", headers=HEADERS)
         save_state(state)
         positions_list = []
 
@@ -334,6 +392,9 @@ def execute_stock_engine():
     if is_eod_square_off and positions_list:
         reason_text = "EOD Square-Off (100% Cash Flat)"
         audit_logs.append(f"EMERGENCY EXIT TRIGGERED ({reason_text}): Liquidating all open positions to cash.")
+        for order in open_orders:
+            requests.delete(f"{BASE_URL}/v2/orders/{order.get('id')}", headers=HEADERS)
+
         for pos in positions_list:
             sym = pos.get("symbol")
             qty = abs(float(pos.get("qty", 0)))
@@ -357,14 +418,11 @@ def execute_stock_engine():
                         })
             except Exception as e:
                 audit_logs.append(f"LIQUIDATION ERROR on {sym}: {e}")
-        
-        for order in open_orders:
-            requests.delete(f"{BASE_URL}/v2/orders/{order.get('id')}", headers=HEADERS)
 
         save_state(state)
         positions_list = []
 
-    # --- 1:30 PM CT MIDDAY STAGNATION CLEAN-UP (Closes floating negative trades early) ---
+    # --- 1:30 PM CT MIDDAY STAGNATION CLEAN-UP ---
     is_midday_clean_up = (ct_now.hour == 13 and ct_now.minute >= 30 and ct_now.minute < 40)
     if is_midday_clean_up and positions_list:
         for pos in positions_list:
@@ -378,6 +436,7 @@ def execute_stock_engine():
 
             if current_roe < 0:
                 audit_logs.append(f"🧹 MIDDAY STAGNATION EXIT: Closing losing position on {sym} at {current_roe*100:.2f}% ROE before afternoon chop.")
+                cancel_alpaca_native_orders(sym, open_orders)
                 close_side = "sell" if is_long else "buy"
                 realized_pnl = (current_px - entry_px) * qty if is_long else (entry_px - current_px) * qty
                 try:
@@ -455,13 +514,9 @@ def execute_stock_engine():
             should_exit = True
             exit_reason = f"🎯 Stop/Profit Lock Triggered ({current_roe*100:.2f}%)"
 
-        new_active_cache[symbol] = {
-            "entry_px": entry_px, "current_px": current_px, "qty": qty, "side": side,
-            "peak_roe": peak_roe, "best_target_floor_roe": target_floor_roe, "best_stop_px": stop_px_calc
-        }
-
         if should_exit:
             audit_logs.append(f"EXIT TRIGGERED on {symbol} at {current_roe*100:+.2f}% ROE. Reason: {exit_reason}")
+            cancel_alpaca_native_orders(symbol, open_orders)
             close_side = "sell" if is_long else "buy"
             realized_pnl = (current_px - entry_px) * qty if is_long else (entry_px - current_px) * qty
 
@@ -479,6 +534,14 @@ def execute_stock_engine():
             except Exception as e:
                 audit_logs.append(f"Execution Failed on {symbol}: {e}")
 
+        # POSITION REMAINS ACTIVE -> SYNC RESTING NATIVE TRIGGER STOP ORDER DIRECTLY ON ALPACA MATCHING ENGINE
+        sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px_calc, open_orders, audit_logs)
+
+        new_active_cache[symbol] = {
+            "entry_px": entry_px, "current_px": current_px, "qty": qty, "side": side,
+            "peak_roe": peak_roe, "best_target_floor_roe": target_floor_roe, "best_stop_px": stop_px_calc
+        }
+
         positions_data.append({
             "bot_title": "TR-GC-Equities-LS-01", "symbol": symbol, "side": "LONG" if is_long else "SHORT",
             "qty": qty, "entry": entry_px, "current": current_px, "market_value": market_value,
@@ -492,9 +555,9 @@ def execute_stock_engine():
     MAX_STOCK_SLOTS = 5
     
     # --- TIME-WINDOWED ENTRY REGULATION ---
-    is_prime_morning_window = (8 <= ct_now.hour < 11) or (ct_now.hour == 11 and ct_now.minute <= 30)  # 8:00 AM - 11:30 AM CT
-    is_midday_window = (ct_now.hour == 11 and ct_now.minute > 30) or (ct_now.hour == 12) or (ct_now.hour == 13 and ct_now.minute < 30)  # 11:30 AM - 1:30 PM CT
-    is_afternoon_lockout = (ct_now.hour == 13 and ct_now.minute >= 30) or (ct_now.hour >= 14)  # 1:30 PM CT onwards -> NO NEW ENTRIES
+    is_prime_morning_window = (8 <= ct_now.hour < 11) or (ct_now.hour == 11 and ct_now.minute <= 30)
+    is_midday_window = (ct_now.hour == 11 and ct_now.minute > 30) or (ct_now.hour == 12) or (ct_now.hour == 13 and ct_now.minute < 30)
+    is_afternoon_lockout = (ct_now.hour == 13 and ct_now.minute >= 30) or (ct_now.hour >= 14)
 
     # --- DAILY PEAK HIGH-WATER LOCK SHIELD ($250 GIVEBACK CAP) ---
     peak_giveback_lockout = giveback_from_peak >= 250.0 and (today_peak_eq > today_start_eq)
@@ -628,7 +691,12 @@ def execute_stock_engine():
                 if order_res.status_code == 200:
                     active_count += 1
                     active_symbols.add(symbol)
-                    audit_logs.append(f"1H ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} (~${(qty * px):.2f})")
+                    
+                    # SYNC INITIAL NATIVE TRIGGER STOP ORDER DIRECTLY ON ALPACA ORDERBOOK
+                    initial_stop_px = px * 0.995 if is_long else px * 1.005
+                    sync_alpaca_native_trigger_stop(symbol, is_long, qty, initial_stop_px, open_orders, audit_logs)
+
+                    audit_logs.append(f"1H ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} (~${(qty * px):.2f}) [Native Orderbook Trigger Stop Active]")
                 else:
                     audit_logs.append(f"ORDER REJECTED BY ALPACA [{order_res.status_code}] on {symbol}: {order_res.text}")
             except Exception as e:
@@ -652,7 +720,7 @@ def execute_stock_engine():
 
     closed_ledger = state.get("closed_trades_ledger", [])
     
-    # --- STRICT CALENDAR DAY RESET (Clears score to 0 every morning) ---
+    # --- STRICT CALENDAR DAY RESET ---
     trades_today = [
         t for t in closed_ledger 
         if today_str in str(t.get("timestamp", ""))
@@ -790,7 +858,7 @@ def execute_stock_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Equities-LS-01 | 1H Master Engine</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: TIME-REGULATED POWER & ANTI-WIPEOUT</p>
+            <p>Timestamp: {timestamp} &bull; Mode: TIME-REGULATED POWER & NATIVE TRIGGER STOPS</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -807,6 +875,7 @@ def execute_stock_engine():
 
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Guardrails (Full Strategy Display)</div>
+              &bull; <b>Native Alpaca Orderbook Trigger Stops:</b> Resting stop orders placed directly on Alpaca matching engine for millisecond execution<br>
               &bull; <b>1-Hour Timeframe & Hard CI Gate (&le;58.0):</b> Eliminates noise & rejects choppy stocks<br>
               &bull; <b>SPY Macro Regime Shield:</b> Enforces broad market direction alignment<br>
               &bull; <b>1H Trend Invalidation & ATR Buffer:</b> Cuts losses fast on reversals with proper noise room<br>
@@ -815,7 +884,7 @@ def execute_stock_engine():
               &bull; <b>Midday Micro Window (11:30 AM–1:30 PM CT):</b> Capped at $1,000 Micro Sizing<br>
               &bull; <b>Afternoon Lockout (1:30 PM CT+):</b> Strictly 0 new entries allowed<br>
               &bull; <b>1:30 PM Stagnation Clean-up:</b> Exits floating losing trades early before EOD chop<br>
-              &bull; <b>High-Water Giveback Shield:</b> Blocks trading if giving back >$250 from intra-day peak<br>
+              &bull; <b>High-Water Giveback Shield:</b> Blocks trading if giving back &gt;$250 from intra-day peak<br>
               &bull; <b>Daily Anti-Wipeout Shield (-2.5% Cap):</b> Emergency flattens account if daily loss hits -2.5%
             </div>
 
