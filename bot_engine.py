@@ -466,7 +466,7 @@ def execute_engine():
 
     if gemini_risk == "HIGH":
         required_vol_ratio = 1.30
-        audit_logs.append(f"⚠️️ Gemini Macro Risk HIGH: Scaling breakout volume gate to >= {required_vol_ratio:.2f}x")
+        audit_logs.append(f"⚠ Gemini Macro Risk HIGH: Scaling breakout volume gate to >= {required_vol_ratio:.2f}x")
     elif gemini_risk == "MODERATE":
         required_vol_ratio = 1.20
         audit_logs.append(f"ℹ️ Gemini Macro Risk MODERATE: Scaling breakout volume gate to >= {required_vol_ratio:.2f}x")
@@ -677,7 +677,12 @@ def execute_engine():
 
     base_sizing_usd = 10.0
 
-    if is_1h_scan_window and available_slots > 0 and effective_regime != "NEUTRAL":
+    # ALL-WEATHER SCANNER: Allow scanning even when BTC regime is NEUTRAL, but enforce higher conviction filters
+    if is_1h_scan_window and available_slots > 0:
+        if effective_regime == "NEUTRAL":
+            required_vol_ratio = max(required_vol_ratio, 1.35)
+            audit_logs.append(f"ℹ️ BTC Neutral Regime: Enabling All-Weather High-Conviction Scan (Vol Gate >= {required_vol_ratio:.2f}x)")
+
         state["last_scan_timestamp"] = now_ts
 
         btc_candles_5d = api_retry(info.candles_snapshot, name="BTC", interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
@@ -688,7 +693,7 @@ def execute_engine():
         btc_ci = calculate_choppiness_index(btc_highs, btc_lows, btc_closes)
         btc_adx = calculate_adx(btc_highs, btc_lows, btc_closes)
 
-        if btc_ci < 48.0 and btc_adx > 22.0:
+        if btc_ci < 48.0 and btc_adx > 25.0:
             market_mode = "TRENDING"
         elif btc_ci > 62.0:
             market_mode = "CHOP_HOLD"
@@ -752,7 +757,7 @@ def execute_engine():
                     if market_mode == "TRENDING" or (market_mode == "RANGING" and vol_ratio >= required_vol_ratio):
                         ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
                         if ci_1h <= 58.0 and vol_ratio >= required_vol_ratio:
-                            if effective_regime == "GREEN":
+                            if effective_regime in ["GREEN", "NEUTRAL"]:
                                 # LONG Entry Gate: Live candle MUST be Green & holding breakout level
                                 if comp_close > upper and comp_close <= (upper * 1.020):
                                     if is_candle_green and is_holding_breakout:
@@ -764,7 +769,7 @@ def execute_engine():
                                         })
                                         audit_logs.append(f"1H GREEN BREAKOUT MATCH (LONG): {coin} @ ${curr_live_px:.4f} (Live Green, Ext: +{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x >= {required_vol_ratio:.2f}x)")
 
-                            elif effective_regime == "RED":
+                            if effective_regime in ["RED", "NEUTRAL"]:
                                 # SHORT Entry Gate: Live candle MUST be Red & holding breakdown level
                                 if comp_close < lower and comp_close >= (lower * 0.980):
                                     if is_candle_red and is_holding_breakdown:
@@ -1042,14 +1047,14 @@ def execute_engine():
 
                 <div class="rules-card">
                   <div class="rules-title">&#9989; Active Guardrails (Full Crypto Strategy Display)</div>
-                  &bull; <b>V3 Hybrid Regime Switcher:</b> Trending (CI &lt; 48 &amp; ADX &gt; 22) / Ranging / Extreme Chop (CI &gt; 62)<br>
+                  &bull; <b>V3 Hybrid Regime Switcher:</b> All-Weather Scan (Neutral / Trending ADX &gt; 25) / Extreme Chop (CI &gt; 62)<br>
                   &bull; <b>Native Orderbook Trigger Stop-Market Orders:</b> Auto-places & ratchets resting TPSL directly on exchange orderbook<br>
                   &bull; <b>Bidirectional Live Candle Confirmation Gate:</b> Green for LONGs, Red for SHORTs with 1H Hold Confirmation<br>
                   &bull; <b>100% Market Execution:</b> All exits execute via direct Taker Market Orders<br>
                   &bull; <b>Ultra-Tight Downside Risk Buffer:</b> Max -0.50% to -1.00% ROE loss cap<br>
                   &bull; <b>Ultra-Tight Micro-Ratchet Ladder:</b> Micro BE at +0.15%, 75% at +0.35%, 80% at +0.80%, 85% at +1.50%<br>
-                  &bull; <b>BTC Directional Shield:</b> Enforces broad market alignment (GREEN = LONGs only, RED = SHORTs only)<br>
-                  &bull; <b>Adaptive Gemini Volume Gate:</b> Dynamically scales volume confirmation (LOW: 1.15x, MODERATE: 1.20x, HIGH: 1.30x)<br>
+                  &bull; <b>BTC Directional Shield:</b> Enforces broad market alignment (GREEN = LONGs only, RED = SHORTs only, NEUTRAL = All-Weather High Conviction)<br>
+                  &bull; <b>Adaptive Gemini Volume Gate:</b> Dynamically scales volume confirmation (LOW: 1.15x, MODERATE: 1.20x, HIGH: 1.30x, NEUTRAL: 1.35x+)<br>
                   &bull; <b>Unrestricted Scanner:</b> 100-coin scanning universe remains 100% open for moonshot detection<br>
                   &bull; <b>Uncapped Moonshot Upside:</b> Zero take-profit caps—lets parabolic runners fly infinitely<br>
                   &bull; <b>Single-Slot Capital Preservation:</b> Strictly capped at 1 active trade ($10 floor)<br>
