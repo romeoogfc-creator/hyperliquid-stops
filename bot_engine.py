@@ -307,7 +307,7 @@ def calculate_moonshot_ratchet_stop(entry_px, is_long, current_px, atr_val, peak
     else:
         roe = (entry_px - current_px) / entry_px
 
-    # WIDER INITIAL DOWNSIDE RISK CAP: -1.50% to -2.50% max ROE loss to survive noise
+    # NOISE-TUNED INITIAL DOWNSIDE RISK CAP: -1.50% to -2.50% max ROE loss
     atr_roe_buffer = (atr_val * 1.5) / entry_px if entry_px > 0 else 0.020
     atr_roe_buffer = max(0.0150, min(0.0250, atr_roe_buffer))
 
@@ -320,7 +320,7 @@ def calculate_moonshot_ratchet_stop(entry_px, is_long, current_px, atr_val, peak
         leash_status = f"🌕 Major Runner 90% Lock [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
     elif peak_roe >= 0.30:
         target_floor_roe = max(peak_roe * 0.88, peak_roe - 0.05)
-        leash_status = f"📈 Strong Trend 88% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
+        leash_status = f"📈 Strong Trend 88% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
     elif peak_roe >= 0.0150:
         target_floor_roe = peak_roe * 0.85
         leash_status = f"🎯 Core Profit 85% Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
@@ -340,7 +340,7 @@ def calculate_moonshot_ratchet_stop(entry_px, is_long, current_px, atr_val, peak
 
     else:
         target_floor_roe = -atr_roe_buffer
-        leash_status = f"⚡ Balanced Noise Buffer (-{atr_roe_buffer*100:.2f}%)"
+        leash_status = f"⚡ Noise Buffer (-{atr_roe_buffer*100:.2f}%)"
 
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
@@ -421,7 +421,7 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (V3 Hybrid Regime Switcher - Noise Buffer Tuned).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (True Body Momentum Gate Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -735,10 +735,21 @@ def execute_engine():
                     lows = [float(c["l"]) for c in candles]
                     volumes = [float(c.get("v", 0)) for c in candles]
 
-                    # LIVE CANDLE DIRECTION CONFIRMATION (LONG & SHORT)
-                    live_candle_open = float(candles[-1]["o"])
-                    is_candle_green = curr_live_px > live_candle_open
-                    is_candle_red = curr_live_px < live_candle_open
+                    # ==========================================================
+                    # TRUE BODY STRENGTH & MOMENTUM GATE (NO WOBBLY WICKS)
+                    # ==========================================================
+                    c_open = float(candles[-1]["o"])
+                    c_high = float(candles[-1]["h"])
+                    c_low = float(candles[-1]["l"])
+                    c_range = c_high - c_low if c_high > c_low else 1e-8
+                    live_body = abs(curr_live_px - c_open)
+
+                    prev_open = float(candles[-2]["o"])
+                    prev_close = float(candles[-2]["c"])
+
+                    # Require forming candle body to be >= 35% of total range, plus back-to-back candle agreement
+                    is_true_green = (curr_live_px > c_open) and (live_body / c_range >= 0.35) and (prev_close > prev_open)
+                    is_true_red = (curr_live_px < c_open) and (live_body / c_range >= 0.35) and (prev_close < prev_open)
 
                     rsi_1h = calculate_rsi(closes)
                     bb_upper, bb_lower, bb_mid = calculate_bollinger_bands(closes)
@@ -759,50 +770,50 @@ def execute_engine():
                         ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
                         if ci_1h <= 52.0 and vol_ratio >= required_vol_ratio:
                             if effective_regime in ["GREEN", "NEUTRAL"]:
-                                # LONG Entry Gate: Live candle Green & holding breakout (expanded cap to 3%)
+                                # LONG Entry Gate: True Green & holding breakout
                                 if comp_close > upper and comp_close <= (upper * 1.030):
-                                    if is_candle_green and is_holding_breakout:
+                                    if is_true_green and is_holding_breakout:
                                         extension_pct = ((comp_close - upper) / upper) * 100
                                         market_candidates.append({
                                             "coin": coin, "close": curr_live_px, "is_long": True, 
                                             "score": (curr_live_px - upper) / upper, "candle_ts": current_candle_ts,
                                             "strategy": "BREAKOUT"
                                         })
-                                        audit_logs.append(f"1H GREEN BREAKOUT MATCH (LONG): {coin} @ ${curr_live_px:.4f} (Live Green, Ext: +{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x >= {required_vol_ratio:.2f}x)")
+                                        audit_logs.append(f"1H TRUE GREEN BREAKOUT MATCH (LONG): {coin} @ ${curr_live_px:.4f} (True Green Body, Ext: +{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
 
                             if effective_regime in ["RED", "NEUTRAL"]:
-                                # SHORT Entry Gate: Live candle Red & holding breakdown (expanded cap to 3%)
+                                # SHORT Entry Gate: True Red & holding breakdown
                                 if comp_close < lower and comp_close >= (lower * 0.970):
-                                    if is_candle_red and is_holding_breakdown:
+                                    if is_true_red and is_holding_breakdown:
                                         extension_pct = ((lower - comp_close) / lower) * 100
                                         market_candidates.append({
                                             "coin": coin, "close": curr_live_px, "is_long": False, 
                                             "score": (lower - curr_live_px) / lower, "candle_ts": current_candle_ts,
                                             "strategy": "BREAKOUT"
                                         })
-                                        audit_logs.append(f"1H RED BREAKDOWN MATCH (SHORT): {coin} @ ${curr_live_px:.4f} (Live Red, Ext: -{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x >= {required_vol_ratio:.2f}x)")
+                                        audit_logs.append(f"1H TRUE RED BREAKDOWN MATCH (SHORT): {coin} @ ${curr_live_px:.4f} (True Red Body, Ext: -{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
 
                     # STRATEGY B: RANGING MEAN-REVERSION (LONG & SHORT)
                     if market_mode == "RANGING":
                         if effective_regime in ["GREEN", "NEUTRAL"]:
-                            # LONG Dip Buy Gate: Balanced RSI <= 48
-                            if curr_live_px <= bb_lower * 1.005 and curr_live_px < vwap_val and rsi_1h <= 48.0 and is_candle_green:
+                            # LONG Dip Buy Gate: True Green bounce
+                            if curr_live_px <= bb_lower * 1.005 and curr_live_px < vwap_val and rsi_1h <= 48.0 and is_true_green:
                                 market_candidates.append({
                                     "coin": coin, "close": curr_live_px, "is_long": True,
                                     "score": (vwap_val - curr_live_px) / vwap_val, "candle_ts": current_candle_ts,
                                     "strategy": "MEAN_REVERSION"
                                 })
-                                audit_logs.append(f"1H VWAP DIP BOUNCE BUY (LONG): {coin} @ ${curr_live_px:.4f} (Live Green Bounce Below VWAP ${vwap_val:.4f}, RSI: {rsi_1h:.1f})")
+                                audit_logs.append(f"1H VWAP TRUE DIP BOUNCE (LONG): {coin} @ ${curr_live_px:.4f} (True Green Bounce Below VWAP, RSI: {rsi_1h:.1f})")
 
                         if effective_regime in ["RED", "NEUTRAL"]:
-                            # SHORT Fade High Gate: Balanced RSI >= 52
-                            if curr_live_px >= bb_upper * 0.995 and curr_live_px > vwap_val and rsi_1h >= 52.0 and is_candle_red:
+                            # SHORT Fade High Gate: True Red reject
+                            if curr_live_px >= bb_upper * 0.995 and curr_live_px > vwap_val and rsi_1h >= 52.0 and is_true_red:
                                 market_candidates.append({
                                     "coin": coin, "close": curr_live_px, "is_long": False,
                                     "score": (curr_live_px - vwap_val) / vwap_val, "candle_ts": current_candle_ts,
                                     "strategy": "MEAN_REVERSION"
                                 })
-                                audit_logs.append(f"1H VWAP SHORT FADE (SHORT): {coin} @ ${curr_live_px:.4f} (Live Red Reject Above VWAP ${vwap_val:.4f}, RSI: {rsi_1h:.1f})")
+                                audit_logs.append(f"1H VWAP TRUE SHORT FADE (SHORT): {coin} @ ${curr_live_px:.4f} (True Red Reject Above VWAP, RSI: {rsi_1h:.1f})")
 
                 except Exception:
                     continue
@@ -864,7 +875,7 @@ def execute_engine():
                         "collateral": base_sizing_usd, "position_usd": base_sizing_usd,
                         "pnl": 0.0, "roe": 0.0,
                         "stop": round_sig_figs(initial_stop_px, 5),
-                        "status": "⚡ Fresh Execution (Noise-Tuned Native TPSL Active)"
+                        "status": "⚡ Fresh Execution (True Body & Noise-Tuned TPSL Active)"
                     })
 
                     audit_logs.append(f"1H EXECUTION SUCCESS [{strat_used}]: Opened {'LONG' if is_long else 'SHORT'} on {coin} (Size: {sz} ~${base_sizing_usd:.2f})")
@@ -1031,7 +1042,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23-V2 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (V3 Noise-Tuned Engine Active)</p>
+                <p>Timestamp: {timestamp} (True Body Momentum Engine Active)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -1048,9 +1059,9 @@ def execute_engine():
 
                 <div class="rules-card">
                   <div class="rules-title">&#9989; Active Guardrails (Full Crypto Strategy Display)</div>
-                  &bull; <b>V3 Hybrid Regime Switcher:</b> All-Weather Scan (Neutral / Trending ADX &gt; 21) / Extreme Chop (CI &gt; 62)<br>
+                  &bull; <b>True Body Momentum Gate:</b> Requires solid candle bodies (&gt;35% range) and back-to-back 1H candle commitment<br>
                   &bull; <b>Native Orderbook Trigger Stop-Market Orders:</b> Auto-places & ratchets resting TPSL directly on exchange orderbook<br>
-                  &bull; <b>Balanced Noise-Tuned Buffer:</b> Initial risk cap widened to -1.50% to -2.50% ROE to survive normal wiggles<br>
+                  &bull; <b>Noise-Tuned Buffer:</b> Initial risk cap set to -1.50% to -2.50% ROE to survive normal wiggles<br>
                   &bull; <b>Bidirectional Live Candle Confirmation Gate:</b> Green for LONGs, Red for SHORTs with 1H Hold Confirmation<br>
                   &bull; <b>100% Market Execution:</b> All exits execute via direct Taker Market Orders<br>
                   &bull; <b>Ultra-Tight Micro-Ratchet Ladder:</b> Micro BE at +0.15%, 75% at +0.35%, 80% at +0.80%, 85% at +1.50%<br>
@@ -1108,7 +1119,7 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing single-run Noise-Tuned cycle...", flush=True)
+    print(f"[{timestamp}] Executing single-run True Body Momentum cycle...", flush=True)
     try:
         execute_engine()
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Cycle execution completed successfully.", flush=True)
