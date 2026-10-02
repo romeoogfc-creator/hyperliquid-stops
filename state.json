@@ -353,9 +353,9 @@
   "active_position_cache": {
     "kBONK": {
       "entry_px": 0.003941,
-      "current_px": 0.003918,
+      "current_px": 0.003883,
       "szi": 2554.0,
-      "margin": 1.000657,
+      "margin": 0.991462,
       "side": "LONG",
       "peak_roe": -0.005836082212636501,
       "strategy": "BREAKOUT"
@@ -364,7 +364,7 @@
   "previous_active_coins": [
     "kBONK"
   ],
-  "last_run_timestamp": "2026-10-02 05:17:58",
+  "last_run_timestamp": "2026-10-02 05:28:59",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -374,12 +374,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790918264.774071,
+  "last_email_timestamp": 1790918935.1400895,
   "last_scan_timestamp": 1790917915.6190565,
   "gemini_cache": {
-    "timestamp": 1790918264.774071,
-    "risk": "MODERATE",
-    "briefing": "Risk Level: **MODERATE**\n\nCrypto markets currently face a balanced tug-of-war between strong institutional ETF inflows and favorable long-term liquidity trends against persistent macroeconomic uncertainty, stubborn inflation fears, and the constant threat of sudden regulatory crackdowns."
+    "timestamp": 1790918935.1400895,
+    "risk": "HIGH",
+    "briefing": "Risk Level: HIGH; crypto markets are currently experiencing significant volatility driven by macroeconomic uncertainty, regulatory scrutiny, and high levels of leverage, making them susceptible to sharp, unpredictable price swings."
   },
   "recent_losses": [],
   "last_traded_candle": {
