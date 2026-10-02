@@ -399,11 +399,8 @@ def execute_engine():
     meta = api_retry(info.meta)
     now_ms = int(now_ts * 1000)
 
-    current_gm_min = time.gmtime(now_ts).tm_min
-    last_scan_ts = float(state.get("last_scan_timestamp", 0))
-    minutes_since_last_scan = (now_ts - last_scan_ts) / 60.0
-    
-    is_1h_scan_window = (current_gm_min in [0, 1, 2, 3]) or (minutes_since_last_scan >= 50.0)
+    # Allow candidate scanning on every 20-minute execution run
+    is_1h_scan_window = True
 
     gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_1h_scan_window)
     audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] {gemini_briefing}")
@@ -659,62 +656,58 @@ def execute_engine():
 
                     rsi_1h = calculate_rsi(closes)
                     bb_upper, bb_lower, bb_mid = calculate_bollinger_bands(closes)
+                    
+                    avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else volumes[-3]
+                    comp_vol = volumes[-2]
+                    vol_ratio = comp_vol / avg_vol if avg_vol > 0 else 1.0
 
-                    # STRATEGY A: TRENDING BREAKOUT ENGINE
-                    if market_mode == "TRENDING":
+                    upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
+                    comp_close = closes[-2]
+                    prev_comp_close = closes[-3]
+
+                    # STRATEGY A: TRENDING BREAKOUT ENGINE (Or High-Volume Breakout in Ranging Mode)
+                    if market_mode == "TRENDING" or (market_mode == "RANGING" and vol_ratio >= 1.4):
                         ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
-                        if ci_1h > 52.0:
-                            continue
+                        if ci_1h <= 55.0 and vol_ratio >= 1.3:
+                            if effective_regime == "GREEN":
+                                if comp_close > upper and prev_comp_close <= upper:
+                                    market_candidates.append({
+                                        "coin": coin, "close": comp_close, "is_long": True, 
+                                        "score": (comp_close - upper) / upper, "candle_ts": current_candle_ts,
+                                        "strategy": "BREAKOUT"
+                                    })
+                                    audit_logs.append(f"1H BREAKOUT MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}x)")
 
-                        avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else volumes[-3]
-                        comp_vol = volumes[-2]
-                        vol_ratio = comp_vol / avg_vol if avg_vol > 0 else 1.0
-                        if vol_ratio < 1.3:
-                            continue
+                            elif effective_regime == "RED":
+                                if comp_close < lower and prev_comp_close >= lower:
+                                    market_candidates.append({
+                                        "coin": coin, "close": comp_close, "is_long": False, 
+                                        "score": (lower - comp_close) / lower, "candle_ts": current_candle_ts,
+                                        "strategy": "BREAKOUT"
+                                    })
+                                    audit_logs.append(f"1H BREAKDOWN MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}x)")
 
-                        upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
-                        comp_close = closes[-2]
-                        prev_comp_close = closes[-3]
-
-                        if effective_regime == "GREEN":
-                            if comp_close > upper and prev_comp_close <= upper:
-                                market_candidates.append({
-                                    "coin": coin, "close": comp_close, "is_long": True, 
-                                    "score": (comp_close - upper) / upper, "candle_ts": current_candle_ts,
-                                    "strategy": "BREAKOUT"
-                                })
-                                audit_logs.append(f"1H BREAKOUT MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}x)")
-
-                        elif effective_regime == "RED":
-                            if comp_close < lower and prev_comp_close >= lower:
-                                market_candidates.append({
-                                    "coin": coin, "close": comp_close, "is_long": False, 
-                                    "score": (lower - comp_close) / lower, "candle_ts": current_candle_ts,
-                                    "strategy": "BREAKOUT"
-                                })
-                                audit_logs.append(f"1H BREAKDOWN MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}x)")
-
-                    # STRATEGY B: RANGING MEAN-REVERSION ENGINE
-                    elif market_mode == "RANGING":
-                        comp_close = closes[-1]
+                    # STRATEGY B: RANGING MEAN-REVERSION DIP BUY
+                    if market_mode == "RANGING":
+                        comp_close_curr = closes[-1]
 
                         if effective_regime == "GREEN" or effective_regime == "NEUTRAL":
-                            if comp_close <= bb_lower * 1.002 and rsi_1h <= 35.0:
+                            if comp_close_curr <= bb_lower * 1.004 and rsi_1h <= 42.0:
                                 market_candidates.append({
-                                    "coin": coin, "close": comp_close, "is_long": True,
-                                    "score": (35.0 - rsi_1h) / 35.0, "candle_ts": current_candle_ts,
+                                    "coin": coin, "close": comp_close_curr, "is_long": True,
+                                    "score": (42.0 - rsi_1h) / 42.0, "candle_ts": current_candle_ts,
                                     "strategy": "MEAN_REVERSION"
                                 })
-                                audit_logs.append(f"1H MEAN-REVERSION DIP BUY: {coin} @ ${comp_close:.4f} (RSI: {rsi_1h:.1f} <= 35, Price <= Lower Band)")
+                                audit_logs.append(f"1H MEAN-REVERSION DIP BUY: {coin} @ ${comp_close_curr:.4f} (RSI: {rsi_1h:.1f} <= 42, Price <= Lower Band)")
 
                         if effective_regime == "RED" or effective_regime == "NEUTRAL":
-                            if comp_close >= bb_upper * 0.998 and rsi_1h >= 65.0:
+                            if comp_close_curr >= bb_upper * 0.996 and rsi_1h >= 58.0:
                                 market_candidates.append({
-                                    "coin": coin, "close": comp_close, "is_long": False,
-                                    "score": (rsi_1h - 65.0) / 35.0, "candle_ts": current_candle_ts,
+                                    "coin": coin, "close": comp_close_curr, "is_long": False,
+                                    "score": (rsi_1h - 58.0) / 42.0, "candle_ts": current_candle_ts,
                                     "strategy": "MEAN_REVERSION"
                                 })
-                                audit_logs.append(f"1H MEAN-REVERSION SHORT: {coin} @ ${comp_close:.4f} (RSI: {rsi_1h:.1f} >= 65, Price >= Upper Band)")
+                                audit_logs.append(f"1H MEAN-REVERSION SHORT: {coin} @ ${comp_close_curr:.4f} (RSI: {rsi_1h:.1f} >= 58, Price >= Upper Band)")
 
                 except Exception:
                     continue
@@ -737,6 +730,11 @@ def execute_engine():
             sz = round(raw_sz, decimals)
             if decimals == 0:
                 sz = int(sz)
+
+            # Prevent zero-size execution errors on high-unit assets
+            if sz <= 0:
+                audit_logs.append(f"⚠️ Sizing guard skipped {coin}: calculated size {sz} <= 0 (Price: ${px:.2f})")
+                continue
 
             try:
                 try:
@@ -771,14 +769,14 @@ def execute_engine():
     static_usdc = max(0.0, account_value - total_margin_used)
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
-    # --- DISPATCH EMAIL DASHBOARD ON EVERY SINGLE RUN ---
+    # Dispatch email dashboard on every execution run
     should_send_email = True
 
     if should_send_email:
         state["last_email_timestamp"] = now_ts
         save_state(state)
 
-        # --- STRICT CALENDAR DAY RESET (Clears score to 0 every midnight CT) ---
+        # Strict Calendar Day Reset
         trades_today = [
             t for t in state.get("closed_trades_ledger", [])
             if today_str in str(t.get("timestamp", ""))
