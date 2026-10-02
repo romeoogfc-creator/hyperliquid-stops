@@ -388,20 +388,12 @@
     }
   ],
   "active_position_cache": {
-    "DOGE": {
-      "entry_px": 0.091249,
-      "current_px": 0.090757,
-      "szi": -110.0,
-      "margin": 0.998019,
-      "side": "SHORT",
-      "peak_roe": 0.00539183991057428,
+    "kSHIB": {
       "strategy": "BREAKOUT"
     }
   },
-  "previous_active_coins": [
-    "DOGE"
-  ],
-  "last_run_timestamp": "2026-10-02 19:18:07",
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-02 19:22:13",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -411,12 +403,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790968678.4648635,
-  "last_scan_timestamp": 1790967606.3725722,
+  "last_email_timestamp": 1790968885.666848,
+  "last_scan_timestamp": 1790968885.666848,
   "gemini_cache": {
-    "timestamp": 1790968678.4648635,
+    "timestamp": 1790968885.666848,
     "risk": "HIGH",
-    "briefing": "Risk Level: HIGH; while institutional inflows provide support, the market remains hypersensitive to shifting macroeconomic interest rate expectations, geopolitical instability, and regulatory uncertainty, leading to significant potential for rapid, high-amplitude volatility."
+    "briefing": "**Risk Level: HIGH**\n\nCrypto markets currently face heightened volatility due to macroeconomic uncertainty, shifting regulatory landscapes, and speculative overextension, necessitating extreme caution for investors."
   },
   "recent_losses": [],
   "last_traded_candle": {
@@ -430,7 +422,8 @@
     "YGG": 1790953200000,
     "GMX": 1790953200000,
     "JTO": 1790964000000,
-    "DOGE": 1790967600000
+    "DOGE": 1790967600000,
+    "kSHIB": 1790967600000
   },
   "hibernating_until": 0,
   "daily_starting_equity": {
