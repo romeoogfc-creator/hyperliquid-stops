@@ -681,7 +681,7 @@ def execute_engine():
     if is_1h_scan_window and available_slots > 0:
         if effective_regime == "NEUTRAL":
             required_vol_ratio = max(required_vol_ratio, 1.15)
-            audit_logs.append(f"ℹ️️ BTC Neutral Regime: Balanced All-Weather Scan (Vol Gate >= {required_vol_ratio:.2f}x)")
+            audit_logs.append(f"ℹ BTC Neutral Regime: Balanced All-Weather Scan (Vol Gate >= {required_vol_ratio:.2f}x)")
 
         state["last_scan_timestamp"] = now_ts
 
@@ -757,7 +757,7 @@ def execute_engine():
                     # STRATEGY A: TRENDING BREAKOUT / BREAKDOWN ENGINE (LONG & SHORT)
                     if market_mode == "TRENDING" or (market_mode == "RANGING" and vol_ratio >= required_vol_ratio):
                         ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
-                        if ci_1h <= 58.0 and vol_ratio >= required_vol_ratio:
+                        if ci_1h <= 52.0 and vol_ratio >= required_vol_ratio:  # <--- TIGHTENED FROM 58.0 to 52.0
                             if effective_regime in ["GREEN", "NEUTRAL"]:
                                 # LONG Entry Gate: Live candle Green & holding breakout (expanded cap to 3%)
                                 if comp_close > upper and comp_close <= (upper * 1.030):
