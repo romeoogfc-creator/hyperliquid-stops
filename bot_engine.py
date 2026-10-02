@@ -107,7 +107,8 @@ def round_sig_figs(val, sig_figs=5):
         return 0
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
-def check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=5000.0):
+def check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=6000.0):
+    """Balanced Liquidity Floor: $6,000 USD min depth & 0.30% max spread"""
     try:
         l2_book = api_retry(info.l2_snapshot, name=coin)
         levels = l2_book.get("levels", [[], []])
@@ -414,6 +415,19 @@ def execute_engine():
     gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_1h_scan_window)
     audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] {gemini_briefing}")
 
+    # ==============================================================================
+    # ADAPTIVE GEMINI VOLUME GATE (MIDDLE-GROUND FRAMEWORK)
+    # ==============================================================================
+    if gemini_risk == "HIGH":
+        required_vol_ratio = 1.30  # Require slightly higher volume confirmation on macro-volatile days
+        audit_logs.append(f"⚠️ Gemini Macro Risk HIGH: Scaling breakout volume gate to >= {required_vol_ratio:.2f}x")
+    elif gemini_risk == "MODERATE":
+        required_vol_ratio = 1.20
+        audit_logs.append(f"ℹ️ Gemini Macro Risk MODERATE: Scaling breakout volume gate to >= {required_vol_ratio:.2f}x")
+    else:
+        required_vol_ratio = 1.15
+        audit_logs.append(f"✅ Gemini Macro Risk LOW: Standard breakout volume gate >= {required_vol_ratio:.2f}x active")
+
     btc_regime, btc_change_pct = get_btc_regime(info, now_ms)
     audit_logs.append(f"BTC Directional Shield: Daily Candle is {btc_regime} ({btc_change_pct:+.2f}%).")
 
@@ -657,7 +671,8 @@ def execute_engine():
                     if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
                         continue
 
-                    is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=5000.0)
+                    # Optimal Depth Gate: $6,000 USD min depth floor
+                    is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=6000.0)
                     if not is_liquid:
                         continue
 
@@ -677,10 +692,10 @@ def execute_engine():
                     upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
                     comp_close = closes[-2]
 
-                    # STRATEGY A: TRENDING BREAKOUT ENGINE
-                    if market_mode == "TRENDING" or (market_mode == "RANGING" and vol_ratio >= 1.15):
+                    # STRATEGY A: TRENDING BREAKOUT ENGINE (Adaptive VolRatio >= required_vol_ratio)
+                    if market_mode == "TRENDING" or (market_mode == "RANGING" and vol_ratio >= required_vol_ratio):
                         ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
-                        if ci_1h <= 58.0 and vol_ratio >= 1.15:
+                        if ci_1h <= 58.0 and vol_ratio >= required_vol_ratio:
                             if effective_regime == "GREEN":
                                 if comp_close > upper and comp_close <= (upper * 1.020):
                                     extension_pct = ((comp_close - upper) / upper) * 100
@@ -689,7 +704,7 @@ def execute_engine():
                                         "score": (comp_close - upper) / upper, "candle_ts": current_candle_ts,
                                         "strategy": "BREAKOUT"
                                     })
-                                    audit_logs.append(f"1H BREAKOUT MATCH: {coin} @ ${comp_close:.4f} (Ext: +{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
+                                    audit_logs.append(f"1H BREAKOUT MATCH: {coin} @ ${comp_close:.4f} (Ext: +{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x >= {required_vol_ratio:.2f}x)")
 
                             elif effective_regime == "RED":
                                 if comp_close < lower and comp_close >= (lower * 0.980):
@@ -699,7 +714,7 @@ def execute_engine():
                                         "score": (lower - comp_close) / lower, "candle_ts": current_candle_ts,
                                         "strategy": "BREAKOUT"
                                     })
-                                    audit_logs.append(f"1H BREAKDOWN MATCH: {coin} @ ${comp_close:.4f} (Ext: -{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
+                                    audit_logs.append(f"1H BREAKDOWN MATCH: {coin} @ ${comp_close:.4f} (Ext: -{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x >= {required_vol_ratio:.2f}x)")
 
                     # STRATEGY B: RANGING VWAP + BOLLINGER MEAN-REVERSION
                     if market_mode == "RANGING":
@@ -967,12 +982,13 @@ def execute_engine():
                   <div class="rules-title">&#9989; Active Guardrails (Full Crypto Strategy Display)</div>
                   &bull; <b>V3 Hybrid Regime Switcher:</b> Trending (CI &lt; 48) / Ranging (48 &le; CI &le; 62) / Extreme Chop (CI &gt; 62)<br>
                   &bull; <b>BTC Directional Shield:</b> Enforces broad market alignment (GREEN = LONGs only, RED = SHORTs only)<br>
-                  &bull; <b>Gemini AI Macro Volatility Shield:</b> Scans live macro sentiment & liquidity risk<br>
+                  &bull; <b>Adaptive Gemini Volume Gate:</b> Dynamically scales volume confirmation (LOW: 1.15x, MODERATE: 1.20x, HIGH: 1.30x)<br>
                   &bull; <b>Crypto Micro-Ratchet Ladder:</b> Micro BE at +0.25%, 70% at +0.50%, 80% at +1.5%, 90-95% on Moonshots<br>
                   &bull; <b>Tighter Downside Risk Cap:</b> 1.2x ATR buffer capped at max -0.8% to -1.5% ROE loss<br>
+                  &bull; <b>Unrestricted Scanner:</b> 100-coin scanning universe remains 100% open for moonshot detection<br>
                   &bull; <b>Uncapped Moonshot Upside:</b> Zero take-profit caps—lets parabolic runners fly infinitely<br>
                   &bull; <b>Single-Slot Capital Preservation:</b> Strictly capped at 1 active trade ($10 floor)<br>
-                  &bull; <b>Orderbook Spread & Depth Gate:</b> Rejects spread &gt; 0.30% or 0.5% depth &lt; $5,000 USD<br>
+                  &bull; <b>Optimal Orderbook Gate:</b> Rejects spread &gt; 0.30% or 0.5% depth &lt; $6,000 USD<br>
                   &bull; <b>24H Post-Loss Cooldown Blocklist:</b> Bans any coin closed at a loss for 24 hours in state.json<br>
                   &bull; <b>Single-Candle Lockout:</b> Restricts assets to max 1 entry per candle bar<br>
                   &bull; <b>Rolling Loss Circuit Breaker:</b> Triggers 12-hour hibernation if 3 losses occur within rolling 60m
