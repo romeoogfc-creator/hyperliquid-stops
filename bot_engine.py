@@ -144,6 +144,15 @@ def check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=1000
 # ==============================================================================
 # TECHNICAL INDICATORS
 # ==============================================================================
+def calculate_vwap(candles):
+    """Calculates 24H Volume-Weighted Average Price (VWAP) as fair-value anchor."""
+    try:
+        pv_sum = sum(((float(c['h']) + float(c['l']) + float(c['c'])) / 3.0) * float(c.get('v', 1.0)) for c in candles)
+        v_sum = sum(float(c.get('v', 1.0)) for c in candles)
+        return pv_sum / v_sum if v_sum > 0 else float(candles[-1]['c'])
+    except Exception:
+        return float(candles[-1]['c'])
+
 def calculate_gaussian_channel(closes, poles=4, period=144, mult=1.414):
     s = pd.Series(closes)
     alpha = (2.0 / (period + 1)) * (poles ** 0.5)
@@ -399,7 +408,7 @@ def execute_engine():
     meta = api_retry(info.meta)
     now_ms = int(now_ts * 1000)
 
-    # Allow candidate scanning on every 20-minute execution run
+    # Enable candidate scanning on every execution run
     is_1h_scan_window = True
 
     gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_1h_scan_window)
@@ -516,16 +525,18 @@ def execute_engine():
                 
                 atr_val = calculate_atr(highs, lows, closes)
                 bb_upper, bb_lower, bb_mid = calculate_bollinger_bands(closes)
+                vwap_val = calculate_vwap(c_candles[-24:])
 
-                # Mean-Reversion Midline Take Profit Exit
+                # Mean-Reversion Midline / VWAP Take Profit Exit
                 strat_type = current_active_cache.get(coin, {}).get("strategy", "BREAKOUT")
                 if strat_type == "MEAN_REVERSION":
-                    if is_long and current_px >= bb_mid:
+                    target_tp = max(bb_mid, vwap_val) if is_long else min(bb_mid, vwap_val)
+                    if is_long and current_px >= target_tp:
                         should_exit = True
-                        exit_reason = f"🎯 Mean-Reversion Midline TP Target (${current_px:.4f} >= ${bb_mid:.4f})"
-                    elif (not is_long) and current_px <= bb_mid:
+                        exit_reason = f"🎯 RANGING Fair-Value TP Target (${current_px:.4f} >= ${target_tp:.4f})"
+                    elif (not is_long) and current_px <= target_tp:
                         should_exit = True
-                        exit_reason = f"🎯 Mean-Reversion Midline TP Target (${current_px:.4f} <= ${bb_mid:.4f})"
+                        exit_reason = f"🎯 RANGING Fair-Value TP Target (${current_px:.4f} <= ${target_tp:.4f})"
             except Exception as e:
                 audit_logs.append(f"Indicator calculation warning on {coin}: {e}")
 
@@ -595,7 +606,8 @@ def execute_engine():
     universe = [asset["name"] for asset in meta.get("universe", [])][:100]
     market_candidates = []
 
-    MAX_CRYPTO_SLOTS = 1 if account_value < 20.0 else 2
+    # STRICT SINGLE-SLOT LOCK FOR CAPITAL PRESERVATION
+    MAX_CRYPTO_SLOTS = 1
     available_slots = MAX_CRYPTO_SLOTS - active_count
 
     base_sizing_usd = 10.0
@@ -656,6 +668,7 @@ def execute_engine():
 
                     rsi_1h = calculate_rsi(closes)
                     bb_upper, bb_lower, bb_mid = calculate_bollinger_bands(closes)
+                    vwap_val = calculate_vwap(candles[-24:])
                     
                     avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else volumes[-3]
                     comp_vol = volumes[-2]
@@ -687,27 +700,27 @@ def execute_engine():
                                     })
                                     audit_logs.append(f"1H BREAKDOWN MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}x)")
 
-                    # STRATEGY B: RANGING MEAN-REVERSION DIP BUY
+                    # STRATEGY B: RANGING VWAP + BOLLINGER BAND MEAN-REVERSION
                     if market_mode == "RANGING":
                         comp_close_curr = closes[-1]
 
-                        if effective_regime == "GREEN" or effective_regime == "NEUTRAL":
-                            if comp_close_curr <= bb_lower * 1.004 and rsi_1h <= 42.0:
+                        if effective_regime in ["GREEN", "NEUTRAL"]:
+                            if comp_close_curr <= bb_lower * 1.004 and comp_close_curr < vwap_val and rsi_1h <= 42.0:
                                 market_candidates.append({
                                     "coin": coin, "close": comp_close_curr, "is_long": True,
-                                    "score": (42.0 - rsi_1h) / 42.0, "candle_ts": current_candle_ts,
+                                    "score": (vwap_val - comp_close_curr) / vwap_val, "candle_ts": current_candle_ts,
                                     "strategy": "MEAN_REVERSION"
                                 })
-                                audit_logs.append(f"1H MEAN-REVERSION DIP BUY: {coin} @ ${comp_close_curr:.4f} (RSI: {rsi_1h:.1f} <= 42, Price <= Lower Band)")
+                                audit_logs.append(f"1H VWAP DIP BUY: {coin} @ ${comp_close_curr:.4f} (Below VWAP ${vwap_val:.4f}, RSI: {rsi_1h:.1f})")
 
-                        if effective_regime == "RED" or effective_regime == "NEUTRAL":
-                            if comp_close_curr >= bb_upper * 0.996 and rsi_1h >= 58.0:
+                        if effective_regime in ["RED", "NEUTRAL"]:
+                            if comp_close_curr >= bb_upper * 0.996 and comp_close_curr > vwap_val and rsi_1h >= 58.0:
                                 market_candidates.append({
                                     "coin": coin, "close": comp_close_curr, "is_long": False,
-                                    "score": (rsi_1h - 58.0) / 42.0, "candle_ts": current_candle_ts,
+                                    "score": (comp_close_curr - vwap_val) / vwap_val, "candle_ts": current_candle_ts,
                                     "strategy": "MEAN_REVERSION"
                                 })
-                                audit_logs.append(f"1H MEAN-REVERSION SHORT: {coin} @ ${comp_close_curr:.4f} (RSI: {rsi_1h:.1f} >= 58, Price >= Upper Band)")
+                                audit_logs.append(f"1H VWAP SHORT FADE: {coin} @ ${comp_close_curr:.4f} (Above VWAP ${vwap_val:.4f}, RSI: {rsi_1h:.1f})")
 
                 except Exception:
                     continue
@@ -731,7 +744,7 @@ def execute_engine():
             if decimals == 0:
                 sz = int(sz)
 
-            # Prevent zero-size execution errors on high-unit assets
+            # Sizing Guard: Avoid zero-size API errors
             if sz <= 0:
                 audit_logs.append(f"⚠️ Sizing guard skipped {coin}: calculated size {sz} <= 0 (Price: ${px:.2f})")
                 continue
@@ -769,7 +782,7 @@ def execute_engine():
     static_usdc = max(0.0, account_value - total_margin_used)
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
-    # Dispatch email dashboard on every execution run
+    # Dispatch email report on every single run
     should_send_email = True
 
     if should_send_email:
@@ -798,7 +811,7 @@ def execute_engine():
         
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/2"
+        text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/1"
 
         summary_card_html = f"""
         <div class="summary-card">
@@ -946,7 +959,7 @@ def execute_engine():
                   &bull; <b>Gemini AI Macro Volatility Shield:</b> Scans live macro sentiment & liquidity risk<br>
                   &bull; <b>Galactic Moonshot Profit Ratchet:</b> Locks 50% on scratch wins, 80% at +3% ROE, and 95% at +300%+ ROE<br>
                   &bull; <b>Smart Downside Adaptive Stop:</b> 1.5x ATR volatility buffer (-1.5% to -4.0% ROE floor)<br>
-                  &bull; <b>Micro-Capital Allocation:</b> $10 floor per slot; capped at 1 slot if NAV &lt; $20<br>
+                  &bull; <b>Single-Slot Capital Preservation:</b> Strictly capped at 1 active trade ($10 floor)<br>
                   &bull; <b>Orderbook Spread & Depth Gate:</b> Rejects spread &gt; 0.30% or 0.5% depth &lt; $10,000 USD<br>
                   &bull; <b>24H Post-Loss Cooldown Blocklist:</b> Bans any coin closed at a loss for 24 hours in state.json<br>
                   &bull; <b>Single-Candle Lockout:</b> Restricts assets to max 1 entry per candle bar<br>
