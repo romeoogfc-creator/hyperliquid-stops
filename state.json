@@ -1,6 +1,7 @@
 {
   "cooldown_blocklist": {
-    "kBONK": 1791039716.6179557
+    "kBONK": 1791039716.6179557,
+    "YGG": 1791042424.9776292
   },
   "stagnation_tracker": {
     "APT": 28,
@@ -50,6 +51,17 @@
     "NEAR": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "YGG",
+      "entry_price": 0.028095,
+      "exit_price": 0.0278,
+      "pnl_usd": -0.111696,
+      "roe_pct": -1.0500088983804952,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-1.05%)",
+      "timestamp": "2026-10-02 15:47:04",
+      "ts_sec": 1790956024.9776292
+    },
     {
       "coin": "kBONK",
       "entry_price": 0.003941,
@@ -364,20 +376,12 @@
     }
   ],
   "active_position_cache": {
-    "YGG": {
-      "entry_px": 0.028095,
-      "current_px": 0.027868,
-      "szi": 358.0,
-      "margin": 3.324388,
-      "side": "LONG",
-      "peak_roe": -0.005125467164975914,
+    "GMX": {
       "strategy": "BREAKOUT"
     }
   },
-  "previous_active_coins": [
-    "YGG"
-  ],
-  "last_run_timestamp": "2026-10-02 15:43:12",
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-02 15:48:30",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -387,12 +391,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790955784.480234,
-  "last_scan_timestamp": 1790954182.2093139,
+  "last_email_timestamp": 1790956024.9776292,
+  "last_scan_timestamp": 1790956024.9776292,
   "gemini_cache": {
-    "timestamp": 1790955784.480234,
+    "timestamp": 1790956024.9776292,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic volatility, shifting regulatory landscapes, and speculative liquidity cycles, necessitating extreme caution despite recent price momentum."
+    "briefing": "**Risk Level: HIGH**\n\nCrypto markets currently face heightened volatility driven by macroeconomic uncertainty, regulatory scrutiny, and significant speculative positioning, making them highly susceptible to rapid, large-scale corrections."
   },
   "recent_losses": [],
   "last_traded_candle": {
@@ -403,7 +407,8 @@
     "ADA": 1790917200000,
     "kBONK": 1790917200000,
     "GMT": 1790953200000,
-    "YGG": 1790953200000
+    "YGG": 1790953200000,
+    "GMX": 1790953200000
   },
   "hibernating_until": 0,
   "daily_starting_equity": {
