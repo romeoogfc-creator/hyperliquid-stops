@@ -352,7 +352,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-02 01:47:36",
+  "last_run_timestamp": "2026-10-02 02:01:59",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -362,12 +362,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790905654.4565988,
+  "last_email_timestamp": 1790906515.377794,
   "last_scan_timestamp": 1790903338.0443106,
   "gemini_cache": {
-    "timestamp": 1790903338.0443106,
+    "timestamp": 1790906515.377794,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Increased market volatility is driven by shifting macroeconomic expectations, significant regulatory uncertainty, and the potential for rapid deleveraging amid sensitive geopolitical conditions."
+    "briefing": "Risk Level: **HIGH**\n\nThe market is currently characterized by heightened volatility driven by uncertain macroeconomic policy, evolving regulatory scrutiny, and significant sensitivity to speculative sentiment."
   },
   "recent_losses": [],
   "last_traded_candle": {
