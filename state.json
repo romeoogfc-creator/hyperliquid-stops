@@ -366,9 +366,9 @@
   "active_position_cache": {
     "YGG": {
       "entry_px": 0.028095,
-      "current_px": 0.027951,
+      "current_px": 0.027868,
       "szi": 358.0,
-      "margin": 3.33477,
+      "margin": 3.324388,
       "side": "LONG",
       "peak_roe": -0.005125467164975914,
       "strategy": "BREAKOUT"
@@ -377,7 +377,7 @@
   "previous_active_coins": [
     "YGG"
   ],
-  "last_run_timestamp": "2026-10-02 15:33:35",
+  "last_run_timestamp": "2026-10-02 15:43:12",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -387,12 +387,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790955209.8161762,
+  "last_email_timestamp": 1790955784.480234,
   "last_scan_timestamp": 1790954182.2093139,
   "gemini_cache": {
-    "timestamp": 1790955209.8161762,
+    "timestamp": 1790955784.480234,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic uncertainty, shifting regulatory landscapes, and extreme volatility typical of current cyclical transitions, necessitating caution for all participants."
+    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic volatility, shifting regulatory landscapes, and speculative liquidity cycles, necessitating extreme caution despite recent price momentum."
   },
   "recent_losses": [],
   "last_traded_candle": {
