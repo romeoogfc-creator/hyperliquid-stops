@@ -307,9 +307,9 @@ def calculate_moonshot_ratchet_stop(entry_px, is_long, current_px, atr_val, peak
     else:
         roe = (entry_px - current_px) / entry_px
 
-    # ULTRA-TIGHT INITIAL DOWNSIDE RISK CAP: -0.50% to -1.00% max ROE loss
-    atr_roe_buffer = (atr_val * 0.8) / entry_px if entry_px > 0 else 0.008
-    atr_roe_buffer = max(0.0050, min(0.0100, atr_roe_buffer))
+    # WIDER INITIAL DOWNSIDE RISK CAP: -1.50% to -2.50% max ROE loss to survive noise
+    atr_roe_buffer = (atr_val * 1.5) / entry_px if entry_px > 0 else 0.020
+    atr_roe_buffer = max(0.0150, min(0.0250, atr_roe_buffer))
 
     # 1. Galactic & Parabolic Moonshots (+3.00+ to +1000%+ ROE - Infinite Upside)
     if peak_roe >= 3.00:
@@ -340,7 +340,7 @@ def calculate_moonshot_ratchet_stop(entry_px, is_long, current_px, atr_val, peak
 
     else:
         target_floor_roe = -atr_roe_buffer
-        leash_status = f"⚡ Ultra-Tight Loss Buffer (-{atr_roe_buffer*100:.2f}%)"
+        leash_status = f"⚡ Balanced Noise Buffer (-{atr_roe_buffer*100:.2f}%)"
 
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
@@ -421,7 +421,7 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (V3 Hybrid Regime Switcher - Sweet Spot Balanced).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (V3 Hybrid Regime Switcher - Noise Buffer Tuned).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -757,7 +757,7 @@ def execute_engine():
                     # STRATEGY A: TRENDING BREAKOUT / BREAKDOWN ENGINE (LONG & SHORT)
                     if market_mode == "TRENDING" or (market_mode == "RANGING" and vol_ratio >= required_vol_ratio):
                         ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
-                        if ci_1h <= 52.0 and vol_ratio >= required_vol_ratio:  # <--- TIGHTENED FROM 58.0 to 52.0
+                        if ci_1h <= 52.0 and vol_ratio >= required_vol_ratio:
                             if effective_regime in ["GREEN", "NEUTRAL"]:
                                 # LONG Entry Gate: Live candle Green & holding breakout (expanded cap to 3%)
                                 if comp_close > upper and comp_close <= (upper * 1.030):
@@ -854,7 +854,7 @@ def execute_engine():
                         state["active_position_cache"] = {}
                     state["active_position_cache"][coin] = {"strategy": strat_used}
 
-                    initial_stop_px = px * 0.995 if is_long else px * 1.005
+                    initial_stop_px = px * 0.985 if is_long else px * 1.015
                     sync_native_trigger_stop(exchange, info, coin, is_long, sz, initial_stop_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
@@ -864,7 +864,7 @@ def execute_engine():
                         "collateral": base_sizing_usd, "position_usd": base_sizing_usd,
                         "pnl": 0.0, "roe": 0.0,
                         "stop": round_sig_figs(initial_stop_px, 5),
-                        "status": "⚡ Fresh Execution (Native Orderbook TPSL Active)"
+                        "status": "⚡ Fresh Execution (Noise-Tuned Native TPSL Active)"
                     })
 
                     audit_logs.append(f"1H EXECUTION SUCCESS [{strat_used}]: Opened {'LONG' if is_long else 'SHORT'} on {coin} (Size: {sz} ~${base_sizing_usd:.2f})")
@@ -1031,7 +1031,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23-V2 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (V3 Hybrid Regime Engine Active)</p>
+                <p>Timestamp: {timestamp} (V3 Noise-Tuned Engine Active)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -1050,9 +1050,9 @@ def execute_engine():
                   <div class="rules-title">&#9989; Active Guardrails (Full Crypto Strategy Display)</div>
                   &bull; <b>V3 Hybrid Regime Switcher:</b> All-Weather Scan (Neutral / Trending ADX &gt; 21) / Extreme Chop (CI &gt; 62)<br>
                   &bull; <b>Native Orderbook Trigger Stop-Market Orders:</b> Auto-places & ratchets resting TPSL directly on exchange orderbook<br>
+                  &bull; <b>Balanced Noise-Tuned Buffer:</b> Initial risk cap widened to -1.50% to -2.50% ROE to survive normal wiggles<br>
                   &bull; <b>Bidirectional Live Candle Confirmation Gate:</b> Green for LONGs, Red for SHORTs with 1H Hold Confirmation<br>
                   &bull; <b>100% Market Execution:</b> All exits execute via direct Taker Market Orders<br>
-                  &bull; <b>Ultra-Tight Downside Risk Buffer:</b> Max -0.50% to -1.00% ROE loss cap<br>
                   &bull; <b>Ultra-Tight Micro-Ratchet Ladder:</b> Micro BE at +0.15%, 75% at +0.35%, 80% at +0.80%, 85% at +1.50%<br>
                   &bull; <b>BTC Directional Shield:</b> Enforces broad market alignment (GREEN = LONGs only, RED = SHORTs only, NEUTRAL = All-Weather High Conviction)<br>
                   &bull; <b>Adaptive Gemini Volume Gate:</b> Dynamically scales volume confirmation (LOW: 1.12x, MODERATE: 1.18x, HIGH: 1.25x)<br>
@@ -1108,7 +1108,7 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing single-run V3 Hybrid cycle...", flush=True)
+    print(f"[{timestamp}] Executing single-run Noise-Tuned cycle...", flush=True)
     try:
         execute_engine()
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Cycle execution completed successfully.", flush=True)
