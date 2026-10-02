@@ -107,8 +107,8 @@ def round_sig_figs(val, sig_figs=5):
         return 0
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
-def check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=10000.0):
-    """Guardrail #1: Bid-Ask Spread & Depth Filter"""
+def check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=5000.0):
+    """Guardrail #1: Bid-Ask Spread & Depth Filter (Active Profile: $5,000 USD min depth)"""
     try:
         l2_book = api_retry(info.l2_snapshot, name=coin)
         levels = l2_book.get("levels", [[], []])
@@ -657,7 +657,8 @@ def execute_engine():
                     if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
                         continue
 
-                    is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=10000.0)
+                    # Active Profile: $5,000 USD min depth
+                    is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=5000.0)
                     if not is_liquid:
                         continue
 
@@ -678,10 +679,10 @@ def execute_engine():
                     comp_close = closes[-2]
                     prev_comp_close = closes[-3]
 
-                    # STRATEGY A: TRENDING BREAKOUT ENGINE (Or High-Volume Breakout in Ranging Mode)
-                    if market_mode == "TRENDING" or (market_mode == "RANGING" and vol_ratio >= 1.4):
+                    # STRATEGY A: TRENDING BREAKOUT ENGINE (Active Battle Profile: VolRatio >= 1.15x & CI <= 58.0)
+                    if market_mode == "TRENDING" or (market_mode == "RANGING" and vol_ratio >= 1.15):
                         ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
-                        if ci_1h <= 55.0 and vol_ratio >= 1.3:
+                        if ci_1h <= 58.0 and vol_ratio >= 1.15:
                             if effective_regime == "GREEN":
                                 if comp_close > upper and prev_comp_close <= upper:
                                     market_candidates.append({
@@ -700,30 +701,33 @@ def execute_engine():
                                     })
                                     audit_logs.append(f"1H BREAKDOWN MATCH: {coin} @ ${comp_close:.4f} (VolRatio: {vol_ratio:.2f}x)")
 
-                    # STRATEGY B: RANGING VWAP + BOLLINGER BAND MEAN-REVERSION
+                    # STRATEGY B: RANGING VWAP + BOLLINGER MEAN-REVERSION (Active Battle Profile: RSI <= 46 / RSI >= 54)
                     if market_mode == "RANGING":
                         comp_close_curr = closes[-1]
 
                         if effective_regime in ["GREEN", "NEUTRAL"]:
-                            if comp_close_curr <= bb_lower * 1.004 and comp_close_curr < vwap_val and rsi_1h <= 42.0:
+                            if comp_close_curr <= bb_lower * 1.005 and comp_close_curr < vwap_val and rsi_1h <= 46.0:
                                 market_candidates.append({
                                     "coin": coin, "close": comp_close_curr, "is_long": True,
                                     "score": (vwap_val - comp_close_curr) / vwap_val, "candle_ts": current_candle_ts,
                                     "strategy": "MEAN_REVERSION"
                                 })
-                                audit_logs.append(f"1H VWAP DIP BUY: {coin} @ ${comp_close_curr:.4f} (Below VWAP ${vwap_val:.4f}, RSI: {rsi_1h:.1f})")
+                                audit_logs.append(f"1H VWAP DIP BUY: {coin} @ ${comp_close_curr:.4f} (Below VWAP ${vwap_val:.4f}, RSI: {rsi_1h:.1f} <= 46)")
 
                         if effective_regime in ["RED", "NEUTRAL"]:
-                            if comp_close_curr >= bb_upper * 0.996 and comp_close_curr > vwap_val and rsi_1h >= 58.0:
+                            if comp_close_curr >= bb_upper * 0.995 and comp_close_curr > vwap_val and rsi_1h >= 54.0:
                                 market_candidates.append({
                                     "coin": coin, "close": comp_close_curr, "is_long": False,
                                     "score": (comp_close_curr - vwap_val) / vwap_val, "candle_ts": current_candle_ts,
                                     "strategy": "MEAN_REVERSION"
                                 })
-                                audit_logs.append(f"1H VWAP SHORT FADE: {coin} @ ${comp_close_curr:.4f} (Above VWAP ${vwap_val:.4f}, RSI: {rsi_1h:.1f})")
+                                audit_logs.append(f"1H VWAP SHORT FADE: {coin} @ ${comp_close_curr:.4f} (Above VWAP ${vwap_val:.4f}, RSI: {rsi_1h:.1f} >= 54)")
 
                 except Exception:
                     continue
+
+            # Explicit Scan Completion Audit Log Line
+            audit_logs.append(f"🌐 Scan complete: {len(market_candidates)} candidate(s) qualified out of {len(universe)} coins scanned.")
         else:
             audit_logs.append(f"⏳ Market is in EXTREME CHOP (CI > 62.0). Skipping scans to preserve cash.")
 
@@ -960,7 +964,7 @@ def execute_engine():
                   &bull; <b>Galactic Moonshot Profit Ratchet:</b> Locks 50% on scratch wins, 80% at +3% ROE, and 95% at +300%+ ROE<br>
                   &bull; <b>Smart Downside Adaptive Stop:</b> 1.5x ATR volatility buffer (-1.5% to -4.0% ROE floor)<br>
                   &bull; <b>Single-Slot Capital Preservation:</b> Strictly capped at 1 active trade ($10 floor)<br>
-                  &bull; <b>Orderbook Spread & Depth Gate:</b> Rejects spread &gt; 0.30% or 0.5% depth &lt; $10,000 USD<br>
+                  &bull; <b>Orderbook Spread & Depth Gate:</b> Rejects spread &gt; 0.30% or 0.5% depth &lt; $5,000 USD<br>
                   &bull; <b>24H Post-Loss Cooldown Blocklist:</b> Bans any coin closed at a loss for 24 hours in state.json<br>
                   &bull; <b>Single-Candle Lockout:</b> Restricts assets to max 1 entry per candle bar<br>
                   &bull; <b>Rolling Loss Circuit Breaker:</b> Triggers 12-hour hibernation if 3 losses occur within rolling 60m
