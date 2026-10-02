@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-10-02 13:46:57",
+  "last_run_timestamp": "2026-10-02 14:16:38",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -20,9 +20,9 @@
   },
   "previous_active_symbols": [
     "MU",
-    "ARM",
     "NVDA",
     "MCHP",
+    "AMD",
     "SMH"
   ],
   "closed_trades_ledger": [
@@ -188,36 +188,36 @@
     }
   ],
   "active_position_cache": {
-    "ARM": {
-      "entry_px": 306.144062,
-      "current_px": 306.24,
-      "qty": 32.0,
+    "AMD": {
+      "entry_px": 635.97,
+      "current_px": 637.9484,
+      "qty": 15.0,
       "side": "long",
-      "peak_roe": 0.00031337534157363354,
-      "best_target_floor_roe": -0.02324360894232489,
-      "best_stop_px": 299.02816914285717
+      "peak_roe": 0.0031108385615673147,
+      "best_target_floor_roe": -0.013887110577992235,
+      "best_stop_px": 627.1382142857143
     },
     "MCHP": {
       "entry_px": 81.303388,
-      "current_px": 81.9,
+      "current_px": 82.015,
       "qty": 121.0,
       "side": "long",
-      "peak_roe": 0.007338095184914157,
-      "best_target_floor_roe": 0.0036690475924570786,
-      "best_stop_px": 81.601694
+      "peak_roe": 0.008752550385723193,
+      "best_target_floor_roe": 0.004376275192861596,
+      "best_stop_px": 81.659194
     },
     "MU": {
       "entry_px": 1088.7125,
-      "current_px": 1091.66,
+      "current_px": 1091.82,
       "qty": 8.0,
       "side": "long",
-      "peak_roe": 0.0027073263143391766,
+      "peak_roe": 0.0028542888962879045,
       "best_target_floor_roe": -0.018570920107138338,
       "best_stop_px": 1068.4941071428573
     },
     "NVDA": {
       "entry_px": 235.68,
-      "current_px": 237.26,
+      "current_px": 236.79,
       "qty": 41.0,
       "side": "long",
       "peak_roe": 0.00670400543109294,
@@ -226,7 +226,7 @@
     },
     "SMH": {
       "entry_px": 630.224,
-      "current_px": 634.57,
+      "current_px": 634.13,
       "qty": 15.0,
       "side": "long",
       "peak_roe": 0.00689596080123893,
@@ -247,6 +247,6 @@
   },
   "daily_peak_equity": {
     "2026-10-01": 98501.9,
-    "2026-10-02": 98729.43
+    "2026-10-02": 98739.24
   }
 }
