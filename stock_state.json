@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-10-02 15:17:28",
+  "last_run_timestamp": "2026-10-02 15:47:08",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,10 +19,7 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "SMH",
-    "AMZN",
-    "MCHP",
-    "AVGO"
+    "MCHP"
   ],
   "closed_trades_ledger": [
     {
@@ -187,41 +184,14 @@
     }
   ],
   "active_position_cache": {
-    "AMZN": {
-      "entry_px": 252.37,
-      "current_px": 250.8,
-      "qty": 39.0,
-      "side": "long",
-      "peak_roe": -0.006221024685976912,
-      "best_target_floor_roe": -0.01018063048019067,
-      "best_stop_px": 249.8007142857143
-    },
-    "AVGO": {
-      "entry_px": 356.3,
-      "current_px": 352.99,
-      "qty": 27.0,
-      "side": "long",
-      "peak_roe": -0.009289924221161948,
-      "best_target_floor_roe": -0.013169580209293973,
-      "best_stop_px": 351.6076785714286
-    },
     "MCHP": {
       "entry_px": 81.303388,
-      "current_px": 82.33,
+      "current_px": 83.335,
       "qty": 121.0,
       "side": "long",
-      "peak_roe": 0.012626927674895911,
-      "best_target_floor_roe": 0.011364234907406321,
-      "best_stop_px": 82.2273388
-    },
-    "SMH": {
-      "entry_px": 630.224,
-      "current_px": 631.45,
-      "qty": 15.0,
-      "side": "long",
-      "peak_roe": 0.007498921018558479,
-      "best_target_floor_roe": 0.005999136814846783,
-      "best_stop_px": 634.0048
+      "peak_roe": 0.02498803616892319,
+      "best_target_floor_roe": 0.02248923255203087,
+      "best_stop_px": 83.1318388
     }
   },
   "daily_starting_equity": {
