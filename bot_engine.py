@@ -108,7 +108,6 @@ def round_sig_figs(val, sig_figs=5):
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
 def check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=5000.0):
-    """Guardrail #1: Bid-Ask Spread & Depth Filter ($5,000 USD min depth)"""
     try:
         l2_book = api_retry(info.l2_snapshot, name=coin)
         levels = l2_book.get("levels", [[], []])
@@ -145,7 +144,6 @@ def check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=5000
 # TECHNICAL INDICATORS
 # ==============================================================================
 def calculate_vwap(candles):
-    """Calculates 24H Volume-Weighted Average Price (VWAP) as fair-value anchor."""
     try:
         pv_sum = sum(((float(c['h']) + float(c['l']) + float(c['c'])) / 3.0) * float(c.get('v', 1.0)) for c in candles)
         v_sum = sum(float(c.get('v', 1.0)) for c in candles)
@@ -253,43 +251,46 @@ def calculate_atr(highs, lows, closes, period=14):
     except Exception:
         return 1.0
 
+# ==============================================================================
+# CRYPTO MICRO-RATCHET LADDER ENGINE (UNCAPPED MOONSHOT UPSIDE)
+# ==============================================================================
 def calculate_moonshot_ratchet_stop(entry_px, is_long, current_px, atr_val, peak_roe=0.0):
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
         roe = (entry_px - current_px) / entry_px
 
-    atr_roe_buffer = (atr_val * 1.5) / entry_px if entry_px > 0 else 0.020
-    atr_roe_buffer = max(0.015, min(0.040, atr_roe_buffer))
+    # Tighter downside initial buffer: Capped at -0.8% to -1.5% max ROE loss
+    atr_roe_buffer = (atr_val * 1.2) / entry_px if entry_px > 0 else 0.010
+    atr_roe_buffer = max(0.008, min(0.015, atr_roe_buffer))
 
-    leash_status = f"1H ATR Noise Buffer (-{atr_roe_buffer*100:.2f}%)"
-    
+    # 1. Galactic & Parabolic Moonshots (+3.00+ to +1000%+ ROE - Infinite Upside)
     if peak_roe >= 3.00:
         target_floor_roe = max(peak_roe * 0.95, peak_roe - 0.20)
         leash_status = f"🚀 GALACTIC MOONSHOT 95% Lock [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
-    elif peak_roe >= 1.50:
-        target_floor_roe = max(peak_roe * 0.92, peak_roe - 0.12)
-        leash_status = f"🌌 Parabolic Wave 92% Lock [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
     elif peak_roe >= 0.75:
         target_floor_roe = peak_roe * 0.90
         leash_status = f"🌕 Major Runner 90% Lock [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
     elif peak_roe >= 0.30:
         target_floor_roe = max(peak_roe * 0.88, peak_roe - 0.05)
         leash_status = f"📈 Strong Trend 88% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif peak_roe >= 0.15:
-        target_floor_roe = peak_roe * 0.85
-        leash_status = f"🚀 Breakout 85% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif peak_roe >= 0.03:
-        target_floor_roe = max(0.02, peak_roe * 0.80)
-        leash_status = f"🎯 80% Peak Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
     elif peak_roe >= 0.015:
-        target_floor_roe = 0.010
-        leash_status = "🔒 Winner Lock (+1.0% Floor)"
-    elif peak_roe >= 0.005:
-        target_floor_roe = 0.0025
-        leash_status = "🛡️ Scratch Lock (+0.25% Floor)"
+        target_floor_roe = peak_roe * 0.80
+        leash_status = f"🎯 Core Profit 80% Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+        
+    # 2. Micro Lock 70% (+0.50% Peak ROE)
+    elif peak_roe >= 0.0050:
+        target_floor_roe = peak_roe * 0.70
+        leash_status = f"📈 Micro Lock 70% [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+
+    # 3. Micro Break-Even Shield (+0.25% Peak ROE -> Soft BE Floor +0.05%)
+    elif peak_roe >= 0.0025:
+        target_floor_roe = 0.0005  # +0.05% ROE Floor (Guarantees Risk-Free Scratch/Profit)
+        leash_status = f"🛡️ Micro Break-Even Shield [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+
     else:
         target_floor_roe = -atr_roe_buffer
+        leash_status = f"1H ATR Noise Buffer (-{atr_roe_buffer*100:.2f}%)"
 
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
@@ -377,13 +378,13 @@ def execute_engine():
 
     state = load_state()
 
-    # Guardrail #5: Hibernation Mode Check
+    # Guardrail: Hibernation Check
     if now_ts < float(state.get("hibernating_until", 0)):
         remaining_hrs = (float(state["hibernating_until"]) - now_ts) / 3600.0
         print(f"[{timestamp}] 🚨 BOT IN 12H EMERGENCY HIBERNATION ({remaining_hrs:.1f}h remaining). Execution halted.", flush=True)
         return
 
-    # Guardrail #5: Rolling 1-Hour Loss Circuit Breaker
+    # Guardrail: Rolling 1-Hour Loss Circuit Breaker
     one_hour_ago = now_ts - 3600
     recent_losses = [
         t for t in state.get("closed_trades_ledger", [])
@@ -408,7 +409,6 @@ def execute_engine():
     meta = api_retry(info.meta)
     now_ms = int(now_ts * 1000)
 
-    # Enable candidate scanning on every execution run
     is_1h_scan_window = True
 
     gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_1h_scan_window)
@@ -529,7 +529,6 @@ def execute_engine():
                 bb_upper, bb_lower, bb_mid = calculate_bollinger_bands(closes)
                 vwap_val = calculate_vwap(c_candles[-24:])
 
-                # Mean-Reversion Midline / VWAP Take Profit Exit
                 strat_type = current_active_cache.get(coin, {}).get("strategy", "BREAKOUT")
                 if strat_type == "MEAN_REVERSION":
                     target_tp = max(bb_mid, vwap_val) if is_long else min(bb_mid, vwap_val)
@@ -610,7 +609,6 @@ def execute_engine():
     universe = [asset["name"] for asset in meta.get("universe", [])][:100]
     market_candidates = []
 
-    # STRICT SINGLE-SLOT LOCK FOR CAPITAL PRESERVATION
     MAX_CRYPTO_SLOTS = 1
     available_slots = MAX_CRYPTO_SLOTS - active_count
 
@@ -619,7 +617,6 @@ def execute_engine():
     if is_1h_scan_window and available_slots > 0 and effective_regime != "NEUTRAL":
         state["last_scan_timestamp"] = now_ts
 
-        # Overall BTC regime market environment assessment
         btc_candles_5d = api_retry(info.candles_snapshot, name="BTC", interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
         btc_closes = [float(c["c"]) for c in btc_candles_5d]
         btc_highs = [float(c["h"]) for c in btc_candles_5d]
@@ -628,7 +625,6 @@ def execute_engine():
         btc_ci = calculate_choppiness_index(btc_highs, btc_lows, btc_closes)
         btc_adx = calculate_adx(btc_highs, btc_lows, btc_closes)
 
-        # Market Regime Classifier Logic
         if btc_ci < 48.0 and btc_adx > 22.0:
             market_mode = "TRENDING"
         elif btc_ci > 62.0:
@@ -661,7 +657,6 @@ def execute_engine():
                     if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
                         continue
 
-                    # Active Profile: $5,000 USD min depth
                     is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=5000.0)
                     if not is_liquid:
                         continue
@@ -682,12 +677,11 @@ def execute_engine():
                     upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
                     comp_close = closes[-2]
 
-                    # STRATEGY A: TRENDING BREAKOUT ENGINE (Extension Cap <= +2.0%, VolRatio >= 1.15x, CI <= 58.0)
+                    # STRATEGY A: TRENDING BREAKOUT ENGINE
                     if market_mode == "TRENDING" or (market_mode == "RANGING" and vol_ratio >= 1.15):
                         ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
                         if ci_1h <= 58.0 and vol_ratio >= 1.15:
                             if effective_regime == "GREEN":
-                                # LONG: Fresh close above upper band, capped at +2.0% over-extension
                                 if comp_close > upper and comp_close <= (upper * 1.020):
                                     extension_pct = ((comp_close - upper) / upper) * 100
                                     market_candidates.append({
@@ -698,7 +692,6 @@ def execute_engine():
                                     audit_logs.append(f"1H BREAKOUT MATCH: {coin} @ ${comp_close:.4f} (Ext: +{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
 
                             elif effective_regime == "RED":
-                                # SHORT: Fresh close below lower band, capped at -2.0% over-extension
                                 if comp_close < lower and comp_close >= (lower * 0.980):
                                     extension_pct = ((lower - comp_close) / lower) * 100
                                     market_candidates.append({
@@ -708,7 +701,7 @@ def execute_engine():
                                     })
                                     audit_logs.append(f"1H BREAKDOWN MATCH: {coin} @ ${comp_close:.4f} (Ext: -{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
 
-                    # STRATEGY B: RANGING VWAP + BOLLINGER MEAN-REVERSION (Active Profile: RSI <= 46 / RSI >= 54)
+                    # STRATEGY B: RANGING VWAP + BOLLINGER MEAN-REVERSION
                     if market_mode == "RANGING":
                         comp_close_curr = closes[-1]
 
@@ -733,7 +726,6 @@ def execute_engine():
                 except Exception:
                     continue
 
-            # Explicit Scan Completion Audit Log Line
             audit_logs.append(f"🌐 Scan complete: {len(market_candidates)} candidate(s) qualified out of {len(universe)} coins scanned.")
         else:
             audit_logs.append(f"⏳ Market is in EXTREME CHOP (CI > 62.0). Skipping scans to preserve cash.")
@@ -755,7 +747,6 @@ def execute_engine():
             if decimals == 0:
                 sz = int(sz)
 
-            # Sizing Guard: Avoid zero-size API errors
             if sz <= 0:
                 audit_logs.append(f"⚠️ Sizing guard skipped {coin}: calculated size {sz} <= 0 (Price: ${px:.2f})")
                 continue
@@ -789,8 +780,8 @@ def execute_engine():
                         "entry": px, "current": px, "leverage": 1,
                         "collateral": base_sizing_usd, "position_usd": base_sizing_usd,
                         "pnl": 0.0, "roe": 0.0,
-                        "stop": round_sig_figs(px * 0.985 if is_long else px * 1.015, 5),
-                        "status": "⚡ Fresh Execution (Pending Next 20m Ratchet)"
+                        "stop": round_sig_figs(px * 0.992 if is_long else px * 1.008, 5),
+                        "status": "⚡ Fresh Execution (Micro-Ratchet Active)"
                     })
 
                     audit_logs.append(f"1H EXECUTION SUCCESS [{strat_used}]: Opened {'LONG' if is_long else 'SHORT'} on {coin} (Size: {sz} ~${base_sizing_usd:.2f})")
@@ -804,14 +795,12 @@ def execute_engine():
     static_usdc = max(0.0, account_value - total_margin_used)
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
-    # Dispatch email report on every single run
     should_send_email = True
 
     if should_send_email:
         state["last_email_timestamp"] = now_ts
         save_state(state)
 
-        # Strict Calendar Day Reset
         trades_today = [
             t for t in state.get("closed_trades_ledger", [])
             if today_str in str(t.get("timestamp", ""))
@@ -979,8 +968,9 @@ def execute_engine():
                   &bull; <b>V3 Hybrid Regime Switcher:</b> Trending (CI &lt; 48) / Ranging (48 &le; CI &le; 62) / Extreme Chop (CI &gt; 62)<br>
                   &bull; <b>BTC Directional Shield:</b> Enforces broad market alignment (GREEN = LONGs only, RED = SHORTs only)<br>
                   &bull; <b>Gemini AI Macro Volatility Shield:</b> Scans live macro sentiment & liquidity risk<br>
-                  &bull; <b>Galactic Moonshot Profit Ratchet:</b> Locks 50% on scratch wins, 80% at +3% ROE, and 95% at +300%+ ROE<br>
-                  &bull; <b>Smart Downside Adaptive Stop:</b> 1.5x ATR volatility buffer (-1.5% to -4.0% ROE floor)<br>
+                  &bull; <b>Crypto Micro-Ratchet Ladder:</b> Micro BE at +0.25%, 70% at +0.50%, 80% at +1.5%, 90-95% on Moonshots<br>
+                  &bull; <b>Tighter Downside Risk Cap:</b> 1.2x ATR buffer capped at max -0.8% to -1.5% ROE loss<br>
+                  &bull; <b>Uncapped Moonshot Upside:</b> Zero take-profit caps—lets parabolic runners fly infinitely<br>
                   &bull; <b>Single-Slot Capital Preservation:</b> Strictly capped at 1 active trade ($10 floor)<br>
                   &bull; <b>Orderbook Spread & Depth Gate:</b> Rejects spread &gt; 0.30% or 0.5% depth &lt; $5,000 USD<br>
                   &bull; <b>24H Post-Loss Cooldown Blocklist:</b> Bans any coin closed at a loss for 24 hours in state.json<br>
@@ -1039,3 +1029,4 @@ if __name__ == "__main__":
         err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Engine execution error: {e}"
         print(err_msg, flush=True)
         send_html_dashboard_email("Hyperliquid Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
+        raise e
