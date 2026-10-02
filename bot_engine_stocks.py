@@ -154,8 +154,9 @@ def calculate_adaptive_stock_stop(entry_px, is_long, current_px, atr_val, peak_r
     else:
         roe = (entry_px - current_px) / entry_px
 
-    atr_roe_buffer = (atr_val * 1.5) / entry_px if entry_px > 0 else 0.015
-    atr_roe_buffer = max(0.010, min(0.025, atr_roe_buffer))
+    # PATCH #1: TIGHTENED HARD DOWNSIDE RISK BUFFER (-0.40% to -0.80% Max ROE Cap)
+    atr_roe_buffer = (atr_val * 0.8) / entry_px if entry_px > 0 else 0.005
+    atr_roe_buffer = max(0.0040, min(0.0080, atr_roe_buffer))
 
     # Check if we have passed 10:30 AM Central Time
     is_post_1030_ct = False
@@ -185,7 +186,7 @@ def calculate_adaptive_stock_stop(entry_px, is_long, current_px, atr_val, peak_r
 
     else:
         target_floor_roe = -atr_roe_buffer
-        leash_status = f"1H ATR Noise Buffer (-{atr_roe_buffer*100:.2f}%)"
+        leash_status = f"⚡ Ultra-Tight Loss Buffer (-{atr_roe_buffer*100:.2f}%)"
 
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
@@ -538,6 +539,7 @@ def execute_stock_engine():
             closes = [float(b["c"]) for b in bars]
             highs = [float(b["h"]) for b in bars]
             lows = [float(b["l"]) for b in bars]
+            opens = [float(b["o"]) for b in bars]
 
             ci = calculate_choppiness_index(highs, lows, closes)
             if ci > 58.0:
@@ -546,20 +548,26 @@ def execute_stock_engine():
             upper, lower, filter_band = calculate_gaussian_channel(closes)
             current_close = closes[-1]
             prev_close = closes[-2]
+            live_open = opens[-1]
 
-            if current_close > upper * 1.025:
+            # PATCH #2: LIVE CANDLE DIRECTION CONFIRMATION
+            is_candle_green = current_close > live_open
+            is_candle_red = current_close < live_open
+
+            # PATCH #3: OVEREXTENSION CEILING (Skip overextended breakouts > 1.5%)
+            if current_close > upper * 1.015 or current_close < lower * 0.985:
                 continue
 
             candidate_obj = None
             if spy_regime in ["GREEN", "NEUTRAL"]:
-                if current_close > upper and prev_close <= upper:
+                if current_close > upper and prev_close <= upper and is_candle_green and current_close >= prev_close:
                     candidate_obj = {
                         "symbol": symbol, "close": current_close, "is_long": True,
                         "score": (current_close - upper) / upper, "ci": ci
                     }
 
             if spy_regime in ["RED", "NEUTRAL"] and candidate_obj is None:
-                if current_close < lower and prev_close >= lower:
+                if current_close < lower and prev_close >= lower and is_candle_red and current_close <= prev_close:
                     candidate_obj = {
                         "symbol": symbol, "close": current_close, "is_long": False,
                         "score": (lower - current_close) / lower, "ci": ci
