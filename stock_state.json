@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-10-02 16:17:50",
+  "last_run_timestamp": "2026-10-02 16:47:10",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -18,7 +18,10 @@
     "timestamp": "2026-09-24 04:34:54",
     "scan_date": "2026-09-24"
   },
-  "previous_active_symbols": [],
+  "previous_active_symbols": [
+    "ORCL",
+    "NVDA"
+  ],
   "closed_trades_ledger": [
     {
       "symbol": "MCHP",
@@ -181,7 +184,26 @@
       "timestamp": "2026-09-30 19:43:20"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "NVDA": {
+      "entry_px": 236.520732,
+      "current_px": 235.465,
+      "qty": 41.0,
+      "side": "long",
+      "peak_roe": -0.004463591800485406,
+      "best_target_floor_roe": -0.006212684017181955,
+      "best_stop_px": 235.05130342857143
+    },
+    "ORCL": {
+      "entry_px": 141.72,
+      "current_px": 140.93,
+      "qty": 69.0,
+      "side": "long",
+      "peak_roe": -0.0055743720011289305,
+      "best_target_floor_roe": -0.008,
+      "best_stop_px": 140.58624
+    }
+  },
   "daily_starting_equity": {
     "2026-09-22": 101022.53,
     "2026-09-23": 100687.3,
