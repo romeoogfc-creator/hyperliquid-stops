@@ -148,37 +148,44 @@ def calculate_atr(highs, lows, closes, period=14):
     except Exception:
         return 1.0
 
-def calculate_adaptive_stock_stop(entry_px, is_long, current_px, atr_val, peak_roe=0.0):
+def calculate_adaptive_stock_stop(entry_px, is_long, current_px, atr_val, peak_roe=0.0, ct_now=None):
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
         roe = (entry_px - current_px) / entry_px
 
     atr_roe_buffer = (atr_val * 1.5) / entry_px if entry_px > 0 else 0.015
-    atr_roe_buffer = max(0.012, min(0.035, atr_roe_buffer))
+    atr_roe_buffer = max(0.010, min(0.025, atr_roe_buffer))
 
-    leash_status = f"1H ATR Noise Buffer (-{atr_roe_buffer*100:.2f}%)"
-    
-    if peak_roe >= 0.30:
-        target_floor_roe = max(peak_roe * 0.95, peak_roe - 0.05)
-        leash_status = f"🌌 Parabolic 95%-97% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif peak_roe >= 0.15:
-        target_floor_roe = peak_roe * 0.90
-        leash_status = f"🚀 Mega Runner 90% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif peak_roe >= 0.08:
-        target_floor_roe = peak_roe * 0.85
-        leash_status = f"📈 Trend Lock 85% [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif peak_roe >= 0.03:
-        target_floor_roe = max(0.02, peak_roe * 0.80)
-        leash_status = f"🎯 80% Peak Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-    elif peak_roe >= 0.015:
-        target_floor_roe = max(0.010, peak_roe * 0.60)
-        leash_status = f"🔒 Winner Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-    elif peak_roe >= 0.005:
-        target_floor_roe = max(0.0025, peak_roe * 0.50)
-        leash_status = f"🛡️ 50% High-Water Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+    # Check if we have passed 10:30 AM Central Time
+    is_post_1030_ct = False
+    if ct_now:
+        is_post_1030_ct = (ct_now.hour > 10) or (ct_now.hour == 10 and ct_now.minute >= 30)
+
+    # 1. Major Runners & Parabolic Moves (+1.00%+ ROE)
+    if peak_roe >= 0.0100:
+        target_floor_roe = max(peak_roe * 0.90, peak_roe - 0.005)
+        leash_status = f"🚀 MAJOR RUNNER 90% Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+    elif peak_roe >= 0.0060:
+        target_floor_roe = peak_roe * 0.80
+        leash_status = f"🎯 Core Profit 80% Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+    elif peak_roe >= 0.0035:
+        target_floor_roe = peak_roe * 0.70
+        leash_status = f"📈 Micro Lock 70% [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+        
+    # 2. Time-Regulated Elevation (Post-10:30 AM CT: Force 80% Minimum Lock on any green position)
+    elif is_post_1030_ct and peak_roe >= 0.0015:
+        target_floor_roe = max(0.0005, peak_roe * 0.80)
+        leash_status = f"⏰ 10:30 AM Lock-In (80% Peak) [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+
+    # 3. Micro Break-Even Shield (+0.20% Peak -> Soft BE Floor +0.05%)
+    elif peak_roe >= 0.0020:
+        target_floor_roe = 0.0005  # +0.05% ROE Floor (Guarantees Risk-Free Scratch/Profit)
+        leash_status = f"🛡️ Micro Break-Even Shield [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+
     else:
         target_floor_roe = -atr_roe_buffer
+        leash_status = f"1H ATR Noise Buffer (-{atr_roe_buffer*100:.2f}%)"
 
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
@@ -423,7 +430,7 @@ def execute_stock_engine():
         peak_roe = max(current_roe, prev_peak)
 
         stop_px_calc, current_roe, target_floor_roe, leash_status = calculate_adaptive_stock_stop(
-            entry_px, is_long, current_px, atr_val, peak_roe=peak_roe
+            entry_px, is_long, current_px, atr_val, peak_roe=peak_roe, ct_now=ct_now
         )
 
         if is_long and current_px <= stop_px_calc:
