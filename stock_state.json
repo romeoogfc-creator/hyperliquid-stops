@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-10-02 16:50:25",
+  "last_run_timestamp": "2026-10-02 17:00:58",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,10 +19,17 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "NVDA",
     "ORCL"
   ],
   "closed_trades_ledger": [
+    {
+      "symbol": "ORCL",
+      "entry_price": 141.72,
+      "exit_price": 140.9499,
+      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.54%)",
+      "realized_pnl": -53.136899999998974,
+      "timestamp": "2026-10-02 17:00:35"
+    },
     {
       "symbol": "MCHP",
       "entry_price": 81.303388,
@@ -174,36 +181,9 @@
       "exit_reason": "EOD Square-Off (100% Cash Flat)",
       "realized_pnl": -10.2650000000001,
       "timestamp": "2026-09-30 19:43:20"
-    },
-    {
-      "symbol": "SLB",
-      "entry_price": 49.02,
-      "exit_price": 48.91,
-      "exit_reason": "EOD Square-Off (100% Cash Flat)",
-      "realized_pnl": 2.2000000000001307,
-      "timestamp": "2026-09-30 19:43:20"
     }
   ],
-  "active_position_cache": {
-    "NVDA": {
-      "entry_px": 236.520732,
-      "current_px": 235.135,
-      "qty": 41.0,
-      "side": "long",
-      "peak_roe": -0.004463591800485406,
-      "best_target_floor_roe": -0.006212684017181955,
-      "best_stop_px": 235.05130342857143
-    },
-    "ORCL": {
-      "entry_px": 141.72,
-      "current_px": 140.8,
-      "qty": 69.0,
-      "side": "long",
-      "peak_roe": -0.0055743720011289305,
-      "best_target_floor_roe": -0.008,
-      "best_stop_px": 140.58624
-    }
-  },
+  "active_position_cache": {},
   "daily_starting_equity": {
     "2026-09-22": 101022.53,
     "2026-09-23": 100687.3,
