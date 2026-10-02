@@ -211,13 +211,16 @@ def calculate_adaptive_stock_stop(entry_px, is_long, current_px, atr_val, peak_r
     else:
         roe = (entry_px - current_px) / entry_px
 
-    # HARD DOWNSIDE RISK BUFFER (-0.40% to -0.80% Max ROE Cap)
-    atr_roe_buffer = (atr_val * 0.8) / entry_px if entry_px > 0 else 0.005
-    atr_roe_buffer = max(0.0040, min(0.0080, atr_roe_buffer))
-
     is_post_1030_ct = False
     if ct_now:
         is_post_1030_ct = (ct_now.hour > 10) or (ct_now.hour == 10 and ct_now.minute >= 30)
+
+    # POST-10:30 AM CT STRICT RISK BUFFER (-0.35% Max Downside Cap)
+    if is_post_1030_ct:
+        atr_roe_buffer = 0.0035
+    else:
+        atr_roe_buffer = (atr_val * 0.8) / entry_px if entry_px > 0 else 0.005
+        atr_roe_buffer = max(0.0040, min(0.0080, atr_roe_buffer))
 
     # 1. Parabolic Moonshot (+3.00%+ ROE) -> 95% Peak Lock
     if peak_roe >= 0.0300:
@@ -244,19 +247,19 @@ def calculate_adaptive_stock_stop(entry_px, is_long, current_px, atr_val, peak_r
         target_floor_roe = peak_roe * 0.75
         leash_status = f"📈 Micro Lock 75% [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
 
-    # 6. Time-Regulated Elevation (Post-10:30 AM CT: Force 80% Minimum Lock)
-    elif is_post_1030_ct and peak_roe >= 0.0015:
-        target_floor_roe = max(0.0005, peak_roe * 0.80)
-        leash_status = f"⏰ 10:30 AM Lock-In (80% Peak) [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+    # 6. Post-10:30 AM Instant Break-Even Shield (+0.10% Peak -> +0.03% Floor)
+    elif is_post_1030_ct and peak_roe >= 0.0010:
+        target_floor_roe = 0.0003
+        leash_status = f"🛡️️ Late-Morning Break-Even Shield [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
 
-    # 7. Micro Break-Even Shield (+0.20% Peak -> Soft BE Floor +0.05%)
+    # 7. Standard Micro Break-Even Shield (+0.20% Peak -> +0.05% Floor)
     elif peak_roe >= 0.0020:
         target_floor_roe = 0.0005
         leash_status = f"🛡️ Micro Break-Even Shield [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
 
     else:
         target_floor_roe = -atr_roe_buffer
-        leash_status = f"⚡ Ultra-Tight Loss Buffer (-{atr_roe_buffer*100:.2f}%)"
+        leash_status = f"⚡ Capped Loss Buffer (-{atr_roe_buffer*100:.2f}%)"
 
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
@@ -558,9 +561,10 @@ def execute_stock_engine():
     is_prime_morning_window = (8 <= ct_now.hour < 11) or (ct_now.hour == 11 and ct_now.minute <= 30)
     is_midday_window = (ct_now.hour == 11 and ct_now.minute > 30) or (ct_now.hour == 12) or (ct_now.hour == 13 and ct_now.minute < 30)
     is_afternoon_lockout = (ct_now.hour == 13 and ct_now.minute >= 30) or (ct_now.hour >= 14)
+    is_post_1030_ct = (ct_now.hour > 10) or (ct_now.hour == 10 and ct_now.minute >= 30)
 
-    # --- DAILY PEAK HIGH-WATER LOCK SHIELD ($250 GIVEBACK CAP) ---
-    peak_giveback_lockout = giveback_from_peak >= 250.0 and (today_peak_eq > today_start_eq)
+    # --- TIGHTENED DAILY PEAK HIGH-WATER LOCK SHIELD ($150 GIVEBACK CAP) ---
+    peak_giveback_lockout = giveback_from_peak >= 150.0 and (today_peak_eq > today_start_eq)
     if peak_giveback_lockout:
         audit_logs.append(f"🛡️ HIGH-WATER SHIELD ACTIVE: Gave back ${giveback_from_peak:.2f} from intra-day peak (${today_peak_eq:.2f}). Blocking new trades to preserve gains.")
 
@@ -622,6 +626,17 @@ def execute_stock_engine():
             if ci > 58.0:
                 continue
 
+            # POST-10:30 AM VOLUME & EXPANSION CONFIRMATION FILTER
+            if is_post_1030_ct:
+                volume_series = [float(b.get("v", 1)) for b in bars[-11:-1]]
+                avg_vol = np.mean(volume_series) if volume_series else 1.0
+                latest_vol = float(bars[-1].get("v", 0))
+                vol_ratio = latest_vol / avg_vol if avg_vol > 0 else 1.0
+                
+                # Reject late-morning entries unless volume surges >1.5x
+                if vol_ratio < 1.50:
+                    continue
+
             upper, lower, filter_band = calculate_gaussian_channel(closes)
             current_close = closes[-1]
             prev_close = closes[-2]
@@ -658,7 +673,7 @@ def execute_stock_engine():
 
     # --- EXECUTION GATE WITH TIME-WINDOWED CAPITAL REGULATION ---
     if is_afternoon_lockout or is_eod_square_off or peak_giveback_lockout or is_daily_max_loss_triggered:
-        gate_reason = "Daily Max Loss Cap" if is_daily_max_loss_triggered else ("Afternoon Cutoff (1:30 PM+ CT)" if is_afternoon_lockout else ("Peak Giveback Lockout" if peak_giveback_lockout else "EOD Square-Off"))
+        gate_reason = "Daily Max Loss Cap" if is_daily_max_loss_triggered else ("Afternoon Cutoff (1:30 PM+ CT)" if is_afternoon_lockout else ("Peak Giveback Lockout ($150 Shield)" if peak_giveback_lockout else "EOD Square-Off"))
         audit_logs.append(f"Execution Gate BLOCKED: {gate_reason}. No new entries allowed.")
     elif active_count < MAX_STOCK_SLOTS and market_candidates:
         for candidate in market_candidates[: (MAX_STOCK_SLOTS - active_count)]:
@@ -693,10 +708,10 @@ def execute_stock_engine():
                     active_symbols.add(symbol)
                     
                     # SYNC INITIAL NATIVE TRIGGER STOP ORDER DIRECTLY ON ALPACA ORDERBOOK
-                    initial_stop_px = px * 0.995 if is_long else px * 1.005
+                    initial_stop_px = px * 0.9965 if is_long else px * 1.0035
                     sync_alpaca_native_trigger_stop(symbol, is_long, qty, initial_stop_px, open_orders, audit_logs)
 
-                    audit_logs.append(f"1H ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} (~${(qty * px):.2f}) [Native Orderbook Trigger Stop Active]")
+                    audit_logs.append(f"1H ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} (~${(qty * px):.2f}) [Native Trigger Stop Active]")
                 else:
                     audit_logs.append(f"ORDER REJECTED BY ALPACA [{order_res.status_code}] on {symbol}: {order_res.text}")
             except Exception as e:
@@ -881,10 +896,12 @@ def execute_stock_engine():
               &bull; <b>1H Trend Invalidation & ATR Buffer:</b> Cuts losses fast on reversals with proper noise room<br>
               &bull; <b>Tiered Tight-Ratchet (88%–95% Peak Lock):</b> Locks 88% to 95% on major runners<br>
               &bull; <b>Morning Power Window (8:00–11:30 AM CT):</b> Full 10% NAV (~$10k) sizing on clean trends<br>
+              &bull; <b>Post-10:30 AM CT Volume & Expansion Filter:</b> Enforces &gt;1.5x Volume surge to enter late morning trades<br>
+              &bull; <b>Post-10:30 AM CT Hard Risk Cap (&minus;0.35% ROE):</b> Tightens initial downside risk on late trades<br>
               &bull; <b>Midday Micro Window (11:30 AM–1:30 PM CT):</b> Capped at $1,000 Micro Sizing<br>
               &bull; <b>Afternoon Lockout (1:30 PM CT+):</b> Strictly 0 new entries allowed<br>
               &bull; <b>1:30 PM Stagnation Clean-up:</b> Exits floating losing trades early before EOD chop<br>
-              &bull; <b>High-Water Giveback Shield:</b> Blocks trading if giving back &gt;$250 from intra-day peak<br>
+              &bull; <b>High-Water Giveback Shield ($150 Cap):</b> Blocks trading if giving back &gt;$150 from intra-day peak<br>
               &bull; <b>Daily Anti-Wipeout Shield (-2.5% Cap):</b> Emergency flattens account if daily loss hits -2.5%
             </div>
 
