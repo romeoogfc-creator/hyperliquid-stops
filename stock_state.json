@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-10-02 14:47:51",
+  "last_run_timestamp": "2026-10-02 15:17:28",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,13 +19,36 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "NVDA",
-    "MU",
-    "AMD",
+    "SMH",
+    "AMZN",
     "MCHP",
-    "SMH"
+    "AVGO"
   ],
   "closed_trades_ledger": [
+    {
+      "symbol": "SMH",
+      "entry_price": 630.224,
+      "exit_price": 631.45,
+      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.19%)",
+      "realized_pnl": 18.389999999999986,
+      "timestamp": "2026-10-02 15:17:02"
+    },
+    {
+      "symbol": "AVGO",
+      "entry_price": 356.3,
+      "exit_price": 352.99,
+      "exit_reason": "\ud83d\udcc9 1H Trend Invalidation (Close $352.99 < Upper Band $357.91)",
+      "realized_pnl": -89.37000000000006,
+      "timestamp": "2026-10-02 15:17:02"
+    },
+    {
+      "symbol": "AMZN",
+      "entry_price": 252.37,
+      "exit_price": 250.8,
+      "exit_reason": "\ud83d\udcc9 1H Trend Invalidation (Close $250.80 < Upper Band $251.92)",
+      "realized_pnl": -61.229999999999734,
+      "timestamp": "2026-10-02 15:17:02"
+    },
     {
       "symbol": "NVDA",
       "entry_price": 235.68,
@@ -161,72 +184,39 @@
       "exit_reason": "EOD Square-Off (100% Cash Flat)",
       "realized_pnl": 6.2099999999999795,
       "timestamp": "2026-09-30 19:43:20"
-    },
-    {
-      "symbol": "DE",
-      "entry_price": 679.17,
-      "exit_price": 671.76,
-      "exit_reason": "EOD Square-Off (100% Cash Flat)",
-      "realized_pnl": 7.409999999999968,
-      "timestamp": "2026-09-30 19:43:20"
-    },
-    {
-      "symbol": "MA",
-      "entry_price": 557.68,
-      "exit_price": 556.44,
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.22%)",
-      "realized_pnl": 1.2399999999998954,
-      "timestamp": "2026-09-30 17:43:57"
-    },
-    {
-      "symbol": "AMZN",
-      "entry_price": 251.88,
-      "exit_price": 251.49,
-      "exit_reason": "\ud83d\udcc9 Trend Invalidation (Close $251.49 < Band $251.53)",
-      "realized_pnl": -1.169999999999959,
-      "timestamp": "2026-09-30 16:45:44"
     }
   ],
   "active_position_cache": {
-    "AMD": {
-      "entry_px": 635.97,
-      "current_px": 638.435,
-      "qty": 15.0,
+    "AMZN": {
+      "entry_px": 252.37,
+      "current_px": 250.8,
+      "qty": 39.0,
       "side": "long",
-      "peak_roe": 0.0057549884428510275,
-      "best_target_floor_roe": 0.004028491909995719,
-      "best_stop_px": 638.532
+      "peak_roe": -0.006221024685976912,
+      "best_target_floor_roe": -0.01018063048019067,
+      "best_stop_px": 249.8007142857143
+    },
+    "AVGO": {
+      "entry_px": 356.3,
+      "current_px": 352.99,
+      "qty": 27.0,
+      "side": "long",
+      "peak_roe": -0.009289924221161948,
+      "best_target_floor_roe": -0.013169580209293973,
+      "best_stop_px": 351.6076785714286
     },
     "MCHP": {
       "entry_px": 81.303388,
-      "current_px": 82.15,
+      "current_px": 82.33,
       "qty": 121.0,
       "side": "long",
-      "peak_roe": 0.010412997795368717,
-      "best_target_floor_roe": 0.009371698015831846,
-      "best_stop_px": 82.0653388
-    },
-    "MU": {
-      "entry_px": 1088.7125,
-      "current_px": 1086.45,
-      "qty": 8.0,
-      "side": "long",
-      "peak_roe": 0.0031390288988139823,
-      "best_target_floor_roe": 0.0005,
-      "best_stop_px": 1089.25685625
-    },
-    "NVDA": {
-      "entry_px": 235.68,
-      "current_px": 236.93,
-      "qty": 41.0,
-      "side": "long",
-      "peak_roe": 0.00670400543109294,
-      "best_target_floor_roe": 0.005363204344874352,
-      "best_stop_px": 236.944
+      "peak_roe": 0.012626927674895911,
+      "best_target_floor_roe": 0.011364234907406321,
+      "best_stop_px": 82.2273388
     },
     "SMH": {
       "entry_px": 630.224,
-      "current_px": 634.075,
+      "current_px": 631.45,
       "qty": 15.0,
       "side": "long",
       "peak_roe": 0.007498921018558479,
