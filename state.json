@@ -1,5 +1,7 @@
 {
-  "cooldown_blocklist": {},
+  "cooldown_blocklist": {
+    "kBONK": 1791039716.6179557
+  },
   "stagnation_tracker": {
     "APT": 28,
     "BLUR": 0,
@@ -48,6 +50,17 @@
     "NEAR": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "kBONK",
+      "entry_price": 0.003941,
+      "exit_price": 0.003828,
+      "pnl_usd": -0.29371,
+      "roe_pct": -2.867292565338753,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-2.87%)",
+      "timestamp": "2026-10-02 15:01:56",
+      "ts_sec": 1790953316.6179557
+    },
     {
       "coin": "WLD",
       "entry_price": 0.49064,
@@ -351,20 +364,12 @@
     }
   ],
   "active_position_cache": {
-    "kBONK": {
-      "entry_px": 0.003941,
-      "current_px": 0.003906,
-      "szi": 2554.0,
-      "margin": 0.997337,
-      "side": "LONG",
-      "peak_roe": 0.0015224562293833872,
+    "GMT": {
       "strategy": "BREAKOUT"
     }
   },
-  "previous_active_coins": [
-    "kBONK"
-  ],
-  "last_run_timestamp": "2026-10-02 14:46:40",
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-02 15:02:55",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -374,12 +379,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790952392.6454399,
-  "last_scan_timestamp": 1790917915.6190565,
+  "last_email_timestamp": 1790953316.6179557,
+  "last_scan_timestamp": 1790953316.6179557,
   "gemini_cache": {
-    "timestamp": 1790952392.6454399,
-    "risk": "MODERATE",
-    "briefing": "**Risk Level: MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of looser monetary policy, the current environment is characterized by heightened volatility and potential regulatory or macroeconomic headwinds that warrant a cautious approach."
+    "timestamp": 1790953316.6179557,
+    "risk": "HIGH",
+    "briefing": "Risk Level: **HIGH** \u2014 The market is currently characterized by extreme volatility driven by shifting macroeconomic expectations, significant regulatory uncertainty, and speculative leverage, making it susceptible to rapid price swings in both directions."
   },
   "recent_losses": [],
   "last_traded_candle": {
@@ -388,7 +393,8 @@
     "BTC": 1790913600000,
     "FET": 1790913600000,
     "ADA": 1790917200000,
-    "kBONK": 1790917200000
+    "kBONK": 1790917200000,
+    "GMT": 1790953200000
   },
   "hibernating_until": 0,
   "daily_starting_equity": {
