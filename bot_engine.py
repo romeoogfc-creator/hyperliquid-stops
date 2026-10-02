@@ -421,7 +421,7 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (V3 Hybrid Regime Switcher).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (V3 Hybrid Regime Switcher - Sweet Spot Balanced).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -465,13 +465,13 @@ def execute_engine():
     audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] {gemini_briefing}")
 
     if gemini_risk == "HIGH":
-        required_vol_ratio = 1.30
-        audit_logs.append(f"⚠ Gemini Macro Risk HIGH: Scaling breakout volume gate to >= {required_vol_ratio:.2f}x")
+        required_vol_ratio = 1.25
+        audit_logs.append(f"⚠ Gemini Macro Risk HIGH: Balanced breakout volume gate >= {required_vol_ratio:.2f}x")
     elif gemini_risk == "MODERATE":
-        required_vol_ratio = 1.20
-        audit_logs.append(f"ℹ️ Gemini Macro Risk MODERATE: Scaling breakout volume gate to >= {required_vol_ratio:.2f}x")
+        required_vol_ratio = 1.18
+        audit_logs.append(f"ℹ️ Gemini Macro Risk MODERATE: Balanced breakout volume gate >= {required_vol_ratio:.2f}x")
     else:
-        required_vol_ratio = 1.15
+        required_vol_ratio = 1.12
         audit_logs.append(f"✅ Gemini Macro Risk LOW: Standard breakout volume gate >= {required_vol_ratio:.2f}x active")
 
     btc_regime, btc_change_pct = get_btc_regime(info, now_ms)
@@ -677,11 +677,11 @@ def execute_engine():
 
     base_sizing_usd = 10.0
 
-    # ALL-WEATHER SCANNER: Allow scanning even when BTC regime is NEUTRAL, but enforce higher conviction filters
+    # ALL-WEATHER BALANCED SCANNER: Allows smooth scanning without overly restrictive barriers
     if is_1h_scan_window and available_slots > 0:
         if effective_regime == "NEUTRAL":
-            required_vol_ratio = max(required_vol_ratio, 1.35)
-            audit_logs.append(f"ℹ️ BTC Neutral Regime: Enabling All-Weather High-Conviction Scan (Vol Gate >= {required_vol_ratio:.2f}x)")
+            required_vol_ratio = max(required_vol_ratio, 1.15)
+            audit_logs.append(f"ℹ️️ BTC Neutral Regime: Balanced All-Weather Scan (Vol Gate >= {required_vol_ratio:.2f}x)")
 
         state["last_scan_timestamp"] = now_ts
 
@@ -693,7 +693,8 @@ def execute_engine():
         btc_ci = calculate_choppiness_index(btc_highs, btc_lows, btc_closes)
         btc_adx = calculate_adx(btc_highs, btc_lows, btc_closes)
 
-        if btc_ci < 48.0 and btc_adx > 25.0:
+        # Sweet spot: ADX > 21.0 allows clean trending capture without skipping moderate moves
+        if btc_ci < 48.0 and btc_adx > 21.0:
             market_mode = "TRENDING"
         elif btc_ci > 62.0:
             market_mode = "CHOP_HOLD"
@@ -758,8 +759,8 @@ def execute_engine():
                         ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
                         if ci_1h <= 58.0 and vol_ratio >= required_vol_ratio:
                             if effective_regime in ["GREEN", "NEUTRAL"]:
-                                # LONG Entry Gate: Live candle MUST be Green & holding breakout level
-                                if comp_close > upper and comp_close <= (upper * 1.020):
+                                # LONG Entry Gate: Live candle Green & holding breakout (expanded cap to 3%)
+                                if comp_close > upper and comp_close <= (upper * 1.030):
                                     if is_candle_green and is_holding_breakout:
                                         extension_pct = ((comp_close - upper) / upper) * 100
                                         market_candidates.append({
@@ -770,8 +771,8 @@ def execute_engine():
                                         audit_logs.append(f"1H GREEN BREAKOUT MATCH (LONG): {coin} @ ${curr_live_px:.4f} (Live Green, Ext: +{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x >= {required_vol_ratio:.2f}x)")
 
                             if effective_regime in ["RED", "NEUTRAL"]:
-                                # SHORT Entry Gate: Live candle MUST be Red & holding breakdown level
-                                if comp_close < lower and comp_close >= (lower * 0.980):
+                                # SHORT Entry Gate: Live candle Red & holding breakdown (expanded cap to 3%)
+                                if comp_close < lower and comp_close >= (lower * 0.970):
                                     if is_candle_red and is_holding_breakdown:
                                         extension_pct = ((lower - comp_close) / lower) * 100
                                         market_candidates.append({
@@ -784,8 +785,8 @@ def execute_engine():
                     # STRATEGY B: RANGING MEAN-REVERSION (LONG & SHORT)
                     if market_mode == "RANGING":
                         if effective_regime in ["GREEN", "NEUTRAL"]:
-                            # LONG Dip Buy Gate: Requires live candle to turn GREEN (Confirming Bounce)
-                            if curr_live_px <= bb_lower * 1.005 and curr_live_px < vwap_val and rsi_1h <= 46.0 and is_candle_green:
+                            # LONG Dip Buy Gate: Balanced RSI <= 48
+                            if curr_live_px <= bb_lower * 1.005 and curr_live_px < vwap_val and rsi_1h <= 48.0 and is_candle_green:
                                 market_candidates.append({
                                     "coin": coin, "close": curr_live_px, "is_long": True,
                                     "score": (vwap_val - curr_live_px) / vwap_val, "candle_ts": current_candle_ts,
@@ -794,8 +795,8 @@ def execute_engine():
                                 audit_logs.append(f"1H VWAP DIP BOUNCE BUY (LONG): {coin} @ ${curr_live_px:.4f} (Live Green Bounce Below VWAP ${vwap_val:.4f}, RSI: {rsi_1h:.1f})")
 
                         if effective_regime in ["RED", "NEUTRAL"]:
-                            # SHORT Fade High Gate: Requires live candle to turn RED (Confirming Rejection)
-                            if curr_live_px >= bb_upper * 0.995 and curr_live_px > vwap_val and rsi_1h >= 54.0 and is_candle_red:
+                            # SHORT Fade High Gate: Balanced RSI >= 52
+                            if curr_live_px >= bb_upper * 0.995 and curr_live_px > vwap_val and rsi_1h >= 52.0 and is_candle_red:
                                 market_candidates.append({
                                     "coin": coin, "close": curr_live_px, "is_long": False,
                                     "score": (curr_live_px - vwap_val) / vwap_val, "candle_ts": current_candle_ts,
@@ -1047,14 +1048,14 @@ def execute_engine():
 
                 <div class="rules-card">
                   <div class="rules-title">&#9989; Active Guardrails (Full Crypto Strategy Display)</div>
-                  &bull; <b>V3 Hybrid Regime Switcher:</b> All-Weather Scan (Neutral / Trending ADX &gt; 25) / Extreme Chop (CI &gt; 62)<br>
+                  &bull; <b>V3 Hybrid Regime Switcher:</b> All-Weather Scan (Neutral / Trending ADX &gt; 21) / Extreme Chop (CI &gt; 62)<br>
                   &bull; <b>Native Orderbook Trigger Stop-Market Orders:</b> Auto-places & ratchets resting TPSL directly on exchange orderbook<br>
                   &bull; <b>Bidirectional Live Candle Confirmation Gate:</b> Green for LONGs, Red for SHORTs with 1H Hold Confirmation<br>
                   &bull; <b>100% Market Execution:</b> All exits execute via direct Taker Market Orders<br>
                   &bull; <b>Ultra-Tight Downside Risk Buffer:</b> Max -0.50% to -1.00% ROE loss cap<br>
                   &bull; <b>Ultra-Tight Micro-Ratchet Ladder:</b> Micro BE at +0.15%, 75% at +0.35%, 80% at +0.80%, 85% at +1.50%<br>
                   &bull; <b>BTC Directional Shield:</b> Enforces broad market alignment (GREEN = LONGs only, RED = SHORTs only, NEUTRAL = All-Weather High Conviction)<br>
-                  &bull; <b>Adaptive Gemini Volume Gate:</b> Dynamically scales volume confirmation (LOW: 1.15x, MODERATE: 1.20x, HIGH: 1.30x, NEUTRAL: 1.35x+)<br>
+                  &bull; <b>Adaptive Gemini Volume Gate:</b> Dynamically scales volume confirmation (LOW: 1.12x, MODERATE: 1.18x, HIGH: 1.25x)<br>
                   &bull; <b>Unrestricted Scanner:</b> 100-coin scanning universe remains 100% open for moonshot detection<br>
                   &bull; <b>Uncapped Moonshot Upside:</b> Zero take-profit caps—lets parabolic runners fly infinitely<br>
                   &bull; <b>Single-Slot Capital Preservation:</b> Strictly capped at 1 active trade ($10 floor)<br>
