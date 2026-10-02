@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-10-02 14:16:38",
+  "last_run_timestamp": "2026-10-02 14:33:38",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,11 +19,11 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "MU",
     "NVDA",
+    "SMH",
     "MCHP",
     "AMD",
-    "SMH"
+    "MU"
   ],
   "closed_trades_ledger": [
     {
@@ -190,48 +190,48 @@
   "active_position_cache": {
     "AMD": {
       "entry_px": 635.97,
-      "current_px": 637.9484,
+      "current_px": 639.63,
       "qty": 15.0,
       "side": "long",
-      "peak_roe": 0.0031108385615673147,
-      "best_target_floor_roe": -0.013887110577992235,
-      "best_stop_px": 627.1382142857143
+      "peak_roe": 0.0057549884428510275,
+      "best_target_floor_roe": 0.004028491909995719,
+      "best_stop_px": 638.532
     },
     "MCHP": {
       "entry_px": 81.303388,
-      "current_px": 82.015,
+      "current_px": 82.08,
       "qty": 121.0,
       "side": "long",
-      "peak_roe": 0.008752550385723193,
-      "best_target_floor_roe": 0.004376275192861596,
-      "best_stop_px": 81.659194
+      "peak_roe": 0.00955202506444135,
+      "best_target_floor_roe": 0.00764162005155308,
+      "best_stop_px": 81.9246776
     },
     "MU": {
       "entry_px": 1088.7125,
-      "current_px": 1091.82,
+      "current_px": 1092.13,
       "qty": 8.0,
       "side": "long",
-      "peak_roe": 0.0028542888962879045,
-      "best_target_floor_roe": -0.018570920107138338,
-      "best_stop_px": 1068.4941071428573
+      "peak_roe": 0.0031390288988139823,
+      "best_target_floor_roe": 0.0005,
+      "best_stop_px": 1089.25685625
     },
     "NVDA": {
       "entry_px": 235.68,
-      "current_px": 236.79,
+      "current_px": 236.975,
       "qty": 41.0,
       "side": "long",
       "peak_roe": 0.00670400543109294,
-      "best_target_floor_roe": 0.00335200271554647,
-      "best_stop_px": 236.47
+      "best_target_floor_roe": 0.005363204344874352,
+      "best_stop_px": 236.944
     },
     "SMH": {
       "entry_px": 630.224,
-      "current_px": 634.13,
+      "current_px": 634.95,
       "qty": 15.0,
       "side": "long",
-      "peak_roe": 0.00689596080123893,
-      "best_target_floor_roe": 0.003447980400619465,
-      "best_stop_px": 632.397
+      "peak_roe": 0.007498921018558479,
+      "best_target_floor_roe": 0.005999136814846783,
+      "best_stop_px": 634.0048
     }
   },
   "daily_starting_equity": {
@@ -247,6 +247,6 @@
   },
   "daily_peak_equity": {
     "2026-10-01": 98501.9,
-    "2026-10-02": 98739.24
+    "2026-10-02": 98794.7
   }
 }
