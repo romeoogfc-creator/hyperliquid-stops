@@ -154,7 +154,7 @@ def calculate_adaptive_stock_stop(entry_px, is_long, current_px, atr_val, peak_r
     else:
         roe = (entry_px - current_px) / entry_px
 
-    # PATCH #1: TIGHTENED HARD DOWNSIDE RISK BUFFER (-0.40% to -0.80% Max ROE Cap)
+    # HARD DOWNSIDE RISK BUFFER (-0.40% to -0.80% Max ROE Cap)
     atr_roe_buffer = (atr_val * 0.8) / entry_px if entry_px > 0 else 0.005
     atr_roe_buffer = max(0.0040, min(0.0080, atr_roe_buffer))
 
@@ -163,23 +163,37 @@ def calculate_adaptive_stock_stop(entry_px, is_long, current_px, atr_val, peak_r
     if ct_now:
         is_post_1030_ct = (ct_now.hour > 10) or (ct_now.hour == 10 and ct_now.minute >= 30)
 
-    # 1. Major Runners & Parabolic Moves (+1.00%+ ROE)
-    if peak_roe >= 0.0100:
-        target_floor_roe = max(peak_roe * 0.90, peak_roe - 0.005)
-        leash_status = f"🚀 MAJOR RUNNER 90% Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+    # 1. Parabolic Moonshot (+3.00%+ ROE) -> 95% Peak Lock
+    if peak_roe >= 0.0300:
+        target_floor_roe = max(peak_roe * 0.95, peak_roe - 0.0020)
+        leash_status = f"🚀 PARABOLIC MOONSHOT 95% Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+
+    # 2. Strong Major Runner (+1.80%+ ROE) -> 92% Peak Lock
+    elif peak_roe >= 0.0180:
+        target_floor_roe = max(peak_roe * 0.92, peak_roe - 0.0025)
+        leash_status = f"🚀 MAJOR RUNNER 92% Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+
+    # 3. Core Expansion (+1.00%+ ROE) -> 88% Peak Lock
+    elif peak_roe >= 0.0100:
+        target_floor_roe = max(peak_roe * 0.88, peak_roe - 0.0030)
+        leash_status = f"🎯 Core Expansion 88% Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+
+    # 4. Solid Lock (+0.60%+ ROE) -> 82% Peak Lock
     elif peak_roe >= 0.0060:
-        target_floor_roe = peak_roe * 0.80
-        leash_status = f"🎯 Core Profit 80% Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+        target_floor_roe = peak_roe * 0.82
+        leash_status = f"📈 Solid Lock 82% [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+
+    # 5. Micro Lock (+0.35%+ ROE) -> 75% Peak Lock
     elif peak_roe >= 0.0035:
-        target_floor_roe = peak_roe * 0.70
-        leash_status = f"📈 Micro Lock 70% [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-        
-    # 2. Time-Regulated Elevation (Post-10:30 AM CT: Force 80% Minimum Lock on any green position)
+        target_floor_roe = peak_roe * 0.75
+        leash_status = f"📈 Micro Lock 75% [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+
+    # 6. Time-Regulated Elevation (Post-10:30 AM CT: Force 80% Minimum Lock)
     elif is_post_1030_ct and peak_roe >= 0.0015:
         target_floor_roe = max(0.0005, peak_roe * 0.80)
         leash_status = f"⏰ 10:30 AM Lock-In (80% Peak) [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
 
-    # 3. Micro Break-Even Shield (+0.20% Peak -> Soft BE Floor +0.05%)
+    # 7. Micro Break-Even Shield (+0.20% Peak -> Soft BE Floor +0.05%)
     elif peak_roe >= 0.0020:
         target_floor_roe = 0.0005  # +0.05% ROE Floor (Guarantees Risk-Free Scratch/Profit)
         leash_status = f"🛡️ Micro Break-Even Shield [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
@@ -482,8 +496,8 @@ def execute_stock_engine():
     is_midday_window = (ct_now.hour == 11 and ct_now.minute > 30) or (ct_now.hour == 12) or (ct_now.hour == 13 and ct_now.minute < 30)  # 11:30 AM - 1:30 PM CT
     is_afternoon_lockout = (ct_now.hour == 13 and ct_now.minute >= 30) or (ct_now.hour >= 14)  # 1:30 PM CT onwards -> NO NEW ENTRIES
 
-    # --- DAILY PEAK HIGH-WATER LOCK SHIELD ($150 GIVEBACK CAP) ---
-    peak_giveback_lockout = giveback_from_peak >= 150.0 and (today_peak_eq > today_start_eq)
+    # --- DAILY PEAK HIGH-WATER LOCK SHIELD ($250 GIVEBACK CAP) ---
+    peak_giveback_lockout = giveback_from_peak >= 250.0 and (today_peak_eq > today_start_eq)
     if peak_giveback_lockout:
         audit_logs.append(f"🛡️ HIGH-WATER SHIELD ACTIVE: Gave back ${giveback_from_peak:.2f} from intra-day peak (${today_peak_eq:.2f}). Blocking new trades to preserve gains.")
 
@@ -550,11 +564,11 @@ def execute_stock_engine():
             prev_close = closes[-2]
             live_open = opens[-1]
 
-            # PATCH #2: LIVE CANDLE DIRECTION CONFIRMATION
+            # LIVE CANDLE DIRECTION CONFIRMATION
             is_candle_green = current_close > live_open
             is_candle_red = current_close < live_open
 
-            # PATCH #3: OVEREXTENSION CEILING (Skip overextended breakouts > 1.5%)
+            # OVEREXTENSION CEILING (Skip overextended breakouts > 1.5%)
             if current_close > upper * 1.015 or current_close < lower * 0.985:
                 continue
 
@@ -796,12 +810,12 @@ def execute_stock_engine():
               &bull; <b>1-Hour Timeframe & Hard CI Gate (&le;58.0):</b> Eliminates noise & rejects choppy stocks<br>
               &bull; <b>SPY Macro Regime Shield:</b> Enforces broad market direction alignment<br>
               &bull; <b>1H Trend Invalidation & ATR Buffer:</b> Cuts losses fast on reversals with proper noise room<br>
-              &bull; <b>50% High-Water & Peak Ratchet:</b> Locks 50% of micro-gains and 80%–97% on major runners<br>
+              &bull; <b>Tiered Tight-Ratchet (88%–95% Peak Lock):</b> Locks 88% to 95% on major runners<br>
               &bull; <b>Morning Power Window (8:00–11:30 AM CT):</b> Full 10% NAV (~$10k) sizing on clean trends<br>
               &bull; <b>Midday Micro Window (11:30 AM–1:30 PM CT):</b> Capped at $1,000 Micro Sizing<br>
               &bull; <b>Afternoon Lockout (1:30 PM CT+):</b> Strictly 0 new entries allowed<br>
               &bull; <b>1:30 PM Stagnation Clean-up:</b> Exits floating losing trades early before EOD chop<br>
-              &bull; <b>High-Water Giveback Shield:</b> Blocks trading if giving back >$150 from intra-day peak<br>
+              &bull; <b>High-Water Giveback Shield:</b> Blocks trading if giving back >$250 from intra-day peak<br>
               &bull; <b>Daily Anti-Wipeout Shield (-2.5% Cap):</b> Emergency flattens account if daily loss hits -2.5%
             </div>
 
