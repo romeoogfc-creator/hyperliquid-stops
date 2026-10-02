@@ -466,7 +466,7 @@ def execute_engine():
 
     if gemini_risk == "HIGH":
         required_vol_ratio = 1.30
-        audit_logs.append(f"⚠️ Gemini Macro Risk HIGH: Scaling breakout volume gate to >= {required_vol_ratio:.2f}x")
+        audit_logs.append(f"⚠️️ Gemini Macro Risk HIGH: Scaling breakout volume gate to >= {required_vol_ratio:.2f}x")
     elif gemini_risk == "MODERATE":
         required_vol_ratio = 1.20
         audit_logs.append(f"ℹ️ Gemini Macro Risk MODERATE: Scaling breakout volume gate to >= {required_vol_ratio:.2f}x")
@@ -1042,9 +1042,9 @@ def execute_engine():
 
                 <div class="rules-card">
                   <div class="rules-title">&#9989; Active Guardrails (Full Crypto Strategy Display)</div>
-                  &bull; <b>V3 Hybrid Regime Switcher:</b> Trending (CI &lt; 48) / Ranging (48 &le; CI &le; 62) / Extreme Chop (CI &gt; 62)<br>
+                  &bull; <b>V3 Hybrid Regime Switcher:</b> Trending (CI &lt; 48 &amp; ADX &gt; 22) / Ranging / Extreme Chop (CI &gt; 62)<br>
                   &bull; <b>Native Orderbook Trigger Stop-Market Orders:</b> Auto-places & ratchets resting TPSL directly on exchange orderbook<br>
-                  &bull; <b>Bidirectional Live Candle Confirmation Gate:</b> Green for LONGs, Red for SHORTs<br>
+                  &bull; <b>Bidirectional Live Candle Confirmation Gate:</b> Green for LONGs, Red for SHORTs with 1H Hold Confirmation<br>
                   &bull; <b>100% Market Execution:</b> All exits execute via direct Taker Market Orders<br>
                   &bull; <b>Ultra-Tight Downside Risk Buffer:</b> Max -0.50% to -1.00% ROE loss cap<br>
                   &bull; <b>Ultra-Tight Micro-Ratchet Ladder:</b> Micro BE at +0.15%, 75% at +0.35%, 80% at +0.80%, 85% at +1.50%<br>
