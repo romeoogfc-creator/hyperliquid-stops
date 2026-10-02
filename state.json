@@ -390,18 +390,18 @@
   "active_position_cache": {
     "DOT": {
       "entry_px": 1.1412,
-      "current_px": 1.14725,
+      "current_px": 1.13685,
       "szi": -8.8,
-      "margin": 10.09536,
+      "margin": 10.00472,
       "side": "SHORT",
-      "peak_roe": 0.00039432176656156807,
+      "peak_roe": 0.0038117770767613704,
       "strategy": "BREAKOUT"
     }
   },
   "previous_active_coins": [
     "DOT"
   ],
-  "last_run_timestamp": "2026-10-02 22:00:21",
+  "last_run_timestamp": "2026-10-02 22:17:48",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -411,12 +411,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790978373.282472,
+  "last_email_timestamp": 1790979463.254042,
   "last_scan_timestamp": 1790974578.0780263,
   "gemini_cache": {
-    "timestamp": 1790978373.282472,
-    "risk": "MODERATE",
-    "briefing": "**Risk Level: MODERATE**\n\nCrypto markets currently face a balanced tug-of-war between favorable macroeconomic tailwinds\u2014such as anticipated global monetary easing\u2014and persistent regulatory uncertainty coupled with fragile summer liquidity, creating a cautiously optimistic yet volatile environment."
+    "timestamp": 1790979463.254042,
+    "risk": "HIGH",
+    "briefing": "Risk Level: **HIGH** \u2014 The market is currently grappling with heightened volatility driven by shifting macroeconomic expectations, regulatory uncertainty, and significant liquidity swings, necessitating extreme caution for leveraged positions."
   },
   "recent_losses": [],
   "last_traded_candle": {
