@@ -387,9 +387,13 @@
       "timestamp": "2026-09-29 01:55:43"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "DOGE": {
+      "strategy": "BREAKOUT"
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-02 18:43:40",
+  "last_run_timestamp": "2026-10-02 19:00:59",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -399,12 +403,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790966579.236273,
-  "last_scan_timestamp": 1790966579.236273,
+  "last_email_timestamp": 1790967606.3725722,
+  "last_scan_timestamp": 1790967606.3725722,
   "gemini_cache": {
-    "timestamp": 1790966579.236273,
+    "timestamp": 1790967606.3725722,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nCrypto markets currently face heightened volatility due to shifting macroeconomic interest rate expectations, significant geopolitical uncertainty, and ongoing regulatory ambiguity, creating a landscape prone to sharp price swings."
+    "briefing": "**Risk Level: HIGH**\n\nCrypto markets currently face significant uncertainty driven by shifting macroeconomic interest rate expectations, regulatory scrutiny, and high price volatility, making them highly susceptible to sudden liquidity swings and downside corrections."
   },
   "recent_losses": [],
   "last_traded_candle": {
@@ -417,7 +421,8 @@
     "GMT": 1790953200000,
     "YGG": 1790953200000,
     "GMX": 1790953200000,
-    "JTO": 1790964000000
+    "JTO": 1790964000000,
+    "DOGE": 1790967600000
   },
   "hibernating_until": 0,
   "daily_starting_equity": {
