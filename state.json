@@ -388,12 +388,12 @@
     }
   ],
   "active_position_cache": {
-    "CRV": {
+    "PENDLE": {
       "strategy": "BREAKOUT"
     }
   },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-02 20:36:42",
+  "last_run_timestamp": "2026-10-02 20:54:25",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -403,12 +403,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1790973341.736841,
-  "last_scan_timestamp": 1790973341.736841,
+  "last_email_timestamp": 1790974411.1633139,
+  "last_scan_timestamp": 1790974411.1633139,
   "gemini_cache": {
-    "timestamp": 1790973341.736841,
+    "timestamp": 1790974411.1633139,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nCrypto markets currently face significant volatility driven by uncertainty regarding macroeconomic interest rate trajectories, shifting regulatory landscapes, and the technical fragility inherent in current high-leverage market positioning."
+    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating significant macroeconomic uncertainty, regulatory scrutiny, and high volatility, making them susceptible to sudden sharp corrections despite ongoing institutional interest."
   },
   "recent_losses": [],
   "last_traded_candle": {
@@ -424,7 +424,8 @@
     "JTO": 1790964000000,
     "DOGE": 1790967600000,
     "kSHIB": 1790967600000,
-    "CRV": 1790971200000
+    "CRV": 1790971200000,
+    "PENDLE": 1790971200000
   },
   "hibernating_until": 0,
   "daily_starting_equity": {
