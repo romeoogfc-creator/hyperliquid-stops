@@ -387,9 +387,13 @@
       "timestamp": "2026-09-29 01:55:43"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "BLUR": {
+      "strategy": "BREAKOUT"
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-03 04:54:28",
+  "last_run_timestamp": "2026-10-03 05:11:08",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -399,12 +403,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791003227.8424377,
-  "last_scan_timestamp": 1791003227.8424377,
+  "last_email_timestamp": 1791004208.3594985,
+  "last_scan_timestamp": 1791004208.3594985,
   "gemini_cache": {
-    "timestamp": 1791003227.8424377,
+    "timestamp": 1791004208.3594985,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nCrypto markets currently face significant volatility driven by macroeconomic uncertainty, regulatory scrutiny, and a leveraged landscape that remains highly sensitive to shifts in global liquidity."
+    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating heightened volatility driven by uncertain macroeconomic data, shifting regulatory landscapes, and significant pre-election market sensitivity."
   },
   "recent_losses": [],
   "last_traded_candle": {
@@ -422,11 +426,13 @@
     "kSHIB": 1790967600000,
     "CRV": 1790971200000,
     "PENDLE": 1790971200000,
-    "DOT": 1790971200000
+    "DOT": 1790971200000,
+    "BLUR": 1791003600000
   },
   "hibernating_until": 0,
   "daily_starting_equity": {
     "2026-10-01": 18.34993784,
-    "2026-10-02": 18.3499422
+    "2026-10-02": 18.3499422,
+    "2026-10-03": 17.8366252
   }
 }
