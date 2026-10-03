@@ -387,21 +387,9 @@
       "timestamp": "2026-09-29 01:55:43"
     }
   ],
-  "active_position_cache": {
-    "INJ": {
-      "entry_px": 7.7956,
-      "current_px": 7.7337,
-      "szi": 1.3,
-      "margin": 10.05472,
-      "side": "LONG",
-      "peak_roe": -0.003341628611011413,
-      "strategy": "BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "INJ"
-  ],
-  "last_run_timestamp": "2026-10-03 06:24:17",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-03 06:57:36",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -411,12 +399,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791008653.2633505,
-  "last_scan_timestamp": 1791005919.0352883,
+  "last_email_timestamp": 1791010653.2009032,
+  "last_scan_timestamp": 1791010653.2009032,
   "gemini_cache": {
-    "timestamp": 1791008653.2633505,
+    "timestamp": 1791010653.2009032,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Increased macroeconomic uncertainty and significant regulatory pressure create a volatile environment where sudden liquidity shifts and leveraged positions remain highly susceptible to sharp, unpredictable price swings."
+    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating significant volatility driven by shifting macroeconomic expectations, fluctuating institutional inflows, and ongoing regulatory uncertainty, which collectively heighten the potential for sharp, sudden price swings."
   },
   "recent_losses": [],
   "last_traded_candle": {
