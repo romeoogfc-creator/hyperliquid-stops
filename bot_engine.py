@@ -103,7 +103,7 @@ def send_html_dashboard_email(subject, html_content, text_fallback):
         print(f"Failed to send email: {e}", flush=True)
 
 def round_sig_figs(val, sig_figs=5):
-    if val == 0:
+    if val == 0 or val is None:
         return 0
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
@@ -141,7 +141,7 @@ def check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=6000
         return False, f"Liquidity Check Error: {e}"
 
 # ==============================================================================
-# NATIVE EXCHANGE TRIGGER ORDER MANAGERS
+# NATIVE EXCHANGE TRIGGER ORDER MANAGERS (DUAL SL & TP ORDERBOOK SYNC)
 # ==============================================================================
 def cancel_native_trigger_orders(exchange, info, coin, account_address):
     try:
@@ -155,9 +155,11 @@ def cancel_native_trigger_orders(exchange, info, coin, account_address):
     except Exception:
         pass
 
-def sync_native_trigger_stop(exchange, info, coin, is_long, sz, stop_px, account_address, audit_logs=None):
+def sync_native_trigger_orders(exchange, info, coin, is_long, sz, stop_px, tp_px, account_address, audit_logs=None):
+    """Syncs both resting Stop-Loss and resting Take-Profit orders directly on Hyperliquid orderbook."""
     try:
-        clean_stop_px = float(round_sig_figs(stop_px, 5))
+        clean_stop_px = float(round_sig_figs(stop_px, 5)) if stop_px else None
+        clean_tp_px = float(round_sig_figs(tp_px, 5)) if tp_px else None
         is_buy = not is_long  # To close LONG -> SELL (False); to close SHORT -> BUY (True)
 
         open_orders = api_retry(info.frontend_open_orders, account_address)
@@ -166,23 +168,61 @@ def sync_native_trigger_stop(exchange, info, coin, is_long, sz, stop_px, account
             if o.get("coin") == coin and (o.get("isTrigger") or "trigger" in str(o.get("orderType", "")).lower())
         ]
 
-        needs_update = True
-        for o in coin_trigger_orders:
+        # 1. Sync Stop-Loss Order
+        sl_orders = [
+            o for o in coin_trigger_orders 
+            if o.get("orderType", {}).get("trigger", {}).get("tpsl") == "sl" or "sl" in str(o.get("orderType", "")).lower()
+        ]
+        needs_sl_update = True
+        for o in sl_orders:
             existing_px = float(o.get("triggerPx", 0.0))
-            if abs(existing_px - clean_stop_px) / max(clean_stop_px, 1e-8) < 0.0005:
-                needs_update = False
-                break
+            if clean_stop_px and abs(existing_px - clean_stop_px) / max(clean_stop_px, 1e-8) < 0.0005:
+                needs_sl_update = False
             else:
                 try:
                     exchange.cancel(coin, int(o["oid"]))
                 except Exception:
                     pass
 
-        if needs_update:
+        if needs_sl_update and clean_stop_px:
             order_type = {"trigger": {"isMarket": True, "triggerPx": clean_stop_px, "tpsl": "sl"}}
             res = exchange.order(coin, is_buy, sz, clean_stop_px, order_type, reduce_only=True)
             if audit_logs is not None:
-                audit_logs.append(f"🛡️ NATIVE ORDERBOOK TPSL SYNC [{coin}]: Placed Resting Trigger Stop @ ${clean_stop_px:.5f}")
+                audit_logs.append(f"🛡️️ NATIVE ORDERBOOK SL SYNC [{coin}]: Placed Resting Trigger Stop @ ${clean_stop_px:.5f}")
+
+        # 2. Sync Take-Profit Order
+        tp_orders = [
+            o for o in coin_trigger_orders 
+            if o.get("orderType", {}).get("trigger", {}).get("tpsl") == "tp" or "tp" in str(o.get("orderType", "")).lower()
+        ]
+        
+        if clean_tp_px is None:
+            # Moonshot Mode: Cancel any existing fixed TP targets so trades can run indefinitely
+            for o in tp_orders:
+                try:
+                    exchange.cancel(coin, int(o["oid"]))
+                    if audit_logs is not None:
+                        audit_logs.append(f"🚀 MOONSHOT UNCAP [{coin}]: Removed fixed TP target for infinite upside runner")
+                except Exception:
+                    pass
+        else:
+            needs_tp_update = True
+            for o in tp_orders:
+                existing_px = float(o.get("triggerPx", 0.0))
+                if abs(existing_px - clean_tp_px) / max(clean_tp_px, 1e-8) < 0.0005:
+                    needs_tp_update = False
+                else:
+                    try:
+                        exchange.cancel(coin, int(o["oid"]))
+                    except Exception:
+                        pass
+
+            if needs_tp_update:
+                order_type = {"trigger": {"isMarket": True, "triggerPx": clean_tp_px, "tpsl": "tp"}}
+                res = exchange.order(coin, is_buy, sz, clean_tp_px, order_type, reduce_only=True)
+                if audit_logs is not None:
+                    audit_logs.append(f"🎯 NATIVE ORDERBOOK TP SYNC [{coin}]: Placed Resting Take-Profit @ ${clean_tp_px:.5f}")
+
     except Exception as e:
         if audit_logs is not None:
             audit_logs.append(f"⚠️ Native TPSL sync warning on {coin}: {e}")
@@ -299,19 +339,19 @@ def calculate_atr(highs, lows, closes, period=14):
         return 1.0
 
 # ==============================================================================
-# NOISE-TUNED BREATHING-ROOM RATCHET ENGINE (ANTI-WICK)
+# DYNAMIC TP BUMPING & MICRO-RATCHET ENGINE
 # ==============================================================================
-def calculate_moonshot_ratchet_stop(entry_px, is_long, current_px, atr_val, peak_roe=0.0):
+def calculate_moonshot_ratchet_targets(entry_px, is_long, current_px, atr_val, peak_roe=0.0):
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
         roe = (entry_px - current_px) / entry_px
 
-    # ANTI-WICK BREATHING ROOM BUFFER: -1.80% to -2.50% max ROE loss (Survives normal hourly wicks)
+    # ANTI-WICK BREATHING ROOM BUFFER: -1.80% to -2.50% max ROE loss
     atr_roe_buffer = (atr_val * 1.2) / entry_px if entry_px > 0 else 0.020
     atr_roe_buffer = max(0.0180, min(0.0250, atr_roe_buffer))
 
-    # 1. Galactic & Parabolic Moonshots (+3.00+ to +1000%+ ROE - Infinite Upside)
+    # --- 1. DYNAMIC STOP LOSS RATCHET LADDER ---
     if peak_roe >= 3.00:
         target_floor_roe = max(peak_roe * 0.95, peak_roe - 0.20)
         leash_status = f"🚀 GALACTIC MOONSHOT 95% Lock [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
@@ -323,21 +363,16 @@ def calculate_moonshot_ratchet_stop(entry_px, is_long, current_px, atr_val, peak
         leash_status = f"📈 Strong Trend 88% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
     elif peak_roe >= 0.0150:
         target_floor_roe = peak_roe * 0.85
-        leash_status = f"🎯 Core Profit 85% Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-        
-    # 2. Fast Profit Locks
+        leash_status = f"🎯 Tier 3 Profit Lock 85% [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
     elif peak_roe >= 0.0080:
         target_floor_roe = peak_roe * 0.80
-        leash_status = f"⚡ Fast Lock 80% [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+        leash_status = f"⚡ Tier 2 Profit Lock 80% [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
     elif peak_roe >= 0.0035:
         target_floor_roe = peak_roe * 0.75
-        leash_status = f"📈 Micro Lock 75% [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-
-    # 3. Micro Break-Even Shield (+0.15% Peak ROE -> Soft BE Floor +0.03%)
+        leash_status = f"📈 Tier 1 Profit Lock 75% [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
     elif peak_roe >= 0.0015:
-        target_floor_roe = 0.0003  # +0.03% ROE Floor (Risk-Free Scratch/Profit)
+        target_floor_roe = 0.0003  # +0.03% ROE Floor (Micro BE Shield)
         leash_status = f"🛡️ Micro Break-Even Shield [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-
     else:
         target_floor_roe = -atr_roe_buffer
         leash_status = f"🛡 Anti-Wick Buffer (-{atr_roe_buffer*100:.2f}%)"
@@ -347,7 +382,20 @@ def calculate_moonshot_ratchet_stop(entry_px, is_long, current_px, atr_val, peak
     else:
         stop_px = entry_px * (1 - target_floor_roe)
 
-    return stop_px, roe, target_floor_roe, leash_status
+    # --- 2. DYNAMIC TAKE PROFIT TARGET BUMPING ---
+    if peak_roe >= 0.50:
+        tp_px = None  # Uncapped Moonshot Mode: SL Ratchet manages infinite upside
+    elif peak_roe >= 0.25:
+        tp_target_roe = 0.75  # Bump to +75% TP Target
+        tp_px = entry_px * (1 + tp_target_roe) if is_long else entry_px * (1 - tp_target_roe)
+    elif peak_roe >= 0.12:
+        tp_target_roe = 0.40  # Bump to +40% TP Target
+        tp_px = entry_px * (1 + tp_target_roe) if is_long else entry_px * (1 - tp_target_roe)
+    else:
+        tp_target_roe = 0.20  # Initial +20% TP Target
+        tp_px = entry_px * (1 + tp_target_roe) if is_long else entry_px * (1 - tp_target_roe)
+
+    return stop_px, tp_px, roe, target_floor_roe, leash_status
 
 def check_gemini_macro_shield(state, now_ts, is_scan_window):
     gemini_cache = state.get("gemini_cache", {})
@@ -421,14 +469,14 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Anti-Wick Breathing Buffer Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (Anti-Wick Breathing Buffer & Dual TP Orderbook Sync Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
 
     state = load_state()
 
-    # Dynamic 1-Hour Scan Gate: Evaluates scans every ~1 hour (50+ mins elapsed) while running every 30m
+    # Dynamic 1-Hour Scan Gate: Evaluates scans every ~1 hour (50+ mins elapsed) while running every 15-30m
     last_scan_ts = float(state.get("last_scan_timestamp", 0))
     is_1h_scan_window = (now_ts - last_scan_ts) >= 3000
 
@@ -471,7 +519,7 @@ def execute_engine():
         audit_logs.append(f"⚠ Gemini Macro Risk HIGH: Balanced breakout volume gate >= {required_vol_ratio:.2f}x")
     elif gemini_risk == "MODERATE":
         required_vol_ratio = 1.18
-        audit_logs.append(f"ℹ️ Gemini Macro Risk MODERATE: Balanced breakout volume gate >= {required_vol_ratio:.2f}x")
+        audit_logs.append(f"ℹ Gemini Macro Risk MODERATE: Balanced breakout volume gate >= {required_vol_ratio:.2f}x")
     else:
         required_vol_ratio = 1.12
         audit_logs.append(f"✅ Gemini Macro Risk LOW: Standard breakout volume gate >= {required_vol_ratio:.2f}x active")
@@ -610,7 +658,7 @@ def execute_engine():
             prev_peak = current_active_cache.get(coin, {}).get("peak_roe", current_roe)
             peak_roe = max(current_roe, prev_peak)
 
-            stop_px_calc, current_roe, target_floor_roe, leash_status = calculate_moonshot_ratchet_stop(
+            stop_px_calc, tp_px_calc, current_roe, target_floor_roe, leash_status = calculate_moonshot_ratchet_targets(
                 entry_px, is_long, current_px, atr_val, peak_roe=peak_roe
             )
 
@@ -642,8 +690,8 @@ def execute_engine():
                 except Exception as e:
                     audit_logs.append(f"Market close failed on {coin}: {e}")
 
-            # POSITION REMAINS ACTIVE -> SYNC RESTING NATIVE TPSL TRIGGER ORDER ON HYPERLIQUID ORDERBOOK
-            sync_native_trigger_stop(exchange, info, coin, is_long, abs(szi), stop_px_calc, ACCOUNT_ADDRESS, audit_logs)
+            # POSITION REMAINS ACTIVE -> SYNC RESTING NATIVE SL AND TP TRIGGER ORDERS ON HYPERLIQUID ORDERBOOK
+            sync_native_trigger_orders(exchange, info, coin, is_long, abs(szi), stop_px_calc, tp_px_calc, ACCOUNT_ADDRESS, audit_logs)
 
             active_count += 1
             active_coins.add(coin)
@@ -662,6 +710,7 @@ def execute_engine():
                 "collateral": margin_used, "position_usd": pos_equity,
                 "pnl": unrealized_pnl, "roe": current_roe * 100,
                 "stop": round_sig_figs(stop_px_calc, 5),
+                "tp_target": round_sig_figs(tp_px_calc, 5) if tp_px_calc else "UNCAPPED 🚀",
                 "status": leash_status
             })
 
@@ -862,7 +911,9 @@ def execute_engine():
                     state["active_position_cache"][coin] = {"strategy": strat_used}
 
                     initial_stop_px = px * 0.982 if is_long else px * 1.018
-                    sync_native_trigger_stop(exchange, info, coin, is_long, sz, initial_stop_px, ACCOUNT_ADDRESS, audit_logs)
+                    initial_tp_px = px * 1.20 if is_long else px * 0.80  # Initial +20.0% ROE resting TP order
+
+                    sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
                         "bot_title": "TR-GC-Crypto-LS-23", "coin": coin,
@@ -871,7 +922,8 @@ def execute_engine():
                         "collateral": base_sizing_usd, "position_usd": base_sizing_usd,
                         "pnl": 0.0, "roe": 0.0,
                         "stop": round_sig_figs(initial_stop_px, 5),
-                        "status": "🛡️ Anti-Wick Buffer Active (Native Orderbook TPSL)"
+                        "tp_target": round_sig_figs(initial_tp_px, 5),
+                        "status": "🛡️ Anti-Wick Buffer & Initial +20% TP Active (Native Orderbook TPSL)"
                     })
 
                     audit_logs.append(f"1H EXECUTION SUCCESS [{strat_used}]: Opened {'LONG' if is_long else 'SHORT'} on {coin} (Size: {sz} ~${base_sizing_usd:.2f})")
@@ -980,7 +1032,7 @@ def execute_engine():
         f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}<br><span style='font-size: 10px; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']} ({p['leverage']}x)</span></td>"
         f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 11px; font-weight: 600;'>${p['position_usd']:.2f}<br><span style='font-size: 9px; color: #64748b; font-weight: normal;'>Cost: ${p['collateral']:.2f}</span></td>"
         f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f}<br><span style='font-size: 10px;'>({p['roe']:+.2f}%)</span></td>"
-        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 10px;'><span style='color: #b45309; font-weight: bold; font-family: monospace;'>${p['stop']}</span><br><span style='color: #2e7d32; font-weight: 600;'>{p['status']}</span></td>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 10px;'><span style='color: #b45309; font-weight: bold; font-family: monospace;'>SL: ${p['stop']}<br>TP: ${p['tp_target']}</span><br><span style='color: #2e7d32; font-weight: 600;'>{p['status']}</span></td>"
         f"</tr>"
         for p in positions_data
     ])
@@ -1054,6 +1106,7 @@ def execute_engine():
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Guardrails (Full Crypto Strategy Display)</div>
               &bull; <b>Anti-Wick Breathing Buffer:</b> Gives trades -1.80% to -2.50% room to breathe past normal hourly wicks<br>
+              &bull; <b>Dynamic Dual TP/SL Orderbook Sync:</b> Places initial +20% resting TP & ratchets to +40%, +75%, then uncapped moonshot<br>
               &bull; <b>True Body Momentum Gate:</b> Requires solid candle bodies (&gt;35% range) and multi-candle commitment<br>
               &bull; <b>Native Orderbook Trigger Stop-Market Orders:</b> Auto-places & ratchets resting TPSL directly on exchange orderbook<br>
               &bull; <b>Bidirectional Live Candle Confirmation Gate:</b> Green for LONGs, Red for SHORTs with 1H Hold Confirmation<br>
@@ -1062,7 +1115,7 @@ def execute_engine():
               &bull; <b>BTC Directional Shield:</b> Enforces broad market alignment (GREEN = LONGs only, RED = SHORTs only, NEUTRAL = All-Weather High Conviction)<br>
               &bull; <b>Adaptive Gemini Volume Gate:</b> Dynamically scales volume confirmation (LOW: 1.12x, MODERATE: 1.18x, HIGH: 1.25x)<br>
               &bull; <b>Unrestricted Scanner:</b> 100-coin scanning universe remains 100% open for moonshot detection<br>
-              &bull; <b>Uncapped Moonshot Upside:</b> Zero take-profit caps—lets parabolic runners fly infinitely<br>
+              &bull; <b>Uncapped Moonshot Upside:</b> Zero take-profit caps above +50% ROE—lets parabolic runners fly infinitely<br>
               &bull; <b>Single-Slot Capital Preservation:</b> Strictly capped at 1 active trade ($10 floor)<br>
               &bull; <b>Optimal Orderbook Gate:</b> Rejects spread &gt; 0.30% or 0.5% depth &lt; $6,000 USD<br>
               &bull; <b>24H Post-Loss Cooldown Blocklist:</b> Bans any coin closed at a loss for 24 hours in state.json<br>
