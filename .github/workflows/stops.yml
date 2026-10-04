@@ -2,12 +2,12 @@ name: TR-GC-Crypto-LS-23
 
 on:
   schedule:
-    - cron: '*/30 * * * *'  # Reliable 30-minute execution interval
+    - cron: '*/15 * * * *'  # Runs every 15 minutes for fast active trade management
   workflow_dispatch:
 
 concurrency:
   group: crypto-trading-bot-engine
-  cancel-in-progress: false  # Allows active state updates to finish writing safely
+  cancel-in-progress: false
 
 jobs:
   run-bot:
