@@ -65,17 +65,15 @@ def save_state(state):
         json.dump(state, f, indent=2)
 
 def api_retry(func, *args, retries=5, delay=3.0, **kwargs):
+    """Universal resilient API retry decorator for all exchange and web queries."""
     for attempt in range(retries):
         try:
             return func(*args, **kwargs)
         except Exception as e:
-            if "429" in str(e) or "Rate limit" in str(e) or "Timeout" in str(e):
-                if attempt < retries - 1:
-                    print(f"[WARN] API rate limit hit. Pausing {delay}s before retry ({attempt+1}/{retries})...", flush=True)
-                    time.sleep(delay)
-                    delay *= 2.0
-                else:
-                    raise e
+            if attempt < retries - 1:
+                print(f"[WARN] API Call exception ({e}). Retrying in {delay}s ({attempt+1}/{retries})...", flush=True)
+                time.sleep(delay)
+                delay *= 2.0
             else:
                 raise e
 
@@ -85,6 +83,7 @@ def send_html_dashboard_email(subject, html_content, text_fallback):
     receiver_email = os.getenv("RECEIVER_EMAIL")
 
     if not sender_email or not sender_password or not receiver_email:
+        print("[WARN] Email credentials missing in environment variables. Skipping email dispatch.", flush=True)
         return
 
     msg = MIMEMultipart("alternative")
@@ -96,9 +95,10 @@ def send_html_dashboard_email(subject, html_content, text_fallback):
     msg.attach(MIMEText(html_content, "html"))
 
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=15) as server:
             server.login(sender_email, sender_password)
             server.sendmail(sender_email, receiver_email, msg.as_string())
+        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Telemetry email successfully sent to {receiver_email}", flush=True)
     except Exception as e:
         print(f"Failed to send email: {e}", flush=True)
 
@@ -428,6 +428,10 @@ def execute_engine():
 
     state = load_state()
 
+    # Dynamic 1-Hour Scan Gate: Evaluates scans every ~1 hour (50+ mins elapsed) while running every 30m
+    last_scan_ts = float(state.get("last_scan_timestamp", 0))
+    is_1h_scan_window = (now_ts - last_scan_ts) >= 3000
+
     # Guardrail: Hibernation Check
     if now_ts < float(state.get("hibernating_until", 0)):
         remaining_hrs = (float(state["hibernating_until"]) - now_ts) / 3600.0
@@ -458,8 +462,6 @@ def execute_engine():
     all_mids = api_retry(info.all_mids)
     meta = api_retry(info.meta)
     now_ms = int(now_ts * 1000)
-
-    is_1h_scan_window = True
 
     gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_1h_scan_window)
     audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] {gemini_briefing}")
@@ -492,7 +494,6 @@ def execute_engine():
     total_unrealized_pnl = 0.0
     current_active_cache = state.get("active_position_cache", {})
     new_active_cache = {}
-    trade_closed_this_run = False
 
     spot_usdc = 0.0
     total_spot_net_worth = 0.0
@@ -549,7 +550,6 @@ def execute_engine():
                         "pnl_usd": pnl, "roe_pct": roe, "side": "LONG" if szi > 0 else "SHORT",
                         "exit_reason": "🚨 Portfolio Circuit Breaker (-3.5%)", "timestamp": timestamp, "ts_sec": now_ts
                     })
-                    trade_closed_this_run = True
                 except Exception as e:
                     audit_logs.append(f"Circuit breaker close failed on {coin}: {e}")
         state["closed_trades_ledger"] = sorted(state["closed_trades_ledger"], key=lambda x: x.get("timestamp", ""), reverse=True)[:20]
@@ -638,7 +638,6 @@ def execute_engine():
                         "pnl_usd": unrealized_pnl, "roe_pct": current_roe * 100, "side": "LONG" if is_long else "SHORT",
                         "exit_reason": exit_reason, "timestamp": timestamp, "ts_sec": now_ts
                     })
-                    trade_closed_this_run = True
                     continue
                 except Exception as e:
                     audit_logs.append(f"Market close failed on {coin}: {e}")
@@ -677,7 +676,7 @@ def execute_engine():
 
     base_sizing_usd = 10.0
 
-    # ALL-WEATHER BALANCED SCANNER: Allows smooth scanning without overly restrictive barriers
+    # ALL-WEATHER BALANCED SCANNER: Triggers scans every 1 Hour (~60m elapsed)
     if is_1h_scan_window and available_slots > 0:
         if effective_regime == "NEUTRAL":
             required_vol_ratio = max(required_vol_ratio, 1.15)
@@ -886,233 +885,231 @@ def execute_engine():
     static_usdc = max(0.0, account_value - total_margin_used)
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
-    should_send_email = True
+    # GUARANTEED TELEMETRY DISPATCH (Always Executed Every Run)
+    state["last_email_timestamp"] = now_ts
+    save_state(state)
 
-    if should_send_email:
-        state["last_email_timestamp"] = now_ts
-        save_state(state)
+    trades_today = [
+        t for t in state.get("closed_trades_ledger", [])
+        if today_str in str(t.get("timestamp", ""))
+    ]
 
-        trades_today = [
-            t for t in state.get("closed_trades_ledger", [])
-            if today_str in str(t.get("timestamp", ""))
-        ]
+    total_today = len(trades_today)
+    wins_today = [t for t in trades_today if float(t.get("pnl_usd", 0)) > 0]
+    losses_today = [t for t in trades_today if float(t.get("pnl_usd", 0)) <= 0]
+    
+    win_count = len(wins_today)
+    loss_count = len(losses_today)
+    win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
+    
+    avg_win_roe = (sum(float(t.get("roe_pct", 0)) for t in wins_today) / win_count) if win_count > 0 else 0.0
+    avg_win_usd = (sum(float(t.get("pnl_usd", 0)) for t in wins_today) / win_count) if win_count > 0 else 0.0
+    
+    avg_loss_roe = (sum(float(t.get("roe_pct", 0)) for t in losses_today) / loss_count) if loss_count > 0 else 0.0
+    avg_loss_usd = (sum(float(t.get("pnl_usd", 0)) for t in losses_today) / loss_count) if loss_count > 0 else 0.0
+    
+    net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        total_today = len(trades_today)
-        wins_today = [t for t in trades_today if float(t.get("pnl_usd", 0)) > 0]
-        losses_today = [t for t in trades_today if float(t.get("pnl_usd", 0)) <= 0]
-        
-        win_count = len(wins_today)
-        loss_count = len(losses_today)
-        win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
-        
-        avg_win_roe = (sum(float(t.get("roe_pct", 0)) for t in wins_today) / win_count) if win_count > 0 else 0.0
-        avg_win_usd = (sum(float(t.get("pnl_usd", 0)) for t in wins_today) / win_count) if win_count > 0 else 0.0
-        
-        avg_loss_roe = (sum(float(t.get("roe_pct", 0)) for t in losses_today) / loss_count) if loss_count > 0 else 0.0
-        avg_loss_usd = (sum(float(t.get("pnl_usd", 0)) for t in losses_today) / loss_count) if loss_count > 0 else 0.0
-        
-        net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
+    text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/1"
 
-        text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/1"
+    summary_card_html = f"""
+    <div class="summary-card">
+      <div class="summary-title">📊 Today's Realized Performance Summary ({today_str})</div>
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
+        <tr>
+          <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase;">Total Trades Today: <b style="color: #0f172a;">{total_today}</b></td>
+          <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase; text-align: right;">Win Ratio: <b style="color: #0f172a;">{win_count}W / {loss_count}L ({win_rate_today:.1f}%)</b></td>
+        </tr>
+        <tr>
+          <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase;">Avg Win: <b style="color: #15803d;">+{avg_win_roe:.2f}% (${avg_win_usd:+.2f})</b></td>
+          <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase; text-align: right;">Avg Loss: <b style="color: #b91c1c;">{avg_loss_roe:.2f}% (${avg_loss_usd:+.2f})</b></td>
+        </tr>
+      </table>
+      <div class="summary-net">
+        Today's Realized P&L: <span class="{'win-color' if net_today_usd >= 0 else 'loss-color'}">${net_today_usd:+.2f}</span>
+      </div>
+    </div>
+    """
 
-        summary_card_html = f"""
-        <div class="summary-card">
-          <div class="summary-title">📊 Today's Realized Performance Summary ({today_str})</div>
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
-            <tr>
-              <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase;">Total Trades Today: <b style="color: #0f172a;">{total_today}</b></td>
-              <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase; text-align: right;">Win Ratio: <b style="color: #0f172a;">{win_count}W / {loss_count}L ({win_rate_today:.1f}%)</b></td>
-            </tr>
-            <tr>
-              <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase;">Avg Win: <b style="color: #15803d;">+{avg_win_roe:.2f}% (${avg_win_usd:+.2f})</b></td>
-              <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase; text-align: right;">Avg Loss: <b style="color: #b91c1c;">{avg_loss_roe:.2f}% (${avg_loss_usd:+.2f})</b></td>
-            </tr>
+    audit_section = ""
+    if VERBOSE_TEST_MODE:
+        audit_rows = "".join([f"<tr><td style='padding: 6px 8px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 10px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
+        audit_section = f"""
+        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log</div>
+        <div class="table-responsive">
+          <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%;">
+            <tbody>{audit_rows}</tbody>
           </table>
-          <div class="summary-net">
-            Today's Realized P&L: <span class="{'win-color' if net_today_usd >= 0 else 'loss-color'}">${net_today_usd:+.2f}</span>
-          </div>
         </div>
         """
 
-        audit_section = ""
-        if VERBOSE_TEST_MODE:
-            audit_rows = "".join([f"<tr><td style='padding: 6px 8px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 10px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
-            audit_section = f"""
-            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log</div>
+    closed_ledger = sorted(state.get("closed_trades_ledger", []), key=lambda x: x.get("timestamp", ""), reverse=True)
+    
+    parsed_closed_rows = []
+    total_realized_pnl = 0.0
+
+    for t in closed_ledger[:10]:
+        entry_p = float(t.get("entry_price", 0.0))
+        exit_p = float(t.get("exit_price", 0.0))
+        side = t.get("side", "LONG")
+        
+        pnl_val = float(t.get("pnl_usd", 0.0))
+        roe_val = float(t.get("roe_pct", 0.0))
+        total_realized_pnl += pnl_val
+
+        parsed_closed_rows.append(
+            f"<tr>"
+            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['coin']}<br><span style='font-size: 10px; color: {'#2e7d32' if side == 'LONG' else '#c62828'}; font-weight: 600;'>({side})</span></td>"
+            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 10px;'>${round_sig_figs(entry_p, 5)}<br>&rarr; ${round_sig_figs(exit_p, 5)}</td>"
+            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: {'#2e7d32' if pnl_val >= 0 else '#c62828'}; font-weight: bold;'>${pnl_val:+.2f}<br><span style='font-size: 10px;'>({roe_val:+.2f}%)</span></td>"
+            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 10px;'><span style='color: #b45309; font-weight: 600;'>{t['exit_reason']}</span><br><span style='color: #94a3b8; font-size: 9px; font-family: monospace;'>{t.get('timestamp', '')}</span></td>"
+            f"</tr>"
+        )
+
+    total_pnl_color = '#2e7d32' if total_realized_pnl >= 0 else '#c62828'
+    closed_rows = "".join(parsed_closed_rows) if parsed_closed_rows else "<tr><td colspan='4' style='padding: 12px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
+    closed_rows += f"""
+    <tr style="background: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
+        <td colspan="2" style="padding: 8px; text-align: right;">TOTAL RECENT REALIZED P&L:</td>
+        <td colspan="2" style="padding: 8px; color: {total_pnl_color};">${total_realized_pnl:+.2f}</td>
+    </tr>
+    """
+
+    positions_rows = "".join([
+        f"<tr>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}<br><span style='font-size: 10px; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']} ({p['leverage']}x)</span></td>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 11px; font-weight: 600;'>${p['position_usd']:.2f}<br><span style='font-size: 9px; color: #64748b; font-weight: normal;'>Cost: ${p['collateral']:.2f}</span></td>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f}<br><span style='font-size: 10px;'>({p['roe']:+.2f}%)</span></td>"
+        f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 10px;'><span style='color: #b45309; font-weight: bold; font-family: monospace;'>${p['stop']}</span><br><span style='color: #2e7d32; font-weight: 600;'>{p['status']}</span></td>"
+        f"</tr>"
+        for p in positions_data
+    ])
+
+    if not positions_data:
+        positions_rows = "<tr><td colspan='4' style='padding: 12px; text-align: center; color: #666;'>No active positions found.</td></tr>"
+
+    html_content = f"""
+    <html>
+      <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <style>
+          body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 8px; color: #333; }}
+          .container {{ max-width: 600px; width: 100%; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); box-sizing: border-box; }}
+          .header {{ background: #0f172a; color: #ffffff; padding: 14px 16px; }}
+          .header h2 {{ margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.5px; }}
+          .header p {{ margin: 3px 0 0; font-size: 11px; color: #94a3b8; }}
+          .content {{ padding: 12px; }}
+          .net-worth-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 14px; margin-bottom: 12px; }}
+          .net-worth-title {{ font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 2px; letter-spacing: 0.5px; }}
+          .net-worth-value {{ font-size: 22px; font-weight: 700; color: #0f172a; }}
+          .net-worth-subtitle {{ font-size: 10px; color: #64748b; margin-top: 4px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px; }}
+          
+          .summary-card {{ background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px; margin-bottom: 12px; }}
+          .summary-title {{ font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }}
+          .summary-net {{ font-size: 11px; font-weight: 700; color: #166534; border-top: 1px dashed #bbf7d0; padding-top: 6px; margin-top: 2px; }}
+          
+          .win-color {{ color: #15803d !important; }}
+          .loss-color {{ color: #b91c1c !important; }}
+
+          .pnl-badge {{ background: {'#e6f4ea' if today_total_gain >= 0 else '#fce8e6'}; color: {'#137333' if today_total_gain >= 0 else '#c5221f'}; padding: 2px 6px; border-radius: 4px; font-weight: bold; }}
+
+          .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; font-size: 10px; color: #334155; line-height: 1.4; }}
+          .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a; letter-spacing: 0.5px; }}
+          .section-title {{ font-size: 11px; text-transform: uppercase; color: #475569; margin: 14px 0 6px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; font-weight: 600; letter-spacing: 0.5px; }}
+          .table-responsive {{ width: 100%; overflow-x: auto; margin-bottom: 12px; }}
+          table {{ width: 100%; border-collapse: collapse; font-size: 11px; }}
+          th {{ background: #f1f5f9; color: #475569; text-align: left; padding: 6px 8px; font-weight: 600; border-bottom: 2px solid #cbd5e1; font-size: 10px; }}
+          td {{ padding: 6px 8px; border-bottom: 1px solid #f1f5f9; }}
+          .footer {{ text-align: center; font-size: 9px; color: #94a3b8; padding: 10px; background: #f8fafc; border-top: 1px solid #e2e8f0; }}
+
+          @media only screen and (max-width: 600px) {{
+            body {{ padding: 2px !important; }}
+            .content {{ padding: 8px !important; }}
+            .header {{ padding: 10px !important; }}
+            .net-worth-value {{ font-size: 18px !important; }}
+            table {{ font-size: 10px !important; }}
+            th, td {{ padding: 5px 4px !important; }}
+          }}
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h2>TR-GC-Crypto-LS-23-V2 | Telemetry Dashboard</h2>
+            <p>Timestamp: {timestamp} (Anti-Wick Breathing Engine Active)</p>
+          </div>
+          <div class="content">
+            <div class="net-worth-card">
+              <div class="net-worth-title">Total Net Worth</div>
+              <div class="net-worth-value">USD ${account_value:.2f}</div>
+              <div class="net-worth-subtitle">
+                <span>Reserve: <b>${static_usdc:.2f}</b></span>
+                <span>Margin: <b>{margin_util_pct:.1f}%</b></span>
+                <span>Today's Gain: <span class="pnl-badge">${today_total_gain:+,.2f}</span></span>
+              </div>
+            </div>
+
+            {summary_card_html}
+
+            <div class="rules-card">
+              <div class="rules-title">&#9989; Active Guardrails (Full Crypto Strategy Display)</div>
+              &bull; <b>Anti-Wick Breathing Buffer:</b> Gives trades -1.80% to -2.50% room to breathe past normal hourly wicks<br>
+              &bull; <b>True Body Momentum Gate:</b> Requires solid candle bodies (&gt;35% range) and multi-candle commitment<br>
+              &bull; <b>Native Orderbook Trigger Stop-Market Orders:</b> Auto-places & ratchets resting TPSL directly on exchange orderbook<br>
+              &bull; <b>Bidirectional Live Candle Confirmation Gate:</b> Green for LONGs, Red for SHORTs with 1H Hold Confirmation<br>
+              &bull; <b>100% Market Execution:</b> All exits execute via direct Taker Market Orders<br>
+              &bull; <b>Ultra-Tight Micro-Ratchet Ladder:</b> Micro BE at +0.15%, 75% at +0.35%, 80% at +0.80%, 85% at +1.50%<br>
+              &bull; <b>BTC Directional Shield:</b> Enforces broad market alignment (GREEN = LONGs only, RED = SHORTs only, NEUTRAL = All-Weather High Conviction)<br>
+              &bull; <b>Adaptive Gemini Volume Gate:</b> Dynamically scales volume confirmation (LOW: 1.12x, MODERATE: 1.18x, HIGH: 1.25x)<br>
+              &bull; <b>Unrestricted Scanner:</b> 100-coin scanning universe remains 100% open for moonshot detection<br>
+              &bull; <b>Uncapped Moonshot Upside:</b> Zero take-profit caps—lets parabolic runners fly infinitely<br>
+              &bull; <b>Single-Slot Capital Preservation:</b> Strictly capped at 1 active trade ($10 floor)<br>
+              &bull; <b>Optimal Orderbook Gate:</b> Rejects spread &gt; 0.30% or 0.5% depth &lt; $6,000 USD<br>
+              &bull; <b>24H Post-Loss Cooldown Blocklist:</b> Bans any coin closed at a loss for 24 hours in state.json<br>
+              &bull; <b>Single-Candle Lockout:</b> Restricts assets to max 1 entry per candle bar<br>
+              &bull; <b>Rolling Loss Circuit Breaker:</b> Triggers 12-hour hibernation if 3 losses occur within rolling 60m
+            </div>
+
+            <div class="section-title">Positions per Bot (USD)</div>
             <div class="table-responsive">
-              <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%;">
-                <tbody>{audit_rows}</tbody>
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 25%;">Asset</th>
+                    <th style="width: 20%;">Val ($)</th>
+                    <th style="width: 25%;">P&L (ROE)</th>
+                    <th style="width: 30%;">Stop / Status</th>
+                  </tr>
+                </thead>
+                <tbody>{positions_rows}</tbody>
               </table>
             </div>
-            """
 
-        closed_ledger = sorted(state.get("closed_trades_ledger", []), key=lambda x: x.get("timestamp", ""), reverse=True)
-        
-        parsed_closed_rows = []
-        total_realized_pnl = 0.0
-
-        for t in closed_ledger[:10]:
-            entry_p = float(t.get("entry_price", 0.0))
-            exit_p = float(t.get("exit_price", 0.0))
-            side = t.get("side", "LONG")
-            
-            pnl_val = float(t.get("pnl_usd", 0.0))
-            roe_val = float(t.get("roe_pct", 0.0))
-            total_realized_pnl += pnl_val
-
-            parsed_closed_rows.append(
-                f"<tr>"
-                f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['coin']}<br><span style='font-size: 10px; color: {'#2e7d32' if side == 'LONG' else '#c62828'}; font-weight: 600;'>({side})</span></td>"
-                f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 10px;'>${round_sig_figs(entry_p, 5)}<br>&rarr; ${round_sig_figs(exit_p, 5)}</td>"
-                f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: {'#2e7d32' if pnl_val >= 0 else '#c62828'}; font-weight: bold;'>${pnl_val:+.2f}<br><span style='font-size: 10px;'>({roe_val:+.2f}%)</span></td>"
-                f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 10px;'><span style='color: #b45309; font-weight: 600;'>{t['exit_reason']}</span><br><span style='color: #94a3b8; font-size: 9px; font-family: monospace;'>{t.get('timestamp', '')}</span></td>"
-                f"</tr>"
-            )
-
-        total_pnl_color = '#2e7d32' if total_realized_pnl >= 0 else '#c62828'
-        closed_rows = "".join(parsed_closed_rows) if parsed_closed_rows else "<tr><td colspan='4' style='padding: 12px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
-        closed_rows += f"""
-        <tr style="background: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
-            <td colspan="2" style="padding: 8px; text-align: right;">TOTAL RECENT REALIZED P&L:</td>
-            <td colspan="2" style="padding: 8px; color: {total_pnl_color};">${total_realized_pnl:+.2f}</td>
-        </tr>
-        """
-
-        positions_rows = "".join([
-            f"<tr>"
-            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}<br><span style='font-size: 10px; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']} ({p['leverage']}x)</span></td>"
-            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 11px; font-weight: 600;'>${p['position_usd']:.2f}<br><span style='font-size: 9px; color: #64748b; font-weight: normal;'>Cost: ${p['collateral']:.2f}</span></td>"
-            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f}<br><span style='font-size: 10px;'>({p['roe']:+.2f}%)</span></td>"
-            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 10px;'><span style='color: #b45309; font-weight: bold; font-family: monospace;'>${p['stop']}</span><br><span style='color: #2e7d32; font-weight: 600;'>{p['status']}</span></td>"
-            f"</tr>"
-            for p in positions_data
-        ])
-
-        if not positions_data:
-            positions_rows = "<tr><td colspan='4' style='padding: 12px; text-align: center; color: #666;'>No active positions found.</td></tr>"
-
-        html_content = f"""
-        <html>
-          <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-              body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 8px; color: #333; }}
-              .container {{ max-width: 600px; width: 100%; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); box-sizing: border-box; }}
-              .header {{ background: #0f172a; color: #ffffff; padding: 14px 16px; }}
-              .header h2 {{ margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.5px; }}
-              .header p {{ margin: 3px 0 0; font-size: 11px; color: #94a3b8; }}
-              .content {{ padding: 12px; }}
-              .net-worth-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 14px; margin-bottom: 12px; }}
-              .net-worth-title {{ font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 2px; letter-spacing: 0.5px; }}
-              .net-worth-value {{ font-size: 22px; font-weight: 700; color: #0f172a; }}
-              .net-worth-subtitle {{ font-size: 10px; color: #64748b; margin-top: 4px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px; }}
-              
-              .summary-card {{ background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px; margin-bottom: 12px; }}
-              .summary-title {{ font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }}
-              .summary-net {{ font-size: 11px; font-weight: 700; color: #166534; border-top: 1px dashed #bbf7d0; padding-top: 6px; margin-top: 2px; }}
-              
-              .win-color {{ color: #15803d !important; }}
-              .loss-color {{ color: #b91c1c !important; }}
-
-              .pnl-badge {{ background: {'#e6f4ea' if today_total_gain >= 0 else '#fce8e6'}; color: {'#137333' if today_total_gain >= 0 else '#c5221f'}; padding: 2px 6px; border-radius: 4px; font-weight: bold; }}
-
-              .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; font-size: 10px; color: #334155; line-height: 1.4; }}
-              .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a; letter-spacing: 0.5px; }}
-              .section-title {{ font-size: 11px; text-transform: uppercase; color: #475569; margin: 14px 0 6px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; font-weight: 600; letter-spacing: 0.5px; }}
-              .table-responsive {{ width: 100%; overflow-x: auto; margin-bottom: 12px; }}
-              table {{ width: 100%; border-collapse: collapse; font-size: 11px; }}
-              th {{ background: #f1f5f9; color: #475569; text-align: left; padding: 6px 8px; font-weight: 600; border-bottom: 2px solid #cbd5e1; font-size: 10px; }}
-              td {{ padding: 6px 8px; border-bottom: 1px solid #f1f5f9; }}
-              .footer {{ text-align: center; font-size: 9px; color: #94a3b8; padding: 10px; background: #f8fafc; border-top: 1px solid #e2e8f0; }}
-
-              @media only screen and (max-width: 600px) {{
-                body {{ padding: 2px !important; }}
-                .content {{ padding: 8px !important; }}
-                .header {{ padding: 10px !important; }}
-                .net-worth-value {{ font-size: 18px !important; }}
-                table {{ font-size: 10px !important; }}
-                th, td {{ padding: 5px 4px !important; }}
-              }}
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="header">
-                <h2>TR-GC-Crypto-LS-23-V2 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Anti-Wick Breathing Engine Active)</p>
-              </div>
-              <div class="content">
-                <div class="net-worth-card">
-                  <div class="net-worth-title">Total Net Worth</div>
-                  <div class="net-worth-value">USD ${account_value:.2f}</div>
-                  <div class="net-worth-subtitle">
-                    <span>Reserve: <b>${static_usdc:.2f}</b></span>
-                    <span>Margin: <b>{margin_util_pct:.1f}%</b></span>
-                    <span>Today's Gain: <span class="pnl-badge">${today_total_gain:+,.2f}</span></span>
-                  </div>
-                </div>
-
-                {summary_card_html}
-
-                <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (Full Crypto Strategy Display)</div>
-                  &bull; <b>Anti-Wick Breathing Buffer:</b> Gives trades -1.80% to -2.50% room to breathe past normal hourly wicks<br>
-                  &bull; <b>True Body Momentum Gate:</b> Requires solid candle bodies (&gt;35% range) and multi-candle commitment<br>
-                  &bull; <b>Native Orderbook Trigger Stop-Market Orders:</b> Auto-places & ratchets resting TPSL directly on exchange orderbook<br>
-                  &bull; <b>Bidirectional Live Candle Confirmation Gate:</b> Green for LONGs, Red for SHORTs with 1H Hold Confirmation<br>
-                  &bull; <b>100% Market Execution:</b> All exits execute via direct Taker Market Orders<br>
-                  &bull; <b>Ultra-Tight Micro-Ratchet Ladder:</b> Micro BE at +0.15%, 75% at +0.35%, 80% at +0.80%, 85% at +1.50%<br>
-                  &bull; <b>BTC Directional Shield:</b> Enforces broad market alignment (GREEN = LONGs only, RED = SHORTs only, NEUTRAL = All-Weather High Conviction)<br>
-                  &bull; <b>Adaptive Gemini Volume Gate:</b> Dynamically scales volume confirmation (LOW: 1.12x, MODERATE: 1.18x, HIGH: 1.25x)<br>
-                  &bull; <b>Unrestricted Scanner:</b> 100-coin scanning universe remains 100% open for moonshot detection<br>
-                  &bull; <b>Uncapped Moonshot Upside:</b> Zero take-profit caps—lets parabolic runners fly infinitely<br>
-                  &bull; <b>Single-Slot Capital Preservation:</b> Strictly capped at 1 active trade ($10 floor)<br>
-                  &bull; <b>Optimal Orderbook Gate:</b> Rejects spread &gt; 0.30% or 0.5% depth &lt; $6,000 USD<br>
-                  &bull; <b>24H Post-Loss Cooldown Blocklist:</b> Bans any coin closed at a loss for 24 hours in state.json<br>
-                  &bull; <b>Single-Candle Lockout:</b> Restricts assets to max 1 entry per candle bar<br>
-                  &bull; <b>Rolling Loss Circuit Breaker:</b> Triggers 12-hour hibernation if 3 losses occur within rolling 60m
-                </div>
-
-                <div class="section-title">Positions per Bot (USD)</div>
-                <div class="table-responsive">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th style="width: 25%;">Asset</th>
-                        <th style="width: 20%;">Val ($)</th>
-                        <th style="width: 25%;">P&L (ROE)</th>
-                        <th style="width: 30%;">Stop / Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>{positions_rows}</tbody>
-                  </table>
-                </div>
-
-                <div class="section-title">Recently Closed Trades & Exit Telemetry</div>
-                <div class="table-responsive">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th style="width: 22%;">Asset</th>
-                        <th style="width: 28%;">Entry &rarr; Exit</th>
-                        <th style="width: 22%;">Realized</th>
-                        <th style="width: 28%;">Reason</th>
-                      </tr>
-                    </thead>
-                    <tbody>{closed_rows}</tbody>
-                  </table>
-                </div>
-
-                {audit_section}
-
-              </div>
-              <div class="footer">Hyperliquid Autonomous Engine &bull; Managed via GitHub Actions</div>
+            <div class="section-title">Recently Closed Trades & Exit Telemetry</div>
+            <div class="table-responsive">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="width: 22%;">Asset</th>
+                    <th style="width: 28%;">Entry &rarr; Exit</th>
+                    <th style="width: 22%;">Realized</th>
+                    <th style="width: 28%;">Reason</th>
+                  </tr>
+                </thead>
+                <tbody>{closed_rows}</tbody>
+              </table>
             </div>
-          </body>
-        </html>
-        """
 
-        send_html_dashboard_email(f"Hyperliquid Report — USD ${account_value:.2f}", html_content, text_fallback)
+            {audit_section}
+
+          </div>
+          <div class="footer">Hyperliquid Autonomous Engine &bull; Managed via GitHub Actions</div>
+        </div>
+      </body>
+    </html>
+    """
+
+    send_html_dashboard_email(f"Hyperliquid Report — USD ${account_value:.2f}", html_content, text_fallback)
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
