@@ -2,22 +2,22 @@ name: TR-GC-Crypto-LS-23
 
 on:
   schedule:
-    - cron: '*/5 * * * *'  # Runs every 5 minutes to guard active trailing stops
+    - cron: '*/30 * * * *'  # Reliable 30-minute execution interval
   workflow_dispatch:
 
 concurrency:
   group: crypto-trading-bot-engine
-  cancel-in-progress: true
+  cancel-in-progress: false  # Allows active state updates to finish writing safely
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v7
+        uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
