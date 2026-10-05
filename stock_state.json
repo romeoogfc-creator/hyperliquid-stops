@@ -10,40 +10,30 @@
     }
   ],
   "active_position_cache": {
-    "NVDA": {
-      "entry_px": 237.155609,
-      "current_px": 236.7305,
-      "qty": 41.0,
-      "side": "long",
-      "peak_roe": 0.00010284808401899737,
-      "best_target_floor_roe": -0.0035,
-      "best_stop_px": 236.3255643685
-    },
     "SPY": {
       "entry_px": 772.47,
-      "current_px": 772.96,
+      "current_px": 774.21,
       "qty": 12.0,
       "side": "long",
-      "peak_roe": 0.000991235905601414,
-      "best_target_floor_roe": -0.0035,
-      "best_stop_px": 769.7663550000001
+      "peak_roe": 0.0022525146607635365,
+      "best_target_floor_roe": 0.0003,
+      "best_stop_px": 772.701741
     },
     "TSLA": {
       "entry_px": 377.5828,
-      "current_px": 376.8975,
+      "current_px": 378.3301,
       "qty": 25.0,
       "side": "long",
-      "peak_roe": -7.4155920238848455e-06,
-      "best_target_floor_roe": -0.0035,
-      "best_stop_px": 376.26126020000004
+      "peak_roe": 0.0019791685426348753,
+      "best_target_floor_roe": 0.0003,
+      "best_stop_px": 377.69607484
     }
   },
   "previous_active_symbols": [
     "TSLA",
-    "NVDA",
     "SPY"
   ],
-  "last_run_timestamp": "2026-10-05 16:16:44",
+  "last_run_timestamp": "2026-10-05 16:48:24",
   "daily_starting_equity": {
     "2026-10-05": 97996.26
   },
