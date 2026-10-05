@@ -170,7 +170,6 @@ def sync_native_trigger_orders(exchange, info, coin, is_long, sz, stop_px, tp_px
                 o_type = o.get("orderType", {})
                 is_trig = o.get("isTrigger", False)
                 
-                # Safe type-handling for orderType dict vs str
                 if is_trig or (isinstance(o_type, dict) and "trigger" in o_type):
                     coin_trigger_orders.append(o)
                 elif isinstance(o_type, str) and "trigger" in o_type.lower():
@@ -216,7 +215,6 @@ def sync_native_trigger_orders(exchange, info, coin, is_long, sz, stop_px, tp_px
                 tp_orders.append(o)
         
         if clean_tp_px is None:
-            # Moonshot Mode: Cancel any existing fixed TP targets so trades can run indefinitely
             for o in tp_orders:
                 try:
                     exchange.cancel(coin, int(o["oid"]))
@@ -244,7 +242,7 @@ def sync_native_trigger_orders(exchange, info, coin, is_long, sz, stop_px, tp_px
 
     except Exception as e:
         if audit_logs is not None:
-            audit_logs.append(f"⚠️ Native TPSL sync warning on {coin}: {e}")
+            audit_logs.append(f"⚠️️ Native TPSL sync warning on {coin}: {e}")
 
 # ==============================================================================
 # TECHNICAL INDICATORS
@@ -366,11 +364,9 @@ def calculate_moonshot_ratchet_targets(entry_px, is_long, current_px, atr_val, p
     else:
         roe = (entry_px - current_px) / entry_px
 
-    # ANTI-WICK BREATHING ROOM BUFFER: -1.80% to -2.50% max ROE loss
     atr_roe_buffer = (atr_val * 1.2) / entry_px if entry_px > 0 else 0.020
     atr_roe_buffer = max(0.0180, min(0.0250, atr_roe_buffer))
 
-    # --- 1. DYNAMIC STOP LOSS RATCHET LADDER ---
     if peak_roe >= 3.00:
         target_floor_roe = max(peak_roe * 0.95, peak_roe - 0.20)
         leash_status = f"🚀 GALACTIC MOONSHOT 95% Lock [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
@@ -390,7 +386,7 @@ def calculate_moonshot_ratchet_targets(entry_px, is_long, current_px, atr_val, p
         target_floor_roe = peak_roe * 0.75
         leash_status = f"📈 Tier 1 Profit Lock 75% [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
     elif peak_roe >= 0.0015:
-        target_floor_roe = 0.0003  # +0.03% ROE Floor (Micro BE Shield)
+        target_floor_roe = 0.0003
         leash_status = f"🛡️ Micro Break-Even Shield [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
     else:
         target_floor_roe = -atr_roe_buffer
@@ -401,17 +397,16 @@ def calculate_moonshot_ratchet_targets(entry_px, is_long, current_px, atr_val, p
     else:
         stop_px = entry_px * (1 - target_floor_roe)
 
-    # --- 2. DYNAMIC TAKE PROFIT TARGET BUMPING ---
     if peak_roe >= 0.50:
-        tp_px = None  # Uncapped Moonshot Mode: SL Ratchet manages infinite upside
+        tp_px = None
     elif peak_roe >= 0.25:
-        tp_target_roe = 0.75  # Bump to +75% TP Target
+        tp_target_roe = 0.75
         tp_px = entry_px * (1 + tp_target_roe) if is_long else entry_px * (1 - tp_target_roe)
     elif peak_roe >= 0.12:
-        tp_target_roe = 0.40  # Bump to +40% TP Target
+        tp_target_roe = 0.40
         tp_px = entry_px * (1 + tp_target_roe) if is_long else entry_px * (1 - tp_target_roe)
     else:
-        tp_target_roe = 0.20  # Initial +20% TP Target
+        tp_target_roe = 0.20
         tp_px = entry_px * (1 + tp_target_roe) if is_long else entry_px * (1 - tp_target_roe)
 
     return stop_px, tp_px, roe, target_floor_roe, leash_status
@@ -495,19 +490,16 @@ def execute_engine():
 
     state = load_state()
 
-    # RESTORED 30-MINUTE CLOCK-SYNCHRONIZED SCAN WINDOW
     current_gm_min = time.gmtime(now_ts).tm_min
     last_scan_ts = float(state.get("last_scan_timestamp", 0))
     minutes_since_last_scan = (now_ts - last_scan_ts) / 60.0
     is_30m_scan_window = (current_gm_min in [0, 1, 2, 30, 31, 32]) or (minutes_since_last_scan >= 25.0)
 
-    # Guardrail: Hibernation Check
     if now_ts < float(state.get("hibernating_until", 0)):
         remaining_hrs = (float(state["hibernating_until"]) - now_ts) / 3600.0
         print(f"[{timestamp}] 🚨 BOT IN 12H EMERGENCY HIBERNATION ({remaining_hrs:.1f}h remaining). Execution halted.", flush=True)
         return
 
-    # Guardrail: Rolling 1-Hour Loss Circuit Breaker
     one_hour_ago = now_ts - 3600
     recent_losses = [
         t for t in state.get("closed_trades_ledger", [])
@@ -515,7 +507,7 @@ def execute_engine():
     ]
 
     if len(recent_losses) >= 3:
-        state["hibernating_until"] = now_ts + 43200  # 12-Hour Hibernation
+        state["hibernating_until"] = now_ts + 43200
         save_state(state)
         err_body = f"🚨 ROLLING CIRCUIT BREAKER TRIGGERED: 3 losses recorded within the last 60 minutes. Bot entering 12-hour hibernation."
         print(f"[{timestamp}] {err_body}", flush=True)
@@ -678,7 +670,6 @@ def execute_engine():
                 entry_px, is_long, current_px, atr_val, peak_roe=peak_roe
             )
 
-            # BIDIRECTIONAL STOP / PROFIT LATCH TRIGGER
             if is_long and current_px <= stop_px_calc:
                 should_exit = True
                 exit_reason = f"🎯 Stop/Profit Lock Triggered ({current_roe*100:.2f}%)"
@@ -707,7 +698,6 @@ def execute_engine():
                 except Exception as e:
                     audit_logs.append(f"Market close failed on {coin}: {e}")
 
-            # POSITION REMAINS ACTIVE -> SYNC RESTING NATIVE SL AND TP TRIGGER ORDERS ON HYPERLIQUID ORDERBOOK
             sync_native_trigger_orders(exchange, info, coin, is_long, abs(szi), stop_px_calc, tp_px_calc, ACCOUNT_ADDRESS, audit_logs)
 
             active_count += 1
@@ -737,12 +727,11 @@ def execute_engine():
     universe = [asset["name"] for asset in meta.get("universe", [])][:100]
     market_candidates = []
 
-    MAX_CRYPTO_SLOTS = 1  # Strictly capped at 1 active trade
+    MAX_CRYPTO_SLOTS = 1
     available_slots = MAX_CRYPTO_SLOTS - active_count
 
     base_sizing_usd = 10.0
 
-    # 30-MINUTE CLOCK-SYNCHRONIZED CANDLE SCANNER
     if is_30m_scan_window and available_slots > 0:
         if effective_regime == "NEUTRAL":
             required_vol_ratio = max(required_vol_ratio, 1.15)
@@ -758,7 +747,8 @@ def execute_engine():
         btc_ci = calculate_choppiness_index(btc_highs, btc_lows, btc_closes)
         btc_adx = calculate_adx(btc_highs, btc_lows, btc_closes)
 
-        if btc_ci < 48.0 and btc_adx > 21.0:
+        # ADX >= 28.0 OVERRIDES RANGING MODE -> FORCES TRENDING CLASSIFICATION
+        if (btc_ci < 48.0 and btc_adx > 21.0) or (btc_adx >= 28.0):
             market_mode = "TRENDING"
         elif btc_ci > 62.0:
             market_mode = "CHOP_HOLD"
@@ -799,7 +789,6 @@ def execute_engine():
                     lows = [float(c["l"]) for c in candles]
                     volumes = [float(c.get("v", 0)) for c in candles]
 
-                    # TRUE BODY STRENGTH & MOMENTUM GATE (NO WOBBLY WICKS)
                     c_open = float(candles[-1]["o"])
                     c_high = float(candles[-1]["h"])
                     c_low = float(candles[-1]["l"])
@@ -826,12 +815,11 @@ def execute_engine():
                     is_holding_breakout = curr_live_px >= comp_close
                     is_holding_breakdown = curr_live_px <= comp_close
 
-                    # STRATEGY A: TRENDING BREAKOUT / BREAKDOWN ENGINE (LONG & SHORT)
+                    # STRATEGY A: TRENDING BREAKOUT / BREAKDOWN ENGINE
                     if market_mode == "TRENDING" or (market_mode == "RANGING" and vol_ratio >= required_vol_ratio):
                         ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
                         if ci_1h <= 52.0 and vol_ratio >= required_vol_ratio:
                             if effective_regime in ["GREEN", "NEUTRAL"]:
-                                # LONG Entry Gate: True Green & holding breakout
                                 if comp_close > upper and comp_close <= (upper * 1.030):
                                     if is_true_green and is_holding_breakout:
                                         extension_pct = ((comp_close - upper) / upper) * 100
@@ -843,7 +831,6 @@ def execute_engine():
                                         audit_logs.append(f"1H TRUE GREEN BREAKOUT MATCH (LONG): {coin} @ ${curr_live_px:.4f} (True Green Body, Ext: +{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
 
                             if effective_regime in ["RED", "NEUTRAL"]:
-                                # SHORT Entry Gate: True Red & holding breakdown
                                 if comp_close < lower and comp_close >= (lower * 0.970):
                                     if is_true_red and is_holding_breakdown:
                                         extension_pct = ((lower - comp_close) / lower) * 100
@@ -854,27 +841,25 @@ def execute_engine():
                                         })
                                         audit_logs.append(f"1H TRUE RED BREAKDOWN MATCH (SHORT): {coin} @ ${curr_live_px:.4f} (True Red Body, Ext: -{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
 
-                    # STRATEGY B: RANGING MEAN-REVERSION (LONG & SHORT) WITH ENFORCED VOLUME & STRICT RSI GATES
-                    if market_mode == "RANGING" and vol_ratio >= required_vol_ratio:
+                    # STRATEGY B: RANGING MEAN-REVERSION (STRICTLY BLOCKED IF ADX >= 25.0)
+                    if market_mode == "RANGING" and vol_ratio >= required_vol_ratio and btc_adx < 25.0:
                         if effective_regime in ["GREEN", "NEUTRAL"]:
-                            # LONG Dip Buy Gate: True Green bounce from oversold extreme (RSI <= 35.0)
                             if curr_live_px <= bb_lower * 1.005 and curr_live_px < vwap_val and rsi_1h <= 35.0 and is_true_green:
                                 market_candidates.append({
                                     "coin": coin, "close": curr_live_px, "is_long": True,
                                     "score": (vwap_val - curr_live_px) / vwap_val, "candle_ts": current_candle_ts,
                                     "strategy": "MEAN_REVERSION"
                                 })
-                                audit_logs.append(f"1H VWAP TRUE DIP BOUNCE (LONG): {coin} @ ${curr_live_px:.4f} (True Green Bounce Below VWAP, RSI: {rsi_1h:.1f}, VolRatio: {vol_ratio:.2f}x)")
+                                audit_logs.append(f"1H VWAP TRUE DIP BOUNCE (LONG): {coin} @ ${curr_live_px:.4f} (RSI: {rsi_1h:.1f}, VolRatio: {vol_ratio:.2f}x)")
 
                         if effective_regime in ["RED", "NEUTRAL"]:
-                            # SHORT Fade High Gate: True Red rejection from overbought extreme (RSI >= 65.0)
                             if curr_live_px >= bb_upper * 0.995 and curr_live_px > vwap_val and rsi_1h >= 65.0 and is_true_red:
                                 market_candidates.append({
                                     "coin": coin, "close": curr_live_px, "is_long": False,
                                     "score": (curr_live_px - vwap_val) / vwap_val, "candle_ts": current_candle_ts,
                                     "strategy": "MEAN_REVERSION"
                                 })
-                                audit_logs.append(f"1H VWAP TRUE SHORT FADE (SHORT): {coin} @ ${curr_live_px:.4f} (True Red Reject Above VWAP, RSI: {rsi_1h:.1f}, VolRatio: {vol_ratio:.2f}x)")
+                                audit_logs.append(f"1H VWAP TRUE SHORT FADE (SHORT): {coin} @ ${curr_live_px:.4f} (RSI: {rsi_1h:.1f}, VolRatio: {vol_ratio:.2f}x)")
 
                 except Exception:
                     continue
@@ -910,7 +895,6 @@ def execute_engine():
                 except Exception:
                     pass
 
-                # GUARANTEED TAKER MARKET ORDER ENTRY
                 res = exchange.market_open(coin, is_long, sz, px, slippage=0.01)
 
                 if res.get("status") == "ok":
@@ -927,7 +911,7 @@ def execute_engine():
                     state["active_position_cache"][coin] = {"strategy": strat_used}
 
                     initial_stop_px = px * 0.982 if is_long else px * 1.018
-                    initial_tp_px = px * 1.20 if is_long else px * 0.80  # Initial +20.0% ROE resting TP order
+                    initial_tp_px = px * 1.20 if is_long else px * 0.80
 
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
@@ -953,7 +937,6 @@ def execute_engine():
     static_usdc = max(0.0, account_value - total_margin_used)
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
-    # RESTORED 25-MINUTE EMAIL THROTTLE & IMMEDIATE DISPATCH ON TRADE EVENTS
     last_email_ts = float(state.get("last_email_timestamp", 0))
     elapsed_minutes = (now_ts - last_email_ts) / 60.0
     
