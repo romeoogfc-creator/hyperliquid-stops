@@ -163,16 +163,30 @@ def sync_native_trigger_orders(exchange, info, coin, is_long, sz, stop_px, tp_px
         is_buy = not is_long  # To close LONG -> SELL (False); to close SHORT -> BUY (True)
 
         open_orders = api_retry(info.frontend_open_orders, account_address)
-        coin_trigger_orders = [
-            o for o in open_orders 
-            if o.get("coin") == coin and (o.get("isTrigger") or "trigger" in str(o.get("orderType", "")).lower())
-        ]
+        coin_trigger_orders = []
+        
+        for o in open_orders:
+            if o.get("coin") == coin:
+                o_type = o.get("orderType", {})
+                is_trig = o.get("isTrigger", False)
+                
+                # Safe type-handling for orderType dict vs str
+                if is_trig or (isinstance(o_type, dict) and "trigger" in o_type):
+                    coin_trigger_orders.append(o)
+                elif isinstance(o_type, str) and "trigger" in o_type.lower():
+                    coin_trigger_orders.append(o)
 
         # 1. Sync Stop-Loss Order
-        sl_orders = [
-            o for o in coin_trigger_orders 
-            if o.get("orderType", {}).get("trigger", {}).get("tpsl") == "sl" or "sl" in str(o.get("orderType", "")).lower()
-        ]
+        sl_orders = []
+        for o in coin_trigger_orders:
+            o_type = o.get("orderType", {})
+            if isinstance(o_type, dict):
+                t_info = o_type.get("trigger", {})
+                if t_info.get("tpsl") == "sl":
+                    sl_orders.append(o)
+            elif isinstance(o_type, str) and "sl" in o_type.lower():
+                sl_orders.append(o)
+
         needs_sl_update = True
         for o in sl_orders:
             existing_px = float(o.get("triggerPx", 0.0))
@@ -191,10 +205,15 @@ def sync_native_trigger_orders(exchange, info, coin, is_long, sz, stop_px, tp_px
                 audit_logs.append(f"🛡️ NATIVE ORDERBOOK SL SYNC [{coin}]: Placed Resting Trigger Stop @ ${clean_stop_px:.5f}")
 
         # 2. Sync Take-Profit Order
-        tp_orders = [
-            o for o in coin_trigger_orders 
-            if o.get("orderType", {}).get("trigger", {}).get("tpsl") == "tp" or "tp" in str(o.get("orderType", "")).lower()
-        ]
+        tp_orders = []
+        for o in coin_trigger_orders:
+            o_type = o.get("orderType", {})
+            if isinstance(o_type, dict):
+                t_info = o_type.get("trigger", {})
+                if t_info.get("tpsl") == "tp":
+                    tp_orders.append(o)
+            elif isinstance(o_type, str) and "tp" in o_type.lower():
+                tp_orders.append(o)
         
         if clean_tp_px is None:
             # Moonshot Mode: Cancel any existing fixed TP targets so trades can run indefinitely
@@ -608,7 +627,7 @@ def execute_engine():
         save_state(state)
         return
 
-    # Position Management & Exits (LONG & SHORT Bidirectional Evaluation)
+    # Position Management & Exits
     if asset_positions:
         for pos_item in asset_positions:
             pos = pos_item.get("position", {})
@@ -651,13 +670,6 @@ def execute_engine():
                         exit_reason = f"🎯 RANGING Fair-Value TP Target (${current_px:.4f} <= ${target_tp:.4f})"
             except Exception as e:
                 audit_logs.append(f"Indicator calculation warning on {coin}: {e}")
-
-            if btc_regime == "RED" and is_long:
-                should_exit = True
-                exit_reason = "🛑 BTC Daily Bearish Flip Purge"
-            elif btc_regime == "GREEN" and (not is_long):
-                should_exit = True
-                exit_reason = "🟢 BTC Daily Bullish Flip Purge"
 
             prev_peak = current_active_cache.get(coin, {}).get("peak_roe", current_roe)
             peak_roe = max(current_roe, prev_peak)
@@ -725,12 +737,12 @@ def execute_engine():
     universe = [asset["name"] for asset in meta.get("universe", [])][:100]
     market_candidates = []
 
-    MAX_CRYPTO_SLOTS = 1  # Strictly capped at 1 active trade as requested
+    MAX_CRYPTO_SLOTS = 1  # Strictly capped at 1 active trade
     available_slots = MAX_CRYPTO_SLOTS - active_count
 
     base_sizing_usd = 10.0
 
-    # RESTORED 30-MINUTE CLOCK-SYNCHRONIZED CANDLE SCANNER
+    # 30-MINUTE CLOCK-SYNCHRONIZED CANDLE SCANNER
     if is_30m_scan_window and available_slots > 0:
         if effective_regime == "NEUTRAL":
             required_vol_ratio = max(required_vol_ratio, 1.15)
@@ -746,7 +758,6 @@ def execute_engine():
         btc_ci = calculate_choppiness_index(btc_highs, btc_lows, btc_closes)
         btc_adx = calculate_adx(btc_highs, btc_lows, btc_closes)
 
-        # Sweet spot: ADX > 21.0 allows clean trending capture without skipping moderate moves
         if btc_ci < 48.0 and btc_adx > 21.0:
             market_mode = "TRENDING"
         elif btc_ci > 62.0:
@@ -843,27 +854,27 @@ def execute_engine():
                                         })
                                         audit_logs.append(f"1H TRUE RED BREAKDOWN MATCH (SHORT): {coin} @ ${curr_live_px:.4f} (True Red Body, Ext: -{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
 
-                    # STRATEGY B: RANGING MEAN-REVERSION (LONG & SHORT)
-                    if market_mode == "RANGING":
+                    # STRATEGY B: RANGING MEAN-REVERSION (LONG & SHORT) WITH ENFORCED VOLUME & STRICT RSI GATES
+                    if market_mode == "RANGING" and vol_ratio >= required_vol_ratio:
                         if effective_regime in ["GREEN", "NEUTRAL"]:
-                            # LONG Dip Buy Gate: True Green bounce
-                            if curr_live_px <= bb_lower * 1.005 and curr_live_px < vwap_val and rsi_1h <= 48.0 and is_true_green:
+                            # LONG Dip Buy Gate: True Green bounce from oversold extreme (RSI <= 35.0)
+                            if curr_live_px <= bb_lower * 1.005 and curr_live_px < vwap_val and rsi_1h <= 35.0 and is_true_green:
                                 market_candidates.append({
                                     "coin": coin, "close": curr_live_px, "is_long": True,
                                     "score": (vwap_val - curr_live_px) / vwap_val, "candle_ts": current_candle_ts,
                                     "strategy": "MEAN_REVERSION"
                                 })
-                                audit_logs.append(f"1H VWAP TRUE DIP BOUNCE (LONG): {coin} @ ${curr_live_px:.4f} (True Green Bounce Below VWAP, RSI: {rsi_1h:.1f})")
+                                audit_logs.append(f"1H VWAP TRUE DIP BOUNCE (LONG): {coin} @ ${curr_live_px:.4f} (True Green Bounce Below VWAP, RSI: {rsi_1h:.1f}, VolRatio: {vol_ratio:.2f}x)")
 
                         if effective_regime in ["RED", "NEUTRAL"]:
-                            # SHORT Fade High Gate: True Red reject
-                            if curr_live_px >= bb_upper * 0.995 and curr_live_px > vwap_val and rsi_1h >= 52.0 and is_true_red:
+                            # SHORT Fade High Gate: True Red rejection from overbought extreme (RSI >= 65.0)
+                            if curr_live_px >= bb_upper * 0.995 and curr_live_px > vwap_val and rsi_1h >= 65.0 and is_true_red:
                                 market_candidates.append({
                                     "coin": coin, "close": curr_live_px, "is_long": False,
                                     "score": (curr_live_px - vwap_val) / vwap_val, "candle_ts": current_candle_ts,
                                     "strategy": "MEAN_REVERSION"
                                 })
-                                audit_logs.append(f"1H VWAP TRUE SHORT FADE (SHORT): {coin} @ ${curr_live_px:.4f} (True Red Reject Above VWAP, RSI: {rsi_1h:.1f})")
+                                audit_logs.append(f"1H VWAP TRUE SHORT FADE (SHORT): {coin} @ ${curr_live_px:.4f} (True Red Reject Above VWAP, RSI: {rsi_1h:.1f}, VolRatio: {vol_ratio:.2f}x)")
 
                 except Exception:
                     continue
