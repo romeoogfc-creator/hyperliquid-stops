@@ -1,40 +1,60 @@
 {
-  "closed_trades_ledger": [],
+  "closed_trades_ledger": [
+    {
+      "symbol": "AVGO",
+      "entry_price": 362.53,
+      "exit_price": 361.25,
+      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.35%)",
+      "realized_pnl": -34.55999999999926,
+      "timestamp": "2026-10-05 15:48:14"
+    }
+  ],
   "active_position_cache": {
+    "META": {
+      "entry_px": 745.85,
+      "current_px": 745.39,
+      "qty": 1.0,
+      "side": "long",
+      "peak_roe": -0.0006167459945029649,
+      "best_target_floor_roe": -0.0035,
+      "best_stop_px": 743.2395250000001
+    },
     "NVDA": {
       "entry_px": 237.155609,
-      "current_px": 237.18,
+      "current_px": 236.82,
       "qty": 41.0,
       "side": "long",
       "peak_roe": 0.00010284808401899737,
-      "best_target_floor_roe": -0.006693615968528797,
-      "best_stop_px": 235.56818042857142
+      "best_target_floor_roe": -0.0035,
+      "best_stop_px": 236.3255643685
     },
     "SPY": {
       "entry_px": 772.47,
-      "current_px": 772.48,
+      "current_px": 773.2357,
       "qty": 12.0,
       "side": "long",
-      "peak_roe": 1.2945486556100437e-05,
-      "best_target_floor_roe": -0.004,
-      "best_stop_px": 769.38012
+      "peak_roe": 0.000991235905601414,
+      "best_target_floor_roe": -0.0035,
+      "best_stop_px": 769.7663550000001
     },
     "TSLA": {
       "entry_px": 377.5828,
-      "current_px": 377.49,
+      "current_px": 377.58,
       "qty": 25.0,
       "side": "long",
-      "peak_roe": -0.00024577390707418634,
-      "best_target_floor_roe": -0.008,
-      "best_stop_px": 374.5621376
+      "peak_roe": -7.4155920238848455e-06,
+      "best_target_floor_roe": -0.0035,
+      "best_stop_px": 376.26126020000004
     }
   },
   "previous_active_symbols": [
+    "AVGO",
+    "NVDA",
+    "META",
     "SPY",
-    "TSLA",
-    "NVDA"
+    "TSLA"
   ],
-  "last_run_timestamp": "2026-10-05 15:18:38",
+  "last_run_timestamp": "2026-10-05 15:48:31",
   "daily_starting_equity": {
     "2026-10-05": 97996.26
   },
