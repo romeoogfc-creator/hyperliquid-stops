@@ -721,6 +721,47 @@ def execute_engine():
                 "status": leash_status
             })
 
+    # ==============================================================================
+    # NATIVE EXCHANGE FILL RECONCILIATION
+    # ==============================================================================
+    prev_cache = state.get("active_position_cache", {})
+    for coin, cache_data in list(prev_cache.items()):
+        if coin not in active_coins:
+            # Position was active in prior run but closed natively on exchange while script slept
+            try:
+                user_fills = api_retry(info.user_fills, ACCOUNT_ADDRESS)
+                coin_fills = [f for f in user_fills if f.get("coin") == coin]
+                
+                if coin_fills:
+                    latest_fill = coin_fills[0]
+                    exit_px = float(latest_fill.get("px", 0.0))
+                    entry_px = cache_data.get("entry_px", exit_px)
+                    side = cache_data.get("side", "LONG")
+                    is_long = (side == "LONG")
+                    
+                    pnl_usd = float(latest_fill.get("closedPnl", 0.0))
+                    roe_pct = ((exit_px - entry_px) / entry_px * 100) if is_long else ((entry_px - exit_px) / entry_px * 100)
+                    
+                    if "closed_trades_ledger" not in state:
+                        state["closed_trades_ledger"] = []
+                        
+                    state["closed_trades_ledger"].insert(0, {
+                        "coin": coin, "entry_price": entry_px, "exit_price": exit_px,
+                        "pnl_usd": pnl_usd, "roe_pct": roe_pct, "side": side,
+                        "exit_reason": "🎯 Native Orderbook TPSL Fill", "timestamp": timestamp, "ts_sec": now_ts
+                    })
+                    
+                    if pnl_usd < 0:
+                        state["cooldown_blocklist"][coin] = now_ts + 86400
+                        audit_logs.append(f"⛔ Added {coin} to 24H Cooldown Blocklist (Native Fill at Loss)")
+                    
+                    audit_logs.append(f"🎯 RECONCILED NATIVE FILL [{coin}]: Closed {side} @ ${exit_px:.5f} (P&L: ${pnl_usd:+.2f}, ROE: {roe_pct:+.2f}%)")
+                    trade_closed_this_run = True
+            except Exception as e:
+                audit_logs.append(f"Reconciliation warning on {coin}: {e}")
+
+    state["closed_trades_ledger"] = sorted(state.get("closed_trades_ledger", []), key=lambda x: x.get("timestamp", ""), reverse=True)[:20]
+
     state["active_position_cache"] = new_active_cache
     state["previous_active_coins"] = list(active_coins)
 
@@ -915,7 +956,11 @@ def execute_engine():
 
                     if "active_position_cache" not in state:
                         state["active_position_cache"] = {}
-                    state["active_position_cache"][coin] = {"strategy": strat_used}
+                    state["active_position_cache"][coin] = {
+                        "strategy": strat_used,
+                        "entry_px": px,
+                        "side": "LONG" if is_long else "SHORT"
+                    }
 
                     initial_stop_px = px * 0.982 if is_long else px * 1.018
                     initial_tp_px = px * 1.20 if is_long else px * 0.80
