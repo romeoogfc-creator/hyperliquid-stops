@@ -387,9 +387,13 @@
       "timestamp": "2026-09-29 01:55:43"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "BNB": {
+      "strategy": "MEAN_REVERSION"
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-05 00:15:30",
+  "last_run_timestamp": "2026-10-05 00:31:32",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -399,12 +403,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791158428.6168683,
-  "last_scan_timestamp": 1791158428.6168683,
+  "last_email_timestamp": 1791160231.3402684,
+  "last_scan_timestamp": 1791160231.3402684,
   "gemini_cache": {
-    "timestamp": 1791158428.6168683,
+    "timestamp": 1791160231.3402684,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating significant volatility driven by macroeconomic uncertainty, regulatory scrutiny, and high sensitivity to shifting interest rate expectations."
+    "briefing": "Risk Level: **HIGH** \u2014 The market is currently grappling with significant volatility driven by shifting macroeconomic expectations, regulatory uncertainty, and heightened sensitivity to geopolitical developments, all of which keep the potential for sharp, rapid price swings elevated."
   },
   "recent_losses": [],
   "last_traded_candle": {
@@ -426,7 +430,8 @@
     "BLUR": 1791003600000,
     "INJ": 1791003600000,
     "SUI": 1791154800000,
-    "kPEPE": 1791158400000
+    "kPEPE": 1791158400000,
+    "BNB": 1791158400000
   },
   "hibernating_until": 0,
   "daily_starting_equity": {
