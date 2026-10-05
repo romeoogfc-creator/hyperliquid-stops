@@ -10,18 +10,9 @@
     }
   ],
   "active_position_cache": {
-    "META": {
-      "entry_px": 745.85,
-      "current_px": 745.39,
-      "qty": 1.0,
-      "side": "long",
-      "peak_roe": -0.0006167459945029649,
-      "best_target_floor_roe": -0.0035,
-      "best_stop_px": 743.2395250000001
-    },
     "NVDA": {
       "entry_px": 237.155609,
-      "current_px": 236.82,
+      "current_px": 236.7305,
       "qty": 41.0,
       "side": "long",
       "peak_roe": 0.00010284808401899737,
@@ -30,7 +21,7 @@
     },
     "SPY": {
       "entry_px": 772.47,
-      "current_px": 773.2357,
+      "current_px": 772.96,
       "qty": 12.0,
       "side": "long",
       "peak_roe": 0.000991235905601414,
@@ -39,7 +30,7 @@
     },
     "TSLA": {
       "entry_px": 377.5828,
-      "current_px": 377.58,
+      "current_px": 376.8975,
       "qty": 25.0,
       "side": "long",
       "peak_roe": -7.4155920238848455e-06,
@@ -48,13 +39,11 @@
     }
   },
   "previous_active_symbols": [
-    "AVGO",
+    "TSLA",
     "NVDA",
-    "META",
-    "SPY",
-    "TSLA"
+    "SPY"
   ],
-  "last_run_timestamp": "2026-10-05 15:48:31",
+  "last_run_timestamp": "2026-10-05 16:16:44",
   "daily_starting_equity": {
     "2026-10-05": 97996.26
   },
