@@ -8,7 +8,11 @@
     "TXN": 0,
     "DKNG": 6
   },
+<<<<<<< Updated upstream
   "last_run_timestamp": "2026-10-05 14:49:11",
+=======
+  "last_run_timestamp": "2026-10-05 14:49:20",
+>>>>>>> Stashed changes
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -20,9 +24,15 @@
   },
   "previous_active_symbols": [
     "META",
+<<<<<<< Updated upstream
     "NVDA",
     "AVGO",
     "SPY",
+=======
+    "SPY",
+    "AVGO",
+    "NVDA",
+>>>>>>> Stashed changes
     "TSLA"
   ],
   "closed_trades_ledger": [
@@ -190,6 +200,7 @@
   "active_position_cache": {
     "AVGO": {
       "entry_px": 358.95963,
+<<<<<<< Updated upstream
       "current_px": 361.325,
       "qty": 27.0,
       "side": "long",
@@ -212,24 +223,62 @@
       "qty": 41.0,
       "side": "long",
       "peak_roe": -0.0004663984143845859,
+=======
+      "current_px": 361.44,
+      "qty": 27.0,
+      "side": "long",
+      "peak_roe": 0.006909885660401404,
+      "best_target_floor_roe": 0.005666106241529151,
+      "best_stop_px": 360.9935334
+    },
+    "META": {
+      "entry_px": 740.24,
+      "current_px": 743.23,
+      "qty": 1.0,
+      "side": "long",
+      "peak_roe": 0.004039230519831418,
+      "best_target_floor_roe": 0.0030294228898735632,
+      "best_stop_px": 742.4825
+    },
+    "NVDA": {
+      "entry_px": 237.155609,
+      "current_px": 237.08,
+      "qty": 41.0,
+      "side": "long",
+      "peak_roe": -0.00031881598887246147,
+>>>>>>> Stashed changes
       "best_target_floor_roe": -0.006693615968528797,
       "best_stop_px": 235.56818042857142
     },
     "SPY": {
       "entry_px": 772.47,
+<<<<<<< Updated upstream
       "current_px": 772.23,
       "qty": 12.0,
       "side": "long",
       "peak_roe": -0.00031069167734670486,
+=======
+      "current_px": 772.295,
+      "qty": 12.0,
+      "side": "long",
+      "peak_roe": -0.000226546014732052,
+>>>>>>> Stashed changes
       "best_target_floor_roe": -0.004,
       "best_stop_px": 769.38012
     },
     "TSLA": {
       "entry_px": 377.5828,
+<<<<<<< Updated upstream
       "current_px": 375.285,
       "qty": 25.0,
       "side": "long",
       "peak_roe": -0.006085552625808154,
+=======
+      "current_px": 375.37,
+      "qty": 25.0,
+      "side": "long",
+      "peak_roe": -0.00586043643937175,
+>>>>>>> Stashed changes
       "best_target_floor_roe": -0.008,
       "best_stop_px": 374.5621376
     }
