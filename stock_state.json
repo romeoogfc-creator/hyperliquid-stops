@@ -1,303 +1,44 @@
 {
-  "stagnation_tracker": {
-    "AVGO": 0,
-    "COIN": 22,
-    "INTC": 0,
-    "MU": 0,
-    "NVDA": 0,
-    "TXN": 0,
-    "DKNG": 6
-  },
-<<<<<<< Updated upstream
-  "last_run_timestamp": "2026-10-05 14:49:11",
-=======
-  "last_run_timestamp": "2026-10-05 14:49:20",
->>>>>>> Stashed changes
-  "ai_shield_cache": {
-    "high_risk_detected": true,
-    "risk_level": "HIGH",
-    "reason": "Equity markets are facing a convergence of risks, including a 10-year Treasury yield surpassing 5%, surging oil prices due to Middle East tensions, and robust economic data fueling aggressive Federal Reserve rate-hike expectations.",
-    "action": "BLOCK_ENTRIES",
-    "ai_market_brief": "US stock markets are under significant pressure as a 're-tightening' cycle takes hold, characterized by surging bond yields and inflationary concerns stemming from rising energy costs. Investors remain cautious as diplomatic efforts between the US and Iran and upcoming US-China high-level summits drive heightened geopolitical volatility.",
-    "timestamp": "2026-09-24 04:34:54",
-    "scan_date": "2026-09-24"
-  },
-  "previous_active_symbols": [
-    "META",
-<<<<<<< Updated upstream
-    "NVDA",
-    "AVGO",
-    "SPY",
-=======
-    "SPY",
-    "AVGO",
-    "NVDA",
->>>>>>> Stashed changes
-    "TSLA"
-  ],
-  "closed_trades_ledger": [
-    {
-      "symbol": "UBER",
-      "entry_price": 69.553972,
-      "exit_price": 69.08,
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.68%)",
-      "realized_pnl": -66.83005200000048,
-      "timestamp": "2026-10-05 14:19:31"
-    },
-    {
-      "symbol": "RBLX",
-      "entry_price": 44.889087,
-      "exit_price": 43.3,
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-3.54%)",
-      "realized_pnl": -348.0100530000014,
-      "timestamp": "2026-10-05 14:19:31"
-    },
-    {
-      "symbol": "NOW",
-      "entry_price": 137.72,
-      "exit_price": 136.05,
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-1.21%)",
-      "realized_pnl": -118.56999999999911,
-      "timestamp": "2026-10-05 14:19:31"
-    },
-    {
-      "symbol": "ORCL",
-      "entry_price": 141.72,
-      "exit_price": 140.9499,
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.54%)",
-      "realized_pnl": -53.136899999998974,
-      "timestamp": "2026-10-02 17:00:35"
-    },
-    {
-      "symbol": "MCHP",
-      "entry_price": 81.303388,
-      "exit_price": 82.84,
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (1.89%)",
-      "realized_pnl": 185.93005200000061,
-      "timestamp": "2026-10-02 16:05:40"
-    },
-    {
-      "symbol": "SMH",
-      "entry_price": 630.224,
-      "exit_price": 631.45,
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.19%)",
-      "realized_pnl": 18.389999999999986,
-      "timestamp": "2026-10-02 15:17:02"
-    },
-    {
-      "symbol": "AVGO",
-      "entry_price": 356.3,
-      "exit_price": 352.99,
-      "exit_reason": "\ud83d\udcc9 1H Trend Invalidation (Close $352.99 < Upper Band $357.91)",
-      "realized_pnl": -89.37000000000006,
-      "timestamp": "2026-10-02 15:17:02"
-    },
-    {
-      "symbol": "AMZN",
-      "entry_price": 252.37,
-      "exit_price": 250.8,
-      "exit_reason": "\ud83d\udcc9 1H Trend Invalidation (Close $250.80 < Upper Band $251.92)",
-      "realized_pnl": -61.229999999999734,
-      "timestamp": "2026-10-02 15:17:02"
-    },
-    {
-      "symbol": "NVDA",
-      "entry_price": 235.68,
-      "exit_price": 236.93,
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.53%)",
-      "realized_pnl": 51.25,
-      "timestamp": "2026-10-02 14:47:38"
-    },
-    {
-      "symbol": "MU",
-      "entry_price": 1088.7125,
-      "exit_price": 1086.45,
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.21%)",
-      "realized_pnl": -18.100000000000364,
-      "timestamp": "2026-10-02 14:47:38"
-    },
-    {
-      "symbol": "AMD",
-      "entry_price": 635.97,
-      "exit_price": 638.435,
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.39%)",
-      "realized_pnl": 36.97499999999877,
-      "timestamp": "2026-10-02 14:47:38"
-    },
-    {
-      "symbol": "ARM",
-      "entry_price": 306.144062,
-      "exit_price": 306.24,
-      "exit_reason": "\ud83d\udcc9 1H Trend Invalidation (Close $306.24 < Upper Band $308.91)",
-      "realized_pnl": 3.0700159999996686,
-      "timestamp": "2026-10-02 13:46:46"
-    },
-    {
-      "symbol": "XLF",
-      "entry_price": 52.97,
-      "exit_price": 53.4401,
-      "exit_reason": "EOD Square-Off (100% Cash Flat)",
-      "realized_pnl": -87.4386000000004,
-      "timestamp": "2026-10-01 19:43:27"
-    },
-    {
-      "symbol": "LLY",
-      "entry_price": 1144.41,
-      "exit_price": 1154.63,
-      "exit_reason": "EOD Square-Off (100% Cash Flat)",
-      "realized_pnl": -81.76000000000022,
-      "timestamp": "2026-10-01 19:43:27"
-    },
-    {
-      "symbol": "ABBV",
-      "entry_price": 259.702432,
-      "exit_price": 260.155,
-      "exit_reason": "EOD Square-Off (100% Cash Flat)",
-      "realized_pnl": -16.745015999999453,
-      "timestamp": "2026-10-01 19:43:27"
-    },
-    {
-      "symbol": "GOOGL",
-      "entry_price": 338.013793,
-      "exit_price": 339.4189,
-      "exit_reason": "\ud83d\udcc8 1H Trend Invalidation (Close $339.42 > Lower Band $338.71)",
-      "realized_pnl": -40.74810299999962,
-      "timestamp": "2026-10-01 17:45:35"
-    },
-    {
-      "symbol": "PFE",
-      "entry_price": 28.22,
-      "exit_price": 28.225,
-      "exit_reason": "\ud83d\udcc8 1H Trend Invalidation (Close $28.23 > Lower Band $28.19)",
-      "realized_pnl": -1.7450000000008927,
-      "timestamp": "2026-10-01 17:15:36"
-    },
-    {
-      "symbol": "DIA",
-      "entry_price": 509.13,
-      "exit_price": 507.965,
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.23%)",
-      "realized_pnl": 22.13500000000039,
-      "timestamp": "2026-10-01 16:34:28"
-    },
-    {
-      "symbol": "AAPL",
-      "entry_price": 329.29,
-      "exit_price": 328.29,
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.30%)",
-      "realized_pnl": 29.0,
-      "timestamp": "2026-10-01 16:34:28"
-    },
-    {
-      "symbol": "WMT",
-      "entry_price": 104.723085,
-      "exit_price": 104.72,
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.00%)",
-      "realized_pnl": 0.2899899999998752,
-      "timestamp": "2026-10-01 15:16:00"
-    }
-  ],
+  "closed_trades_ledger": [],
   "active_position_cache": {
-    "AVGO": {
-      "entry_px": 358.95963,
-<<<<<<< Updated upstream
-      "current_px": 361.325,
-      "qty": 27.0,
-      "side": "long",
-      "peak_roe": 0.0065895153725224875,
-      "best_target_floor_roe": 0.005403402605468439,
-      "best_stop_px": 360.89923339999996
-    },
-    "META": {
-      "entry_px": 740.24,
-      "current_px": 743.3599,
-      "qty": 1.0,
-      "side": "long",
-      "peak_roe": 0.004214714146763252,
-      "best_target_floor_roe": 0.003161035610072439,
-      "best_stop_px": 742.579925
-    },
     "NVDA": {
       "entry_px": 237.155609,
-      "current_px": 237.045,
+      "current_px": 237.18,
       "qty": 41.0,
       "side": "long",
-      "peak_roe": -0.0004663984143845859,
-=======
-      "current_px": 361.44,
-      "qty": 27.0,
-      "side": "long",
-      "peak_roe": 0.006909885660401404,
-      "best_target_floor_roe": 0.005666106241529151,
-      "best_stop_px": 360.9935334
-    },
-    "META": {
-      "entry_px": 740.24,
-      "current_px": 743.23,
-      "qty": 1.0,
-      "side": "long",
-      "peak_roe": 0.004039230519831418,
-      "best_target_floor_roe": 0.0030294228898735632,
-      "best_stop_px": 742.4825
-    },
-    "NVDA": {
-      "entry_px": 237.155609,
-      "current_px": 237.08,
-      "qty": 41.0,
-      "side": "long",
-      "peak_roe": -0.00031881598887246147,
->>>>>>> Stashed changes
+      "peak_roe": 0.00010284808401899737,
       "best_target_floor_roe": -0.006693615968528797,
       "best_stop_px": 235.56818042857142
     },
     "SPY": {
       "entry_px": 772.47,
-<<<<<<< Updated upstream
-      "current_px": 772.23,
+      "current_px": 772.48,
       "qty": 12.0,
       "side": "long",
-      "peak_roe": -0.00031069167734670486,
-=======
-      "current_px": 772.295,
-      "qty": 12.0,
-      "side": "long",
-      "peak_roe": -0.000226546014732052,
->>>>>>> Stashed changes
+      "peak_roe": 1.2945486556100437e-05,
       "best_target_floor_roe": -0.004,
       "best_stop_px": 769.38012
     },
     "TSLA": {
       "entry_px": 377.5828,
-<<<<<<< Updated upstream
-      "current_px": 375.285,
+      "current_px": 377.49,
       "qty": 25.0,
       "side": "long",
-      "peak_roe": -0.006085552625808154,
-=======
-      "current_px": 375.37,
-      "qty": 25.0,
-      "side": "long",
-      "peak_roe": -0.00586043643937175,
->>>>>>> Stashed changes
+      "peak_roe": -0.00024577390707418634,
       "best_target_floor_roe": -0.008,
       "best_stop_px": 374.5621376
     }
   },
+  "previous_active_symbols": [
+    "SPY",
+    "TSLA",
+    "NVDA"
+  ],
+  "last_run_timestamp": "2026-10-05 15:18:38",
   "daily_starting_equity": {
-    "2026-09-22": 101022.53,
-    "2026-09-23": 100687.3,
-    "2026-09-24": 100687.3,
-    "2026-09-25": 100687.3,
-    "2026-09-28": 100687.3,
-    "2026-09-29": 100687.3,
-    "2026-09-30": 100687.3,
-    "2026-10-01": 100687.3,
-    "2026-10-02": 98500.07,
-    "2026-10-05": 98489.96
+    "2026-10-05": 97996.26
   },
   "daily_peak_equity": {
-    "2026-10-01": 98501.9,
-    "2026-10-02": 98794.7,
-    "2026-10-05": 98489.96
+    "2026-10-05": 97996.26
   }
 }
