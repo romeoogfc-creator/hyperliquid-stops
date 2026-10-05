@@ -250,7 +250,7 @@ def calculate_adaptive_stock_stop(entry_px, is_long, current_px, atr_val, peak_r
     # 6. Post-10:30 AM Instant Break-Even Shield (+0.10% Peak -> +0.03% Floor)
     elif is_post_1030_ct and peak_roe >= 0.0010:
         target_floor_roe = 0.0003
-        leash_status = f"🛡️️ Late-Morning Break-Even Shield [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+        leash_status = f"🛡 Late-Morning Break-Even Shield [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
 
     # 7. Standard Micro Break-Even Shield (+0.20% Peak -> +0.05% Floor)
     elif peak_roe >= 0.0020:
@@ -314,6 +314,7 @@ def execute_stock_engine():
     today_peak_eq = daily_peak_dict[today_str]
     today_total_gain = equity - today_start_eq
     giveback_from_peak = today_peak_eq - equity
+    daily_loss_usd = today_start_eq - equity
     lifetime_cumulative_pnl = equity - 100000.0
 
     audit_logs.append(f"Equity Metrics: Today Start: ${today_start_eq:.2f} | Peak: ${today_peak_eq:.2f} | Current: ${equity:.2f} (Giveback: ${giveback_from_peak:.2f})")
@@ -557,16 +558,17 @@ def execute_stock_engine():
 
     MAX_STOCK_SLOTS = 5
     
-    # --- TIME-WINDOWED ENTRY REGULATION ---
-    is_prime_morning_window = (8 <= ct_now.hour < 11) or (ct_now.hour == 11 and ct_now.minute <= 30)
+    # --- TIME-WINDOWED ENTRY REGULATION & LOCKOUTS ---
+    is_opening_bell_lockout = (ct_now.hour < 9) or (ct_now.hour == 9 and ct_now.minute < 30)
+    is_prime_morning_window = (ct_now.hour == 9 and ct_now.minute >= 30) or (10 <= ct_now.hour < 11) or (ct_now.hour == 11 and ct_now.minute <= 30)
     is_midday_window = (ct_now.hour == 11 and ct_now.minute > 30) or (ct_now.hour == 12) or (ct_now.hour == 13 and ct_now.minute < 30)
     is_afternoon_lockout = (ct_now.hour == 13 and ct_now.minute >= 30) or (ct_now.hour >= 14)
     is_post_1030_ct = (ct_now.hour > 10) or (ct_now.hour == 10 and ct_now.minute >= 30)
 
-    # --- TIGHTENED DAILY PEAK HIGH-WATER LOCK SHIELD ($150 GIVEBACK CAP) ---
-    peak_giveback_lockout = giveback_from_peak >= 150.0 and (today_peak_eq > today_start_eq)
+    # --- HARDENED HIGH-WATER & DAILY DRAWDOWN LOCKOUT SHIELD ($150 CAP) ---
+    peak_giveback_lockout = (giveback_from_peak >= 150.0) or (daily_loss_usd >= 150.0)
     if peak_giveback_lockout:
-        audit_logs.append(f"🛡️ HIGH-WATER SHIELD ACTIVE: Gave back ${giveback_from_peak:.2f} from intra-day peak (${today_peak_eq:.2f}). Blocking new trades to preserve gains.")
+        audit_logs.append(f"🛡️ HIGH-WATER SHIELD ACTIVE: Drawdown/Giveback exceeds $150 cap (Loss: ${daily_loss_usd:.2f}, Giveback: ${giveback_from_peak:.2f}). Blocking new trades.")
 
     watchlist = [
         "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "AVGO", "QCOM",
@@ -637,32 +639,33 @@ def execute_stock_engine():
                 if vol_ratio < 1.50:
                     continue
 
-            upper, lower, filter_band = calculate_gaussian_channel(closes)
-            current_close = closes[-1]
-            prev_close = closes[-2]
+            upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
+            comp_close = closes[-2]
+            prev_close = closes[-3]
+            live_close = closes[-1]
             live_open = opens[-1]
 
-            # LIVE CANDLE DIRECTION CONFIRMATION
-            is_candle_green = current_close > live_open
-            is_candle_red = current_close < live_open
+            # LIVE CANDLE DIRECTION & HOLD CONFIRMATION
+            is_candle_green = (live_close > live_open) and (live_close >= comp_close)
+            is_candle_red = (live_close < live_open) and (live_close <= comp_close)
 
             # OVEREXTENSION CEILING (Skip overextended breakouts > 1.5%)
-            if current_close > upper * 1.015 or current_close < lower * 0.985:
+            if live_close > upper * 1.015 or live_close < lower * 0.985:
                 continue
 
             candidate_obj = None
             if spy_regime in ["GREEN", "NEUTRAL"]:
-                if current_close > upper and prev_close <= upper and is_candle_green and current_close >= prev_close:
+                if comp_close > upper and prev_close <= upper and is_candle_green:
                     candidate_obj = {
-                        "symbol": symbol, "close": current_close, "is_long": True,
-                        "score": (current_close - upper) / upper, "ci": ci
+                        "symbol": symbol, "close": live_close, "is_long": True,
+                        "score": (live_close - upper) / upper, "ci": ci
                     }
 
             if spy_regime in ["RED", "NEUTRAL"] and candidate_obj is None:
-                if current_close < lower and prev_close >= lower and is_candle_red and current_close <= prev_close:
+                if comp_close < lower and prev_close >= lower and is_candle_red:
                     candidate_obj = {
-                        "symbol": symbol, "close": current_close, "is_long": False,
-                        "score": (lower - current_close) / lower, "ci": ci
+                        "symbol": symbol, "close": live_close, "is_long": False,
+                        "score": (lower - live_close) / lower, "ci": ci
                     }
 
             if candidate_obj:
@@ -672,8 +675,14 @@ def execute_stock_engine():
     audit_logs.append(f"1H Adaptive Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} validated triggers.")
 
     # --- EXECUTION GATE WITH TIME-WINDOWED CAPITAL REGULATION ---
-    if is_afternoon_lockout or is_eod_square_off or peak_giveback_lockout or is_daily_max_loss_triggered:
-        gate_reason = "Daily Max Loss Cap" if is_daily_max_loss_triggered else ("Afternoon Cutoff (1:30 PM+ CT)" if is_afternoon_lockout else ("Peak Giveback Lockout ($150 Shield)" if peak_giveback_lockout else "EOD Square-Off"))
+    if is_opening_bell_lockout or is_afternoon_lockout or is_eod_square_off or peak_giveback_lockout or is_daily_max_loss_triggered:
+        gate_reason = (
+            "Daily Max Loss Cap (-2.5%)" if is_daily_max_loss_triggered else (
+            "Peak/Daily Giveback Shield ($150 Cap)" if peak_giveback_lockout else (
+            "Opening Bell Lockout (Before 9:30 AM CT)" if is_opening_bell_lockout else (
+            "Afternoon Cutoff (1:30 PM+ CT)" if is_afternoon_lockout else "EOD Square-Off"
+            )))
+        )
         audit_logs.append(f"Execution Gate BLOCKED: {gate_reason}. No new entries allowed.")
     elif active_count < MAX_STOCK_SLOTS and market_candidates:
         for candidate in market_candidates[: (MAX_STOCK_SLOTS - active_count)]:
@@ -895,13 +904,14 @@ def execute_stock_engine():
               &bull; <b>SPY Macro Regime Shield:</b> Enforces broad market direction alignment<br>
               &bull; <b>1H Trend Invalidation & ATR Buffer:</b> Cuts losses fast on reversals with proper noise room<br>
               &bull; <b>Tiered Tight-Ratchet (88%–95% Peak Lock):</b> Locks 88% to 95% on major runners<br>
-              &bull; <b>Morning Power Window (8:00–11:30 AM CT):</b> Full 10% NAV (~$10k) sizing on clean trends<br>
+              &bull; <b>Opening Bell Lockout (Before 9:30 AM CT):</b> Blocks entries prior to 9:30 AM CT to avoid open traps<br>
+              &bull; <b>Morning Power Window (9:30–11:30 AM CT):</b> Full 10% NAV (~$10k) sizing on clean completed trends<br>
               &bull; <b>Post-10:30 AM CT Volume & Expansion Filter:</b> Enforces &gt;1.5x Volume surge to enter late morning trades<br>
               &bull; <b>Post-10:30 AM CT Hard Risk Cap (&minus;0.35% ROE):</b> Tightens initial downside risk on late trades<br>
               &bull; <b>Midday Micro Window (11:30 AM–1:30 PM CT):</b> Capped at $1,000 Micro Sizing<br>
               &bull; <b>Afternoon Lockout (1:30 PM CT+):</b> Strictly 0 new entries allowed<br>
               &bull; <b>1:30 PM Stagnation Clean-up:</b> Exits floating losing trades early before EOD chop<br>
-              &bull; <b>High-Water Giveback Shield ($150 Cap):</b> Blocks trading if giving back &gt;$150 from intra-day peak<br>
+              &bull; <b>High-Water & Drawdown Shield ($150 Cap):</b> Hard-blocks trading if drawdown or giveback hits $150<br>
               &bull; <b>Daily Anti-Wipeout Shield (-2.5% Cap):</b> Emergency flattens account if daily loss hits -2.5%
             </div>
 
