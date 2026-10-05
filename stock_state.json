@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-10-05 14:19:46",
+  "last_run_timestamp": "2026-10-05 14:49:11",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -19,11 +19,11 @@
     "scan_date": "2026-09-24"
   },
   "previous_active_symbols": [
-    "UBER",
     "META",
-    "NOW",
     "NVDA",
-    "RBLX"
+    "AVGO",
+    "SPY",
+    "TSLA"
   ],
   "closed_trades_ledger": [
     {
@@ -188,23 +188,50 @@
     }
   ],
   "active_position_cache": {
+    "AVGO": {
+      "entry_px": 358.95963,
+      "current_px": 361.325,
+      "qty": 27.0,
+      "side": "long",
+      "peak_roe": 0.0065895153725224875,
+      "best_target_floor_roe": 0.005403402605468439,
+      "best_stop_px": 360.89923339999996
+    },
     "META": {
       "entry_px": 740.24,
-      "current_px": 740.68,
+      "current_px": 743.3599,
       "qty": 1.0,
       "side": "long",
-      "peak_roe": 0.0005944018156272842,
-      "best_target_floor_roe": -0.005866823115283066,
-      "best_stop_px": 735.8971428571429
+      "peak_roe": 0.004214714146763252,
+      "best_target_floor_roe": 0.003161035610072439,
+      "best_stop_px": 742.579925
     },
     "NVDA": {
       "entry_px": 237.155609,
-      "current_px": 236.54,
+      "current_px": 237.045,
       "qty": 41.0,
       "side": "long",
-      "peak_roe": -0.0025958019824865552,
+      "peak_roe": -0.0004663984143845859,
       "best_target_floor_roe": -0.006693615968528797,
       "best_stop_px": 235.56818042857142
+    },
+    "SPY": {
+      "entry_px": 772.47,
+      "current_px": 772.23,
+      "qty": 12.0,
+      "side": "long",
+      "peak_roe": -0.00031069167734670486,
+      "best_target_floor_roe": -0.004,
+      "best_stop_px": 769.38012
+    },
+    "TSLA": {
+      "entry_px": 377.5828,
+      "current_px": 375.285,
+      "qty": 25.0,
+      "side": "long",
+      "peak_roe": -0.006085552625808154,
+      "best_target_floor_roe": -0.008,
+      "best_stop_px": 374.5621376
     }
   },
   "daily_starting_equity": {
