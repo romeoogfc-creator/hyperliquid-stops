@@ -402,18 +402,18 @@
   "active_position_cache": {
     "BTC": {
       "entry_px": 86473.0,
-      "current_px": 85937.5,
+      "current_px": 85914.5,
       "szi": -0.00012,
-      "margin": 10.314,
+      "margin": 10.3098,
       "side": "SHORT",
-      "peak_roe": 0.006192684421727013,
+      "peak_roe": 0.006458663397823598,
       "strategy": "MEAN_REVERSION"
     }
   },
   "previous_active_coins": [
     "BTC"
   ],
-  "last_run_timestamp": "2026-10-05 04:11:36",
+  "last_run_timestamp": "2026-10-05 04:15:35",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -426,9 +426,9 @@
   "last_email_timestamp": 1791172823.120491,
   "last_scan_timestamp": 1791167429.1200366,
   "gemini_cache": {
-    "timestamp": 1791173490.2968636,
+    "timestamp": 1791173730.5476446,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nCrypto markets currently face significant volatility driven by uncertainty regarding Federal Reserve interest rate policy, ongoing regulatory developments, and potential large-scale sell-offs from institutional liquidations, warranting a cautious approach."
+    "briefing": "**Risk Level: HIGH**\n\nCrypto markets currently face significant uncertainty driven by shifting macroeconomic expectations, potential regulatory volatility, and heightened sensitivity to geopolitical instability, which collectively create a high-volatility environment for investors."
   },
   "recent_losses": [],
   "last_traded_candle": {
