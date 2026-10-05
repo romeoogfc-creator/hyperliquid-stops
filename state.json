@@ -399,9 +399,13 @@
       "timestamp": "2026-09-29 01:55:43"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "BTC": {
+      "strategy": "MEAN_REVERSION"
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-05 02:15:31",
+  "last_run_timestamp": "2026-10-05 02:31:22",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -411,18 +415,18 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791166414.5534124,
-  "last_scan_timestamp": 1791165631.7986653,
+  "last_email_timestamp": 1791167429.1200366,
+  "last_scan_timestamp": 1791167429.1200366,
   "gemini_cache": {
-    "timestamp": 1791165631.7986653,
+    "timestamp": 1791167429.1200366,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic uncertainty, shifting regulatory landscapes, and significant volatility surrounding global liquidity, necessitating extreme caution for investors."
+    "briefing": "**Risk Level: HIGH** \n\nCrypto markets are currently facing elevated risk due to tightening global liquidity, persistent regulatory uncertainty, and fragile macroeconomic sentiment that leaves digital assets highly vulnerable to sudden, sharp deleveraging events."
   },
   "recent_losses": [],
   "last_traded_candle": {
     "WLD": 1790870400000,
     "LTC": 1790902800000,
-    "BTC": 1790913600000,
+    "BTC": 1791165600000,
     "FET": 1790971200000,
     "ADA": 1790917200000,
     "kBONK": 1790917200000,
