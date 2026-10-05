@@ -413,18 +413,18 @@
   "active_position_cache": {
     "PYTH": {
       "entry_px": 0.076212,
-      "current_px": 0.076459,
+      "current_px": 0.076331,
       "szi": -197.0,
-      "margin": 15.063408,
+      "margin": 15.033661,
       "side": "SHORT",
-      "peak_roe": -0.0032409594289612817,
+      "peak_roe": -0.0015614338949246065,
       "strategy": "BREAKOUT"
     }
   },
   "previous_active_coins": [
     "PYTH"
   ],
-  "last_run_timestamp": "2026-10-05 16:12:38",
+  "last_run_timestamp": "2026-10-05 16:15:37",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
