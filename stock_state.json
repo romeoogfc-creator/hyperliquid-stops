@@ -12,32 +12,32 @@
   "active_position_cache": {
     "SPY": {
       "entry_px": 772.47,
-      "current_px": 774.14,
+      "current_px": 774.74,
       "qty": 12.0,
       "side": "long",
-      "peak_roe": 0.0022525146607635365,
+      "peak_roe": 0.0029386254482374483,
       "best_target_floor_roe": 0.0003,
       "best_stop_px": 772.701741
     },
     "TSLA": {
       "entry_px": 377.5828,
-      "current_px": 378.8062,
+      "current_px": 379.945,
       "qty": 25.0,
       "side": "long",
-      "peak_roe": 0.003240084029251252,
-      "best_target_floor_roe": 0.0003,
-      "best_stop_px": 377.69607484
+      "peak_roe": 0.006256111242355247,
+      "best_target_floor_roe": 0.0051300112187313025,
+      "best_stop_px": 379.519804
     }
   },
   "previous_active_symbols": [
-    "TSLA",
-    "SPY"
+    "SPY",
+    "TSLA"
   ],
-  "last_run_timestamp": "2026-10-05 17:14:13",
+  "last_run_timestamp": "2026-10-05 17:46:31",
   "daily_starting_equity": {
     "2026-10-05": 97996.26
   },
   "daily_peak_equity": {
-    "2026-10-05": 97996.26
+    "2026-10-05": 98010.85
   }
 }
