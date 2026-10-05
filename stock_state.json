@@ -8,7 +8,7 @@
     "TXN": 0,
     "DKNG": 6
   },
-  "last_run_timestamp": "2026-10-05 13:49:13",
+  "last_run_timestamp": "2026-10-05 14:19:46",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -18,8 +18,38 @@
     "timestamp": "2026-09-24 04:34:54",
     "scan_date": "2026-09-24"
   },
-  "previous_active_symbols": [],
+  "previous_active_symbols": [
+    "UBER",
+    "META",
+    "NOW",
+    "NVDA",
+    "RBLX"
+  ],
   "closed_trades_ledger": [
+    {
+      "symbol": "UBER",
+      "entry_price": 69.553972,
+      "exit_price": 69.08,
+      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.68%)",
+      "realized_pnl": -66.83005200000048,
+      "timestamp": "2026-10-05 14:19:31"
+    },
+    {
+      "symbol": "RBLX",
+      "entry_price": 44.889087,
+      "exit_price": 43.3,
+      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-3.54%)",
+      "realized_pnl": -348.0100530000014,
+      "timestamp": "2026-10-05 14:19:31"
+    },
+    {
+      "symbol": "NOW",
+      "entry_price": 137.72,
+      "exit_price": 136.05,
+      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-1.21%)",
+      "realized_pnl": -118.56999999999911,
+      "timestamp": "2026-10-05 14:19:31"
+    },
     {
       "symbol": "ORCL",
       "entry_price": 141.72,
@@ -155,33 +185,28 @@
       "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.00%)",
       "realized_pnl": 0.2899899999998752,
       "timestamp": "2026-10-01 15:16:00"
-    },
-    {
-      "symbol": "SBUX",
-      "entry_price": 93.78,
-      "exit_price": 94.62,
-      "exit_reason": "\ud83d\udcc8 1H Trend Invalidation (Close $94.62 > Lower Band $94.23)",
-      "realized_pnl": -8.400000000000034,
-      "timestamp": "2026-10-01 14:17:58"
-    },
-    {
-      "symbol": "V",
-      "entry_price": 361.24,
-      "exit_price": 360.34,
-      "exit_reason": "EOD Square-Off (100% Cash Flat)",
-      "realized_pnl": 31.500000000001194,
-      "timestamp": "2026-09-30 19:43:20"
-    },
-    {
-      "symbol": "SNOW",
-      "entry_price": 346.6,
-      "exit_price": 341.4675,
-      "exit_reason": "EOD Square-Off (100% Cash Flat)",
-      "realized_pnl": -10.2650000000001,
-      "timestamp": "2026-09-30 19:43:20"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "META": {
+      "entry_px": 740.24,
+      "current_px": 740.68,
+      "qty": 1.0,
+      "side": "long",
+      "peak_roe": 0.0005944018156272842,
+      "best_target_floor_roe": -0.005866823115283066,
+      "best_stop_px": 735.8971428571429
+    },
+    "NVDA": {
+      "entry_px": 237.155609,
+      "current_px": 236.54,
+      "qty": 41.0,
+      "side": "long",
+      "peak_roe": -0.0025958019824865552,
+      "best_target_floor_roe": -0.006693615968528797,
+      "best_stop_px": 235.56818042857142
+    }
+  },
   "daily_starting_equity": {
     "2026-09-22": 101022.53,
     "2026-09-23": 100687.3,
