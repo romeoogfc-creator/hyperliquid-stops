@@ -242,7 +242,7 @@ def sync_native_trigger_orders(exchange, info, coin, is_long, sz, stop_px, tp_px
 
     except Exception as e:
         if audit_logs is not None:
-            audit_logs.append(f"⚠️️ Native TPSL sync warning on {coin}: {e}")
+            audit_logs.append(f"⚠ Native TPSL sync warning on {coin}: {e}")
 
 # ==============================================================================
 # TECHNICAL INDICATORS
@@ -730,7 +730,7 @@ def execute_engine():
     MAX_CRYPTO_SLOTS = 1
     available_slots = MAX_CRYPTO_SLOTS - active_count
 
-    base_sizing_usd = 10.0
+    base_sizing_usd = 15.0
 
     if is_30m_scan_window and available_slots > 0:
         if effective_regime == "NEUTRAL":
@@ -881,9 +881,16 @@ def execute_engine():
             
             decimals = sz_decimals_map.get(coin, 4)
             raw_sz = base_sizing_usd / px
-            sz = round(raw_sz, decimals)
+
+            # Force ceiling rounding UP to guarantee order value exceeds $10.00 MinTradeNtl
             if decimals == 0:
-                sz = int(sz)
+                sz = int(np.ceil(raw_sz))
+            else:
+                sz = round(np.ceil(raw_sz * (10 ** decimals)) / (10 ** decimals), decimals)
+
+            # Extra Safety Fallback: Ensure value never drops below $10.50
+            if (sz * px) < 10.50:
+                sz = round(sz + (10 ** -decimals), decimals)
 
             if sz <= 0:
                 audit_logs.append(f"⚠️ Sizing guard skipped {coin}: calculated size {sz} <= 0 (Price: ${px:.2f})")
@@ -926,7 +933,7 @@ def execute_engine():
                         "status": "🛡️ Anti-Wick Buffer & Initial +20% TP Active (Native Orderbook TPSL)"
                     })
 
-                    audit_logs.append(f"1H EXECUTION SUCCESS [{strat_used}]: Opened {'LONG' if is_long else 'SHORT'} on {coin} (Size: {sz} ~${base_sizing_usd:.2f})")
+                    audit_logs.append(f"1H EXECUTION SUCCESS [{strat_used}]: Opened {'LONG' if is_long else 'SHORT'} on {coin} (Size: {sz} ~${(sz * px):.2f})")
 
             except Exception as e:
                 audit_logs.append(f"EXECUTION FAILED on {coin}: {e}")
