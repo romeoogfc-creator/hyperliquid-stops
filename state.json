@@ -413,18 +413,18 @@
   "active_position_cache": {
     "PYTH": {
       "entry_px": 0.076212,
-      "current_px": 0.076331,
+      "current_px": 0.075888,
       "szi": -197.0,
-      "margin": 15.033661,
+      "margin": 14.952694,
       "side": "SHORT",
-      "peak_roe": -0.0015614338949246065,
+      "peak_roe": 0.004251299008030295,
       "strategy": "BREAKOUT"
     }
   },
   "previous_active_coins": [
     "PYTH"
   ],
-  "last_run_timestamp": "2026-10-05 16:15:37",
+  "last_run_timestamp": "2026-10-05 16:30:33",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -434,12 +434,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791216032.2978225,
+  "last_email_timestamp": 1791217828.363591,
   "last_scan_timestamp": 1791216032.2978225,
   "gemini_cache": {
-    "timestamp": 1791216032.2978225,
+    "timestamp": 1791217828.363591,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market is currently grappling with significant volatility driven by shifting macroeconomic expectations, regulatory uncertainty, and the potential for large-scale liquidations, necessitating extreme caution for investors."
+    "briefing": "**Risk Level: HIGH** \n\nDriven by persistent macroeconomic uncertainty, potential regulatory crackdowns, and fragile market liquidity, cryptocurrencies face an elevated threat of sharp downside volatility and capital outflows in the near term."
   },
   "recent_losses": [],
   "last_traded_candle": {
