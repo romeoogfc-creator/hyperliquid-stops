@@ -242,7 +242,7 @@ def sync_native_trigger_orders(exchange, info, coin, is_long, sz, stop_px, tp_px
 
     except Exception as e:
         if audit_logs is not None:
-            audit_logs.append(f"⚠ Native TPSL sync warning on {coin}: {e}")
+            audit_logs.append(f"⚠️ Native TPSL sync warning on {coin}: {e}")
 
 # ==============================================================================
 # TECHNICAL INDICATORS
@@ -529,7 +529,7 @@ def execute_engine():
 
     if gemini_risk == "HIGH":
         required_vol_ratio = 1.25
-        audit_logs.append(f"⚠ Gemini Macro Risk HIGH: Balanced breakout volume gate >= {required_vol_ratio:.2f}x")
+        audit_logs.append(f"⚠️ Gemini Macro Risk HIGH: Balanced breakout volume gate >= {required_vol_ratio:.2f}x")
     elif gemini_risk == "MODERATE":
         required_vol_ratio = 1.18
         audit_logs.append(f"ℹ Gemini Macro Risk MODERATE: Balanced breakout volume gate >= {required_vol_ratio:.2f}x")
