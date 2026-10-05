@@ -402,18 +402,18 @@
   "active_position_cache": {
     "BTC": {
       "entry_px": 86473.0,
-      "current_px": 86671.5,
+      "current_px": 86571.5,
       "szi": -0.00012,
-      "margin": 10.399836,
+      "margin": 10.38858,
       "side": "SHORT",
-      "peak_roe": -0.0022955142067466144,
+      "peak_roe": -0.001139083875891897,
       "strategy": "MEAN_REVERSION"
     }
   },
   "previous_active_coins": [
     "BTC"
   ],
-  "last_run_timestamp": "2026-10-05 02:45:31",
+  "last_run_timestamp": "2026-10-05 02:56:06",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -423,12 +423,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791167429.1200366,
+  "last_email_timestamp": 1791168960.203292,
   "last_scan_timestamp": 1791167429.1200366,
   "gemini_cache": {
-    "timestamp": 1791167429.1200366,
+    "timestamp": 1791168960.203292,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nCrypto markets are currently facing elevated risk due to tightening global liquidity, persistent regulatory uncertainty, and fragile macroeconomic sentiment that leaves digital assets highly vulnerable to sudden, sharp deleveraging events."
+    "briefing": "**Risk Level: HIGH**\n\nDriven by heightened macroeconomic uncertainty, regulatory crackdowns, and severe market volatility, the current crypto landscape faces extreme downside vulnerability and systemic liquidity risks."
   },
   "recent_losses": [],
   "last_traded_candle": {
