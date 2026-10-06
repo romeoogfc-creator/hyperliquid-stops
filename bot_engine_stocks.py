@@ -59,8 +59,7 @@ def get_central_time():
     
     is_dst = dst_start <= utc_now < dst_end
     offset = -5 if is_dst else -6
-    central_time = utc_now + timedelta(hours=offset)
-    return central_time
+    return utc_now + timedelta(hours=offset)
 
 def load_state():
     default_state = {
@@ -145,7 +144,7 @@ def round_sig_figs(val, sig_figs=5):
 # NATIVE ALPACA ORDERBOOK TRIGGER STOP MANAGERS
 # ==============================================================================
 def cancel_alpaca_native_orders(symbol, open_orders):
-    """Cancels any open resting orders for a specific symbol on Alpaca."""
+    """Cancels open resting orders for a symbol on Alpaca."""
     for o in open_orders:
         if o.get("symbol") == symbol:
             try:
@@ -154,10 +153,7 @@ def cancel_alpaca_native_orders(symbol, open_orders):
                 pass
 
 def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, audit_logs=None):
-    """
-    Submits and syncs a native resting stop order directly on Alpaca's matching engine.
-    Ensures millisecond execution while the Python script sleeps.
-    """
+    """Submits and syncs a native resting stop order on Alpaca's matching engine."""
     try:
         clean_stop_px = round(stop_px, 2)
         close_side = "sell" if is_long else "buy"
@@ -199,7 +195,7 @@ def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, 
             audit_logs.append(f"⚠️ Alpaca Native Stop Sync warning on {symbol}: {e}")
 
 # ==============================================================================
-# TECHNICAL INDICATORS & RATCHET ENGINE
+# TECHNICAL INDICATORS & SMART PROTECTION ENGINE
 # ==============================================================================
 def calculate_gaussian_channel(closes, poles=4, period=50, mult=1.414):
     s = pd.Series(closes)
@@ -213,7 +209,6 @@ def calculate_gaussian_channel(closes, poles=4, period=50, mult=1.414):
     return upper.iloc[-1], lower.iloc[-1], filtered.iloc[-1]
 
 def calculate_choppiness_index(highs, lows, closes, period=14):
-    """Calculates Choppiness Index dynamically over the LATEST `period` bars."""
     try:
         if len(closes) < period + 1:
             return 50.0
@@ -245,61 +240,69 @@ def calculate_atr(highs, lows, closes, period=14):
     except Exception:
         return 1.0
 
-def calculate_adaptive_stock_stop(entry_px, is_long, current_px, atr_val, peak_roe=0.0, ct_now=None):
+def analyze_live_stock_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_long):
+    """Analyzes live equity candle structure to detect true dumps vs absorption wicks."""
+    c_range = c_high - c_low if c_high > c_low else 1e-8
+    body_sz = abs(curr_px - c_open)
+    body_ratio = body_sz / c_range
+
+    if is_long:
+        dist_to_low_pct = (curr_px - c_low) / c_range if c_range > 0 else 1.0
+        lower_wick_ratio = (min(c_open, curr_px) - c_low) / c_range
+        
+        if lower_wick_ratio >= 0.40:
+            return False, "Liquidity Absorption Wick Detected (Holding)"
+            
+        is_full_red_body = (curr_px < c_open) and (body_ratio >= 0.60) and (dist_to_low_pct <= 0.15)
+        if is_full_red_body and vol_ratio >= 1.4:
+            return True, f"🚨 True Falling Knife (Red Body: {body_ratio*100:.0f}%, Vol: {vol_ratio:.1f}x)"
+    else:
+        dist_to_high_pct = (c_high - curr_px) / c_range if c_range > 0 else 1.0
+        upper_wick_ratio = (c_high - max(c_open, curr_px)) / c_range
+        
+        if upper_wick_ratio >= 0.40:
+            return False, "Liquidity Absorption Wick Detected (Holding)"
+            
+        is_full_green_body = (curr_px > c_open) and (body_ratio >= 0.60) and (dist_to_high_pct <= 0.15)
+        if is_full_green_body and vol_ratio >= 1.4:
+            return True, f"🚨 True Rising Knife (Green Body: {body_ratio*100:.0f}%, Vol: {vol_ratio:.1f}x)"
+            
+    return False, "Normal Price Action"
+
+def calculate_smart_stock_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0):
+    """Computes dynamic ATR structural stop and asymmetric profit locks."""
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
         roe = (entry_px - current_px) / entry_px
 
-    is_post_1030_ct = False
-    if ct_now:
-        is_post_1030_ct = (ct_now.hour > 10) or (ct_now.hour == 10 and ct_now.minute >= 30)
+    # Dynamic ATR Volatility Buffer (0.50% to 1.20% bounds)
+    atr_roe_buffer = (atr_val * 1.2) / entry_px if entry_px > 0 else 0.008
+    atr_roe_buffer = max(0.0050, min(0.0120, atr_roe_buffer))
 
-    # POST-10:30 AM CT STRICT RISK BUFFER (-0.35% Max Downside Cap)
-    if is_post_1030_ct:
-        atr_roe_buffer = 0.0035
+    if is_long:
+        structure_stop = (entry_candle_low / entry_px) - 1.0 if entry_px > 0 else -atr_roe_buffer
+        initial_floor_roe = max(-atr_roe_buffer, structure_stop)
     else:
-        atr_roe_buffer = (atr_val * 0.8) / entry_px if entry_px > 0 else 0.005
-        atr_roe_buffer = max(0.0040, min(0.0080, atr_roe_buffer))
+        structure_stop = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else -atr_roe_buffer
+        initial_floor_roe = max(-atr_roe_buffer, structure_stop)
 
-    # 1. Parabolic Moonshot (+3.00%+ ROE) -> 95% Peak Lock
-    if peak_roe >= 0.0300:
-        target_floor_roe = max(peak_roe * 0.95, peak_roe - 0.0020)
-        leash_status = f"🚀 PARABOLIC MOONSHOT 95% Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-
-    # 2. Strong Major Runner (+1.80%+ ROE) -> 92% Peak Lock
-    elif peak_roe >= 0.0180:
-        target_floor_roe = max(peak_roe * 0.92, peak_roe - 0.0025)
-        leash_status = f"🚀 MAJOR RUNNER 92% Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-
-    # 3. Core Expansion (+1.00%+ ROE) -> 88% Peak Lock
-    elif peak_roe >= 0.0100:
-        target_floor_roe = max(peak_roe * 0.88, peak_roe - 0.0030)
-        leash_status = f"🎯 Core Expansion 88% Lock [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-
-    # 4. Solid Lock (+0.60%+ ROE) -> 82% Peak Lock
-    elif peak_roe >= 0.0060:
-        target_floor_roe = peak_roe * 0.82
-        leash_status = f"📈 Solid Lock 82% [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-
-    # 5. Micro Lock (+0.35%+ ROE) -> 75% Peak Lock
-    elif peak_roe >= 0.0035:
+    # Asymmetric Profit Ratchets
+    if peak_roe >= 0.0300:      # +3.00%+ Peak ROE: Lock 90%
+        target_floor_roe = peak_roe * 0.90
+        leash_status = f"🚀 PARABOLIC MOONSHOT [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+    elif peak_roe >= 0.0150:    # +1.50% Peak ROE: Lock 85%
+        target_floor_roe = peak_roe * 0.85
+        leash_status = f"🌕 MAJOR RUNNER [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+    elif peak_roe >= 0.0080:    # +0.80% Peak ROE: Lock 75%
         target_floor_roe = peak_roe * 0.75
-        leash_status = f"📈 Micro Lock 75% [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-
-    # 6. Post-10:30 AM Instant Break-Even Shield (+0.10% Peak -> +0.03% Floor)
-    elif is_post_1030_ct and peak_roe >= 0.0010:
-        target_floor_roe = 0.0003
-        leash_status = f"🛡 Late-Morning Break-Even Shield [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-
-    # 7. Standard Micro Break-Even Shield (+0.20% Peak -> +0.05% Floor)
-    elif peak_roe >= 0.0020:
-        target_floor_roe = 0.0005
-        leash_status = f"🛡️ Micro Break-Even Shield [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-
+        leash_status = f"📈 PROFIT LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+    elif peak_roe >= 0.0030:    # +0.30% Peak ROE: Break-Even Shield (+0.10% floor)
+        target_floor_roe = 0.0010
+        leash_status = f"🛡️ BREAK-EVEN SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +0.10%]"
     else:
-        target_floor_roe = -atr_roe_buffer
-        leash_status = f"⚡ Capped Loss Buffer (-{atr_roe_buffer*100:.2f}%)"
+        target_floor_roe = initial_floor_roe
+        leash_status = f"⚡ STRUCTURAL STOP ({target_floor_roe*100:.2f}%)"
 
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
@@ -315,7 +318,7 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Engine Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Master Engine Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing API Key credentials in environment variables.")
@@ -337,7 +340,6 @@ def execute_stock_engine():
     cash = float(account_data.get("cash", 100000.0))
     margin_util_pct = ((equity - cash) / equity * 100) if equity > 0 else 0.0
 
-    # --- TRACK DAILY PEAK EQUITY & STARTING EQUITY ---
     daily_starting_dict = state.get("daily_starting_equity", {})
     daily_peak_dict = state.get("daily_peak_equity", {})
 
@@ -365,7 +367,7 @@ def execute_stock_engine():
     orders_res = api_retry(requests.get, f"{BASE_URL}/v2/orders?status=open", headers=HEADERS)
     open_orders = orders_res.json() if orders_res.status_code == 200 else []
 
-    # --- ANTI-WIPEOUT SHIELD #1: DAILY MAX LOSS CIRCUIT BREAKER (-2.5%) ---
+    # ANTI-WIPEOUT SHIELD #1: DAILY MAX LOSS CIRCUIT BREAKER (-2.5%)
     daily_loss_pct = (today_total_gain / today_start_eq) if today_start_eq > 0 else 0.0
     is_daily_max_loss_triggered = daily_loss_pct <= -0.025
 
@@ -398,39 +400,7 @@ def execute_stock_engine():
         save_state(state)
         positions_list = []
 
-    # --- ANTI-WIPEOUT SHIELD #2: UNREALIZED PORTFOLIO CIRCUIT BREAKER (-3.5%) ---
-    total_unrealized_pnl = sum([float(p.get("unrealized_pl", 0)) for p in positions_list])
-    portfolio_pnl_pct = (total_unrealized_pnl / equity) if equity > 0 else 0.0
-    if portfolio_pnl_pct <= -0.035 and positions_list:
-        audit_logs.append(f"🚨 PORTFOLIO DRAWDOWN BREAKER TRIGGERED ({portfolio_pnl_pct*100:.2f}%). Flattening to cash!")
-        for order in open_orders:
-            api_retry(requests.delete, f"{BASE_URL}/v2/orders/{order.get('id')}", headers=HEADERS)
-
-        for pos in positions_list:
-            sym = pos.get("symbol")
-            qty = abs(float(pos.get("qty", 0)))
-            side = pos.get("side", "long").lower()
-            close_side = "sell" if side == "long" else "buy"
-            entry_p = float(pos.get("avg_entry_price", 0))
-            exit_p = float(pos.get("current_price", entry_p))
-            realized_pnl = (exit_p - entry_p) * qty if side == "long" else (entry_p - exit_p) * qty
-            try:
-                api_retry(requests.post, f"{BASE_URL}/v2/orders", json={
-                    "symbol": sym, "qty": format_qty(qty), "side": close_side, "type": "market", "time_in_force": "day"
-                }, headers=HEADERS)
-                if "closed_trades_ledger" not in state:
-                    state["closed_trades_ledger"] = []
-                state["closed_trades_ledger"].insert(0, {
-                    "symbol": sym, "entry_price": entry_p, "exit_price": exit_p,
-                    "exit_reason": "🚨 Portfolio Drawdown Circuit Breaker (-3.5%)",
-                    "realized_pnl": realized_pnl, "timestamp": timestamp
-                })
-            except Exception as e:
-                audit_logs.append(f"Circuit breaker close failed on {sym}: {e}")
-        save_state(state)
-        positions_list = []
-
-    # --- MANDATORY EOD SQUARE-OFF (2:40 PM CT) ---
+    # MANDATORY EOD SQUARE-OFF (2:40 PM CT)
     is_eod_square_off = (ct_now.hour == 14 and ct_now.minute >= 40) or (ct_now.hour >= 15)
 
     if is_eod_square_off and positions_list:
@@ -466,38 +436,6 @@ def execute_stock_engine():
         save_state(state)
         positions_list = []
 
-    # --- 1:30 PM CT MIDDAY STAGNATION CLEAN-UP ---
-    is_midday_clean_up = (ct_now.hour == 13 and ct_now.minute >= 30 and ct_now.minute < 40)
-    if is_midday_clean_up and positions_list:
-        remaining_positions = []
-        for pos in positions_list:
-            sym = pos.get("symbol")
-            qty = abs(float(pos.get("qty", 0)))
-            side = pos.get("side", "long").lower()
-            is_long = (side == "long")
-            entry_px = float(pos.get("avg_entry_price", 0))
-            current_px = float(pos.get("current_price", entry_px))
-            current_roe = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
-
-            if current_roe < 0:
-                audit_logs.append(f"🧹 MIDDAY STAGNATION EXIT: Closing losing position on {sym} at {current_roe*100:.2f}% ROE before afternoon chop.")
-                cancel_alpaca_native_orders(sym, open_orders)
-                close_side = "sell" if is_long else "buy"
-                realized_pnl = (current_px - entry_px) * qty if is_long else (entry_px - current_px) * qty
-                try:
-                    api_retry(requests.post, f"{BASE_URL}/v2/orders", json={"symbol": sym, "qty": format_qty(qty), "side": close_side, "type": "market", "time_in_force": "day"}, headers=HEADERS)
-                    if "closed_trades_ledger" not in state:
-                        state["closed_trades_ledger"] = []
-                    state["closed_trades_ledger"].insert(0, {
-                        "symbol": sym, "entry_price": entry_px, "exit_price": current_px,
-                        "exit_reason": f"🧹 Midday Stagnation Clean-up ({current_roe*100:.2f}%)", "realized_pnl": realized_pnl, "timestamp": timestamp
-                    })
-                except Exception as e:
-                    audit_logs.append(f"Midday exit failed on {sym}: {e}")
-            else:
-                remaining_positions.append(pos)
-        positions_list = remaining_positions
-
     active_count = len(positions_list)
     positions_data = []
     active_symbols = set()
@@ -519,6 +457,8 @@ def execute_stock_engine():
         should_exit = False
         exit_reason = ""
         atr_val = 1.0
+        entry_candle_low = entry_px * 0.99
+        entry_candle_high = entry_px * 1.01
 
         try:
             start_date_1h = (datetime.now() - timedelta(days=10)).strftime('%Y-%m-%d')
@@ -529,9 +469,27 @@ def execute_stock_engine():
                     closes_1h = [float(b["c"]) for b in b_list]
                     highs_1h = [float(b["h"]) for b in b_list]
                     lows_1h = [float(b["l"]) for b in b_list]
+                    volumes_1h = [float(b.get("v", 1)) for b in b_list]
                     
                     atr_val = calculate_atr(highs_1h, lows_1h, closes_1h)
                     upper_band, lower_band, filter_line = calculate_gaussian_channel(closes_1h)
+
+                    if len(b_list) >= 2:
+                        entry_candle_low = float(b_list[-2]["l"])
+                        entry_candle_high = float(b_list[-2]["h"])
+
+                    # Live Candle Falling Knife Detection
+                    c_open = float(b_list[-1]["o"])
+                    c_high = float(b_list[-1]["h"])
+                    c_low = float(b_list[-1]["l"])
+                    avg_v = np.mean(volumes_1h[-12:-2]) if len(volumes_1h) >= 12 else volumes_1h[-3]
+                    curr_v = volumes_1h[-1]
+                    v_ratio = curr_v / avg_v if avg_v > 0 else 1.0
+
+                    is_knife, knife_reason = analyze_live_stock_falling_knife(current_px, c_open, c_high, c_low, v_ratio, is_long)
+                    if is_knife:
+                        should_exit = True
+                        exit_reason = knife_reason
 
                     if is_long and current_px < upper_band:
                         should_exit = True
@@ -550,8 +508,8 @@ def execute_stock_engine():
         prev_peak = current_active_cache.get(symbol, {}).get("peak_roe", current_roe)
         peak_roe = max(current_roe, prev_peak)
 
-        stop_px_calc, current_roe, target_floor_roe, leash_status = calculate_adaptive_stock_stop(
-            entry_px, is_long, current_px, atr_val, peak_roe=peak_roe, ct_now=ct_now
+        stop_px_calc, current_roe, target_floor_roe, leash_status = calculate_smart_stock_targets(
+            entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=peak_roe
         )
 
         if is_long and current_px <= stop_px_calc:
@@ -581,7 +539,7 @@ def execute_stock_engine():
             except Exception as e:
                 audit_logs.append(f"Execution Failed on {symbol}: {e}")
 
-        # POSITION REMAINS ACTIVE -> REGISTER & SYNC RESTING NATIVE TRIGGER STOP ORDER DIRECTLY ON ALPACA MATCHING ENGINE
+        # Sync resting native stop directly on Alpaca matching engine
         active_symbols.add(symbol)
         sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px_calc, open_orders, audit_logs)
 
@@ -597,13 +555,10 @@ def execute_stock_engine():
             "floor": target_floor_roe * 100, "status": leash_status
         })
 
-    # ==============================================================================
     # NATIVE EXCHANGE FILL RECONCILIATION FOR ALPACA
-    # ==============================================================================
     prev_symbols = state.get("previous_active_symbols", [])
     for sym in prev_symbols:
         if sym not in active_symbols:
-            # Position was active in prior run but closed natively on Alpaca while script slept
             try:
                 closed_orders_res = api_retry(requests.get, f"{BASE_URL}/v2/orders?status=closed&symbols={sym}&limit=5", headers=HEADERS)
                 if closed_orders_res.status_code == 200:
@@ -645,18 +600,17 @@ def execute_stock_engine():
 
     MAX_STOCK_SLOTS = 5
     
-    # --- TIME-WINDOWED ENTRY REGULATION & LOCKOUTS ---
-    # Check 8:30 AM CT (9:30 AM ET Regular Market Open)
+    # TIME-WINDOWED ENTRY REGULATION
     is_opening_bell_lockout = (ct_now.hour < 8) or (ct_now.hour == 8 and ct_now.minute < 30)
     is_prime_morning_window = (ct_now.hour == 8 and ct_now.minute >= 30) or (9 <= ct_now.hour < 11) or (ct_now.hour == 11 and ct_now.minute <= 30)
     is_midday_window = (ct_now.hour == 11 and ct_now.minute > 30) or (ct_now.hour == 12) or (ct_now.hour == 13 and ct_now.minute < 30)
     is_afternoon_lockout = (ct_now.hour == 13 and ct_now.minute >= 30) or (ct_now.hour >= 14)
     is_post_1030_ct = (ct_now.hour > 10) or (ct_now.hour == 10 and ct_now.minute >= 30)
 
-    # --- HARDENED HIGH-WATER & DAILY DRAWDOWN LOCKOUT SHIELD ($150 CAP) ---
-    peak_giveback_lockout = (giveback_from_peak >= 150.0) or (daily_loss_usd >= 150.0)
+    # RECALIBRATED HIGH-WATER & DRAWDOWN LOCKOUT SHIELD ($500 Cap for $98k Account)
+    peak_giveback_lockout = (giveback_from_peak >= 500.0) or (daily_loss_usd >= 500.0)
     if peak_giveback_lockout:
-        audit_logs.append(f"🛡️ HIGH-WATER SHIELD ACTIVE: Drawdown/Giveback exceeds $150 cap (Loss: ${daily_loss_usd:.2f}, Giveback: ${giveback_from_peak:.2f}). Blocking new trades.")
+        audit_logs.append(f"🛡️ HIGH-WATER SHIELD ACTIVE: Drawdown/Giveback exceeds $500 cap (Loss: ${daily_loss_usd:.2f}, Giveback: ${giveback_from_peak:.2f}). Blocking new trades.")
 
     watchlist = [
         "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "AVGO", "QCOM",
@@ -671,7 +625,6 @@ def execute_stock_engine():
     market_candidates = []
     scanned_count = 0
 
-    # --- 1-HOUR ENTRY SCANNER ---
     chunk_size = 20
     for i in range(0, len(symbols_to_scan), chunk_size):
         chunk = symbols_to_scan[i:i + chunk_size]
@@ -716,15 +669,13 @@ def execute_stock_engine():
             if ci > 58.0:
                 continue
 
-            # POST-10:30 AM VOLUME & EXPANSION CONFIRMATION FILTER
             if is_post_1030_ct:
                 volume_series = [float(b.get("v", 1)) for b in bars[-11:-1]]
                 avg_vol = np.mean(volume_series) if volume_series else 1.0
                 latest_vol = float(bars[-1].get("v", 0))
                 vol_ratio = latest_vol / avg_vol if avg_vol > 0 else 1.0
                 
-                # Reject late-morning entries unless volume surges >1.5x
-                if vol_ratio < 1.50:
+                if vol_ratio < 1.40:
                     continue
 
             upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
@@ -733,11 +684,9 @@ def execute_stock_engine():
             live_close = closes[-1]
             live_open = opens[-1]
 
-            # LIVE CANDLE DIRECTION & HOLD CONFIRMATION
             is_candle_green = (live_close > live_open) and (live_close >= comp_close)
             is_candle_red = (live_close < live_open) and (live_close <= comp_close)
 
-            # OVEREXTENSION CEILING (Skip overextended breakouts > 1.5%)
             if live_close > upper * 1.015 or live_close < lower * 0.985:
                 continue
 
@@ -762,11 +711,10 @@ def execute_stock_engine():
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
     audit_logs.append(f"1H Adaptive Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} validated triggers.")
 
-    # --- EXECUTION GATE WITH TIME-WINDOWED CAPITAL REGULATION ---
     if is_opening_bell_lockout or is_afternoon_lockout or is_eod_square_off or peak_giveback_lockout or is_daily_max_loss_triggered:
         gate_reason = (
             "Daily Max Loss Cap (-2.5%)" if is_daily_max_loss_triggered else (
-            "Peak/Daily Giveback Shield ($150 Cap)" if peak_giveback_lockout else (
+            "Peak/Daily Giveback Shield ($500 Cap)" if peak_giveback_lockout else (
             "Opening Bell Lockout (Before 8:30 AM CT)" if is_opening_bell_lockout else (
             "Afternoon Cutoff (1:30 PM+ CT)" if is_afternoon_lockout else "EOD Square-Off"
             )))
@@ -779,7 +727,6 @@ def execute_stock_engine():
             is_long = candidate["is_long"]
             cand_ci = candidate.get("ci", 50.0)
 
-            # --- DYNAMIC CAPITAL ALLOCATION RULE ---
             if is_prime_morning_window:
                 if cand_ci > 52.0 or spy_regime == "NEUTRAL":
                     target_usd = 1000.0
@@ -795,13 +742,9 @@ def execute_stock_engine():
             qty = max(1, int(raw_qty))
             order_side = "buy" if is_long else "sell"
 
-            # Calculate initial stop price
-            initial_stop_px = px * 0.9965 if is_long else px * 1.0035
+            initial_stop_px = px * 0.9920 if is_long else px * 1.0080
             clean_initial_stop = round(initial_stop_px, 2)
 
-            # Native Alpaca OTO (One-Triggers-Other) order payload
-            # Automatically attaches the resting stop order to the entry order on Alpaca's matching engine
-            # Completely eliminates 403 "opposite side market/stop order exists" wash trade errors.
             order_payload = {
                 "symbol": symbol,
                 "qty": format_qty(qty),
@@ -820,7 +763,6 @@ def execute_stock_engine():
                     active_symbols.add(symbol)
                     audit_logs.append(f"1H ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} (~${(qty * px):.2f}) [Native OTO Trigger Stop Active @ ${clean_initial_stop:.2f}]")
                 else:
-                    # Fallback to standard order if OTO rejected by account settings
                     fallback_payload = {
                         "symbol": symbol, "qty": format_qty(qty), "side": order_side, "type": "market", "time_in_force": "day"
                     }
@@ -851,8 +793,6 @@ def execute_stock_engine():
         """
 
     closed_ledger = state.get("closed_trades_ledger", [])
-    
-    # --- STRICT CALENDAR DAY RESET ---
     trades_today = [
         t for t in closed_ledger 
         if today_str in str(t.get("timestamp", ""))
@@ -989,8 +929,8 @@ def execute_stock_engine():
       <body>
         <div class="container">
           <div class="header">
-            <h2>TR-GC-Equities-LS-01 | 1H Master Engine</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: TIME-REGULATED POWER & NATIVE TRIGGER STOPS</p>
+            <h2>TR-GC-Equities-LS-01 | 1H Master Engine V2</h2>
+            <p>Timestamp: {timestamp} &bull; Mode: TIME-REGULATED POWER & SMART PROTECTION</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -1007,19 +947,17 @@ def execute_stock_engine():
 
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Guardrails (Full Strategy Display)</div>
+              &bull; <b>Live Stock Anatomy Falling-Knife Detector:</b> Distinguishes absorption wicks from solid dumps (&gt;60% body, &gt;1.4x vol)<br>
+              &bull; <b>Dynamic ATR Volatility Buffer:</b> Replaces flat -0.35% cap with $1.2 \times \text{ATR}$ breathing room<br>
+              &bull; <b>Asymmetric Moonshot Profit Lock:</b> Lock 75% at +0.80% ROE, 85% at +1.50% ROE, 90% at +3.00%+ ROE<br>
               &bull; <b>Native Alpaca Orderbook Trigger Stops:</b> Resting stop orders placed directly on Alpaca matching engine for millisecond execution<br>
               &bull; <b>1-Hour Timeframe & Hard CI Gate (&le;58.0):</b> Eliminates noise & rejects choppy stocks<br>
               &bull; <b>SPY Macro Regime Shield:</b> Enforces broad market direction alignment<br>
-              &bull; <b>1H Trend Invalidation & ATR Buffer:</b> Cuts losses fast on reversals with proper noise room<br>
-              &bull; <b>Tiered Tight-Ratchet (88%–95% Peak Lock):</b> Locks 88% to 95% on major runners<br>
               &bull; <b>Opening Bell Lockout (Before 8:30 AM CT):</b> Blocks entries prior to 8:30 AM CT to avoid open traps<br>
               &bull; <b>Morning Power Window (8:30–11:30 AM CT):</b> Full 10% NAV (~$10k) sizing on clean completed trends<br>
-              &bull; <b>Post-10:30 AM CT Volume & Expansion Filter:</b> Enforces &gt;1.5x Volume surge to enter late morning trades<br>
-              &bull; <b>Post-10:30 AM CT Hard Risk Cap (&minus;0.35% ROE):</b> Tightens initial downside risk on late trades<br>
-              &bull; <b>Midday Micro Window (11:30 AM–1:30 PM CT):</b> Capped at $1,000 Micro Sizing<br>
+              &bull; <b>Post-10:30 AM CT Volume & Expansion Filter:</b> Enforces &gt;1.4x Volume surge to enter late morning trades<br>
               &bull; <b>Afternoon Lockout (1:30 PM CT+):</b> Strictly 0 new entries allowed<br>
-              &bull; <b>1:30 PM Stagnation Clean-up:</b> Exits floating losing trades early before EOD chop<br>
-              &bull; <b>High-Water & Drawdown Shield ($150 Cap):</b> Hard-blocks trading if drawdown or giveback hits $150<br>
+              &bull; <b>High-Water & Drawdown Shield ($500 Cap):</b> Hard-blocks trading if drawdown or giveback hits $500<br>
               &bull; <b>Daily Anti-Wipeout Shield (-2.5% Cap):</b> Emergency flattens account if daily loss hits -2.5%
             </div>
 
@@ -1063,7 +1001,7 @@ def execute_stock_engine():
     """
 
     send_html_dashboard_email(f"Alpaca Quantitative Report — USD ${equity:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] 1H Master Engine report complete.", flush=True)
+    print(f"[{timestamp}] 1H Master Engine V2 report complete.", flush=True)
 
 if __name__ == "__main__":
     try:
