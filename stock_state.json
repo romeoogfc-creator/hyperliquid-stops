@@ -12,22 +12,24 @@
   "active_position_cache": {
     "SPY": {
       "entry_px": 772.47,
-      "current_px": 775.08,
+      "current_px": 777.96,
       "qty": 12.0,
       "side": "long",
-      "peak_roe": 0.0033787719911453047,
-      "best_target_floor_roe": 0.0003,
-      "best_stop_px": 772.701741
+      "peak_roe": 0.007107072119305616,
+      "best_target_floor_roe": 0.005827799137830604,
+      "best_stop_px": 776.9718
     }
   },
   "previous_active_symbols": [
     "SPY"
   ],
-  "last_run_timestamp": "2026-10-05 18:51:21",
+  "last_run_timestamp": "2026-10-06 13:17:15",
   "daily_starting_equity": {
-    "2026-10-05": 97996.26
+    "2026-10-05": 97996.26,
+    "2026-10-06": 98036.42
   },
   "daily_peak_equity": {
-    "2026-10-05": 98010.85
+    "2026-10-05": 98010.85,
+    "2026-10-06": 98036.42
   }
 }
