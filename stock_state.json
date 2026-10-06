@@ -1,6 +1,14 @@
 {
   "closed_trades_ledger": [
     {
+      "symbol": "COST",
+      "entry_price": 930.542,
+      "exit_price": 936.48,
+      "exit_reason": "EOD Square-Off (100% Cash Flat)",
+      "realized_pnl": 59.37999999999988,
+      "timestamp": "2026-10-06 19:44:55"
+    },
+    {
       "symbol": "AMZN",
       "entry_price": 255.083333,
       "exit_price": 255.11,
@@ -70,21 +78,9 @@
       "timestamp": "2026-10-05 15:48:14"
     }
   ],
-  "active_position_cache": {
-    "COST": {
-      "entry_px": 930.542,
-      "current_px": 933.875,
-      "qty": 10.0,
-      "side": "long",
-      "peak_roe": 0.004489856449252153,
-      "best_target_floor_roe": 0.001,
-      "best_stop_px": 931.472542
-    }
-  },
-  "previous_active_symbols": [
-    "COST"
-  ],
-  "last_run_timestamp": "2026-10-06 19:14:01",
+  "active_position_cache": {},
+  "previous_active_symbols": [],
+  "last_run_timestamp": "2026-10-06 19:45:03",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42
