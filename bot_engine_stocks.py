@@ -804,9 +804,15 @@ def execute_stock_engine():
                     active_count += 1
                     active_symbols.add(symbol)
                     
+                    # 1.5s Execution settlement buffer to avoid 403 wash trade filter
+                    time.sleep(1.5)
+                    
+                    refreshed_orders_res = api_retry(requests.get, f"{BASE_URL}/v2/orders?status=open", headers=HEADERS)
+                    refreshed_open_orders = refreshed_orders_res.json() if refreshed_orders_res.status_code == 200 else open_orders
+
                     # SYNC INITIAL NATIVE TRIGGER STOP ORDER DIRECTLY ON ALPACA ORDERBOOK
                     initial_stop_px = px * 0.9965 if is_long else px * 1.0035
-                    sync_alpaca_native_trigger_stop(symbol, is_long, qty, initial_stop_px, open_orders, audit_logs)
+                    sync_alpaca_native_trigger_stop(symbol, is_long, qty, initial_stop_px, refreshed_open_orders, audit_logs)
 
                     audit_logs.append(f"1H ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} (~${(qty * px):.2f}) [Native Trigger Stop Active]")
                 else:
