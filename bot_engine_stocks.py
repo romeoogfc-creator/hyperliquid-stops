@@ -1,7 +1,7 @@
 import os
 import json
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -10,9 +10,9 @@ import requests
 import pandas as pd
 import numpy as np
 
-API_KEY = os.getenv("APAL_API_KEY_ID")
-SECRET_KEY = os.getenv("APAL_SECRET_KEY")
-BASE_URL = os.getenv("APAL_BASE_URL", "https://paper-api.alpaca.markets")
+API_KEY = os.getenv("APCA_API_KEY_ID") or os.getenv("ALPACA_API_KEY_ID") or os.getenv("APAL_API_KEY_ID")
+SECRET_KEY = os.getenv("APCA_API_SECRET_KEY") or os.getenv("ALPACA_SECRET_KEY") or os.getenv("APAL_SECRET_KEY")
+BASE_URL = os.getenv("APCA_API_BASE_URL") or os.getenv("ALPACA_BASE_URL") or os.getenv("APAL_BASE_URL", "https://paper-api.alpaca.markets")
 STATE_FILE = "stock_state.json"
 
 VERBOSE_TEST_MODE = True
@@ -22,6 +22,13 @@ HEADERS = {
     "APCA-API-SECRET-KEY": SECRET_KEY,
     "accept": "application/json"
 }
+
+def format_qty(qty):
+    """Safely formats position quantity for Alpaca API payloads."""
+    val = abs(float(qty))
+    if val.is_integer():
+        return str(int(val))
+    return f"{val:.4f}".rstrip('0').rstrip('.')
 
 def api_retry(func, *args, retries=3, delay=2.0, **kwargs):
     """Resilient retry wrapper for Alpaca API HTTP requests."""
@@ -42,7 +49,8 @@ def api_retry(func, *args, retries=3, delay=2.0, **kwargs):
                 raise e
 
 def get_central_time():
-    utc_now = datetime.utcnow()
+    """Calculates Texas Central Time (CT) with dynamic Daylight Saving Time offset."""
+    utc_now = datetime.now(timezone.utc).replace(tzinfo=None)
     year = utc_now.year
     dst_start = datetime(year, 3, 8)
     dst_start += timedelta(days=(6 - dst_start.weekday()) % 7)
@@ -153,7 +161,7 @@ def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, 
     try:
         clean_stop_px = round(stop_px, 2)
         close_side = "sell" if is_long else "buy"
-        clean_qty = str(int(abs(qty)))
+        clean_qty = format_qty(qty)
 
         existing_stop_orders = [
             o for o in open_orders 
@@ -184,6 +192,8 @@ def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, 
             res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=stop_order_payload, headers=HEADERS)
             if res.status_code == 200 and audit_logs is not None:
                 audit_logs.append(f"🛡️ NATIVE ALPACA STOP SYNC [{symbol}]: Placed Resting Trigger Stop @ ${clean_stop_px:.2f}")
+            elif res.status_code != 200 and audit_logs is not None:
+                audit_logs.append(f"⚠️ Alpaca Native Stop Sync Warning [{symbol}] ({res.status_code}): {res.text}")
     except Exception as e:
         if audit_logs is not None:
             audit_logs.append(f"⚠️ Alpaca Native Stop Sync warning on {symbol}: {e}")
@@ -203,13 +213,22 @@ def calculate_gaussian_channel(closes, poles=4, period=50, mult=1.414):
     return upper.iloc[-1], lower.iloc[-1], filtered.iloc[-1]
 
 def calculate_choppiness_index(highs, lows, closes, period=14):
+    """Calculates Choppiness Index dynamically over the LATEST `period` bars."""
     try:
         if len(closes) < period + 1:
             return 50.0
-        tr_sum = sum([max(highs[i] - lows[i], abs(highs[i] - closes[i-1]), abs(lows[i] - closes[i-1])) for i in range(1, period + 1)])
+        
+        trs = []
+        start_idx = len(closes) - period
+        for i in range(start_idx, len(closes)):
+            tr = max(highs[i] - lows[i], abs(highs[i] - closes[i-1]), abs(lows[i] - closes[i-1]))
+            trs.append(tr)
+        
+        tr_sum = sum(trs)
         max_high = max(highs[-period:])
         min_low = min(lows[-period:])
         range_diff = max_high - min_low
+        
         if range_diff <= 0 or tr_sum <= 0:
             return 50.0
         ci = 100 * (log10(tr_sum / range_diff) / log10(period))
@@ -299,7 +318,7 @@ def execute_stock_engine():
     audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Engine Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
-        raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
+        raise ValueError("Missing API Key credentials in environment variables.")
 
     start_date = (datetime.now() - timedelta(days=20)).strftime('%Y-%m-%d')
 
@@ -365,13 +384,13 @@ def execute_stock_engine():
             realized_pnl = (exit_p - entry_p) * qty if side == "long" else (entry_p - exit_p) * qty
             try:
                 api_retry(requests.post, f"{BASE_URL}/v2/orders", json={
-                    "symbol": sym, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"
+                    "symbol": sym, "qty": format_qty(qty), "side": close_side, "type": "market", "time_in_force": "day"
                 }, headers=HEADERS)
                 if "closed_trades_ledger" not in state:
                     state["closed_trades_ledger"] = []
                 state["closed_trades_ledger"].insert(0, {
                     "symbol": sym, "entry_price": entry_p, "exit_price": exit_p,
-                    "exit_reason": "🛡️ Daily Max Loss Anti-Wipeout Shield (-2.5%)",
+                    "exit_reason": "🛡️️ Daily Max Loss Anti-Wipeout Shield (-2.5%)",
                     "realized_pnl": realized_pnl, "timestamp": timestamp
                 })
             except Exception as e:
@@ -397,7 +416,7 @@ def execute_stock_engine():
             realized_pnl = (exit_p - entry_p) * qty if side == "long" else (entry_p - exit_p) * qty
             try:
                 api_retry(requests.post, f"{BASE_URL}/v2/orders", json={
-                    "symbol": sym, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"
+                    "symbol": sym, "qty": format_qty(qty), "side": close_side, "type": "market", "time_in_force": "day"
                 }, headers=HEADERS)
                 if "closed_trades_ledger" not in state:
                     state["closed_trades_ledger"] = []
@@ -430,7 +449,7 @@ def execute_stock_engine():
             realized_pnl = (current_px - entry_px) * qty if side == "long" else (entry_px - current_px) * qty
 
             try:
-                close_res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json={"symbol": sym, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"}, headers=HEADERS)
+                close_res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json={"symbol": sym, "qty": format_qty(qty), "side": close_side, "type": "market", "time_in_force": "day"}, headers=HEADERS)
                 if close_res.status_code == 200:
                     audit_logs.append(f"LIQUIDATION SUCCESS: Closed {sym}")
                     if "closed_trades_ledger" not in state:
@@ -450,6 +469,7 @@ def execute_stock_engine():
     # --- 1:30 PM CT MIDDAY STAGNATION CLEAN-UP ---
     is_midday_clean_up = (ct_now.hour == 13 and ct_now.minute >= 30 and ct_now.minute < 40)
     if is_midday_clean_up and positions_list:
+        remaining_positions = []
         for pos in positions_list:
             sym = pos.get("symbol")
             qty = abs(float(pos.get("qty", 0)))
@@ -465,7 +485,7 @@ def execute_stock_engine():
                 close_side = "sell" if is_long else "buy"
                 realized_pnl = (current_px - entry_px) * qty if is_long else (entry_px - current_px) * qty
                 try:
-                    api_retry(requests.post, f"{BASE_URL}/v2/orders", json={"symbol": sym, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"}, headers=HEADERS)
+                    api_retry(requests.post, f"{BASE_URL}/v2/orders", json={"symbol": sym, "qty": format_qty(qty), "side": close_side, "type": "market", "time_in_force": "day"}, headers=HEADERS)
                     if "closed_trades_ledger" not in state:
                         state["closed_trades_ledger"] = []
                     state["closed_trades_ledger"].insert(0, {
@@ -474,6 +494,9 @@ def execute_stock_engine():
                     })
                 except Exception as e:
                     audit_logs.append(f"Midday exit failed on {sym}: {e}")
+            else:
+                remaining_positions.append(pos)
+        positions_list = remaining_positions
 
     active_count = len(positions_list)
     positions_data = []
@@ -545,7 +568,7 @@ def execute_stock_engine():
             realized_pnl = (current_px - entry_px) * qty if is_long else (entry_px - current_px) * qty
 
             try:
-                api_retry(requests.post, f"{BASE_URL}/v2/orders", json={"symbol": symbol, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"}, headers=HEADERS)
+                api_retry(requests.post, f"{BASE_URL}/v2/orders", json={"symbol": symbol, "qty": format_qty(qty), "side": close_side, "type": "market", "time_in_force": "day"}, headers=HEADERS)
                 if "closed_trades_ledger" not in state:
                     state["closed_trades_ledger"] = []
                 state["closed_trades_ledger"].insert(0, {
@@ -772,7 +795,7 @@ def execute_stock_engine():
             order_side = "buy" if is_long else "sell"
 
             order_payload = {
-                "symbol": symbol, "qty": str(qty), "side": order_side, "type": "market", "time_in_force": "day"
+                "symbol": symbol, "qty": format_qty(qty), "side": order_side, "type": "market", "time_in_force": "day"
             }
             try:
                 order_res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=order_payload, headers=HEADERS)
