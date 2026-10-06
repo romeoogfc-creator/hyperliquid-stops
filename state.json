@@ -3,7 +3,8 @@
     "kBONK": 1791039716.6179557,
     "YGG": 1791042424.9776292,
     "GMX": 1791045514.2652674,
-    "BNB": 1791249326.6402626
+    "BNB": 1791249326.6402626,
+    "PYTH": 1791383431.3566132
   },
   "stagnation_tracker": {
     "APT": 28,
@@ -53,6 +54,17 @@
     "NEAR": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "PYTH",
+      "entry_price": 0.080468,
+      "exit_price": 0.078989,
+      "pnl_usd": -0.276573,
+      "roe_pct": -1.837997713376739,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-06 14:30:31",
+      "ts_sec": 1791297031.3566132
+    },
     {
       "coin": "RSR",
       "entry_price": 0.001804,
@@ -249,33 +261,17 @@
       "side": "LONG",
       "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-4.7%)",
       "timestamp": "2026-09-30 12:00:05"
-    },
-    {
-      "coin": "WIF",
-      "entry_price": 0.25384,
-      "exit_price": 0.25652,
-      "pnl_usd": 0.15517,
-      "roe_pct": 5.278915852505546,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Profit Lock (+5.3%)",
-      "timestamp": "2026-09-30 11:24:31"
     }
   ],
   "active_position_cache": {
-    "PYTH": {
-      "entry_px": 0.080468,
-      "current_px": 0.079645,
-      "szi": 187.0,
-      "margin": 14.89268,
-      "side": "LONG",
-      "peak_roe": 0.0012675846299150578,
-      "strategy": "BREAKOUT"
+    "ACE": {
+      "strategy": "BREAKOUT",
+      "entry_px": 0.1974,
+      "side": "LONG"
     }
   },
-  "previous_active_coins": [
-    "PYTH"
-  ],
-  "last_run_timestamp": "2026-10-06 14:15:38",
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-06 14:31:30",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -285,12 +281,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791296130.90161,
-  "last_scan_timestamp": 1791288925.8623273,
+  "last_email_timestamp": 1791297031.3566132,
+  "last_scan_timestamp": 1791297031.3566132,
   "gemini_cache": {
-    "timestamp": 1791296130.90161,
+    "timestamp": 1791297031.3566132,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and historical post-halving price sensitivity, making it highly susceptible to sharp liquidity-driven corrections."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic indicators, shifting regulatory landscapes, and high leverage in derivatives markets, which collectively create a precarious environment prone to sharp, sudden corrections."
   },
   "recent_losses": [],
   "last_traded_candle": {
@@ -316,7 +312,8 @@
     "BNB": 1791158400000,
     "LINK": 1791212400000,
     "PYTH": 1791288000000,
-    "RSR": 1791284400000
+    "RSR": 1791284400000,
+    "ACE": 1791295200000
   },
   "hibernating_until": 0,
   "daily_starting_equity": {
