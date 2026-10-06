@@ -948,7 +948,7 @@ def execute_stock_engine():
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Guardrails (Full Strategy Display)</div>
               &bull; <b>Live Stock Anatomy Falling-Knife Detector:</b> Distinguishes absorption wicks from solid dumps (&gt;60% body, &gt;1.4x vol)<br>
-              &bull; <b>Dynamic ATR Volatility Buffer:</b> Replaces flat -0.35% cap with $1.2 \times \text{ATR}$ breathing room<br>
+              &bull; <b>Dynamic ATR Volatility Buffer:</b> Replaces flat -0.35% cap with 1.2x ATR breathing room<br>
               &bull; <b>Asymmetric Moonshot Profit Lock:</b> Lock 75% at +0.80% ROE, 85% at +1.50% ROE, 90% at +3.00%+ ROE<br>
               &bull; <b>Native Alpaca Orderbook Trigger Stops:</b> Resting stop orders placed directly on Alpaca matching engine for millisecond execution<br>
               &bull; <b>1-Hour Timeframe & Hard CI Gate (&le;58.0):</b> Eliminates noise & rejects choppy stocks<br>
