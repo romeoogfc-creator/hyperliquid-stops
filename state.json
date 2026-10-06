@@ -268,7 +268,7 @@
       "entry_px": 0.1974,
       "current_px": 0.1969,
       "szi": 75.99,
-      "margin": 4.984944,
+      "margin": 4.987477,
       "side": "LONG",
       "peak_roe": 0.0010131712259372125,
       "strategy": "BREAKOUT"
@@ -277,7 +277,7 @@
   "previous_active_coins": [
     "ACE"
   ],
-  "last_run_timestamp": "2026-10-06 15:30:41",
+  "last_run_timestamp": "2026-10-06 15:45:41",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -290,9 +290,9 @@
   "last_email_timestamp": 1791300632.751535,
   "last_scan_timestamp": 1791297031.3566132,
   "gemini_cache": {
-    "timestamp": 1791300632.751535,
+    "timestamp": 1791301530.8918433,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Persistent macroeconomic uncertainty, regulatory scrutiny, and high market volatility create a landscape where significant price swings remain likely in the short term."
+    "briefing": "Risk Level: HIGH; while institutional inflows provide a foundational floor, the market remains highly susceptible to extreme volatility driven by macroeconomic uncertainty, regulatory shifts, and significant leverage-related liquidations."
   },
   "recent_losses": [],
   "last_traded_candle": {
