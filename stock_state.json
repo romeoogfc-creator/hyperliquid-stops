@@ -1,6 +1,24 @@
 {
   "closed_trades_ledger": [
     {
+      "symbol": "AMZN",
+      "entry_price": 255.083333,
+      "exit_price": 255.11,
+      "realized_pnl": 0.08000100000000998,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-06 16:16:40",
+      "order_id": "a9283384-05ae-411c-a18c-5efa16b474d8"
+    },
+    {
+      "symbol": "MSFT",
+      "entry_price": 534.48,
+      "exit_price": 532.56,
+      "realized_pnl": -34.56000000000131,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-06 16:16:40",
+      "order_id": "39f8847e-083d-4319-b367-fb419e467a13"
+    },
+    {
       "symbol": "NVDA",
       "entry_price": 242.44025,
       "exit_price": 242.44025,
@@ -53,40 +71,20 @@
     }
   ],
   "active_position_cache": {
-    "AMZN": {
-      "entry_px": 255.083333,
-      "current_px": 255.625,
-      "qty": 3.0,
-      "side": "long",
-      "peak_roe": 0.0021234903654014496,
-      "best_target_floor_roe": 0.0003,
-      "best_stop_px": 255.1598579999
-    },
     "COST": {
       "entry_px": 930.542,
-      "current_px": 929.78,
+      "current_px": 930.522,
       "qty": 10.0,
       "side": "long",
-      "peak_roe": -0.0008188776003662997,
+      "peak_roe": -2.149285040329379e-05,
       "best_target_floor_roe": -0.0035,
       "best_stop_px": 927.285103
-    },
-    "MSFT": {
-      "entry_px": 534.48,
-      "current_px": 532.615,
-      "qty": 18.0,
-      "side": "long",
-      "peak_roe": -0.0003180661577609504,
-      "best_target_floor_roe": -0.0035,
-      "best_stop_px": 532.60932
     }
   },
   "previous_active_symbols": [
-    "COST",
-    "MSFT",
-    "AMZN"
+    "COST"
   ],
-  "last_run_timestamp": "2026-10-06 15:46:19",
+  "last_run_timestamp": "2026-10-06 16:16:53",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42
