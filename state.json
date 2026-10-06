@@ -264,18 +264,18 @@
   "active_position_cache": {
     "PYTH": {
       "entry_px": 0.080468,
-      "current_px": 0.079826,
+      "current_px": 0.080159,
       "szi": 187.0,
-      "margin": 14.927462,
+      "margin": 14.988424,
       "side": "LONG",
-      "peak_roe": -0.007978326788288559,
+      "peak_roe": -0.003840035790624891,
       "strategy": "BREAKOUT"
     }
   },
   "previous_active_coins": [
     "PYTH"
   ],
-  "last_run_timestamp": "2026-10-06 12:30:38",
+  "last_run_timestamp": "2026-10-06 12:45:32",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -285,12 +285,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791288925.8623273,
+  "last_email_timestamp": 1791290726.6996303,
   "last_scan_timestamp": 1791288925.8623273,
   "gemini_cache": {
-    "timestamp": 1791289829.6054204,
+    "timestamp": 1791290726.6996303,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH**\n\nCurrent market volatility is being driven by significant macroeconomic uncertainty, ongoing regulatory scrutiny, and a precarious technical setup that leaves prices highly susceptible to sharp, liquidity-driven liquidations."
+    "briefing": "Risk Level: HIGH; current market conditions remain highly sensitive to macroeconomic shifts, regulatory uncertainty, and significant volatility surrounding liquidity flows in the post-halving cycle."
   },
   "recent_losses": [],
   "last_traded_candle": {
