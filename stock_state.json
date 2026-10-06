@@ -18,9 +18,21 @@
       "timestamp": "2026-10-05 15:48:14"
     }
   ],
-  "active_position_cache": {},
-  "previous_active_symbols": [],
-  "last_run_timestamp": "2026-10-06 14:37:07",
+  "active_position_cache": {
+    "XLF": {
+      "entry_px": 54.22,
+      "current_px": 54.205,
+      "qty": 180.0,
+      "side": "long",
+      "peak_roe": -0.0002766506824050271,
+      "best_target_floor_roe": -0.004,
+      "best_stop_px": 54.003119999999996
+    }
+  },
+  "previous_active_symbols": [
+    "XLF"
+  ],
+  "last_run_timestamp": "2026-10-06 14:43:26",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42
