@@ -1,6 +1,40 @@
 {
   "closed_trades_ledger": [
     {
+      "symbol": "NVDA",
+      "entry_price": 242.44025,
+      "exit_price": 242.44025,
+      "realized_pnl": 0.0,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-06 15:46:01",
+      "order_id": "323c83c4-1536-4953-87b1-89f9397fd1cd"
+    },
+    {
+      "symbol": "XLF",
+      "entry_price": 54.22,
+      "exit_price": 54.22,
+      "realized_pnl": 0.0,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-06 15:46:01",
+      "order_id": "97bb92a6-3660-42f4-a870-da1149d74813"
+    },
+    {
+      "symbol": "XLF",
+      "entry_price": 54.22,
+      "exit_price": 54.135,
+      "exit_reason": "\ud83d\udcc9 1H Trend Invalidation (Close $54.13 < Upper Band $54.16)",
+      "realized_pnl": -15.300000000000153,
+      "timestamp": "2026-10-06 15:46:01"
+    },
+    {
+      "symbol": "NVDA",
+      "entry_price": 242.44025,
+      "exit_price": 241.405,
+      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.43%)",
+      "realized_pnl": -41.40999999999963,
+      "timestamp": "2026-10-06 15:46:01"
+    },
+    {
       "symbol": "SPY",
       "entry_price": 772.47,
       "exit_price": 778.6525,
@@ -19,40 +53,40 @@
     }
   ],
   "active_position_cache": {
+    "AMZN": {
+      "entry_px": 255.083333,
+      "current_px": 255.625,
+      "qty": 3.0,
+      "side": "long",
+      "peak_roe": 0.0021234903654014496,
+      "best_target_floor_roe": 0.0003,
+      "best_stop_px": 255.1598579999
+    },
+    "COST": {
+      "entry_px": 930.542,
+      "current_px": 929.78,
+      "qty": 10.0,
+      "side": "long",
+      "peak_roe": -0.0008188776003662997,
+      "best_target_floor_roe": -0.0035,
+      "best_stop_px": 927.285103
+    },
     "MSFT": {
       "entry_px": 534.48,
-      "current_px": 533.178,
+      "current_px": 532.615,
       "qty": 18.0,
       "side": "long",
       "peak_roe": -0.0003180661577609504,
-      "best_target_floor_roe": -0.005790942331130934,
-      "best_stop_px": 531.3848571428572
-    },
-    "NVDA": {
-      "entry_px": 242.44025,
-      "current_px": 242.09,
-      "qty": 40.0,
-      "side": "long",
-      "peak_roe": -0.00020726756386369615,
-      "best_target_floor_roe": -0.004934352749948552,
-      "best_stop_px": 241.24396428571427
-    },
-    "XLF": {
-      "entry_px": 54.22,
-      "current_px": 54.19,
-      "qty": 180.0,
-      "side": "long",
-      "peak_roe": -0.0002766506824050271,
-      "best_target_floor_roe": -0.004,
-      "best_stop_px": 54.003119999999996
+      "best_target_floor_roe": -0.0035,
+      "best_stop_px": 532.60932
     }
   },
   "previous_active_symbols": [
+    "COST",
     "MSFT",
-    "XLF",
-    "NVDA"
+    "AMZN"
   ],
-  "last_run_timestamp": "2026-10-06 15:16:35",
+  "last_run_timestamp": "2026-10-06 15:46:19",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42
