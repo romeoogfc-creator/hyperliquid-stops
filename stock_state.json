@@ -19,6 +19,24 @@
     }
   ],
   "active_position_cache": {
+    "MSFT": {
+      "entry_px": 534.48,
+      "current_px": 534.31,
+      "qty": 18.0,
+      "side": "long",
+      "peak_roe": -0.0003180661577609504,
+      "best_target_floor_roe": -0.005914426839438071,
+      "best_stop_px": 531.3188571428572
+    },
+    "NVDA": {
+      "entry_px": 242.44025,
+      "current_px": 242.39,
+      "qty": 40.0,
+      "side": "long",
+      "peak_roe": -0.00020726756386369615,
+      "best_target_floor_roe": -0.004934352749948552,
+      "best_stop_px": 241.24396428571427
+    },
     "XLF": {
       "entry_px": 54.22,
       "current_px": 54.205,
@@ -30,9 +48,11 @@
     }
   },
   "previous_active_symbols": [
-    "XLF"
+    "XLF",
+    "MSFT",
+    "NVDA"
   ],
-  "last_run_timestamp": "2026-10-06 14:43:26",
+  "last_run_timestamp": "2026-10-06 14:46:55",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42
