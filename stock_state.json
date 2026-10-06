@@ -1,6 +1,15 @@
 {
   "closed_trades_ledger": [
     {
+      "symbol": "SPY",
+      "entry_price": 772.47,
+      "exit_price": 778.6525,
+      "realized_pnl": 74.19000000000005,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-06 14:36:51",
+      "order_id": "45e8be00-858e-4b1e-ac92-1b86176b40ef"
+    },
+    {
       "symbol": "AVGO",
       "entry_price": 362.53,
       "exit_price": 361.25,
@@ -9,21 +18,9 @@
       "timestamp": "2026-10-05 15:48:14"
     }
   ],
-  "active_position_cache": {
-    "SPY": {
-      "entry_px": 772.47,
-      "current_px": 779.1499,
-      "qty": 12.0,
-      "side": "long",
-      "peak_roe": 0.00978678783642076,
-      "best_target_floor_roe": 0.008025166025865024,
-      "best_stop_px": 778.6691999999999
-    }
-  },
-  "previous_active_symbols": [
-    "SPY"
-  ],
-  "last_run_timestamp": "2026-10-06 14:29:34",
+  "active_position_cache": {},
+  "previous_active_symbols": [],
+  "last_run_timestamp": "2026-10-06 14:37:07",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42
