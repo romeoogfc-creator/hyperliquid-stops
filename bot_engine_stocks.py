@@ -390,7 +390,7 @@ def execute_stock_engine():
                     state["closed_trades_ledger"] = []
                 state["closed_trades_ledger"].insert(0, {
                     "symbol": sym, "entry_price": entry_p, "exit_price": exit_p,
-                    "exit_reason": "🛡️️ Daily Max Loss Anti-Wipeout Shield (-2.5%)",
+                    "exit_reason": "🛡 Daily Max Loss Anti-Wipeout Shield (-2.5%)",
                     "realized_pnl": realized_pnl, "timestamp": timestamp
                 })
             except Exception as e:
@@ -646,8 +646,9 @@ def execute_stock_engine():
     MAX_STOCK_SLOTS = 5
     
     # --- TIME-WINDOWED ENTRY REGULATION & LOCKOUTS ---
-    is_opening_bell_lockout = (ct_now.hour < 9) or (ct_now.hour == 9 and ct_now.minute < 30)
-    is_prime_morning_window = (ct_now.hour == 9 and ct_now.minute >= 30) or (10 <= ct_now.hour < 11) or (ct_now.hour == 11 and ct_now.minute <= 30)
+    # FIXED: Check 8:30 AM CT (9:30 AM ET Regular Market Open)
+    is_opening_bell_lockout = (ct_now.hour < 8) or (ct_now.hour == 8 and ct_now.minute < 30)
+    is_prime_morning_window = (ct_now.hour == 8 and ct_now.minute >= 30) or (9 <= ct_now.hour < 11) or (ct_now.hour == 11 and ct_now.minute <= 30)
     is_midday_window = (ct_now.hour == 11 and ct_now.minute > 30) or (ct_now.hour == 12) or (ct_now.hour == 13 and ct_now.minute < 30)
     is_afternoon_lockout = (ct_now.hour == 13 and ct_now.minute >= 30) or (ct_now.hour >= 14)
     is_post_1030_ct = (ct_now.hour > 10) or (ct_now.hour == 10 and ct_now.minute >= 30)
@@ -766,7 +767,7 @@ def execute_stock_engine():
         gate_reason = (
             "Daily Max Loss Cap (-2.5%)" if is_daily_max_loss_triggered else (
             "Peak/Daily Giveback Shield ($150 Cap)" if peak_giveback_lockout else (
-            "Opening Bell Lockout (Before 9:30 AM CT)" if is_opening_bell_lockout else (
+            "Opening Bell Lockout (Before 8:30 AM CT)" if is_opening_bell_lockout else (
             "Afternoon Cutoff (1:30 PM+ CT)" if is_afternoon_lockout else "EOD Square-Off"
             )))
         )
@@ -991,8 +992,8 @@ def execute_stock_engine():
               &bull; <b>SPY Macro Regime Shield:</b> Enforces broad market direction alignment<br>
               &bull; <b>1H Trend Invalidation & ATR Buffer:</b> Cuts losses fast on reversals with proper noise room<br>
               &bull; <b>Tiered Tight-Ratchet (88%–95% Peak Lock):</b> Locks 88% to 95% on major runners<br>
-              &bull; <b>Opening Bell Lockout (Before 9:30 AM CT):</b> Blocks entries prior to 9:30 AM CT to avoid open traps<br>
-              &bull; <b>Morning Power Window (9:30–11:30 AM CT):</b> Full 10% NAV (~$10k) sizing on clean completed trends<br>
+              &bull; <b>Opening Bell Lockout (Before 8:30 AM CT):</b> Blocks entries prior to 8:30 AM CT to avoid open traps<br>
+              &bull; <b>Morning Power Window (8:30–11:30 AM CT):</b> Full 10% NAV (~$10k) sizing on clean completed trends<br>
               &bull; <b>Post-10:30 AM CT Volume & Expansion Filter:</b> Enforces &gt;1.5x Volume surge to enter late morning trades<br>
               &bull; <b>Post-10:30 AM CT Hard Risk Cap (&minus;0.35% ROE):</b> Tightens initial downside risk on late trades<br>
               &bull; <b>Midday Micro Window (11:30 AM–1:30 PM CT):</b> Capped at $1,000 Micro Sizing<br>
