@@ -263,13 +263,19 @@
   ],
   "active_position_cache": {
     "PYTH": {
-      "strategy": "BREAKOUT",
-      "entry_px": 0.080467,
-      "side": "LONG"
+      "entry_px": 0.080468,
+      "current_px": 0.079826,
+      "szi": 187.0,
+      "margin": 14.927462,
+      "side": "LONG",
+      "peak_roe": -0.007978326788288559,
+      "strategy": "BREAKOUT"
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-06 12:16:24",
+  "previous_active_coins": [
+    "PYTH"
+  ],
+  "last_run_timestamp": "2026-10-06 12:30:38",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -282,9 +288,9 @@
   "last_email_timestamp": 1791288925.8623273,
   "last_scan_timestamp": 1791288925.8623273,
   "gemini_cache": {
-    "timestamp": 1791288925.8623273,
-    "risk": "MODERATE",
-    "briefing": "**Risk Level: MODERATE**\n\nCrypto markets currently face a balanced tug-of-war between strong institutional adoption tailwinds and lingering macroeconomic uncertainty regarding interest rates and regulatory headwinds."
+    "timestamp": 1791289829.6054204,
+    "risk": "HIGH",
+    "briefing": "Risk Level: **HIGH**\n\nCurrent market volatility is being driven by significant macroeconomic uncertainty, ongoing regulatory scrutiny, and a precarious technical setup that leaves prices highly susceptible to sharp, liquidity-driven liquidations."
   },
   "recent_losses": [],
   "last_traded_candle": {
