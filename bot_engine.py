@@ -213,7 +213,7 @@ def sync_native_trigger_orders(exchange, info, coin, is_long, sz, stop_px, tp_px
                     tp_orders.append(o)
             elif isinstance(o_type, str) and "tp" in o_type.lower():
                 tp_orders.append(o)
-        
+
         if clean_tp_px is None:
             for o in tp_orders:
                 try:
@@ -368,11 +368,9 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
         dist_to_low_pct = (curr_px - c_low) / c_range if c_range > 0 else 1.0
         lower_wick_ratio = (min(c_open, curr_px) - c_low) / c_range
         
-        # 1. LIQUIDITY ABSORPTION: Long lower wick -> Buyers absorbing drop (Hold)
         if lower_wick_ratio >= 0.40:
             return False, "Liquidity Absorption Wick Detected (Holding)"
             
-        # 2. TRUE FALLING KNIFE: Heavy red body closing near bottom + volume expansion
         is_full_red_body = (curr_px < c_open) and (body_ratio >= 0.60) and (dist_to_low_pct <= 0.15)
         if is_full_red_body and vol_ratio >= 1.4:
             return True, f"🚨 True Falling Knife (Red Body: {body_ratio*100:.0f}%, Vol: {vol_ratio:.1f}x)"
@@ -396,7 +394,7 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, ent
     else:
         roe = (entry_px - current_px) / entry_px
 
-    # 1. DOWNSIDE: ATR-based Volatility Buffer & Entry Candle Low Protection
+    # 1. DOWNSIDE: ATR-based Volatility Buffer & Entry Candle Structural Protection
     atr_roe_buffer = (atr_val * 1.5) / entry_px if entry_px > 0 else 0.015
     atr_roe_buffer = max(0.0085, min(0.022, atr_roe_buffer))
 
@@ -407,35 +405,31 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, ent
         structure_stop = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else -atr_roe_buffer
         initial_floor_roe = max(-atr_roe_buffer, structure_stop)
 
-    # 2. UPSIDE: ASYMMETRIC PROFIT RATCHETS
-    if peak_roe >= 0.30:     # +30% to +50%+ Peak ROE: Lock 90% of maximum gains
+    # 2. UPSIDE: ASYMMETRIC PROFIT RATCHETS (Adjusted to eliminate sub-cent micro-wins)
+    if peak_roe >= 0.30:      # +30% to +50%+ Peak ROE: Lock 90% of maximum gains
         target_floor_roe = peak_roe * 0.90
         leash_status = f"🚀 GALACTIC MOONSHOT [Peak +{peak_roe*100:.1f}% -> Floor +{target_floor_roe*100:.1f}%]"
-    elif peak_roe >= 0.10:   # +10% Peak ROE: Lock 85% of gains
+    elif peak_roe >= 0.10:    # +10% Peak ROE: Lock 85% of gains
         target_floor_roe = peak_roe * 0.85
         leash_status = f"🌕 PARABOLIC RUNNER [Peak +{peak_roe*100:.1f}% -> Floor +{target_floor_roe*100:.1f}%]"
-    elif peak_roe >= 0.02:   # +2% Peak ROE: Lock 75% of gains
+    elif peak_roe >= 0.03:    # +3.0% Peak ROE: Lock 75% of gains
         target_floor_roe = peak_roe * 0.75
         leash_status = f"📈 PROFIT LOCK [Peak +{peak_roe*100:.1f}% -> Floor +{target_floor_roe*100:.1f}%]"
-    elif peak_roe >= 0.005:  # +0.5% Peak ROE: Break-Even Shield (+0.25% floor)
-        target_floor_roe = 0.0025
-        leash_status = f"🛡️ BREAK-EVEN SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +0.25%]"
+    elif peak_roe >= 0.012:   # +1.2% Peak ROE: Break-Even + Fee Buffer (+0.40% floor)
+        target_floor_roe = 0.0040
+        leash_status = f"🛡️️ BREAK-EVEN SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +0.40%]"
     else:
         target_floor_roe = initial_floor_roe
         leash_status = f"🛡 STRUCTURAL STOP ({target_floor_roe*100:.2f}%)"
 
-    # Convert ROE targets to precise exchange orderbook prices
+    # Convert ROE targets to precise exchange orderbook stop prices
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
     else:
         stop_px = entry_px * (1 - target_floor_roe)
 
-    # 3. UNCAP TP TARGET FOR MOONSHOT RUNNERS
-    if peak_roe >= 0.05:
-        tp_px = None  # Removes resting TP from orderbook to allow infinite parabolic upside
-    else:
-        tp_target_roe = 0.20
-        tp_px = entry_px * (1 + tp_target_roe) if is_long else entry_px * (1 - tp_target_roe)
+    # 3. UNCAP TP TARGET FOR MOONSHOT RUNNERS (Rely strictly on trailing trigger SL ratchets)
+    tp_px = None  
 
     return stop_px, tp_px, roe, target_floor_roe, leash_status
 
@@ -672,6 +666,14 @@ def execute_engine():
             entry_candle_high = entry_px * 1.01
             c_candles = []
 
+            # --- HOLE 1 FIX: BTC DIRECTIONAL REGIME SHIELD FLIP PURGE ---
+            if is_long and btc_regime == "RED":
+                should_exit = True
+                exit_reason = f"🚨 BTC Daily Bearish Flip Purge (BTC Daily is RED {btc_change_pct:+.2f}%)"
+            elif (not is_long) and btc_regime == "GREEN":
+                should_exit = True
+                exit_reason = f"🚨 BTC Daily Bullish Flip Purge (BTC Daily is GREEN {btc_change_pct:+.2f}%)"
+
             try:
                 c_candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
                 closes = [float(c["c"]) for c in c_candles]
@@ -691,7 +693,7 @@ def execute_engine():
                 c_open = float(c_candles[-1]["o"])
                 c_high = float(c_candles[-1]["h"])
                 c_low = float(c_candles[-1]["l"])
-                avg_v = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else volumes[-3]
+                avg_v = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
                 curr_v = volumes[-1]
                 v_ratio = curr_v / avg_v if avg_v > 0 else 1.0
 
@@ -851,7 +853,8 @@ def execute_engine():
     MAX_CRYPTO_SLOTS = 1
     available_slots = MAX_CRYPTO_SLOTS - active_count
 
-    base_sizing_usd = 15.0
+    base_sizing_usd = 12.0
+    min_notional_usd = 10.50
 
     if is_30m_scan_window and available_slots > 0:
         if effective_regime == "NEUTRAL":
@@ -925,7 +928,7 @@ def execute_engine():
                     bb_upper, bb_lower, bb_mid = calculate_bollinger_bands(closes)
                     vwap_val = calculate_vwap(candles[-24:])
                     
-                    avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else volumes[-3]
+                    avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
                     comp_vol = volumes[-2]
                     vol_ratio = comp_vol / avg_vol if avg_vol > 0 else 1.0
 
@@ -1007,8 +1010,13 @@ def execute_engine():
             else:
                 sz = round(np.ceil(raw_sz * (10 ** decimals)) / (10 ** decimals), decimals)
 
-            if (sz * px) < 10.50:
-                sz = round(sz + (10 ** -decimals), decimals)
+            # --- HOLE 4 FIX: GUARANTEED USD NOTIONAL FLOOR ($10.50 MINIMUM) ---
+            if (sz * px) < min_notional_usd:
+                needed_sz = min_notional_usd / px
+                if decimals == 0:
+                    sz = int(np.ceil(needed_sz))
+                else:
+                    sz = round(np.ceil(needed_sz * (10 ** decimals)) / (10 ** decimals), decimals)
 
             if sz <= 0:
                 audit_logs.append(f"⚠️ Sizing guard skipped {coin}: calculated size {sz} <= 0 (Price: ${px:.2f})")
@@ -1040,7 +1048,7 @@ def execute_engine():
                     }
 
                     initial_stop_px = px * 0.9915 if is_long else px * 1.0085
-                    initial_tp_px = px * 1.20 if is_long else px * 0.80
+                    initial_tp_px = None  # Always rely on resting trigger SL ratchets on orderbook
 
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
@@ -1048,10 +1056,10 @@ def execute_engine():
                         "bot_title": "TR-GC-Crypto-LS-23-V2", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 1,
-                        "collateral": base_sizing_usd, "position_usd": base_sizing_usd,
+                        "collateral": (sz * px), "position_usd": (sz * px),
                         "pnl": 0.0, "roe": 0.0,
                         "stop": round_sig_figs(initial_stop_px, 5),
-                        "tp_target": round_sig_figs(initial_tp_px, 5),
+                        "tp_target": "UNCAPPED 🚀",
                         "status": "🛡️ Anti-Wick Buffer & Initial Native TPSL Active"
                     })
 
@@ -1241,15 +1249,15 @@ def execute_engine():
                 <div class="rules-card">
                   <div class="rules-title">&#9989; Active Guardrails (Full Crypto Strategy Display)</div>
                   &bull; <b>Live Anatomy Falling-Knife Detector:</b> Distinguishes absorption wicks from solid red dumps (&gt;60% body, &gt;1.4x vol)<br>
-                  &bull; <b>Asymmetric Moonshot Profit Ratchets:</b> Lock 75% at +2% ROE, 85% at +10% ROE, 90% at +30%+ ROE<br>
-                  &bull; <b>Uncapped Moonshot Upside:</b> Removes fixed TP targets when peak ROE &ge; +5.0% for infinite runner potential<br>
+                  &bull; <b>Asymmetric Moonshot Profit Ratchets:</b> Lock 75% at +3% ROE, 85% at +10% ROE, 90% at +30%+ ROE<br>
+                  &bull; <b>Uncapped Moonshot Upside:</b> Strictly relies on native orderbook SL ratchets for infinite runner potential<br>
                   &bull; <b>24/7 Native Orderbook Sync:</b> Posts resting trigger orders on Hyperliquid L1 orderbook to protect while sleeping<br>
                   &bull; <b>Falling Knife & Stagnation Cut:</b> Auto-closes trades negative (&lt; -0.40%) for 2 consecutive 30m runs<br>
                   &bull; <b>Trigger Candle Invalidation:</b> Immediately closes trade if price breaks entry candle low/high<br>
                   &bull; <b>True Body Momentum Gate:</b> Requires solid candle bodies (&gt;35% range) and multi-candle commitment<br>
-                  &bull; <b>BTC Directional Shield:</b> Enforces broad market alignment (GREEN = LONGs, RED = SHORTs, NEUTRAL = High Conviction)<br>
+                  &bull; <b>BTC Directional Shield:</b> Enforces broad market alignment &amp; active flip purge (GREEN = LONGs, RED = SHORTs)<br>
                   &bull; <b>Adaptive Gemini Volume Gate:</b> Dynamically scales volume confirmation (LOW: 1.12x, MODERATE: 1.18x, HIGH: 1.25x)<br>
-                  &bull; <b>Single-Slot Capital Preservation:</b> Strictly capped at 1 active trade ($10 floor)<br>
+                  &bull; <b>Single-Slot Capital Preservation:</b> Strictly capped at 1 active trade ($10.50 minimum floor)<br>
                   &bull; <b>Optimal Orderbook Gate:</b> Rejects spread &gt; 0.30% or 0.5% depth &lt; $6,000 USD<br>
                   &bull; <b>24H Post-Loss Cooldown Blocklist:</b> Bans any coin closed at a loss for 24 hours in state.json<br>
                   &bull; <b>Rolling Loss Circuit Breaker:</b> Triggers 12-hour hibernation if 3 losses occur within rolling 60m
