@@ -646,7 +646,7 @@ def execute_stock_engine():
     MAX_STOCK_SLOTS = 5
     
     # --- TIME-WINDOWED ENTRY REGULATION & LOCKOUTS ---
-    # FIXED: Check 8:30 AM CT (9:30 AM ET Regular Market Open)
+    # Check 8:30 AM CT (9:30 AM ET Regular Market Open)
     is_opening_bell_lockout = (ct_now.hour < 8) or (ct_now.hour == 8 and ct_now.minute < 30)
     is_prime_morning_window = (ct_now.hour == 8 and ct_now.minute >= 30) or (9 <= ct_now.hour < 11) or (ct_now.hour == 11 and ct_now.minute <= 30)
     is_midday_window = (ct_now.hour == 11 and ct_now.minute > 30) or (ct_now.hour == 12) or (ct_now.hour == 13 and ct_now.minute < 30)
@@ -795,28 +795,42 @@ def execute_stock_engine():
             qty = max(1, int(raw_qty))
             order_side = "buy" if is_long else "sell"
 
+            # Calculate initial stop price
+            initial_stop_px = px * 0.9965 if is_long else px * 1.0035
+            clean_initial_stop = round(initial_stop_px, 2)
+
+            # Native Alpaca OTO (One-Triggers-Other) order payload
+            # Automatically attaches the resting stop order to the entry order on Alpaca's matching engine
+            # Completely eliminates 403 "opposite side market/stop order exists" wash trade errors.
             order_payload = {
-                "symbol": symbol, "qty": format_qty(qty), "side": order_side, "type": "market", "time_in_force": "day"
+                "symbol": symbol,
+                "qty": format_qty(qty),
+                "side": order_side,
+                "type": "market",
+                "time_in_force": "day",
+                "order_class": "oto",
+                "stop_loss": {
+                    "stop_price": f"{clean_initial_stop:.2f}"
+                }
             }
             try:
                 order_res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=order_payload, headers=HEADERS)
                 if order_res.status_code == 200:
                     active_count += 1
                     active_symbols.add(symbol)
-                    
-                    # 1.5s Execution settlement buffer to avoid 403 wash trade filter
-                    time.sleep(1.5)
-                    
-                    refreshed_orders_res = api_retry(requests.get, f"{BASE_URL}/v2/orders?status=open", headers=HEADERS)
-                    refreshed_open_orders = refreshed_orders_res.json() if refreshed_orders_res.status_code == 200 else open_orders
-
-                    # SYNC INITIAL NATIVE TRIGGER STOP ORDER DIRECTLY ON ALPACA ORDERBOOK
-                    initial_stop_px = px * 0.9965 if is_long else px * 1.0035
-                    sync_alpaca_native_trigger_stop(symbol, is_long, qty, initial_stop_px, refreshed_open_orders, audit_logs)
-
-                    audit_logs.append(f"1H ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} (~${(qty * px):.2f}) [Native Trigger Stop Active]")
+                    audit_logs.append(f"1H ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} (~${(qty * px):.2f}) [Native OTO Trigger Stop Active @ ${clean_initial_stop:.2f}]")
                 else:
-                    audit_logs.append(f"ORDER REJECTED BY ALPACA [{order_res.status_code}] on {symbol}: {order_res.text}")
+                    # Fallback to standard order if OTO rejected by account settings
+                    fallback_payload = {
+                        "symbol": symbol, "qty": format_qty(qty), "side": order_side, "type": "market", "time_in_force": "day"
+                    }
+                    fallback_res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=fallback_payload, headers=HEADERS)
+                    if fallback_res.status_code == 200:
+                        active_count += 1
+                        active_symbols.add(symbol)
+                        audit_logs.append(f"1H ENTRY SUCCESS (Standard): Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} (~${(qty * px):.2f}) [Stop will sync on next run]")
+                    else:
+                        audit_logs.append(f"ORDER REJECTED BY ALPACA [{order_res.status_code}] on {symbol}: {order_res.text}")
             except Exception as e:
                 audit_logs.append(f"ORDER EXCEPTION on {symbol}: {e}")
     else:
