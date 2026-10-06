@@ -73,18 +73,18 @@
   "active_position_cache": {
     "COST": {
       "entry_px": 930.542,
-      "current_px": 932.66,
+      "current_px": 934.72,
       "qty": 10.0,
       "side": "long",
-      "peak_roe": 0.002276092857710816,
-      "best_target_floor_roe": 0.000771593329478959,
-      "best_stop_px": 931.26
+      "peak_roe": 0.004489856449252153,
+      "best_target_floor_roe": 0.001,
+      "best_stop_px": 931.472542
     }
   },
   "previous_active_symbols": [
     "COST"
   ],
-  "last_run_timestamp": "2026-10-06 18:16:44",
+  "last_run_timestamp": "2026-10-06 18:50:00",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42
