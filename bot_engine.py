@@ -37,7 +37,7 @@ def load_state():
         "cooldown_blocklist": {},      # 24H Post-loss cooldown: {coin: expire_timestamp}
         "last_traded_candle": {},      # Single-candle entry lock: {coin: candle_timestamp}
         "hibernating_until": 0,        # Emergency 12H hibernation lock
-        "stagnation_tracker": {}, 
+        "stagnation_tracker": {},      # Falling knife tracker: {coin: consecutive_negative_runs}
         "closed_trades_ledger": [], 
         "active_position_cache": {},
         "previous_active_coins": [],
@@ -65,7 +65,7 @@ def save_state(state):
         json.dump(state, f, indent=2)
 
 def api_retry(func, *args, retries=5, delay=3.0, **kwargs):
-    """Universal resilient API retry decorator for all exchange and web queries."""
+    """Universal resilient API retry decorator for exchange and web queries."""
     for attempt in range(retries):
         try:
             return func(*args, **kwargs)
@@ -141,7 +141,7 @@ def check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=6000
         return False, f"Liquidity Check Error: {e}"
 
 # ==============================================================================
-# NATIVE EXCHANGE TRIGGER ORDER MANAGERS (DUAL SL & TP ORDERBOOK SYNC)
+# NATIVE EXCHANGE TRIGGER ORDER MANAGERS (24/7 ON-CHAIN ORDERBOOK SHIELD)
 # ==============================================================================
 def cancel_native_trigger_orders(exchange, info, coin, account_address):
     try:
@@ -156,7 +156,7 @@ def cancel_native_trigger_orders(exchange, info, coin, account_address):
         pass
 
 def sync_native_trigger_orders(exchange, info, coin, is_long, sz, stop_px, tp_px, account_address, audit_logs=None):
-    """Syncs both resting Stop-Loss and resting Take-Profit orders directly on Hyperliquid orderbook."""
+    """Syncs resting Stop-Loss and resting Take-Profit orders directly on Hyperliquid orderbook."""
     try:
         clean_stop_px = float(round_sig_figs(stop_px, 5)) if stop_px else None
         clean_tp_px = float(round_sig_figs(tp_px, 5)) if tp_px else None
@@ -219,7 +219,7 @@ def sync_native_trigger_orders(exchange, info, coin, is_long, sz, stop_px, tp_px
                 try:
                     exchange.cancel(coin, int(o["oid"]))
                     if audit_logs is not None:
-                        audit_logs.append(f"🚀 MOONSHOT UNCAP [{coin}]: Removed fixed TP target for infinite upside runner")
+                        audit_logs.append(f"🚀 MOONSHOT UNCAP [{coin}]: Removed fixed TP target on Hyperliquid for infinite upside")
                 except Exception:
                     pass
         else:
@@ -356,55 +356,83 @@ def calculate_atr(highs, lows, closes, period=14):
         return 1.0
 
 # ==============================================================================
-# DYNAMIC TP BUMPING & MICRO-RATCHET ENGINE
+# SMART PROTECTION ENGINE (LIVE ANATOMY & ASYMMETRIC MOONSHOT RATCHET)
 # ==============================================================================
-def calculate_moonshot_ratchet_targets(entry_px, is_long, current_px, atr_val, peak_roe=0.0):
+def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_long):
+    """Analyzes live candle structure to distinguish liquidity absorption wicks from true falling knives."""
+    c_range = c_high - c_low if c_high > c_low else 1e-8
+    body_sz = abs(curr_px - c_open)
+    body_ratio = body_sz / c_range
+
+    if is_long:
+        dist_to_low_pct = (curr_px - c_low) / c_range if c_range > 0 else 1.0
+        lower_wick_ratio = (min(c_open, curr_px) - c_low) / c_range
+        
+        # 1. LIQUIDITY ABSORPTION: Long lower wick -> Buyers absorbing drop (Hold)
+        if lower_wick_ratio >= 0.40:
+            return False, "Liquidity Absorption Wick Detected (Holding)"
+            
+        # 2. TRUE FALLING KNIFE: Heavy red body closing near bottom + volume expansion
+        is_full_red_body = (curr_px < c_open) and (body_ratio >= 0.60) and (dist_to_low_pct <= 0.15)
+        if is_full_red_body and vol_ratio >= 1.4:
+            return True, f"🚨 True Falling Knife (Red Body: {body_ratio*100:.0f}%, Vol: {vol_ratio:.1f}x)"
+    else:
+        dist_to_high_pct = (c_high - curr_px) / c_range if c_range > 0 else 1.0
+        upper_wick_ratio = (c_high - max(c_open, curr_px)) / c_range
+        
+        if upper_wick_ratio >= 0.40:
+            return False, "Liquidity Absorption Wick Detected (Holding)"
+            
+        is_full_green_body = (curr_px > c_open) and (body_ratio >= 0.60) and (dist_to_high_pct <= 0.15)
+        if is_full_green_body and vol_ratio >= 1.4:
+            return True, f"🚨 True Rising Knife (Green Body: {body_ratio*100:.0f}%, Vol: {vol_ratio:.1f}x)"
+            
+    return False, "Normal Price Action"
+
+def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0):
+    """Computes dynamic structural stop-loss and asymmetric moonshot targets synced to Hyperliquid L1 orderbook."""
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
         roe = (entry_px - current_px) / entry_px
 
-    atr_roe_buffer = (atr_val * 1.2) / entry_px if entry_px > 0 else 0.020
-    atr_roe_buffer = max(0.0180, min(0.0250, atr_roe_buffer))
+    # 1. DOWNSIDE: ATR-based Volatility Buffer & Entry Candle Low Protection
+    atr_roe_buffer = (atr_val * 1.5) / entry_px if entry_px > 0 else 0.015
+    atr_roe_buffer = max(0.0085, min(0.022, atr_roe_buffer))
 
-    if peak_roe >= 3.00:
-        target_floor_roe = max(peak_roe * 0.95, peak_roe - 0.20)
-        leash_status = f"🚀 GALACTIC MOONSHOT 95% Lock [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
-    elif peak_roe >= 0.75:
-        target_floor_roe = peak_roe * 0.90
-        leash_status = f"🌕 Major Runner 90% Lock [{peak_roe*100:.0f}% Peak -> +{target_floor_roe*100:.0f}% Floor]"
-    elif peak_roe >= 0.30:
-        target_floor_roe = max(peak_roe * 0.88, peak_roe - 0.05)
-        leash_status = f"📈 Strong Trend 88% Lock [{peak_roe*100:.1f}% Peak -> +{target_floor_roe*100:.1f}% Floor]"
-    elif peak_roe >= 0.0150:
-        target_floor_roe = peak_roe * 0.85
-        leash_status = f"🎯 Tier 3 Profit Lock 85% [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-    elif peak_roe >= 0.0080:
-        target_floor_roe = peak_roe * 0.80
-        leash_status = f"⚡ Tier 2 Profit Lock 80% [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-    elif peak_roe >= 0.0035:
-        target_floor_roe = peak_roe * 0.75
-        leash_status = f"📈 Tier 1 Profit Lock 75% [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
-    elif peak_roe >= 0.0015:
-        target_floor_roe = 0.0003
-        leash_status = f"🛡️ Micro Break-Even Shield [{peak_roe*100:.2f}% Peak -> +{target_floor_roe*100:.2f}% Floor]"
+    if is_long:
+        structure_stop = (entry_candle_low / entry_px) - 1.0 if entry_px > 0 else -atr_roe_buffer
+        initial_floor_roe = max(-atr_roe_buffer, structure_stop)
     else:
-        target_floor_roe = -atr_roe_buffer
-        leash_status = f"🛡 Anti-Wick Buffer (-{atr_roe_buffer*100:.2f}%)"
+        structure_stop = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else -atr_roe_buffer
+        initial_floor_roe = max(-atr_roe_buffer, structure_stop)
 
+    # 2. UPSIDE: ASYMMETRIC PROFIT RATCHETS
+    if peak_roe >= 0.30:     # +30% to +50%+ Peak ROE: Lock 90% of maximum gains
+        target_floor_roe = peak_roe * 0.90
+        leash_status = f"🚀 GALACTIC MOONSHOT [Peak +{peak_roe*100:.1f}% -> Floor +{target_floor_roe*100:.1f}%]"
+    elif peak_roe >= 0.10:   # +10% Peak ROE: Lock 85% of gains
+        target_floor_roe = peak_roe * 0.85
+        leash_status = f"🌕 PARABOLIC RUNNER [Peak +{peak_roe*100:.1f}% -> Floor +{target_floor_roe*100:.1f}%]"
+    elif peak_roe >= 0.02:   # +2% Peak ROE: Lock 75% of gains
+        target_floor_roe = peak_roe * 0.75
+        leash_status = f"📈 PROFIT LOCK [Peak +{peak_roe*100:.1f}% -> Floor +{target_floor_roe*100:.1f}%]"
+    elif peak_roe >= 0.005:  # +0.5% Peak ROE: Break-Even Shield (+0.25% floor)
+        target_floor_roe = 0.0025
+        leash_status = f"🛡️ BREAK-EVEN SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +0.25%]"
+    else:
+        target_floor_roe = initial_floor_roe
+        leash_status = f"🛡 STRUCTURAL STOP ({target_floor_roe*100:.2f}%)"
+
+    # Convert ROE targets to precise exchange orderbook prices
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
     else:
         stop_px = entry_px * (1 - target_floor_roe)
 
-    if peak_roe >= 0.50:
-        tp_px = None
-    elif peak_roe >= 0.25:
-        tp_target_roe = 0.75
-        tp_px = entry_px * (1 + tp_target_roe) if is_long else entry_px * (1 - tp_target_roe)
-    elif peak_roe >= 0.12:
-        tp_target_roe = 0.40
-        tp_px = entry_px * (1 + tp_target_roe) if is_long else entry_px * (1 - tp_target_roe)
+    # 3. UNCAP TP TARGET FOR MOONSHOT RUNNERS
+    if peak_roe >= 0.05:
+        tp_px = None  # Removes resting TP from orderbook to allow infinite parabolic upside
     else:
         tp_target_roe = 0.20
         tp_px = entry_px * (1 + tp_target_roe) if is_long else entry_px * (1 - tp_target_roe)
@@ -483,7 +511,7 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23 Engine Started (30m Candle-Synced Scanner & Dual TP Orderbook Sync Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V2 Master Engine Started (Smart Protection & 24/7 Orderbook Sync Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -619,7 +647,7 @@ def execute_engine():
         save_state(state)
         return
 
-    # Position Management & Exits
+    # Position Management & Dynamic Exits
     if asset_positions:
         for pos_item in asset_positions:
             pos = pos_item.get("position", {})
@@ -640,17 +668,39 @@ def execute_engine():
             should_exit = False
             exit_reason = ""
             atr_val = 1.0
+            entry_candle_low = entry_px * 0.99
+            entry_candle_high = entry_px * 1.01
+            c_candles = []
 
             try:
                 c_candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
                 closes = [float(c["c"]) for c in c_candles]
                 highs = [float(c["h"]) for c in c_candles]
                 lows = [float(c["l"]) for c in c_candles]
+                volumes = [float(c.get("v", 0)) for c in c_candles]
                 
                 atr_val = calculate_atr(highs, lows, closes)
                 bb_upper, bb_lower, bb_mid = calculate_bollinger_bands(closes)
                 vwap_val = calculate_vwap(c_candles[-24:])
 
+                if len(c_candles) >= 2:
+                    entry_candle_low = float(c_candles[-2]["l"])
+                    entry_candle_high = float(c_candles[-2]["h"])
+
+                # --- LIVE CANDLE ANATOMY & FALLING KNIFE CHECK ---
+                c_open = float(c_candles[-1]["o"])
+                c_high = float(c_candles[-1]["h"])
+                c_low = float(c_candles[-1]["l"])
+                avg_v = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else volumes[-3]
+                curr_v = volumes[-1]
+                v_ratio = curr_v / avg_v if avg_v > 0 else 1.0
+
+                is_knife, knife_reason = analyze_live_falling_knife(current_px, c_open, c_high, c_low, v_ratio, is_long)
+                if is_knife:
+                    should_exit = True
+                    exit_reason = knife_reason
+
+                # Ranging Mean-Reversion Target Exit
                 strat_type = current_active_cache.get(coin, {}).get("strategy", "BREAKOUT")
                 if strat_type == "MEAN_REVERSION":
                     target_tp = max(bb_mid, vwap_val) if is_long else min(bb_mid, vwap_val)
@@ -663,11 +713,35 @@ def execute_engine():
             except Exception as e:
                 audit_logs.append(f"Indicator calculation warning on {coin}: {e}")
 
+            # --- FALLING KNIFE & STAGNATION GUARDS ---
+            stag_map = state.get("stagnation_tracker", {})
+            curr_stag = stag_map.get(coin, 0)
+            if current_roe < -0.0040:
+                curr_stag += 1
+                if "stagnation_tracker" not in state:
+                    state["stagnation_tracker"] = {}
+                state["stagnation_tracker"][coin] = curr_stag
+                if curr_stag >= 2:
+                    should_exit = True
+                    exit_reason = f"🗡️ Falling Knife Stagnation Cut ({current_roe*100:.2f}% after 2 runs)"
+            else:
+                if "stagnation_tracker" in state and coin in state["stagnation_tracker"]:
+                    state["stagnation_tracker"][coin] = 0
+
+            # Trigger Candle Low Invalidation Guard
+            if c_candles and len(c_candles) >= 2:
+                if is_long and current_px < entry_candle_low:
+                    should_exit = True
+                    exit_reason = f"🗡️ Falling Knife Invalidation (Broke Entry Low ${entry_candle_low:.5f})"
+                elif (not is_long) and current_px > entry_candle_high:
+                    should_exit = True
+                    exit_reason = f"🗡️ Falling Knife Invalidation (Broke Entry High ${entry_candle_high:.5f})"
+
             prev_peak = current_active_cache.get(coin, {}).get("peak_roe", current_roe)
             peak_roe = max(current_roe, prev_peak)
 
-            stop_px_calc, tp_px_calc, current_roe, target_floor_roe, leash_status = calculate_moonshot_ratchet_targets(
-                entry_px, is_long, current_px, atr_val, peak_roe=peak_roe
+            stop_px_calc, tp_px_calc, current_roe, target_floor_roe, leash_status = calculate_smart_exchange_targets(
+                entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=peak_roe
             )
 
             if is_long and current_px <= stop_px_calc:
@@ -684,6 +758,9 @@ def execute_engine():
                     cancel_native_trigger_orders(exchange, info, coin, ACCOUNT_ADDRESS)
                     exchange.market_close(coin, slippage=0.01)
 
+                    if "stagnation_tracker" in state:
+                        state["stagnation_tracker"].pop(coin, None)
+
                     if unrealized_pnl < 0 or current_roe < 0:
                         state["cooldown_blocklist"][coin] = now_ts + 86400
                         audit_logs.append(f"⛔ Added {coin} to 24H Cooldown Blocklist (Closed at Loss)")
@@ -698,6 +775,7 @@ def execute_engine():
                 except Exception as e:
                     audit_logs.append(f"Market close failed on {coin}: {e}")
 
+            # 24/7 NATIVE ORDERBOOK SYNC WHILE BOT SLEEPS
             sync_native_trigger_orders(exchange, info, coin, is_long, abs(szi), stop_px_calc, tp_px_calc, ACCOUNT_ADDRESS, audit_logs)
 
             active_count += 1
@@ -711,7 +789,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V2", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 1,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -727,7 +805,6 @@ def execute_engine():
     prev_cache = state.get("active_position_cache", {})
     for coin, cache_data in list(prev_cache.items()):
         if coin not in active_coins:
-            # Position was active in prior run but closed natively on exchange while script slept
             try:
                 user_fills = api_retry(info.user_fills, ACCOUNT_ADDRESS)
                 coin_fills = [f for f in user_fills if f.get("coin") == coin]
@@ -750,6 +827,9 @@ def execute_engine():
                         "pnl_usd": pnl_usd, "roe_pct": roe_pct, "side": side,
                         "exit_reason": "🎯 Native Orderbook TPSL Fill", "timestamp": timestamp, "ts_sec": now_ts
                     })
+
+                    if "stagnation_tracker" in state:
+                        state["stagnation_tracker"].pop(coin, None)
                     
                     if pnl_usd < 0:
                         state["cooldown_blocklist"][coin] = now_ts + 86400
@@ -788,7 +868,6 @@ def execute_engine():
         btc_ci = calculate_choppiness_index(btc_highs, btc_lows, btc_closes)
         btc_adx = calculate_adx(btc_highs, btc_lows, btc_closes)
 
-        # ADX >= 28.0 OVERRIDES RANGING MODE -> FORCES TRENDING CLASSIFICATION
         if (btc_ci < 48.0 and btc_adx > 21.0) or (btc_adx >= 28.0):
             market_mode = "TRENDING"
         elif btc_ci > 62.0:
@@ -882,7 +961,7 @@ def execute_engine():
                                         })
                                         audit_logs.append(f"1H TRUE RED BREAKDOWN MATCH (SHORT): {coin} @ ${curr_live_px:.4f} (True Red Body, Ext: -{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
 
-                    # STRATEGY B: RANGING MEAN-REVERSION (STRICTLY BLOCKED IF ADX >= 25.0)
+                    # STRATEGY B: RANGING MEAN-REVERSION
                     if market_mode == "RANGING" and vol_ratio >= required_vol_ratio and btc_adx < 25.0:
                         if effective_regime in ["GREEN", "NEUTRAL"]:
                             if curr_live_px <= bb_lower * 1.005 and curr_live_px < vwap_val and rsi_1h <= 35.0 and is_true_green:
@@ -923,13 +1002,11 @@ def execute_engine():
             decimals = sz_decimals_map.get(coin, 4)
             raw_sz = base_sizing_usd / px
 
-            # Force ceiling rounding UP to guarantee order value exceeds $10.00 MinTradeNtl
             if decimals == 0:
                 sz = int(np.ceil(raw_sz))
             else:
                 sz = round(np.ceil(raw_sz * (10 ** decimals)) / (10 ** decimals), decimals)
 
-            # Extra Safety Fallback: Ensure value never drops below $10.50
             if (sz * px) < 10.50:
                 sz = round(sz + (10 ** -decimals), decimals)
 
@@ -962,20 +1039,20 @@ def execute_engine():
                         "side": "LONG" if is_long else "SHORT"
                     }
 
-                    initial_stop_px = px * 0.982 if is_long else px * 1.018
+                    initial_stop_px = px * 0.9915 if is_long else px * 1.0085
                     initial_tp_px = px * 1.20 if is_long else px * 0.80
 
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V2", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 1,
                         "collateral": base_sizing_usd, "position_usd": base_sizing_usd,
                         "pnl": 0.0, "roe": 0.0,
                         "stop": round_sig_figs(initial_stop_px, 5),
                         "tp_target": round_sig_figs(initial_tp_px, 5),
-                        "status": "🛡️ Anti-Wick Buffer & Initial +20% TP Active (Native Orderbook TPSL)"
+                        "status": "🛡️ Anti-Wick Buffer & Initial Native TPSL Active"
                     })
 
                     audit_logs.append(f"1H EXECUTION SUCCESS [{strat_used}]: Opened {'LONG' if is_long else 'SHORT'} on {coin} (Size: {sz} ~${(sz * px):.2f})")
@@ -1020,7 +1097,7 @@ def execute_engine():
         
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/1"
+        text_fallback = f"TR-GC-Crypto-LS-23-V2 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/1"
 
         summary_card_html = f"""
         <div class="summary-card">
@@ -1045,7 +1122,7 @@ def execute_engine():
         if VERBOSE_TEST_MODE:
             audit_rows = "".join([f"<tr><td style='padding: 6px 8px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 10px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
             audit_section = f"""
-            <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log</div>
+            <div class="section-title" style="color: #d97706;">Live Telemetry & Audit Log</div>
             <div class="table-responsive">
               <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%;">
                 <tbody>{audit_rows}</tbody>
@@ -1146,7 +1223,7 @@ def execute_engine():
             <div class="container">
               <div class="header">
                 <h2>TR-GC-Crypto-LS-23-V2 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Anti-Wick Breathing Engine Active)</p>
+                <p>Timestamp: {timestamp} (24/7 Smart Orderbook Protection Active)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -1163,21 +1240,18 @@ def execute_engine():
 
                 <div class="rules-card">
                   <div class="rules-title">&#9989; Active Guardrails (Full Crypto Strategy Display)</div>
-                  &bull; <b>Anti-Wick Breathing Buffer:</b> Gives trades -1.80% to -2.50% room to breathe past normal hourly wicks<br>
-                  &bull; <b>Dynamic Dual TP/SL Orderbook Sync:</b> Places initial +20% resting TP & ratchets to +40%, +75%, then uncapped moonshot<br>
+                  &bull; <b>Live Anatomy Falling-Knife Detector:</b> Distinguishes absorption wicks from solid red dumps (&gt;60% body, &gt;1.4x vol)<br>
+                  &bull; <b>Asymmetric Moonshot Profit Ratchets:</b> Lock 75% at +2% ROE, 85% at +10% ROE, 90% at +30%+ ROE<br>
+                  &bull; <b>Uncapped Moonshot Upside:</b> Removes fixed TP targets when peak ROE &ge; +5.0% for infinite runner potential<br>
+                  &bull; <b>24/7 Native Orderbook Sync:</b> Posts resting trigger orders on Hyperliquid L1 orderbook to protect while sleeping<br>
+                  &bull; <b>Falling Knife & Stagnation Cut:</b> Auto-closes trades negative (&lt; -0.40%) for 2 consecutive 30m runs<br>
+                  &bull; <b>Trigger Candle Invalidation:</b> Immediately closes trade if price breaks entry candle low/high<br>
                   &bull; <b>True Body Momentum Gate:</b> Requires solid candle bodies (&gt;35% range) and multi-candle commitment<br>
-                  &bull; <b>Native Orderbook Trigger Stop-Market Orders:</b> Auto-places & ratchets resting TPSL directly on exchange orderbook<br>
-                  &bull; <b>Bidirectional Live Candle Confirmation Gate:</b> Green for LONGs, Red for SHORTs with 1H Hold Confirmation<br>
-                  &bull; <b>100% Market Execution:</b> All exits execute via direct Taker Market Orders<br>
-                  &bull; <b>Ultra-Tight Micro-Ratchet Ladder:</b> Micro BE at +0.15%, 75% at +0.35%, 80% at +0.80%, 85% at +1.50%<br>
-                  &bull; <b>BTC Directional Shield:</b> Enforces broad market alignment (GREEN = LONGs only, RED = SHORTs only, NEUTRAL = All-Weather High Conviction)<br>
+                  &bull; <b>BTC Directional Shield:</b> Enforces broad market alignment (GREEN = LONGs, RED = SHORTs, NEUTRAL = High Conviction)<br>
                   &bull; <b>Adaptive Gemini Volume Gate:</b> Dynamically scales volume confirmation (LOW: 1.12x, MODERATE: 1.18x, HIGH: 1.25x)<br>
-                  &bull; <b>Unrestricted Scanner:</b> 100-coin scanning universe remains 100% open for moonshot detection<br>
-                  &bull; <b>Uncapped Moonshot Upside:</b> Zero take-profit caps above +50% ROE—lets parabolic runners fly infinitely<br>
                   &bull; <b>Single-Slot Capital Preservation:</b> Strictly capped at 1 active trade ($10 floor)<br>
                   &bull; <b>Optimal Orderbook Gate:</b> Rejects spread &gt; 0.30% or 0.5% depth &lt; $6,000 USD<br>
                   &bull; <b>24H Post-Loss Cooldown Blocklist:</b> Bans any coin closed at a loss for 24 hours in state.json<br>
-                  &bull; <b>Single-Candle Lockout:</b> Restricts assets to max 1 entry per candle bar<br>
                   &bull; <b>Rolling Loss Circuit Breaker:</b> Triggers 12-hour hibernation if 3 losses occur within rolling 60m
                 </div>
 
@@ -1227,7 +1301,7 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing single-run Anti-Wick cycle...", flush=True)
+    print(f"[{timestamp}] Executing single-run Smart Protection cycle...", flush=True)
     try:
         execute_engine()
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Cycle execution completed successfully.", flush=True)
