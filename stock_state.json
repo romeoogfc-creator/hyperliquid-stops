@@ -73,7 +73,7 @@
   "active_position_cache": {
     "COST": {
       "entry_px": 930.542,
-      "current_px": 934.72,
+      "current_px": 933.875,
       "qty": 10.0,
       "side": "long",
       "peak_roe": 0.004489856449252153,
@@ -84,7 +84,7 @@
   "previous_active_symbols": [
     "COST"
   ],
-  "last_run_timestamp": "2026-10-06 18:50:00",
+  "last_run_timestamp": "2026-10-06 19:14:01",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42
