@@ -262,7 +262,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-06 05:45:28",
+  "last_run_timestamp": "2026-10-06 06:00:27",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -272,12 +272,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791264632.4204383,
-  "last_scan_timestamp": 1791264632.4204383,
+  "last_email_timestamp": 1791266423.059459,
+  "last_scan_timestamp": 1791266423.059459,
   "gemini_cache": {
-    "timestamp": 1791264632.4204383,
+    "timestamp": 1791266423.059459,
     "risk": "HIGH",
-    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, the asset class remains highly vulnerable to sudden regulatory shifts, macroeconomic volatility, and extreme leverage-driven liquidation events."
+    "briefing": "Risk Level: **HIGH** \u2014 Increased market volatility driven by macroeconomic uncertainty, regulatory scrutiny, and highly leveraged positions suggests significant downside potential in the immediate term."
   },
   "recent_losses": [],
   "last_traded_candle": {
