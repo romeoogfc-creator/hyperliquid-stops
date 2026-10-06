@@ -187,12 +187,12 @@ def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, 
             }
             res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=stop_order_payload, headers=HEADERS)
             if res.status_code == 200 and audit_logs is not None:
-                audit_logs.append(f"🛡️ NATIVE ALPACA STOP SYNC [{symbol}]: Placed Resting Trigger Stop @ ${clean_stop_px:.2f}")
+                audit_logs.append(f"🛡️️ NATIVE ALPACA STOP SYNC [{symbol}]: Placed Resting Trigger Stop @ ${clean_stop_px:.2f}")
             elif res.status_code != 200 and audit_logs is not None:
                 audit_logs.append(f"⚠️ Alpaca Native Stop Sync Warning [{symbol}] ({res.status_code}): {res.text}")
     except Exception as e:
         if audit_logs is not None:
-            audit_logs.append(f"⚠️ Alpaca Native Stop Sync warning on {symbol}: {e}")
+            audit_logs.append(f"⚠️️ Alpaca Native Stop Sync warning on {symbol}: {e}")
 
 # ==============================================================================
 # TECHNICAL INDICATORS & SMART PROTECTION ENGINE
@@ -400,7 +400,7 @@ def execute_stock_engine():
         save_state(state)
         positions_list = []
 
-    # MANDATORY EOD SQUARE-OFF (2:40 PM CT)
+    # MANDATORY EOD SQUARE-OFF (2:40 PM CT / 3:40 PM ET)
     is_eod_square_off = (ct_now.hour == 14 and ct_now.minute >= 40) or (ct_now.hour >= 15)
 
     if is_eod_square_off and positions_list:
@@ -601,13 +601,14 @@ def execute_stock_engine():
     MAX_STOCK_SLOTS = 5
     
     # TIME-WINDOWED ENTRY REGULATION
-    is_opening_bell_lockout = (ct_now.hour < 8) or (ct_now.hour == 8 and ct_now.minute < 30)
+    is_premarket_lockout = (ct_now.hour < 8) or (ct_now.hour == 8 and ct_now.minute < 30)
+    is_opening_15m_window = (ct_now.hour == 8 and 30 <= ct_now.minute < 45)  # 8:30-8:45 AM CT (9:30-9:45 AM ET)
     is_prime_morning_window = (ct_now.hour == 8 and ct_now.minute >= 30) or (9 <= ct_now.hour < 11) or (ct_now.hour == 11 and ct_now.minute <= 30)
     is_midday_window = (ct_now.hour == 11 and ct_now.minute > 30) or (ct_now.hour == 12) or (ct_now.hour == 13 and ct_now.minute < 30)
     is_afternoon_lockout = (ct_now.hour == 13 and ct_now.minute >= 30) or (ct_now.hour >= 14)
     is_post_1030_ct = (ct_now.hour > 10) or (ct_now.hour == 10 and ct_now.minute >= 30)
 
-    # RECALIBRATED HIGH-WATER & DRAWDOWN LOCKOUT SHIELD ($500 Cap for $98k Account)
+    # HIGH-WATER & DRAWDOWN LOCKOUT SHIELD ($500 Cap for $98k Account)
     peak_giveback_lockout = (giveback_from_peak >= 500.0) or (daily_loss_usd >= 500.0)
     if peak_giveback_lockout:
         audit_logs.append(f"🛡️ HIGH-WATER SHIELD ACTIVE: Drawdown/Giveback exceeds $500 cap (Loss: ${daily_loss_usd:.2f}, Giveback: ${giveback_from_peak:.2f}). Blocking new trades.")
@@ -669,12 +670,16 @@ def execute_stock_engine():
             if ci > 58.0:
                 continue
 
-            if is_post_1030_ct:
-                volume_series = [float(b.get("v", 1)) for b in bars[-11:-1]]
-                avg_vol = np.mean(volume_series) if volume_series else 1.0
-                latest_vol = float(bars[-1].get("v", 0))
-                vol_ratio = latest_vol / avg_vol if avg_vol > 0 else 1.0
-                
+            volume_series = [float(b.get("v", 1)) for b in bars[-11:-1]]
+            avg_vol = np.mean(volume_series) if volume_series else 1.0
+            latest_vol = float(bars[-1].get("v", 0))
+            vol_ratio = latest_vol / avg_vol if avg_vol > 0 else 1.0
+
+            # STRICT OPENING 15-MINUTE VOLUME GATE (8:30-8:45 AM CT / 9:30-9:45 AM ET)
+            if is_opening_15m_window and vol_ratio < 1.80:
+                continue
+
+            if is_post_1030_ct and not is_opening_15m_window:
                 if vol_ratio < 1.40:
                     continue
 
@@ -683,6 +688,13 @@ def execute_stock_engine():
             prev_close = closes[-3]
             live_close = closes[-1]
             live_open = opens[-1]
+
+            c_range = max(highs[-1] - lows[-1], 1e-8)
+            live_body_ratio = abs(live_close - live_open) / c_range
+
+            # STRICT OPENING 15-MINUTE CANDLE BODY GATE (Solid body >= 65% of range to filter fakeouts)
+            if is_opening_15m_window and live_body_ratio < 0.65:
+                continue
 
             is_candle_green = (live_close > live_open) and (live_close >= comp_close)
             is_candle_red = (live_close < live_open) and (live_close <= comp_close)
@@ -711,11 +723,11 @@ def execute_stock_engine():
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
     audit_logs.append(f"1H Adaptive Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} validated triggers.")
 
-    if is_opening_bell_lockout or is_afternoon_lockout or is_eod_square_off or peak_giveback_lockout or is_daily_max_loss_triggered:
+    if is_premarket_lockout or is_afternoon_lockout or is_eod_square_off or peak_giveback_lockout or is_daily_max_loss_triggered:
         gate_reason = (
             "Daily Max Loss Cap (-2.5%)" if is_daily_max_loss_triggered else (
             "Peak/Daily Giveback Shield ($500 Cap)" if peak_giveback_lockout else (
-            "Opening Bell Lockout (Before 8:30 AM CT)" if is_opening_bell_lockout else (
+            "Premarket Lockout (Before 8:30 AM CT)" if is_premarket_lockout else (
             "Afternoon Cutoff (1:30 PM+ CT)" if is_afternoon_lockout else "EOD Square-Off"
             )))
         )
@@ -853,7 +865,7 @@ def execute_stock_engine():
     </tr>
     """
 
-    text_fallback = f"TR-GC-Equities-LS-01 | 1H Adaptive Engine\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
+    text_fallback = f"TR-GC-Equities-LS-01 | 1H Adaptive Engine V3\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
     positions_rows = "".join([
         f"<tr>"
@@ -929,7 +941,7 @@ def execute_stock_engine():
       <body>
         <div class="container">
           <div class="header">
-            <h2>TR-GC-Equities-LS-01 | 1H Master Engine V2</h2>
+            <h2>TR-GC-Equities-LS-01 | 1H Master Engine V3</h2>
             <p>Timestamp: {timestamp} &bull; Mode: TIME-REGULATED POWER & SMART PROTECTION</p>
           </div>
           <div class="content">
@@ -948,15 +960,17 @@ def execute_stock_engine():
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Guardrails (Full Strategy Display)</div>
               &bull; <b>Live Stock Anatomy Falling-Knife Detector:</b> Distinguishes absorption wicks from solid dumps (&gt;60% body, &gt;1.4x vol)<br>
+              &bull; <b>Opening 15m Gated Window (8:30–8:45 AM CT / 9:30–9:45 AM ET):</b> Active with strict &gt;=1.80x volume surge &amp; &gt;=65% body gate<br>
               &bull; <b>Dynamic ATR Volatility Buffer:</b> Replaces flat -0.35% cap with 1.2x ATR breathing room<br>
               &bull; <b>Asymmetric Moonshot Profit Lock:</b> Lock 75% at +0.80% ROE, 85% at +1.50% ROE, 90% at +3.00%+ ROE<br>
-              &bull; <b>Native Alpaca Orderbook Trigger Stops:</b> Resting stop orders placed directly on Alpaca matching engine for millisecond execution<br>
+              &bull; <b>Native Alpaca Orderbook Trigger Stops:</b> Resting stop orders placed directly on Alpaca matching engine<br>
               &bull; <b>1-Hour Timeframe & Hard CI Gate (&le;58.0):</b> Eliminates noise & rejects choppy stocks<br>
               &bull; <b>SPY Macro Regime Shield:</b> Enforces broad market direction alignment<br>
-              &bull; <b>Opening Bell Lockout (Before 8:30 AM CT):</b> Blocks entries prior to 8:30 AM CT to avoid open traps<br>
+              &bull; <b>Premarket Lockout (Before 8:30 AM CT / 9:30 AM ET):</b> Strictly blocks premarket entries<br>
               &bull; <b>Morning Power Window (8:30–11:30 AM CT):</b> Full 10% NAV (~$10k) sizing on clean completed trends<br>
               &bull; <b>Post-10:30 AM CT Volume & Expansion Filter:</b> Enforces &gt;1.4x Volume surge to enter late morning trades<br>
               &bull; <b>Afternoon Lockout (1:30 PM CT+):</b> Strictly 0 new entries allowed<br>
+              &bull; <b>EOD Square-Off (2:40 PM CT / 3:40 PM ET):</b> Liquidates 100% of open positions prior to market close<br>
               &bull; <b>High-Water & Drawdown Shield ($500 Cap):</b> Hard-blocks trading if drawdown or giveback hits $500<br>
               &bull; <b>Daily Anti-Wipeout Shield (-2.5% Cap):</b> Emergency flattens account if daily loss hits -2.5%
             </div>
@@ -1001,7 +1015,7 @@ def execute_stock_engine():
     """
 
     send_html_dashboard_email(f"Alpaca Quantitative Report — USD ${equity:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] 1H Master Engine V2 report complete.", flush=True)
+    print(f"[{timestamp}] 1H Master Engine V3 report complete.", flush=True)
 
 if __name__ == "__main__":
     try:
