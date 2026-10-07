@@ -356,7 +356,7 @@ def calculate_atr(highs, lows, closes, period=14):
         return 1.0
 
 # ==============================================================================
-# SMART PROTECTION ENGINE (LIVE ANATOMY & ASYMMETRIC MOONSHOT RATCHET)
+# SMART PROTECTION ENGINE (LIVE ANATOMY & CONTINUOUS HIGH-WATERMARK RATCHET)
 # ==============================================================================
 def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_long):
     """Analyzes live candle structure to distinguish liquidity absorption wicks from true falling knives."""
@@ -388,7 +388,7 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
     return False, "Normal Price Action"
 
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0):
-    """Computes dynamic structural stop-loss and asymmetric moonshot targets synced to Hyperliquid L1 orderbook."""
+    """Computes continuous dynamic stop-loss and uncapped targets synced to Hyperliquid L1 orderbook."""
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
@@ -405,19 +405,25 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, ent
         structure_stop = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else -atr_roe_buffer
         initial_floor_roe = max(-atr_roe_buffer, structure_stop)
 
-    # 2. UPSIDE: ASYMMETRIC PROFIT RATCHETS (Adjusted to eliminate sub-cent micro-wins)
-    if peak_roe >= 0.30:      # +30% to +50%+ Peak ROE: Lock 90% of maximum gains
-        target_floor_roe = peak_roe * 0.90
-        leash_status = f"🚀 GALACTIC MOONSHOT [Peak +{peak_roe*100:.1f}% -> Floor +{target_floor_roe*100:.1f}%]"
-    elif peak_roe >= 0.10:    # +10% Peak ROE: Lock 85% of gains
-        target_floor_roe = peak_roe * 0.85
-        leash_status = f"🌕 PARABOLIC RUNNER [Peak +{peak_roe*100:.1f}% -> Floor +{target_floor_roe*100:.1f}%]"
-    elif peak_roe >= 0.03:    # +3.0% Peak ROE: Lock 75% of gains
-        target_floor_roe = peak_roe * 0.75
-        leash_status = f"📈 PROFIT LOCK [Peak +{peak_roe*100:.1f}% -> Floor +{target_floor_roe*100:.1f}%]"
-    elif peak_roe >= 0.012:   # +1.2% Peak ROE: Break-Even + Fee Buffer (+0.40% floor)
-        target_floor_roe = 0.0040
-        leash_status = f"🛡 BREAK-EVEN SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +0.40%]"
+    # 2. UPSIDE: CONTINUOUS DYNAMIC WATERMARK RATCHET (NO BLIND SPOTS)
+    if peak_roe >= 0.0080:  # Activates break-even shield at +0.80% ROE
+        if peak_roe < 0.010:
+            # +0.80% to +1.00% ROE: Fee Cover Shield
+            target_floor_roe = 0.0040
+            leash_status = f"🛡 BREAK-EVEN SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +0.40%]"
+        else:
+            # +1.00% to +1000%+ ROE: Smooth Continuous Dynamic Scaling
+            if peak_roe < 0.03:      # +1% to +3%: Retention scales continuously from 60% -> 75%
+                retention = 0.60 + ((peak_roe - 0.01) / 0.02) * 0.15
+            elif peak_roe < 0.10:    # +3% to +10%: Retention scales continuously from 75% -> 85%
+                retention = 0.75 + ((peak_roe - 0.03) / 0.07) * 0.10
+            elif peak_roe < 0.30:    # +10% to +30%: Retention scales continuously from 85% -> 90%
+                retention = 0.85 + ((peak_roe - 0.10) / 0.20) * 0.05
+            else:                    # +30%+: Fixed 90% Retention for Unlimited Moonshots
+                retention = 0.90
+
+            target_floor_roe = peak_roe * retention
+            leash_status = f"🛡 DYNAMIC {retention*100:.1f}% LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
     else:
         target_floor_roe = initial_floor_roe
         leash_status = f"🛡 STRUCTURAL STOP ({target_floor_roe*100:.2f}%)"
@@ -428,8 +434,7 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, ent
     else:
         stop_px = entry_px * (1 - target_floor_roe)
 
-    # 3. UNCAP TP TARGET FOR MOONSHOT RUNNERS (Rely strictly on trailing trigger SL ratchets)
-    tp_px = None  
+    tp_px = None  # Uncapped TP for infinite upside
 
     return stop_px, tp_px, roe, target_floor_roe, leash_status
 
@@ -656,7 +661,7 @@ def execute_engine():
             margin_used = float(pos.get("marginUsed", 0))
             unrealized_pnl = float(pos.get("unrealizedPnl", 0))
             
-            # --- NOTIONAL VALUE DISPLAY FIX (Ensures consistent ~$13.60 position size reporting across all runs) ---
+            # --- NOTIONAL VALUE DISPLAY FIX ---
             pos_equity = abs(szi) * current_px
 
             current_roe = (((current_px - entry_px) / entry_px) * 1.0) if is_long else (((entry_px - current_px) / entry_px) * 1.0)
@@ -1251,7 +1256,7 @@ def execute_engine():
                 <div class="rules-card">
                   <div class="rules-title">&#9989; Active Guardrails (Full Crypto Strategy Display)</div>
                   &bull; <b>Live Anatomy Falling-Knife Detector:</b> Distinguishes absorption wicks from solid red dumps (&gt;60% body, &gt;1.4x vol)<br>
-                  &bull; <b>Asymmetric Moonshot Profit Ratchets:</b> Lock 75% at +3% ROE, 85% at +10% ROE, 90% at +30%+ ROE<br>
+                  &bull; <b>Continuous Dynamic High-Watermark Ratchets:</b> Lock 60%–75% at +1%–3% ROE, 85% at +10% ROE, 90% at +30%+ ROE<br>
                   &bull; <b>Uncapped Moonshot Upside:</b> Strictly relies on native orderbook SL ratchets for infinite runner potential<br>
                   &bull; <b>24/7 Native Orderbook Sync:</b> Posts resting trigger orders on Hyperliquid L1 orderbook to protect while sleeping<br>
                   &bull; <b>Falling Knife & Stagnation Cut:</b> Auto-closes trades negative (&lt; -0.40%) for 2 consecutive 30m runs<br>
