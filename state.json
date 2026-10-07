@@ -268,9 +268,9 @@
   "active_position_cache": {
     "SEI": {
       "entry_px": 0.069178,
-      "current_px": 0.068575,
+      "current_px": 0.068654,
       "szi": -174.0,
-      "margin": 11.931528,
+      "margin": 11.945448,
       "side": "SHORT",
       "peak_roe": 0.009526149932059424,
       "strategy": "BREAKOUT"
@@ -279,7 +279,7 @@
   "previous_active_coins": [
     "SEI"
   ],
-  "last_run_timestamp": "2026-10-07 10:16:21",
+  "last_run_timestamp": "2026-10-07 10:30:36",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -289,12 +289,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791367229.6255343,
+  "last_email_timestamp": 1791369025.8914056,
   "last_scan_timestamp": 1791358227.4599292,
   "gemini_cache": {
-    "timestamp": 1791368128.370227,
+    "timestamp": 1791369025.8914056,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nDriven by persistent macroeconomic uncertainty, potential regulatory crackdowns, and heightened market volatility, current crypto markets face elevated downside risks that threaten capital preservation across major digital assets."
+    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating significant volatility driven by macroeconomic uncertainty, shifting regulatory landscapes, and speculative fervor that leaves prices highly susceptible to sharp, unpredictable corrections."
   },
   "recent_losses": [],
   "last_traded_candle": {
