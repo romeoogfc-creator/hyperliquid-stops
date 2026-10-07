@@ -267,13 +267,19 @@
   ],
   "active_position_cache": {
     "PENDLE": {
-      "strategy": "BREAKOUT",
-      "entry_px": 2.2566,
-      "side": "SHORT"
+      "entry_px": 2.2613,
+      "current_px": 2.26015,
+      "szi": -6.0,
+      "margin": 2.71236,
+      "side": "SHORT",
+      "peak_roe": 0.0005085570247202868,
+      "strategy": "BREAKOUT"
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-07 02:31:28",
+  "previous_active_coins": [
+    "PENDLE"
+  ],
+  "last_run_timestamp": "2026-10-07 02:45:36",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
