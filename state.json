@@ -268,9 +268,9 @@
   "active_position_cache": {
     "BCH": {
       "entry_px": 298.5,
-      "current_px": 299.075,
+      "current_px": 299.67,
       "szi": -0.097,
-      "margin": 2.900494,
+      "margin": 2.907284,
       "side": "SHORT",
       "peak_roe": 0.000619765494137361,
       "strategy": "BREAKOUT"
@@ -279,7 +279,7 @@
   "previous_active_coins": [
     "BCH"
   ],
-  "last_run_timestamp": "2026-10-07 22:31:11",
+  "last_run_timestamp": "2026-10-07 22:45:31",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
