@@ -268,9 +268,9 @@
   "active_position_cache": {
     "SEI": {
       "entry_px": 0.069178,
-      "current_px": 0.067585,
+      "current_px": 0.067777,
       "szi": -174.0,
-      "margin": 11.765532,
+      "margin": 11.797026,
       "side": "SHORT",
       "peak_roe": 0.023027552111943062,
       "strategy": "BREAKOUT"
@@ -279,7 +279,7 @@
   "previous_active_coins": [
     "SEI"
   ],
-  "last_run_timestamp": "2026-10-07 13:45:44",
+  "last_run_timestamp": "2026-10-07 14:00:41",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -289,12 +289,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791379835.0937703,
+  "last_email_timestamp": 1791381633.567538,
   "last_scan_timestamp": 1791358227.4599292,
   "gemini_cache": {
-    "timestamp": 1791380730.3173952,
+    "timestamp": 1791381633.567538,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting regulatory landscapes, and extreme volatility typical of current liquidity conditions."
+    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating significant volatility driven by shifting macroeconomic expectations, heavy institutional selling pressure, and heightened geopolitical uncertainty."
   },
   "recent_losses": [],
   "last_traded_candle": {
