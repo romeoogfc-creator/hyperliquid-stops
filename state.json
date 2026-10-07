@@ -265,9 +265,15 @@
       "timestamp": "2026-09-30 12:31:00"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "PENDLE": {
+      "strategy": "BREAKOUT",
+      "entry_px": 2.2566,
+      "side": "SHORT"
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-07 02:15:23",
+  "last_run_timestamp": "2026-10-07 02:31:28",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -277,12 +283,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791339321.579252,
-  "last_scan_timestamp": 1791338432.0125206,
+  "last_email_timestamp": 1791340227.6080937,
+  "last_scan_timestamp": 1791340227.6080937,
   "gemini_cache": {
-    "timestamp": 1791338432.0125206,
-    "risk": "MODERATE",
-    "briefing": "**Risk Level: MODERATE**\n\nWhile ongoing institutional adoption and favorable macroeconomic liquidity provide a strong structural floor, current market valuations remain vulnerable to sudden regulatory crackdowns, sudden leverage liquidations, and heightened geopolitical tensions."
+    "timestamp": 1791340227.6080937,
+    "risk": "HIGH",
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts and regulatory uncertainty, leading to significant volatility that can trigger rapid liquidations in either direction."
   },
   "recent_losses": [],
   "last_traded_candle": {
@@ -299,7 +305,7 @@
     "DOGE": 1791151200000,
     "kSHIB": 1790967600000,
     "CRV": 1790971200000,
-    "PENDLE": 1790971200000,
+    "PENDLE": 1791338400000,
     "DOT": 1790971200000,
     "BLUR": 1791003600000,
     "INJ": 1791003600000,
