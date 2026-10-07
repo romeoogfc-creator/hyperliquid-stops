@@ -388,7 +388,10 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
     return False, "Normal Price Action"
 
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0):
-    """Computes continuous dynamic stop-loss and uncapped targets synced to Hyperliquid L1 orderbook."""
+    """
+    Computes continuous dynamic stop-loss and uncapped targets for 5x leverage crypto perps.
+    Retains 60%-90% of peak gains with an ATR Noise Shield to prevent wick-outs on Hyperliquid.
+    """
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
@@ -405,7 +408,7 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, ent
         structure_stop = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else -atr_roe_buffer
         initial_floor_roe = max(-atr_roe_buffer, structure_stop)
 
-    # 2. UPSIDE: CONTINUOUS DYNAMIC WATERMARK RATCHET (NO BLIND SPOTS)
+    # 2. UPSIDE: CONTINUOUS DYNAMIC WATERMARK RATCHET (60% -> 90% RETENTION)
     if peak_roe >= 0.0080:  # Activates break-even shield at +0.80% ROE
         if peak_roe < 0.010:
             # +0.80% to +1.00% ROE: Fee Cover Shield
@@ -413,13 +416,13 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, ent
             leash_status = f"🛡 BREAK-EVEN SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +0.40%]"
         else:
             # +1.00% to +1000%+ ROE: Smooth Continuous Dynamic Scaling
-            if peak_roe < 0.03:      # +1% to +3%: Retention scales continuously from 60% -> 75%
+            if peak_roe < 0.030:      # +1% to +3%: Retention scales continuously from 60% -> 75%
                 retention = 0.60 + ((peak_roe - 0.01) / 0.02) * 0.15
-            elif peak_roe < 0.10:    # +3% to +10%: Retention scales continuously from 75% -> 85%
+            elif peak_roe < 0.100:    # +3% to +10%: Retention scales continuously from 75% -> 85%
                 retention = 0.75 + ((peak_roe - 0.03) / 0.07) * 0.10
-            elif peak_roe < 0.30:    # +10% to +30%: Retention scales continuously from 85% -> 90%
+            elif peak_roe < 0.300:    # +10% to +30%: Retention scales continuously from 85% -> 90%
                 retention = 0.85 + ((peak_roe - 0.10) / 0.20) * 0.05
-            else:                    # +30%+: Fixed 90% Retention for Unlimited Moonshots
+            else:                     # +30%+: Fixed 90% Retention Cap
                 retention = 0.90
 
             target_floor_roe = peak_roe * retention
@@ -428,11 +431,24 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, ent
         target_floor_roe = initial_floor_roe
         leash_status = f"🛡 STRUCTURAL STOP ({target_floor_roe*100:.2f}%)"
 
-    # Convert ROE targets to precise exchange orderbook stop prices
+    # 3. ATR NOISE SHIELD: Enforces minimum breathing room from peak price
+    peak_px = entry_px * (1 + peak_roe) if is_long else entry_px * (1 - peak_roe)
+    min_atr_distance = atr_val * 0.50  # Enforces at least 0.50 ATR distance from peak for perp volatility
+
     if is_long:
-        stop_px = entry_px * (1 + target_floor_roe)
+        calc_stop_px = entry_px * (1 + target_floor_roe)
+        max_safe_stop_px = peak_px - min_atr_distance
+        if peak_roe >= 0.010 and calc_stop_px > max_safe_stop_px:
+            stop_px = max(max_safe_stop_px, entry_px * 1.0040)
+        else:
+            stop_px = calc_stop_px
     else:
-        stop_px = entry_px * (1 - target_floor_roe)
+        calc_stop_px = entry_px * (1 - target_floor_roe)
+        max_safe_stop_px = peak_px + min_atr_distance
+        if peak_roe >= 0.010 and calc_stop_px < max_safe_stop_px:
+            stop_px = min(max_safe_stop_px, entry_px * 0.9960)
+        else:
+            stop_px = calc_stop_px
 
     tp_px = None  # Uncapped TP for infinite upside
 
@@ -1260,7 +1276,7 @@ def execute_engine():
                 <div class="rules-card">
                   <div class="rules-title">&#9989; Active Guardrails (Full Crypto Strategy Display)</div>
                   &bull; <b>Live Anatomy Falling-Knife Detector:</b> Distinguishes absorption wicks from solid red dumps (&gt;60% body, &gt;1.4x vol)<br>
-                  &bull; <b>Continuous Dynamic High-Watermark Ratchets:</b> Lock 60%–75% at +1%–3% ROE, 85% at +10% ROE, 90% at +30%+ ROE<br>
+                  &bull; <b>Continuous Dynamic High-Watermark Ratchets (60%–90% Lock):</b> Smoothly ratchets profit floor from +1% to +30%+ ROE with ATR Noise Shield<br>
                   &bull; <b>Uncapped Moonshot Upside:</b> Strictly relies on native orderbook SL ratchets for infinite runner potential<br>
                   &bull; <b>24/7 Native Orderbook Sync:</b> Posts resting trigger orders on Hyperliquid L1 orderbook to protect while sleeping<br>
                   &bull; <b>Falling Knife & Stagnation Cut:</b> Auto-closes trades negative (&lt; -0.40%) for 2 consecutive 30m runs<br>
