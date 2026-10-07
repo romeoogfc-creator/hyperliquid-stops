@@ -187,12 +187,12 @@ def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, 
             }
             res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=stop_order_payload, headers=HEADERS)
             if res.status_code == 200 and audit_logs is not None:
-                audit_logs.append(f"🛡️️ NATIVE ALPACA STOP SYNC [{symbol}]: Placed Resting Trigger Stop @ ${clean_stop_px:.2f}")
+                audit_logs.append(f"🛡 NATIVE ALPACA STOP SYNC [{symbol}]: Placed Resting Trigger Stop @ ${clean_stop_px:.2f}")
             elif res.status_code != 200 and audit_logs is not None:
                 audit_logs.append(f"⚠️ Alpaca Native Stop Sync Warning [{symbol}] ({res.status_code}): {res.text}")
     except Exception as e:
         if audit_logs is not None:
-            audit_logs.append(f"⚠️️ Alpaca Native Stop Sync warning on {symbol}: {e}")
+            audit_logs.append(f"⚠ Alpaca Native Stop Sync warning on {symbol}: {e}")
 
 # ==============================================================================
 # TECHNICAL INDICATORS & SMART PROTECTION ENGINE
@@ -270,13 +270,16 @@ def analyze_live_stock_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, 
     return False, "Normal Price Action"
 
 def calculate_smart_stock_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0):
-    """Computes dynamic ATR structural stop and asymmetric profit locks."""
+    """
+    Computes continuous dynamic stop-loss and uncapped targets for stocks.
+    Retains 70%-95% of peak gains while using an ATR Noise Shield to prevent wick-outs.
+    """
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
         roe = (entry_px - current_px) / entry_px
 
-    # Dynamic ATR Volatility Buffer (0.50% to 1.20% bounds)
+    # 1. DOWNSIDE: Dynamic ATR Volatility Buffer (0.50% to 1.20% bounds) & Entry Candle Structural Protection
     atr_roe_buffer = (atr_val * 1.2) / entry_px if entry_px > 0 else 0.008
     atr_roe_buffer = max(0.0050, min(0.0120, atr_roe_buffer))
 
@@ -287,27 +290,45 @@ def calculate_smart_stock_targets(entry_px, is_long, current_px, atr_val, entry_
         structure_stop = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else -atr_roe_buffer
         initial_floor_roe = max(-atr_roe_buffer, structure_stop)
 
-    # Asymmetric Profit Ratchets
-    if peak_roe >= 0.0300:      # +3.00%+ Peak ROE: Lock 90%
-        target_floor_roe = peak_roe * 0.90
-        leash_status = f"🚀 PARABOLIC MOONSHOT [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.0150:    # +1.50% Peak ROE: Lock 85%
-        target_floor_roe = peak_roe * 0.85
-        leash_status = f"🌕 MAJOR RUNNER [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.0080:    # +0.80% Peak ROE: Lock 75%
-        target_floor_roe = peak_roe * 0.75
-        leash_status = f"📈 PROFIT LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.0030:    # +0.30% Peak ROE: Break-Even Shield (+0.10% floor)
-        target_floor_roe = 0.0010
-        leash_status = f"🛡️ BREAK-EVEN SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +0.10%]"
+    # 2. UPSIDE: CONTINUOUS DYNAMIC WATERMARK RATCHET (70% -> 95% RETENTION)
+    if peak_roe >= 0.0025:  # Activates at +0.25% ROE (~$25 gain on $10k position)
+        if peak_roe < 0.0030:
+            # +0.25% to +0.30% ROE: Fee Cover Shield
+            target_floor_roe = 0.0010
+            leash_status = f"🛡 BREAK-EVEN SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +0.10%]"
+        else:
+            # Smooth Continuous Scaling Curve
+            if peak_roe < 0.0100:     # +0.30% to +1.00%: Retention scales 70% -> 85%
+                retention = 0.70 + ((peak_roe - 0.003) / 0.007) * 0.15
+            elif peak_roe < 0.0300:   # +1.00% to +3.00%: Retention scales 85% -> 92%
+                retention = 0.85 + ((peak_roe - 0.010) / 0.020) * 0.07
+            else:                     # +3.00%+: Continuous 95% Retention Cap
+                retention = 0.95
+
+            target_floor_roe = peak_roe * retention
+            leash_status = f"🛡 DYNAMIC {retention*100:.1f}% LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
     else:
         target_floor_roe = initial_floor_roe
         leash_status = f"⚡ STRUCTURAL STOP ({target_floor_roe*100:.2f}%)"
 
+    # 3. ATR NOISE SHIELD: Enforces minimum breathing room from peak price
+    peak_px = entry_px * (1 + peak_roe) if is_long else entry_px * (1 - peak_roe)
+    min_atr_distance = atr_val * 0.35  # Enforces at least 0.35 ATR distance from peak
+
     if is_long:
-        stop_px = entry_px * (1 + target_floor_roe)
+        calc_stop_px = entry_px * (1 + target_floor_roe)
+        max_safe_stop_px = peak_px - min_atr_distance
+        if peak_roe > 0.0030 and calc_stop_px > max_safe_stop_px:
+            stop_px = max(max_safe_stop_px, entry_px * 1.0010)
+        else:
+            stop_px = calc_stop_px
     else:
-        stop_px = entry_px * (1 - target_floor_roe)
+        calc_stop_px = entry_px * (1 - target_floor_roe)
+        max_safe_stop_px = peak_px + min_atr_distance
+        if peak_roe > 0.0030 and calc_stop_px < max_safe_stop_px:
+            stop_px = min(max_safe_stop_px, entry_px * 0.9990)
+        else:
+            stop_px = calc_stop_px
 
     return stop_px, roe, target_floor_roe, leash_status
 
@@ -962,7 +983,7 @@ def execute_stock_engine():
               &bull; <b>Live Stock Anatomy Falling-Knife Detector:</b> Distinguishes absorption wicks from solid dumps (&gt;60% body, &gt;1.4x vol)<br>
               &bull; <b>Opening 15m Gated Window (8:30–8:45 AM CT / 9:30–9:45 AM ET):</b> Active with strict &gt;=1.80x volume surge &amp; &gt;=65% body gate<br>
               &bull; <b>Dynamic ATR Volatility Buffer:</b> Replaces flat -0.35% cap with 1.2x ATR breathing room<br>
-              &bull; <b>Asymmetric Moonshot Profit Lock:</b> Lock 75% at +0.80% ROE, 85% at +1.50% ROE, 90% at +3.00%+ ROE<br>
+              &bull; <b>Continuous Dynamic High-Watermark Ratchet (70%–95% Lock):</b> Smoothly ratchets profit floor from +0.30% to +3.00%+ ROE with ATR Noise Shield<br>
               &bull; <b>Native Alpaca Orderbook Trigger Stops:</b> Resting stop orders placed directly on Alpaca matching engine<br>
               &bull; <b>1-Hour Timeframe & Hard CI Gate (&le;58.0):</b> Eliminates noise & rejects choppy stocks<br>
               &bull; <b>SPY Macro Regime Shield:</b> Enforces broad market direction alignment<br>
