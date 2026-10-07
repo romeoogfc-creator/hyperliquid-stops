@@ -267,13 +267,19 @@
   ],
   "active_position_cache": {
     "SEI": {
-      "strategy": "BREAKOUT",
-      "entry_px": 0.06916,
-      "side": "SHORT"
+      "entry_px": 0.069178,
+      "current_px": 0.069323,
+      "szi": -174.0,
+      "margin": 12.062724,
+      "side": "SHORT",
+      "peak_roe": -0.0020960420943073282,
+      "strategy": "BREAKOUT"
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-07 07:31:26",
+  "previous_active_coins": [
+    "SEI"
+  ],
+  "last_run_timestamp": "2026-10-07 07:45:24",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
