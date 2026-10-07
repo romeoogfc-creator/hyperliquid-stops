@@ -40,7 +40,6 @@
     "SEI": 0,
     "SOL": 3,
     "LDO": 1,
-    "PENDLE": 0,
     "NEO": 1,
     "GMX": 2,
     "TIA": 1,
@@ -55,6 +54,17 @@
     "NEAR": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "PENDLE",
+      "entry_price": 2.2613,
+      "exit_price": 2.2538,
+      "pnl_usd": 0.045,
+      "roe_pct": 0.3316676248175757,
+      "side": "SHORT",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-07 06:45:29",
+      "ts_sec": 1791355529.862923
+    },
     {
       "coin": "ACE",
       "entry_price": 0.1974,
@@ -253,33 +263,11 @@
       "side": "LONG",
       "exit_reason": "\ud83c\udfaf Profit Lock (+1.4%)",
       "timestamp": "2026-09-30 12:31:00"
-    },
-    {
-      "coin": "kBONK",
-      "entry_price": 0.003924,
-      "exit_price": 0.003908,
-      "pnl_usd": -0.057495,
-      "roe_pct": -4.077471967380323,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-4.1%)",
-      "timestamp": "2026-09-30 12:31:00"
     }
   ],
-  "active_position_cache": {
-    "PENDLE": {
-      "entry_px": 2.2613,
-      "current_px": 2.2403,
-      "szi": -6.0,
-      "margin": 2.688525,
-      "side": "SHORT",
-      "peak_roe": 0.013708928492459955,
-      "strategy": "BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "PENDLE"
-  ],
-  "last_run_timestamp": "2026-10-07 06:30:41",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-07 06:46:14",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -289,12 +277,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791354637.2765338,
-  "last_scan_timestamp": 1791340227.6080937,
+  "last_email_timestamp": 1791355529.862923,
+  "last_scan_timestamp": 1791355529.862923,
   "gemini_cache": {
-    "timestamp": 1791354637.2765338,
+    "timestamp": 1791355529.862923,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating significant volatility driven by shifting macroeconomic expectations, fluctuating institutional inflows, and ongoing regulatory uncertainty, which collectively heighten the potential for sharp, sentiment-driven price swings."
+    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating significant volatility driven by macroeconomic uncertainty, shifting regulatory landscapes, and speculative pressure surrounding potential interest rate changes."
   },
   "recent_losses": [],
   "last_traded_candle": {
