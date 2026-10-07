@@ -621,12 +621,12 @@ def execute_stock_engine():
 
     MAX_STOCK_SLOTS = 5
     
-    # TIME-WINDOWED ENTRY REGULATION
+    # TIME-WINDOWED ENTRY REGULATION (TEXAS CENTRAL TIME)
     is_premarket_lockout = (ct_now.hour < 8) or (ct_now.hour == 8 and ct_now.minute < 30)
     is_opening_15m_window = (ct_now.hour == 8 and 30 <= ct_now.minute < 45)  # 8:30-8:45 AM CT (9:30-9:45 AM ET)
     is_prime_morning_window = (ct_now.hour == 8 and ct_now.minute >= 30) or (9 <= ct_now.hour < 11) or (ct_now.hour == 11 and ct_now.minute <= 30)
-    is_midday_window = (ct_now.hour == 11 and ct_now.minute > 30) or (ct_now.hour == 12) or (ct_now.hour == 13 and ct_now.minute < 30)
-    is_afternoon_lockout = (ct_now.hour == 13 and ct_now.minute >= 30) or (ct_now.hour >= 14)
+    is_news_catalyst_window = (ct_now.hour == 11 and ct_now.minute > 30) or (ct_now.hour == 12) or (ct_now.hour == 13 and ct_now.minute < 45)  # 11:30 AM - 1:45 PM CT
+    is_afternoon_cutoff = (ct_now.hour == 13 and ct_now.minute >= 45) or (ct_now.hour >= 14)  # 1:45 PM CT+ Hard Cutoff
     is_post_1030_ct = (ct_now.hour > 10) or (ct_now.hour == 10 and ct_now.minute >= 30)
 
     # HIGH-WATER & DRAWDOWN LOCKOUT SHIELD ($500 Cap for $98k Account)
@@ -688,7 +688,10 @@ def execute_stock_engine():
             opens = [float(b["o"]) for b in bars]
 
             ci = calculate_choppiness_index(highs, lows, closes)
-            if ci > 58.0:
+            
+            # CHOPPINESS GATE: Requires ultra-clean trend (CI <= 45.0) during Late-Day News Catalyst Window
+            req_ci = 45.0 if is_news_catalyst_window else 58.0
+            if ci > req_ci:
                 continue
 
             volume_series = [float(b.get("v", 1)) for b in bars[-11:-1]]
@@ -696,11 +699,12 @@ def execute_stock_engine():
             latest_vol = float(bars[-1].get("v", 0))
             vol_ratio = latest_vol / avg_vol if avg_vol > 0 else 1.0
 
-            # STRICT OPENING 15-MINUTE VOLUME GATE (8:30-8:45 AM CT / 9:30-9:45 AM ET)
+            # VOLUME GATE: Ultra-strict >=2.50x surge required during Late-Day News Catalyst Window
             if is_opening_15m_window and vol_ratio < 1.80:
                 continue
-
-            if is_post_1030_ct and not is_opening_15m_window:
+            elif is_news_catalyst_window and vol_ratio < 2.50:
+                continue
+            elif is_post_1030_ct and not is_opening_15m_window and not is_news_catalyst_window:
                 if vol_ratio < 1.40:
                     continue
 
@@ -713,14 +717,19 @@ def execute_stock_engine():
             c_range = max(highs[-1] - lows[-1], 1e-8)
             live_body_ratio = abs(live_close - live_open) / c_range
 
-            # STRICT OPENING 15-MINUTE CANDLE BODY GATE (Solid body >= 65% of range to filter fakeouts)
+            # CANDLE BODY GATE: Requires solid body >= 75% of range for news catalysts, >= 65% for opening 15m
             if is_opening_15m_window and live_body_ratio < 0.65:
+                continue
+            elif is_news_catalyst_window and live_body_ratio < 0.75:
                 continue
 
             is_candle_green = (live_close > live_open) and (live_close >= comp_close)
             is_candle_red = (live_close < live_open) and (live_close <= comp_close)
 
-            if live_close > upper * 1.015 or live_close < lower * 0.985:
+            # EXTENSION CAP: Prevents chasing blown-out news spikes
+            max_ext_upper = upper * 1.015
+            max_ext_lower = lower * 0.985
+            if live_close > max_ext_upper or live_close < max_ext_lower:
                 continue
 
             candidate_obj = None
@@ -744,12 +753,12 @@ def execute_stock_engine():
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
     audit_logs.append(f"1H Adaptive Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} validated triggers.")
 
-    if is_premarket_lockout or is_afternoon_lockout or is_eod_square_off or peak_giveback_lockout or is_daily_max_loss_triggered:
+    if is_premarket_lockout or is_afternoon_cutoff or is_eod_square_off or peak_giveback_lockout or is_daily_max_loss_triggered:
         gate_reason = (
             "Daily Max Loss Cap (-2.5%)" if is_daily_max_loss_triggered else (
             "Peak/Daily Giveback Shield ($500 Cap)" if peak_giveback_lockout else (
             "Premarket Lockout (Before 8:30 AM CT)" if is_premarket_lockout else (
-            "Afternoon Cutoff (1:30 PM+ CT)" if is_afternoon_lockout else "EOD Square-Off"
+            "Afternoon Cutoff (1:45 PM+ CT)" if is_afternoon_cutoff else "EOD Square-Off"
             )))
         )
         audit_logs.append(f"Execution Gate BLOCKED: {gate_reason}. No new entries allowed.")
@@ -767,9 +776,9 @@ def execute_stock_engine():
                 else:
                     target_usd = max(1000.0, equity * 0.10)
                     audit_logs.append(f"⚡ MORNING POWER SIZING for {symbol}: ${target_usd:.2f} (10% NAV)")
-            elif is_midday_window:
-                target_usd = 1000.0
-                audit_logs.append(f"🛡️ MIDDAY MICRO CAPPED SIZING for {symbol}: ${target_usd}")
+            elif is_news_catalyst_window:
+                target_usd = max(1000.0, equity * 0.10)
+                audit_logs.append(f"⚡ LATE-DAY NEWS POWER SIZING for {symbol}: ${target_usd:.2f} (10% NAV)")
 
             raw_qty = target_usd / px
             qty = max(1, int(raw_qty))
@@ -989,8 +998,8 @@ def execute_stock_engine():
               &bull; <b>SPY Macro Regime Shield:</b> Enforces broad market direction alignment<br>
               &bull; <b>Premarket Lockout (Before 8:30 AM CT / 9:30 AM ET):</b> Strictly blocks premarket entries<br>
               &bull; <b>Morning Power Window (8:30–11:30 AM CT):</b> Full 10% NAV (~$10k) sizing on clean completed trends<br>
-              &bull; <b>Post-10:30 AM CT Volume & Expansion Filter:</b> Enforces &gt;1.4x Volume surge to enter late morning trades<br>
-              &bull; <b>Afternoon Lockout (1:30 PM CT+):</b> Strictly 0 new entries allowed<br>
+              &bull; <b>Late-Day News Catalyst Gate (11:30 AM–1:45 PM CT):</b> Ultra-strict volume surge (&gt;=2.5x), CI &le; 45.0 &amp; solid body (&gt;=75%) for news runners<br>
+              &bull; <b>Afternoon Cutoff (1:45 PM CT+):</b> Strictly 0 new entries allowed to ensure &gt;=55m exit runway<br>
               &bull; <b>EOD Square-Off (2:40 PM CT / 3:40 PM ET):</b> Liquidates 100% of open positions prior to market close<br>
               &bull; <b>High-Water & Drawdown Shield ($500 Cap):</b> Hard-blocks trading if drawdown or giveback hits $500<br>
               &bull; <b>Daily Anti-Wipeout Shield (-2.5% Cap):</b> Emergency flattens account if daily loss hits -2.5%
