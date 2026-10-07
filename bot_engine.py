@@ -800,7 +800,7 @@ def execute_engine():
             positions_data.append({
                 "bot_title": "TR-GC-Crypto-LS-23-V2", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
-                "entry": entry_px, "current": current_px, "leverage": 1,
+                "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
                 "pnl": unrealized_pnl, "roe": current_roe * 100,
                 "stop": round_sig_figs(stop_px_calc, 5),
@@ -857,10 +857,14 @@ def execute_engine():
     universe = [asset["name"] for asset in meta.get("universe", [])][:100]
     market_candidates = []
 
-    MAX_CRYPTO_SLOTS = 1
+    # ==============================================================================
+    # PHASE 2: DYNAMIC 3-SLOT CAPITAL DEPLOYMENT ENGINE (5X CROSS MARGIN)
+    # ==============================================================================
+    MAX_CRYPTO_SLOTS = 3
     available_slots = MAX_CRYPTO_SLOTS - active_count
 
-    base_sizing_usd = 12.0
+    # Dynamic 25% NAV sizing per slot ($10.50 floor for Hyperliquid order minimums)
+    base_sizing_usd = max(10.50, account_value * 0.25)
     min_notional_usd = 10.50
 
     if is_30m_scan_window and available_slots > 0:
@@ -1031,7 +1035,7 @@ def execute_engine():
 
             try:
                 try:
-                    exchange.update_leverage(coin, 1, True)
+                    exchange.update_leverage(coin, 5, True)  # Set to 5x cross margin
                 except Exception:
                     pass
 
@@ -1062,8 +1066,8 @@ def execute_engine():
                     positions_data.append({
                         "bot_title": "TR-GC-Crypto-LS-23-V2", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
-                        "entry": px, "current": px, "leverage": 1,
-                        "collateral": (sz * px), "position_usd": (sz * px),
+                        "entry": px, "current": px, "leverage": 5,
+                        "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
                         "pnl": 0.0, "roe": 0.0,
                         "stop": round_sig_figs(initial_stop_px, 5),
                         "tp_target": "UNCAPPED 🚀",
@@ -1112,7 +1116,7 @@ def execute_engine():
         
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V2 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/1"
+        text_fallback = f"TR-GC-Crypto-LS-23-V2 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         summary_card_html = f"""
         <div class="summary-card">
@@ -1264,7 +1268,7 @@ def execute_engine():
                   &bull; <b>True Body Momentum Gate:</b> Requires solid candle bodies (&gt;35% range) and multi-candle commitment<br>
                   &bull; <b>BTC Directional Shield:</b> Enforces broad market alignment &amp; active flip purge (GREEN = LONGs, RED = SHORTs)<br>
                   &bull; <b>Adaptive Gemini Volume Gate:</b> Dynamically scales volume confirmation (LOW: 1.12x, MODERATE: 1.18x, HIGH: 1.25x)<br>
-                  &bull; <b>Single-Slot Capital Preservation:</b> Strictly capped at 1 active trade ($10.50 minimum floor)<br>
+                  &bull; <b>Dynamic 3-Slot Capital Deployment:</b> Capped at 3 active trades (25% NAV per slot, 5x leverage, $10.50 minimum floor)<br>
                   &bull; <b>Optimal Orderbook Gate:</b> Rejects spread &gt; 0.30% or 0.5% depth &lt; $6,000 USD<br>
                   &bull; <b>24H Post-Loss Cooldown Blocklist:</b> Bans any coin closed at a loss for 24 hours in state.json<br>
                   &bull; <b>Rolling Loss Circuit Breaker:</b> Triggers 12-hour hibernation if 3 losses occur within rolling 60m
