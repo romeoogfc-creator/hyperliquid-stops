@@ -1,6 +1,24 @@
 {
   "closed_trades_ledger": [
     {
+      "symbol": "LLY",
+      "entry_price": 1185.0,
+      "exit_price": 1200.77,
+      "realized_pnl": 126.15999999999985,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-07 16:18:13",
+      "order_id": "d28ff76b-1f35-4465-bd38-1066c764eda6"
+    },
+    {
+      "symbol": "WMT",
+      "entry_price": 108.2,
+      "exit_price": 108.3,
+      "realized_pnl": 8.999999999999488,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-07 16:18:13",
+      "order_id": "54ecba2b-b6f3-4128-a590-3dfc739a577f"
+    },
+    {
       "symbol": "COST",
       "entry_price": 930.542,
       "exit_price": 936.48,
@@ -78,31 +96,9 @@
       "timestamp": "2026-10-05 15:48:14"
     }
   ],
-  "active_position_cache": {
-    "LLY": {
-      "entry_px": 1185.0,
-      "current_px": 1204.33,
-      "qty": 8.0,
-      "side": "long",
-      "peak_roe": 0.01631223628691977,
-      "best_target_floor_roe": 0.013865400843881805,
-      "best_stop_px": 1201.4305
-    },
-    "WMT": {
-      "entry_px": 108.2,
-      "current_px": 108.525,
-      "qty": 90.0,
-      "side": "long",
-      "peak_roe": 0.005036968576709812,
-      "best_target_floor_roe": 0.001,
-      "best_stop_px": 108.30819999999999
-    }
-  },
-  "previous_active_symbols": [
-    "WMT",
-    "LLY"
-  ],
-  "last_run_timestamp": "2026-10-07 15:52:00",
+  "active_position_cache": {},
+  "previous_active_symbols": [],
+  "last_run_timestamp": "2026-10-07 16:18:31",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42,
