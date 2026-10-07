@@ -268,18 +268,18 @@
   "active_position_cache": {
     "SEI": {
       "entry_px": 0.069178,
-      "current_px": 0.067772,
+      "current_px": 0.067585,
       "szi": -174.0,
-      "margin": 11.788848,
+      "margin": 11.765532,
       "side": "SHORT",
-      "peak_roe": 0.021553094914568305,
+      "peak_roe": 0.023027552111943062,
       "strategy": "BREAKOUT"
     }
   },
   "previous_active_coins": [
     "SEI"
   ],
-  "last_run_timestamp": "2026-10-07 13:30:39",
+  "last_run_timestamp": "2026-10-07 13:45:44",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -292,9 +292,9 @@
   "last_email_timestamp": 1791379835.0937703,
   "last_scan_timestamp": 1791358227.4599292,
   "gemini_cache": {
-    "timestamp": 1791379835.0937703,
+    "timestamp": 1791380730.3173952,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nCurrent macroeconomic uncertainty, ongoing regulatory crackdowns, and fragile market liquidity create a volatile environment vulnerable to sudden, severe downside corrections."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting regulatory landscapes, and extreme volatility typical of current liquidity conditions."
   },
   "recent_losses": [],
   "last_traded_candle": {
