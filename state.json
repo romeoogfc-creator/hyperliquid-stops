@@ -37,7 +37,6 @@
     "UNI": 2,
     "OP": 0,
     "DOT": 9,
-    "SEI": 0,
     "SOL": 3,
     "LDO": 1,
     "NEO": 1,
@@ -54,6 +53,17 @@
     "NEAR": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "SEI",
+      "entry_price": 0.069178,
+      "exit_price": 0.068073,
+      "pnl_usd": 0.19227,
+      "roe_pct": 1.5973286304894745,
+      "side": "SHORT",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-07 16:00:30",
+      "ts_sec": 1791388830.3344903
+    },
     {
       "coin": "PENDLE",
       "entry_price": 2.2613,
@@ -253,33 +263,11 @@
       "side": "LONG",
       "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-0.6%)",
       "timestamp": "2026-09-30 12:57:05"
-    },
-    {
-      "coin": "NEAR",
-      "entry_price": 5.298,
-      "exit_price": 5.37355,
-      "pnl_usd": 0.21176359833899525,
-      "roe_pct": 1.4260098150245335,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Profit Lock (+1.4%)",
-      "timestamp": "2026-09-30 12:31:00"
     }
   ],
-  "active_position_cache": {
-    "SEI": {
-      "entry_px": 0.069178,
-      "current_px": 0.067824,
-      "szi": -174.0,
-      "margin": 11.801376,
-      "side": "SHORT",
-      "peak_roe": 0.023027552111943062,
-      "strategy": "BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "SEI"
-  ],
-  "last_run_timestamp": "2026-10-07 15:45:38",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-07 16:01:17",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -289,12 +277,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791387037.7833352,
-  "last_scan_timestamp": 1791358227.4599292,
+  "last_email_timestamp": 1791388830.3344903,
+  "last_scan_timestamp": 1791388830.3344903,
   "gemini_cache": {
-    "timestamp": 1791387924.1602726,
+    "timestamp": 1791388830.3344903,
     "risk": "HIGH",
-    "briefing": "Risk Level: **MODERATE** \u2014 While Bitcoin's market dominance and institutional interest provide a degree of stability, the asset class remains highly sensitive to shifting macroeconomic data and potential regulatory volatility."
+    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating significant macroeconomic uncertainty, regulatory scrutiny, and high volatility, making them susceptible to sudden liquidity shifts and sharp price corrections."
   },
   "recent_losses": [],
   "last_traded_candle": {
