@@ -268,9 +268,9 @@
   "active_position_cache": {
     "PENDLE": {
       "entry_px": 2.2613,
-      "current_px": 2.2332,
+      "current_px": 2.23205,
       "szi": -6.0,
-      "margin": 2.68008,
+      "margin": 2.67852,
       "side": "SHORT",
       "peak_roe": 0.01337726086764236,
       "strategy": "BREAKOUT"
@@ -279,7 +279,7 @@
   "previous_active_coins": [
     "PENDLE"
   ],
-  "last_run_timestamp": "2026-10-07 05:00:41",
+  "last_run_timestamp": "2026-10-07 05:15:34",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -292,9 +292,9 @@
   "last_email_timestamp": 1791349224.8569355,
   "last_scan_timestamp": 1791340227.6080937,
   "gemini_cache": {
-    "timestamp": 1791349224.8569355,
+    "timestamp": 1791350130.2968264,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain in a state of extreme volatility characterized by significant sensitivity to shifting macroeconomic interest rate expectations, evolving regulatory scrutiny, and highly leveraged speculative positioning."
+    "briefing": "Risk Level: **HIGH**\n\nThe market is currently characterized by extreme volatility and heightened sensitivity to macroeconomic shifts, regulatory uncertainty, and shifting liquidity conditions, creating a landscape prone to rapid, sentiment-driven price swings."
   },
   "recent_losses": [],
   "last_traded_candle": {
