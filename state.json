@@ -268,9 +268,9 @@
   "active_position_cache": {
     "SEI": {
       "entry_px": 0.069178,
-      "current_px": 0.06788,
+      "current_px": 0.067735,
       "szi": -174.0,
-      "margin": 11.810598,
+      "margin": 11.78241,
       "side": "SHORT",
       "peak_roe": 0.023027552111943062,
       "strategy": "BREAKOUT"
@@ -279,7 +279,7 @@
   "previous_active_coins": [
     "SEI"
   ],
-  "last_run_timestamp": "2026-10-07 14:15:34",
+  "last_run_timestamp": "2026-10-07 14:30:38",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -289,12 +289,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791381633.567538,
+  "last_email_timestamp": 1791383429.1534598,
   "last_scan_timestamp": 1791358227.4599292,
   "gemini_cache": {
-    "timestamp": 1791382528.54276,
-    "risk": "MODERATE",
-    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional adoption and expectations of further monetary easing, the crypto landscape currently faces heightened volatility due to macroeconomic uncertainty, shifting regulatory headwinds, and the potential for significant liquidations following recent price swings."
+    "timestamp": 1791383429.1534598,
+    "risk": "HIGH",
+    "briefing": "Risk Level: **HIGH**\n\nCrypto markets currently face severe structural vulnerability due to aggressive macroeconomic tightening, persistent regulatory crackdowns, and a sharp contraction in retail liquidity that leaves digital assets highly susceptible to sudden cascading liquidations."
   },
   "recent_losses": [],
   "last_traded_candle": {
