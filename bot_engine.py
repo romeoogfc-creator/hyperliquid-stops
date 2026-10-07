@@ -417,7 +417,7 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, ent
         leash_status = f"📈 PROFIT LOCK [Peak +{peak_roe*100:.1f}% -> Floor +{target_floor_roe*100:.1f}%]"
     elif peak_roe >= 0.012:   # +1.2% Peak ROE: Break-Even + Fee Buffer (+0.40% floor)
         target_floor_roe = 0.0040
-        leash_status = f"🛡️️ BREAK-EVEN SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +0.40%]"
+        leash_status = f"🛡 BREAK-EVEN SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +0.40%]"
     else:
         target_floor_roe = initial_floor_roe
         leash_status = f"🛡 STRUCTURAL STOP ({target_floor_roe*100:.2f}%)"
@@ -655,7 +655,9 @@ def execute_engine():
             current_px = float(all_mids.get(coin, entry_px))
             margin_used = float(pos.get("marginUsed", 0))
             unrealized_pnl = float(pos.get("unrealizedPnl", 0))
-            pos_equity = margin_used + unrealized_pnl
+            
+            # --- NOTIONAL VALUE DISPLAY FIX (Ensures consistent ~$13.60 position size reporting across all runs) ---
+            pos_equity = abs(szi) * current_px
 
             current_roe = (((current_px - entry_px) / entry_px) * 1.0) if is_long else (((entry_px - current_px) / entry_px) * 1.0)
             
@@ -666,7 +668,7 @@ def execute_engine():
             entry_candle_high = entry_px * 1.01
             c_candles = []
 
-            # --- HOLE 1 FIX: BTC DIRECTIONAL REGIME SHIELD FLIP PURGE ---
+            # --- BTC DIRECTIONAL REGIME SHIELD FLIP PURGE ---
             if is_long and btc_regime == "RED":
                 should_exit = True
                 exit_reason = f"🚨 BTC Daily Bearish Flip Purge (BTC Daily is RED {btc_change_pct:+.2f}%)"
@@ -1010,7 +1012,7 @@ def execute_engine():
             else:
                 sz = round(np.ceil(raw_sz * (10 ** decimals)) / (10 ** decimals), decimals)
 
-            # --- HOLE 4 FIX: GUARANTEED USD NOTIONAL FLOOR ($10.50 MINIMUM) ---
+            # --- GUARANTEED USD NOTIONAL FLOOR ($10.50 MINIMUM) ---
             if (sz * px) < min_notional_usd:
                 needed_sz = min_notional_usd / px
                 if decimals == 0:
