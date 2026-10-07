@@ -268,18 +268,18 @@
   "active_position_cache": {
     "SEI": {
       "entry_px": 0.069178,
-      "current_px": 0.068734,
+      "current_px": 0.068724,
       "szi": -174.0,
-      "margin": 11.959194,
+      "margin": 11.957976,
       "side": "SHORT",
-      "peak_roe": 0.00641822544739657,
+      "peak_roe": 0.006562780074590331,
       "strategy": "BREAKOUT"
     }
   },
   "previous_active_coins": [
     "SEI"
   ],
-  "last_run_timestamp": "2026-10-07 09:15:52",
+  "last_run_timestamp": "2026-10-07 09:30:50",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -289,12 +289,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791363635.0067196,
+  "last_email_timestamp": 1791365425.368563,
   "last_scan_timestamp": 1791358227.4599292,
   "gemini_cache": {
-    "timestamp": 1791364527.0623236,
+    "timestamp": 1791365425.368563,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Markets are currently facing heightened volatility driven by macroeconomic uncertainty, regulatory scrutiny, and significant speculative positioning, which increases the potential for sharp, sudden price corrections."
+    "briefing": "**Risk Level: HIGH**\n\nThe market is currently characterized by heightened volatility driven by macroeconomic uncertainty, shifting regulatory landscapes, and speculative fervor surrounding institutional inflows, which necessitates a cautious approach to position sizing."
   },
   "recent_losses": [],
   "last_traded_candle": {
