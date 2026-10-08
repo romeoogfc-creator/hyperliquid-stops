@@ -11,7 +11,8 @@
     "BTC": 1791523826.6003006,
     "SOL": 1791526523.5036547,
     "ZRO": 1791549036.5697,
-    "DOGE": 1791552644.4488678
+    "DOGE": 1791552644.4488678,
+    "WIF": 1791555323.6166713
   },
   "stagnation_tracker": {
     "APT": 28,
@@ -47,13 +48,24 @@
     "GMX": 2,
     "TIA": 1,
     "SUI": 8,
-    "ETH": 12,
+    "ETH": 0,
     "BSV": 0,
     "MINA": 2,
     "IMX": 2,
     "NEAR": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "WIF",
+      "entry_price": 0.220525,
+      "exit_price": 0.22195,
+      "pnl_usd": -0.18525,
+      "roe_pct": -0.6461852397687381,
+      "side": "SHORT",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-08 14:15:23",
+      "ts_sec": 1791468923.6166713
+    },
     {
       "coin": "LINK",
       "entry_price": 12.974,
@@ -262,39 +274,23 @@
       "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-2.87%)",
       "timestamp": "2026-10-02 15:01:56",
       "ts_sec": 1790953316.6179557
-    },
-    {
-      "coin": "WLD",
-      "entry_price": 0.49064,
-      "exit_price": 0.49501,
-      "pnl_usd": 0.08874,
-      "roe_pct": 0.8906734061633753,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.89%)",
-      "timestamp": "2026-10-01 18:50:05",
-      "ts_sec": 1790880605.637801
     }
   ],
   "active_position_cache": {
-    "WIF": {
-      "entry_px": 0.220525,
-      "current_px": 0.221555,
-      "szi": -130.0,
-      "margin": 5.758792,
-      "side": "SHORT",
-      "peak_roe": 0.00503344292030382,
-      "strategy": "BREAKOUT"
-    },
     "ETH": {
-      "strategy": "BREAKOUT",
-      "entry_px": 2519.25,
-      "side": "SHORT"
+      "entry_px": 2520.4,
+      "current_px": 2531.65,
+      "szi": -0.0113,
+      "margin": 28.606854,
+      "side": "SHORT",
+      "peak_roe": -0.0044635772099666715,
+      "strategy": "BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "WIF"
+    "ETH"
   ],
-  "last_run_timestamp": "2026-10-08 14:01:32",
+  "last_run_timestamp": "2026-10-08 14:15:27",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -304,7 +300,7 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791468030.806313,
+  "last_email_timestamp": 1791468923.6166713,
   "last_scan_timestamp": 1791468030.806313,
   "gemini_cache": {
     "timestamp": 1791468030.806313,
