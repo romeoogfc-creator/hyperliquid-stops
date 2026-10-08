@@ -275,33 +275,38 @@
   "active_position_cache": {
     "DOGE": {
       "entry_px": 0.08719,
-      "current_px": 0.0868,
+      "current_px": 0.086769,
       "szi": -327.0,
-      "margin": 2.839014,
+      "margin": 2.837346,
       "side": "SHORT",
-      "peak_roe": 0.004472990021791507,
+      "peak_roe": 0.004828535382498046,
+      "strategy": "BREAKOUT"
+    },
+    "LINK": {
+      "entry_px": 12.974,
+      "current_px": 12.9555,
+      "szi": -2.2,
+      "margin": 28.501,
+      "side": "SHORT",
+      "peak_roe": 0.0014259287806381623,
       "strategy": "BREAKOUT"
     },
     "XRP": {
       "entry_px": 1.4002,
-      "current_px": 1.39265,
+      "current_px": 1.39395,
       "szi": -21.0,
-      "margin": 29.2551,
+      "margin": 29.271354,
       "side": "SHORT",
       "peak_roe": 0.005463505213540876,
       "strategy": "BREAKOUT"
-    },
-    "LINK": {
-      "strategy": "BREAKOUT",
-      "entry_px": 12.9705,
-      "side": "SHORT"
     }
   },
   "previous_active_coins": [
     "XRP",
-    "DOGE"
+    "DOGE",
+    "LINK"
   ],
-  "last_run_timestamp": "2026-10-08 12:31:37",
+  "last_run_timestamp": "2026-10-08 12:45:41",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
