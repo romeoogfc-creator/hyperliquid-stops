@@ -274,18 +274,18 @@
   "active_position_cache": {
     "DOGE": {
       "entry_px": 0.08719,
-      "current_px": 0.087443,
+      "current_px": 0.087265,
       "szi": -327.0,
-      "margin": 2.859582,
+      "margin": 2.853565,
       "side": "SHORT",
       "peak_roe": 0.0004702374125473032,
       "strategy": "BREAKOUT"
     },
     "XRP": {
       "entry_px": 1.4002,
-      "current_px": 1.40085,
+      "current_px": 1.39995,
       "szi": -21.0,
-      "margin": 29.41575,
+      "margin": 29.4,
       "side": "SHORT",
       "peak_roe": 0.0027496071989715105,
       "strategy": "BREAKOUT"
@@ -295,7 +295,7 @@
     "XRP",
     "DOGE"
   ],
-  "last_run_timestamp": "2026-10-08 11:31:39",
+  "last_run_timestamp": "2026-10-08 11:45:31",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
