@@ -279,18 +279,18 @@
   "active_position_cache": {
     "ETH": {
       "entry_px": 2520.4,
-      "current_px": 2531.65,
+      "current_px": 2531.15,
       "szi": -0.0113,
-      "margin": 28.606854,
+      "margin": 28.60256,
       "side": "SHORT",
-      "peak_roe": -0.0044635772099666715,
+      "peak_roe": -0.00426519600063482,
       "strategy": "BREAKOUT"
     }
   },
   "previous_active_coins": [
     "ETH"
   ],
-  "last_run_timestamp": "2026-10-08 14:15:27",
+  "last_run_timestamp": "2026-10-08 14:31:53",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -301,11 +301,11 @@
     "scan_date": "2026-09-24"
   },
   "last_email_timestamp": 1791468923.6166713,
-  "last_scan_timestamp": 1791468030.806313,
+  "last_scan_timestamp": 1791469832.4036028,
   "gemini_cache": {
-    "timestamp": 1791468030.806313,
+    "timestamp": 1791469832.4036028,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nPersistent macroeconomic uncertainty, stringent regulatory headwinds, and ongoing liquidity concerns continue to create extreme vulnerability to sudden market-wide deleveraging and sharp downward corrections."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts and regulatory uncertainty, leading to elevated volatility and the potential for sharp, sudden price swings."
   },
   "recent_losses": [],
   "last_traded_candle": {
