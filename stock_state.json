@@ -1,6 +1,15 @@
 {
   "closed_trades_ledger": [
     {
+      "symbol": "INTC",
+      "entry_price": 109.697191,
+      "exit_price": 111.050674,
+      "realized_pnl": -120.45998699999974,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-08 14:49:54",
+      "order_id": "c542bfe5-5eda-4b8e-93e7-d0ff789eb710"
+    },
+    {
       "symbol": "LLY",
       "entry_price": 1185.0,
       "exit_price": 1200.77,
@@ -99,48 +108,38 @@
   "active_position_cache": {
     "DE": {
       "entry_px": 654.69,
-      "current_px": 654.59,
+      "current_px": 645.98,
       "qty": 14.0,
       "side": "short",
-      "peak_roe": 0.00015274404680081066,
-      "best_target_floor_roe": -0.009604545662832762,
-      "best_stop_px": 660.9780000000001
+      "peak_roe": 0.013304006476347639,
+      "best_target_floor_roe": 0.011462253337352776,
+      "best_stop_px": 647.814
     },
     "HON": {
       "entry_px": 206.35,
-      "current_px": 207.015,
+      "current_px": 205.68,
       "qty": 47.0,
       "side": "short",
-      "peak_roe": -0.0024715289556579566,
-      "best_target_floor_roe": -0.007991969261656701,
-      "best_stop_px": 207.99914285714289
-    },
-    "INTC": {
-      "entry_px": 109.697191,
-      "current_px": 110.7308,
-      "qty": 89.0,
-      "side": "short",
-      "peak_roe": 0.0015241137760765681,
-      "best_target_floor_roe": -0.012,
-      "best_stop_px": 111.013557292
+      "peak_roe": 0.0032469105888053673,
+      "best_target_floor_roe": 0.0022900166251340493,
+      "best_stop_px": 206.14365
     },
     "IWM": {
       "entry_px": 276.165429,
-      "current_px": 276.165,
+      "current_px": 275.55,
       "qty": 35.0,
       "side": "short",
-      "peak_roe": 1.5534167384756333e-06,
+      "peak_roe": 0.002228479510373494,
       "best_target_floor_roe": -0.005,
       "best_stop_px": 277.546256145
     }
   },
   "previous_active_symbols": [
-    "HON",
     "DE",
-    "INTC",
+    "HON",
     "IWM"
   ],
-  "last_run_timestamp": "2026-10-08 14:21:02",
+  "last_run_timestamp": "2026-10-08 14:50:17",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42,
@@ -151,6 +150,6 @@
     "2026-10-05": 98010.85,
     "2026-10-06": 98061.5,
     "2026-10-07": 98193.28,
-    "2026-10-08": 98144.14
+    "2026-10-08": 98198.65
   }
 }
