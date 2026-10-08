@@ -622,8 +622,9 @@ def execute_stock_engine():
     MAX_STOCK_SLOTS = 5
     
     # TIME-WINDOWED ENTRY REGULATION (TEXAS CENTRAL TIME)
-    is_premarket_lockout = (ct_now.hour < 8) or (ct_now.hour == 8 and ct_now.minute < 30)
-    is_opening_15m_window = (ct_now.hour == 8 and 30 <= ct_now.minute < 45)  # 8:30-8:45 AM CT (9:30-9:45 AM ET)
+    is_hard_night_lockout = (ct_now.hour < 8)  # Hard lockout before 8:00 AM CT
+    is_premarket_runner_window = (ct_now.hour == 8 and ct_now.minute < 30)  # 8:00–8:30 AM CT (9:00–9:30 AM ET Premarket)
+    is_opening_15m_window = (ct_now.hour == 8 and 30 <= ct_now.minute < 45)  # 8:30–8:45 AM CT (9:30–9:45 AM ET Opening)
     is_prime_morning_window = (ct_now.hour == 8 and ct_now.minute >= 30) or (9 <= ct_now.hour < 11) or (ct_now.hour == 11 and ct_now.minute <= 30)
     is_news_catalyst_window = (ct_now.hour == 11 and ct_now.minute > 30) or (ct_now.hour == 12) or (ct_now.hour == 13 and ct_now.minute < 45)  # 11:30 AM - 1:45 PM CT
     is_afternoon_cutoff = (ct_now.hour == 13 and ct_now.minute >= 45) or (ct_now.hour >= 14)  # 1:45 PM CT+ Hard Cutoff
@@ -689,8 +690,8 @@ def execute_stock_engine():
 
             ci = calculate_choppiness_index(highs, lows, closes)
             
-            # CHOPPINESS GATE: Requires ultra-clean trend (CI <= 45.0) during Late-Day News Catalyst Window
-            req_ci = 45.0 if is_news_catalyst_window else 58.0
+            # CHOPPINESS GATE: Requires ultra-clean trend (CI <= 45.0) during Premarket or Late-Day News
+            req_ci = 45.0 if (is_premarket_runner_window or is_news_catalyst_window) else 58.0
             if ci > req_ci:
                 continue
 
@@ -699,12 +700,14 @@ def execute_stock_engine():
             latest_vol = float(bars[-1].get("v", 0))
             vol_ratio = latest_vol / avg_vol if avg_vol > 0 else 1.0
 
-            # VOLUME GATE: Ultra-strict >=2.50x surge required during Late-Day News Catalyst Window
-            if is_opening_15m_window and vol_ratio < 1.80:
+            # VOLUME GATE: Ultra-strict >=2.50x surge required during Premarket & Late-Day News
+            if is_premarket_runner_window and vol_ratio < 2.50:
+                continue
+            elif is_opening_15m_window and vol_ratio < 1.80:
                 continue
             elif is_news_catalyst_window and vol_ratio < 2.50:
                 continue
-            elif is_post_1030_ct and not is_opening_15m_window and not is_news_catalyst_window:
+            elif is_post_1030_ct and not is_opening_15m_window and not is_news_catalyst_window and not is_premarket_runner_window:
                 if vol_ratio < 1.40:
                     continue
 
@@ -717,8 +720,10 @@ def execute_stock_engine():
             c_range = max(highs[-1] - lows[-1], 1e-8)
             live_body_ratio = abs(live_close - live_open) / c_range
 
-            # CANDLE BODY GATE: Requires solid body >= 75% of range for news catalysts, >= 65% for opening 15m
-            if is_opening_15m_window and live_body_ratio < 0.65:
+            # CANDLE BODY GATE: Requires solid body >= 70% for Premarket, >= 75% for news, >= 65% for opening 15m
+            if is_premarket_runner_window and live_body_ratio < 0.70:
+                continue
+            elif is_opening_15m_window and live_body_ratio < 0.65:
                 continue
             elif is_news_catalyst_window and live_body_ratio < 0.75:
                 continue
@@ -753,11 +758,11 @@ def execute_stock_engine():
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
     audit_logs.append(f"1H Adaptive Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} validated triggers.")
 
-    if is_premarket_lockout or is_afternoon_cutoff or is_eod_square_off or peak_giveback_lockout or is_daily_max_loss_triggered:
+    if is_hard_night_lockout or is_afternoon_cutoff or is_eod_square_off or peak_giveback_lockout or is_daily_max_loss_triggered:
         gate_reason = (
             "Daily Max Loss Cap (-2.5%)" if is_daily_max_loss_triggered else (
             "Peak/Daily Giveback Shield ($500 Cap)" if peak_giveback_lockout else (
-            "Premarket Lockout (Before 8:30 AM CT)" if is_premarket_lockout else (
+            "Night Hard Lockout (Before 8:00 AM CT)" if is_hard_night_lockout else (
             "Afternoon Cutoff (1:45 PM+ CT)" if is_afternoon_cutoff else "EOD Square-Off"
             )))
         )
@@ -769,7 +774,10 @@ def execute_stock_engine():
             is_long = candidate["is_long"]
             cand_ci = candidate.get("ci", 50.0)
 
-            if is_prime_morning_window:
+            if is_premarket_runner_window:
+                target_usd = max(1000.0, equity * 0.10)
+                audit_logs.append(f"🚀 PREMARKET RUNNER POWER SIZING for {symbol}: ${target_usd:.2f} (10% NAV)")
+            elif is_prime_morning_window:
                 if cand_ci > 52.0 or spy_regime == "NEUTRAL":
                     target_usd = 1000.0
                     audit_logs.append(f"MORNING MICRO SIZING for {symbol}: ${target_usd} (Chop/Neutral)")
@@ -784,39 +792,66 @@ def execute_stock_engine():
             qty = max(1, int(raw_qty))
             order_side = "buy" if is_long else "sell"
 
-            initial_stop_px = px * 0.9920 if is_long else px * 1.0080
-            clean_initial_stop = round(initial_stop_px, 2)
-
-            order_payload = {
-                "symbol": symbol,
-                "qty": format_qty(qty),
-                "side": order_side,
-                "type": "market",
-                "time_in_force": "day",
-                "order_class": "oto",
-                "stop_loss": {
-                    "stop_price": f"{clean_initial_stop:.2f}"
+            # ==============================================================================
+            # PREMARKET VS REGULAR HOURS ORDER EXECUTION
+            # ==============================================================================
+            if is_premarket_runner_window:
+                # Extended-Hours Limit Order for Premarket Execution
+                limit_px = round(px * (1.001 if is_long else 0.999), 2)
+                order_payload = {
+                    "symbol": symbol,
+                    "qty": format_qty(qty),
+                    "side": order_side,
+                    "type": "limit",
+                    "limit_price": f"{limit_px:.2f}",
+                    "time_in_force": "day",
+                    "extended_hours": True
                 }
-            }
-            try:
-                order_res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=order_payload, headers=HEADERS)
-                if order_res.status_code == 200:
-                    active_count += 1
-                    active_symbols.add(symbol)
-                    audit_logs.append(f"1H ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} (~${(qty * px):.2f}) [Native OTO Trigger Stop Active @ ${clean_initial_stop:.2f}]")
-                else:
-                    fallback_payload = {
-                        "symbol": symbol, "qty": format_qty(qty), "side": order_side, "type": "market", "time_in_force": "day"
-                    }
-                    fallback_res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=fallback_payload, headers=HEADERS)
-                    if fallback_res.status_code == 200:
+                try:
+                    order_res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=order_payload, headers=HEADERS)
+                    if order_res.status_code == 200:
                         active_count += 1
                         active_symbols.add(symbol)
-                        audit_logs.append(f"1H ENTRY SUCCESS (Standard): Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} (~${(qty * px):.2f}) [Stop will sync on next run]")
+                        audit_logs.append(f"🚀 PREMARKET ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} @ Limit ${limit_px:.2f} (Extended-Hours Active)")
                     else:
-                        audit_logs.append(f"ORDER REJECTED BY ALPACA [{order_res.status_code}] on {symbol}: {order_res.text}")
-            except Exception as e:
-                audit_logs.append(f"ORDER EXCEPTION on {symbol}: {e}")
+                        audit_logs.append(f"PREMARKET ORDER REJECTED BY ALPACA [{order_res.status_code}] on {symbol}: {order_res.text}")
+                except Exception as e:
+                    audit_logs.append(f"PREMARKET ORDER EXCEPTION on {symbol}: {e}")
+            else:
+                # Regular Market Hours OTO Order with Native Stop
+                initial_stop_px = px * 0.9920 if is_long else px * 1.0080
+                clean_initial_stop = round(initial_stop_px, 2)
+
+                order_payload = {
+                    "symbol": symbol,
+                    "qty": format_qty(qty),
+                    "side": order_side,
+                    "type": "market",
+                    "time_in_force": "day",
+                    "order_class": "oto",
+                    "stop_loss": {
+                        "stop_price": f"{clean_initial_stop:.2f}"
+                    }
+                }
+                try:
+                    order_res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=order_payload, headers=HEADERS)
+                    if order_res.status_code == 200:
+                        active_count += 1
+                        active_symbols.add(symbol)
+                        audit_logs.append(f"1H ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} (~${(qty * px):.2f}) [Native OTO Trigger Stop Active @ ${clean_initial_stop:.2f}]")
+                    else:
+                        fallback_payload = {
+                            "symbol": symbol, "qty": format_qty(qty), "side": order_side, "type": "market", "time_in_force": "day"
+                        }
+                        fallback_res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=fallback_payload, headers=HEADERS)
+                        if fallback_res.status_code == 200:
+                            active_count += 1
+                            active_symbols.add(symbol)
+                            audit_logs.append(f"1H ENTRY SUCCESS (Standard): Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} (~${(qty * px):.2f}) [Stop will sync on next run]")
+                        else:
+                            audit_logs.append(f"ORDER REJECTED BY ALPACA [{order_res.status_code}] on {symbol}: {order_res.text}")
+                except Exception as e:
+                    audit_logs.append(f"ORDER EXCEPTION on {symbol}: {e}")
     else:
         audit_logs.append(f"Execution Gate: Active slots ({active_count}/{MAX_STOCK_SLOTS}). No new entries triggered.")
 
@@ -895,7 +930,7 @@ def execute_stock_engine():
     </tr>
     """
 
-    text_fallback = f"TR-GC-Equities-LS-01 | 1H Adaptive Engine V3\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
+    text_fallback = f"TR-GC-Equities-LS-01 | 1H Adaptive Engine V3.1\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
     positions_rows = "".join([
         f"<tr>"
@@ -971,8 +1006,8 @@ def execute_stock_engine():
       <body>
         <div class="container">
           <div class="header">
-            <h2>TR-GC-Equities-LS-01 | 1H Master Engine V3</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: TIME-REGULATED POWER & SMART PROTECTION</p>
+            <h2>TR-GC-Equities-LS-01 | 1H Master Engine V3.1</h2>
+            <p>Timestamp: {timestamp} &bull; Mode: PREMARKET RUNNER & SMART PROTECTION ACTIVE</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -989,19 +1024,19 @@ def execute_stock_engine():
 
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Guardrails (Full Strategy Display)</div>
+              &bull; <b>Premarket Runner Gate (8:00–8:30 AM CT / 9:00–9:30 AM ET):</b> Active with strict &gt;=2.50x volume surge, &gt;=70% body &amp; CI &le; 45.0 for extended-hours limit orders<br>
               &bull; <b>Live Stock Anatomy Falling-Knife Detector:</b> Distinguishes absorption wicks from solid dumps (&gt;60% body, &gt;1.4x vol)<br>
               &bull; <b>Opening 15m Gated Window (8:30–8:45 AM CT / 9:30–9:45 AM ET):</b> Active with strict &gt;=1.80x volume surge &amp; &gt;=65% body gate<br>
               &bull; <b>Dynamic ATR Volatility Buffer:</b> Replaces flat -0.35% cap with 1.2x ATR breathing room<br>
               &bull; <b>Continuous Dynamic High-Watermark Ratchet (70%–95% Lock):</b> Smoothly ratchets profit floor from +0.30% to +3.00%+ ROE with ATR Noise Shield<br>
               &bull; <b>Native Alpaca Orderbook Trigger Stops:</b> Resting stop orders placed directly on Alpaca matching engine<br>
-              &bull; <b>1-Hour Timeframe & Hard CI Gate (&le;58.0):</b> Eliminates noise & rejects choppy stocks<br>
+              &bull; <b>1-Hour Timeframe &amp; Hard CI Gate (&le;58.0):</b> Eliminates noise &amp; rejects choppy stocks<br>
               &bull; <b>SPY Macro Regime Shield:</b> Enforces broad market direction alignment<br>
-              &bull; <b>Premarket Lockout (Before 8:30 AM CT / 9:30 AM ET):</b> Strictly blocks premarket entries<br>
               &bull; <b>Morning Power Window (8:30–11:30 AM CT):</b> Full 10% NAV (~$10k) sizing on clean completed trends<br>
               &bull; <b>Late-Day News Catalyst Gate (11:30 AM–1:45 PM CT):</b> Ultra-strict volume surge (&gt;=2.5x), CI &le; 45.0 &amp; solid body (&gt;=75%) for news runners<br>
               &bull; <b>Afternoon Cutoff (1:45 PM CT+):</b> Strictly 0 new entries allowed to ensure &gt;=55m exit runway<br>
               &bull; <b>EOD Square-Off (2:40 PM CT / 3:40 PM ET):</b> Liquidates 100% of open positions prior to market close<br>
-              &bull; <b>High-Water & Drawdown Shield ($500 Cap):</b> Hard-blocks trading if drawdown or giveback hits $500<br>
+              &bull; <b>High-Water &amp; Drawdown Shield ($500 Cap):</b> Hard-blocks trading if drawdown or giveback hits $500<br>
               &bull; <b>Daily Anti-Wipeout Shield (-2.5% Cap):</b> Emergency flattens account if daily loss hits -2.5%
             </div>
 
@@ -1012,7 +1047,7 @@ def execute_stock_engine():
                   <tr>
                     <th style="width: 25%;">Sym</th>
                     <th style="width: 20%;">Val ($)</th>
-                    <th style="width: 25%;">P&L (ROE)</th>
+                    <th style="width: 25%;">P&amp;L (ROE)</th>
                     <th style="width: 30%;">Stop / Status</th>
                   </tr>
                 </thead>
@@ -1020,7 +1055,7 @@ def execute_stock_engine():
               </table>
             </div>
 
-            <div class="section-title">Recently Closed Trades & Exit Telemetry</div>
+            <div class="section-title">Recently Closed Trades &amp; Exit Telemetry</div>
             <div class="table-responsive">
               <table>
                 <thead>
@@ -1045,7 +1080,7 @@ def execute_stock_engine():
     """
 
     send_html_dashboard_email(f"Alpaca Quantitative Report — USD ${equity:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] 1H Master Engine V3 report complete.", flush=True)
+    print(f"[{timestamp}] 1H Master Engine V3.1 report complete.", flush=True)
 
 if __name__ == "__main__":
     try:
