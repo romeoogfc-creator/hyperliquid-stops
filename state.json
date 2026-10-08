@@ -271,9 +271,20 @@
       "timestamp": "2026-09-30 14:24:28"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "XRP": {
+      "strategy": "BREAKOUT",
+      "entry_px": 1.40105,
+      "side": "SHORT"
+    },
+    "DOGE": {
+      "strategy": "BREAKOUT",
+      "entry_px": 0.087238,
+      "side": "SHORT"
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-08 10:45:28",
+  "last_run_timestamp": "2026-10-08 11:01:19",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -283,12 +294,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791456326.8361344,
-  "last_scan_timestamp": 1791455429.4593108,
+  "last_email_timestamp": 1791457232.2663572,
+  "last_scan_timestamp": 1791457232.2663572,
   "gemini_cache": {
-    "timestamp": 1791455429.4593108,
-    "risk": "MODERATE",
-    "briefing": "**Risk Level: MODERATE**\n\nCrypto markets currently face a balanced tug-of-war between resilient institutional adoption through ETFs and lingering macroeconomic headwinds, such as persistent inflation fears and potential regulatory crackdowns, that could trigger sudden volatility."
+    "timestamp": 1791457232.2663572,
+    "risk": "HIGH",
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to geopolitical instability, all of which contribute to an elevated risk of sudden, sharp price corrections."
   },
   "recent_losses": [],
   "last_traded_candle": {
@@ -302,7 +313,7 @@
     "YGG": 1790953200000,
     "GMX": 1790953200000,
     "JTO": 1790964000000,
-    "DOGE": 1791151200000,
+    "DOGE": 1791457200000,
     "kSHIB": 1790967600000,
     "CRV": 1791417600000,
     "PENDLE": 1791338400000,
@@ -318,7 +329,8 @@
     "ACE": 1791295200000,
     "SEI": 1791356400000,
     "BCH": 1791410400000,
-    "SOL": 1791439200000
+    "SOL": 1791439200000,
+    "XRP": 1791457200000
   },
   "hibernating_until": 0,
   "daily_starting_equity": {
