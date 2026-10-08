@@ -387,15 +387,20 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
             
     return False, "Normal Price Action"
 
-def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0):
+def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0, coin="ETH"):
     """
-    Computes continuous dynamic stop-loss and uncapped targets for 5x leverage crypto perps.
-    FIXED: Uses min() for negative initial_floor_roe so structural stops NEVER compress tighter than -1.50% ROE.
+    V2.2 HARDENED: Computes dynamic stop-loss with Tiered Accelerated Break-Even Gates.
+    - Tier-1 Majors (BTC, ETH, SOL): Triggers at +2.00% ROE (locks +1.00% ROE floor).
+    - Tier-2 Altcoins: Accelerated trigger at +1.50% ROE (locks +0.75% ROE floor).
     """
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
         roe = (entry_px - current_px) / entry_px
+
+    is_major = coin.upper() in ["BTC", "ETH", "SOL"]
+    be_trigger_roe = 0.0200 if is_major else 0.0150
+    be_floor_roe = 0.0100 if is_major else 0.0075
 
     # 1. DOWNSIDE: Minimum -1.50% ROE Hard Noise Shield
     atr_roe_buffer = (atr_val * 1.8) / entry_px if entry_px > 0 else 0.018
@@ -409,11 +414,10 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, ent
         initial_floor_roe = min(min_required_stop, structure_stop)  # Select DEEPER stop, never tighter
 
     # 2. UPSIDE: CONTINUOUS DYNAMIC WATERMARK RATCHET
-    if peak_roe >= 0.0200:  # Activates break-even shield at +2.00% ROE (+0.40% price move at 5x)
+    if peak_roe >= be_trigger_roe:  # Tiered Break-Even Shield Activation
         if peak_roe < 0.0300:
-            # +2.00% to +3.00% ROE: Fee Cover Shield (+1.00% ROE Floor)
-            target_floor_roe = 0.0100
-            leash_status = f"🛡 BREAK-EVEN SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +1.00%]"
+            target_floor_roe = be_floor_roe
+            leash_status = f"🛡 BREAK-EVEN SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
         else:
             # Continuous Dynamic Scaling Curve
             if peak_roe < 0.100:    # +3% to +10%: Retention scales 70% -> 85%
@@ -436,15 +440,15 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, ent
     if is_long:
         calc_stop_px = entry_px * (1 + target_floor_roe)
         max_safe_stop_px = peak_px - min_atr_distance
-        if peak_roe >= 0.020 and calc_stop_px > max_safe_stop_px:
-            stop_px = max(max_safe_stop_px, entry_px * 1.0100)
+        if peak_roe >= be_trigger_roe and calc_stop_px > max_safe_stop_px:
+            stop_px = max(max_safe_stop_px, entry_px * (1 + be_floor_roe))
         else:
             stop_px = calc_stop_px
     else:
         calc_stop_px = entry_px * (1 - target_floor_roe)
         max_safe_stop_px = peak_px + min_atr_distance
-        if peak_roe >= 0.020 and calc_stop_px < max_safe_stop_px:
-            stop_px = min(max_safe_stop_px, entry_px * 0.9900)
+        if peak_roe >= be_trigger_roe and calc_stop_px < max_safe_stop_px:
+            stop_px = min(max_safe_stop_px, entry_px * (1 - be_floor_roe))
         else:
             stop_px = calc_stop_px
 
@@ -524,7 +528,7 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V2.1 Master Engine Started (Min -1.50% Hard Stop Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V2.2 Master Engine Started (Tiered Accelerated BE & Vol Sizing Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -751,7 +755,7 @@ def execute_engine():
             peak_roe = max(current_roe, prev_peak)
 
             stop_px_calc, tp_px_calc, current_roe, target_floor_roe, leash_status = calculate_smart_exchange_targets(
-                entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=peak_roe
+                entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=peak_roe, coin=coin
             )
 
             if is_long and current_px <= stop_px_calc:
@@ -799,7 +803,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V2.1", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V2.2", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -859,8 +863,6 @@ def execute_engine():
     # DYNAMIC 3-SLOT CAPITAL DEPLOYMENT ENGINE (5X CROSS MARGIN)
     MAX_CRYPTO_SLOTS = 3
     available_slots = MAX_CRYPTO_SLOTS - active_count
-
-    base_sizing_usd = max(10.50, account_value * 0.25)
     min_notional_usd = 10.50
 
     if is_30m_scan_window and available_slots > 0:
@@ -894,6 +896,16 @@ def execute_engine():
                     cooldown_expiry = float(state.get("cooldown_blocklist", {}).get(coin, 0))
                     if now_ts < cooldown_expiry:
                         continue
+
+                    # BTC EXTENSION ANTI-CHASING SHIELD FOR ALTCOINS
+                    is_altcoin = coin.upper() not in ["BTC", "ETH", "SOL"]
+                    if is_altcoin:
+                        if effective_regime == "RED" and btc_change_pct < -2.50:
+                            audit_logs.append(f"⛔ BTC EXTENSION SHIELD [{coin}]: BTC daily drop ({btc_change_pct:+.2f}% < -2.50%) extended. Altcoin SHORT blocked.")
+                            continue
+                        elif effective_regime == "GREEN" and btc_change_pct > 2.50:
+                            audit_logs.append(f"⛔ BTC EXTENSION SHIELD [{coin}]: BTC daily rally ({btc_change_pct:+.2f}% > +2.50%) extended. Altcoin LONG blocked.")
+                            continue
 
                     try:
                         curr_live_px = float(all_mids.get(coin, 0))
@@ -1057,8 +1069,13 @@ def execute_engine():
             candle_ts = candidate["candle_ts"]
             strat_used = candidate["strategy"]
             
+            # TIERED VOLATILITY CAPITAL ALLOCATION (25% Majors | 15% Altcoins)
+            is_major_coin = coin.upper() in ["BTC", "ETH", "SOL"]
+            slot_alloc_pct = 0.25 if is_major_coin else 0.15
+            target_notional_usd = max(min_notional_usd, account_value * slot_alloc_pct)
+
             decimals = sz_decimals_map.get(coin, 4)
-            raw_sz = base_sizing_usd / px
+            raw_sz = target_notional_usd / px
 
             if decimals == 0:
                 sz = int(np.ceil(raw_sz))
@@ -1107,18 +1124,19 @@ def execute_engine():
 
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
+                    tier_label = "Tier-1 Major (25% NAV)" if is_major_coin else "Tier-2 Altcoin (15% NAV)"
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V2.1", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V2.2", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
                         "pnl": 0.0, "roe": 0.0,
                         "stop": round_sig_figs(initial_stop_px, 5),
                         "tp_target": "UNCAPPED 🚀",
-                        "status": "🛡️ Hard Noise Shield & Initial Native TPSL Active"
+                        "status": f"🛡️ {tier_label} Noise Shield Active"
                     })
 
-                    audit_logs.append(f"1H EXECUTION SUCCESS [{strat_used}]: Opened {'LONG' if is_long else 'SHORT'} on {coin} (Size: {sz} ~${(sz * px):.2f})")
+                    audit_logs.append(f"1H EXECUTION SUCCESS [{strat_used}]: Opened {'LONG' if is_long else 'SHORT'} on {coin} ({tier_label}, Size: {sz} ~${(sz * px):.2f})")
 
             except Exception as e:
                 audit_logs.append(f"EXECUTION FAILED on {coin}: {e}")
@@ -1161,7 +1179,7 @@ def execute_engine():
         
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V2.1 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V2.2 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         summary_card_html = f"""
         <div class="summary-card">
@@ -1286,8 +1304,8 @@ def execute_engine():
           <body>
             <div class="container">
               <div class="header">
-                <h2>TR-GC-Crypto-LS-23-V2.1 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Min -1.50% Hard Noise Shield Active)</p>
+                <h2>TR-GC-Crypto-LS-23-V2.2 | Telemetry Dashboard</h2>
+                <p>Timestamp: {timestamp} (Tiered BE Gate & Vol Sizing Active)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -1304,15 +1322,17 @@ def execute_engine():
 
                 <div class="rules-card">
                   <div class="rules-title">&#9989; Active Guardrails (Hardened Friction Rules Active)</div>
+                  &bull; <b>Tiered Accelerated Break-Even Gate:</b> Majors (+2.00% ROE) | Altcoins (+1.50% ROE) to capture fast breakdown gains<br>
+                  &bull; <b>Tiered Volatility Capital Allocation:</b> 25% NAV on Tier-1 Majors (ETH/BTC/SOL) | 15% NAV on Tier-2 Altcoins to compress paper cuts<br>
+                  &bull; <b>BTC Extension Anti-Chasing Shield:</b> Hard-blocks NEW altcoin entries if BTC daily candle is over-extended (&gt; &plusmn;2.50%)<br>
                   &bull; <b>Min -1.50% Hard Noise Shield:</b> Guarantees stops can NEVER be compressed tighter than -1.50% ROE<br>
-                  &bull; <b>+2.00% ROE Break-Even Gate:</b> Profit ratchets activate at +2.00% ROE locking +1.00% ROE to guarantee net positive gains<br>
                   &bull; <b>Strict 2-Candle Color Lock:</b> Requires T-2 &amp; T-1 closed in target direction past historical bands + Live candle actively gaining<br>
                   &bull; <b>Strict Altcoin Choppiness Gate:</b> Rejects entries if Altcoin CI &gt; 45.0 (guarantees smooth trend momentum)<br>
                   &bull; <b>Resilient Stagnation Cut:</b> Auto-closes trades negative (&lt; -1.50% ROE) only after 3 consecutive 30m runs<br>
                   &bull; <b>Live Anatomy Falling-Knife Detector:</b> Distinguishes absorption wicks from solid red dumps (&gt;60% body, &gt;1.4x vol)<br>
                   &bull; <b>24/7 Native Orderbook Sync:</b> Posts resting trigger orders on Hyperliquid L1 orderbook to protect while sleeping<br>
                   &bull; <b>BTC Directional Shield:</b> Enforces broad market alignment &amp; active flip purge (GREEN = LONGs, RED = SHORTs)<br>
-                  &bull; <b>Dynamic 3-Slot Capital Deployment:</b> Capped at 3 active trades (25% NAV per slot, 5x leverage, $10.50 floor)<br>
+                  &bull; <b>24H Post-Loss Cooldown Blocklist:</b> Auto-bans any coin closed at a loss for 24 hours<br>
                   &bull; <b>Rolling Loss Circuit Breaker:</b> Triggers 12-hour hibernation if 3 losses occur within rolling 60m
                 </div>
 
