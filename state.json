@@ -276,7 +276,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-08 22:00:27",
+  "last_run_timestamp": "2026-10-08 22:15:22",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -286,7 +286,7 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791495921.6394696,
+  "last_email_timestamp": 1791497721.0640757,
   "last_scan_timestamp": 1791496823.1756592,
   "gemini_cache": {
     "timestamp": 1791496823.1756592,
