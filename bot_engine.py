@@ -397,9 +397,9 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, ent
     else:
         roe = (entry_px - current_px) / entry_px
 
-    # 1. DOWNSIDE: ATR-based Volatility Buffer & Entry Candle Structural Protection
-    atr_roe_buffer = (atr_val * 1.5) / entry_px if entry_px > 0 else 0.015
-    atr_roe_buffer = max(0.0085, min(0.022, atr_roe_buffer))
+    # 1. DOWNSIDE: ATR-based Volatility Buffer & Fee Noise Floor (Min 1.20% ROE Floor)
+    atr_roe_buffer = (atr_val * 1.8) / entry_px if entry_px > 0 else 0.015
+    atr_roe_buffer = max(0.0120, min(0.0250, atr_roe_buffer))  # Upgraded floor from 0.85% to 1.20% ROE
 
     if is_long:
         structure_stop = (entry_candle_low / entry_px) - 1.0 if entry_px > 0 else -atr_roe_buffer
@@ -738,17 +738,17 @@ def execute_engine():
             except Exception as e:
                 audit_logs.append(f"Indicator calculation warning on {coin}: {e}")
 
-            # --- FALLING KNIFE & STAGNATION GUARDS ---
+            # --- RESILIENT STAGNATION SHIELD (-1.20% ROE Floor / 3 Runs) ---
             stag_map = state.get("stagnation_tracker", {})
             curr_stag = stag_map.get(coin, 0)
-            if current_roe < -0.0040:
+            if current_roe < -0.0120:  # Upgraded floor from -0.40% to -1.20% ROE to avoid spread noise panic
                 curr_stag += 1
                 if "stagnation_tracker" not in state:
                     state["stagnation_tracker"] = {}
                 state["stagnation_tracker"][coin] = curr_stag
-                if curr_stag >= 2:
+                if curr_stag >= 3:     # Upgraded to 3 runs (1.5 hours)
                     should_exit = True
-                    exit_reason = f"🗡️ Falling Knife Stagnation Cut ({current_roe*100:.2f}% after 2 runs)"
+                    exit_reason = f"🗡️ Stagnation Cut ({current_roe*100:.2f}% after 3 runs)"
             else:
                 if "stagnation_tracker" in state and coin in state["stagnation_tracker"]:
                     state["stagnation_tracker"][coin] = 0
@@ -961,6 +961,7 @@ def execute_engine():
 
                         upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
                         comp_close = closes[-2]
+                        prev_comp_close = closes[-3] if len(closes) >= 3 else comp_close
 
                         is_holding_breakout = curr_live_px >= comp_close
                         is_holding_breakdown = curr_live_px <= comp_close
@@ -1006,9 +1007,12 @@ def execute_engine():
                         # STRATEGY A: TRENDING BREAKOUT / BREAKDOWN ENGINE
                         if market_mode == "TRENDING" or (market_mode == "RANGING" and vol_ratio >= required_vol_ratio):
                             ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
-                            if ci_1h <= 52.0 and vol_ratio >= required_vol_ratio:
+                            
+                            # --- UPGRADED 2-CANDLE BREAKOUT & CHOPPINESS GATE (CI <= 45.0) ---
+                            if ci_1h <= 45.0 and vol_ratio >= required_vol_ratio:
                                 if effective_regime in ["GREEN"]:
-                                    if comp_close > upper and comp_close <= (upper * 1.030):
+                                    is_2bar_breakout = (comp_close > upper) and ((prev_comp_close > upper) or (curr_live_px >= upper * 1.0025))
+                                    if is_2bar_breakout and comp_close <= (upper * 1.030):
                                         if is_true_green and is_holding_breakout:
                                             extension_pct = ((comp_close - upper) / upper) * 100
                                             market_candidates.append({
@@ -1016,10 +1020,11 @@ def execute_engine():
                                                 "score": (curr_live_px - upper) / upper, "candle_ts": current_candle_ts,
                                                 "strategy": "BREAKOUT"
                                             })
-                                            audit_logs.append(f"1H TRUE GREEN BREAKOUT MATCH (LONG): {coin} @ ${curr_live_px:.4f} (True Green Body, Ext: +{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
+                                            audit_logs.append(f"1H 2-CANDLE GREEN BREAKOUT MATCH (LONG): {coin} @ ${curr_live_px:.4f} (Ext: +{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
 
                                 if effective_regime in ["RED"]:
-                                    if comp_close < lower and comp_close >= (lower * 0.970):
+                                    is_2bar_breakdown = (comp_close < lower) and ((prev_comp_close < lower) or (curr_live_px <= lower * 0.9975))
+                                    if is_2bar_breakdown and comp_close >= (lower * 0.970):
                                         if is_true_red and is_holding_breakdown:
                                             extension_pct = ((lower - comp_close) / lower) * 100
                                             market_candidates.append({
@@ -1027,7 +1032,7 @@ def execute_engine():
                                                 "score": (lower - curr_live_px) / lower, "candle_ts": current_candle_ts,
                                                 "strategy": "BREAKOUT"
                                             })
-                                            audit_logs.append(f"1H TRUE RED BREAKDOWN MATCH (SHORT): {coin} @ ${curr_live_px:.4f} (True Red Body, Ext: -{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
+                                            audit_logs.append(f"1H 2-CANDLE RED BREAKDOWN MATCH (SHORT): {coin} @ ${curr_live_px:.4f} (Ext: -{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
 
                         # STRATEGY B: RANGING MEAN-REVERSION
                         if market_mode == "RANGING" and vol_ratio >= required_vol_ratio and btc_adx < 25.0:
@@ -1112,7 +1117,8 @@ def execute_engine():
                         "side": "LONG" if is_long else "SHORT"
                     }
 
-                    initial_stop_px = px * 0.9915 if is_long else px * 1.0085
+                    # Initial Stop Set with Fee Protection Buffer (-1.20% ROE)
+                    initial_stop_px = px * 0.9880 if is_long else px * 1.0120
                     initial_tp_px = None  # Always rely on resting trigger SL ratchets on orderbook
 
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
@@ -1314,19 +1320,16 @@ def execute_engine():
                 {summary_card_html}
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (Full Crypto Strategy Display)</div>
+                  <div class="rules-title">&#9989; Active Guardrails (Hardened Friction Rules Active)</div>
+                  &bull; <b>2-Candle Breakdown Confirmation:</b> Requires 2 consecutive 1H closes or +0.25% extension past Gaussian bands<br>
+                  &bull; <b>Fee & Spread Noise Shield:</b> Minimum -1.20% ROE floor prevents exchange fees from eating micro stop-outs<br>
+                  &bull; <b>Strict Altcoin Choppiness Gate:</b> Rejects entries if Altcoin CI &gt; 45.0 (guarantees smooth trend momentum)<br>
+                  &bull; <b>Resilient Stagnation Cut:</b> Auto-closes trades negative (&lt; -1.20% ROE) only after 3 consecutive 30m runs<br>
                   &bull; <b>Live Anatomy Falling-Knife Detector:</b> Distinguishes absorption wicks from solid red dumps (&gt;60% body, &gt;1.4x vol)<br>
-                  &bull; <b>Continuous Dynamic High-Watermark Ratchets (60%–90% Lock):</b> Smoothly ratchets profit floor from +1% to +30%+ ROE with ATR Noise Shield<br>
-                  &bull; <b>Uncapped Moonshot Upside:</b> Strictly relies on native orderbook SL ratchets for infinite runner potential<br>
+                  &bull; <b>Continuous Dynamic Watermark Ratchets (60%–90% Lock):</b> Smoothly ratchets profit floor with ATR Noise Shield<br>
                   &bull; <b>24/7 Native Orderbook Sync:</b> Posts resting trigger orders on Hyperliquid L1 orderbook to protect while sleeping<br>
-                  &bull; <b>Falling Knife & Stagnation Cut:</b> Auto-closes trades negative (&lt; -0.40%) for 2 consecutive 30m runs<br>
-                  &bull; <b>Trigger Candle Invalidation:</b> Immediately closes trade if price breaks entry candle low/high<br>
-                  &bull; <b>True Body Momentum Gate:</b> Requires solid candle bodies (&gt;35% range) and multi-candle commitment<br>
                   &bull; <b>BTC Directional Shield:</b> Enforces broad market alignment &amp; active flip purge (GREEN = LONGs, RED = SHORTs)<br>
-                  &bull; <b>Adaptive Gemini Volume Gate:</b> Dynamically scales volume confirmation (LOW: 1.12x, MODERATE: 1.18x, HIGH: 1.25x)<br>
-                  &bull; <b>Dynamic 3-Slot Capital Deployment:</b> Capped at 3 active trades (25% NAV per slot, 5x leverage, $10.50 minimum floor)<br>
-                  &bull; <b>Optimal Orderbook Gate:</b> Rejects spread &gt; 0.30% or 0.5% depth &lt; $6,000 USD<br>
-                  &bull; <b>24H Post-Loss Cooldown Blocklist:</b> Bans any coin closed at a loss for 24 hours in state.json<br>
+                  &bull; <b>Dynamic 3-Slot Capital Deployment:</b> Capped at 3 active trades (25% NAV per slot, 5x leverage, $10.50 floor)<br>
                   &bull; <b>Rolling Loss Circuit Breaker:</b> Triggers 12-hour hibernation if 3 losses occur within rolling 60m
                 </div>
 
