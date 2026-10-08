@@ -389,7 +389,7 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
 
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0, coin="ETH"):
     """
-    V2.5 HARDENED: Ported Stock V3.1 Continuous Dynamic Retention Curve (70% -> 95% Lock)
+    V2.6 HARDENED: Ported Stock V3.1 Continuous Dynamic Retention Curve (70% -> 95% Lock)
     & Strict Altcoin Hard Loss Caps (-1.50% ROE / -$0.22 max).
     """
     if is_long:
@@ -552,7 +552,7 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V2.5 Master Engine Started (Deduplicated Reconciliation & Stock V3.1 Rules Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V2.6 Master Engine Started (BTC Intraday Bounce Gate & Deduplicated Reconciliation Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -834,7 +834,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V2.5", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V2.6", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -940,12 +940,16 @@ def execute_engine():
                     if now_ts < cooldown_expiry:
                         continue
 
-                    # BTC EXTENSION ANTI-CHASING SHIELD FOR ALTCOINS
+                    # V2.6 ENHANCED: BTC EXTENSION & INTRADAY BOUNCE SQUEEZE SHIELD FOR ALTCOINS
                     is_altcoin = coin.upper() not in ["BTC", "ETH", "SOL"]
                     if is_altcoin:
-                        if effective_regime == "RED" and btc_change_pct < -2.50:
-                            audit_logs.append(f"⛔ BTC EXTENSION SHIELD [{coin}]: BTC daily drop ({btc_change_pct:+.2f}% < -2.50%) extended. Altcoin SHORT blocked.")
-                            continue
+                        if effective_regime == "RED":
+                            if btc_bounce_pct >= 1.00:
+                                audit_logs.append(f"⛔ BTC BOUNCE SQUEEZE SHIELD [{coin}]: BTC bounced +{btc_bounce_pct:.2f}% off low. Altcoin SHORT blocked.")
+                                continue
+                            if btc_change_pct < -2.50:
+                                audit_logs.append(f"⛔ BTC EXTENSION SHIELD [{coin}]: BTC daily drop ({btc_change_pct:+.2f}% < -2.50%) extended. Altcoin SHORT blocked.")
+                                continue
                         elif effective_regime == "GREEN" and btc_change_pct > 2.50:
                             audit_logs.append(f"⛔ BTC EXTENSION SHIELD [{coin}]: BTC daily rally ({btc_change_pct:+.2f}% > +2.50%) extended. Altcoin LONG blocked.")
                             continue
@@ -1181,7 +1185,7 @@ def execute_engine():
 
                     tier_label = "Tier-1 Major (25% NAV)" if is_major_coin else "Tier-2 Altcoin (15% NAV)"
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V2.5", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V2.6", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -1234,7 +1238,7 @@ def execute_engine():
         
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V2.5 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V2.6 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         summary_card_html = f"""
         <div class="summary-card">
@@ -1359,8 +1363,8 @@ def execute_engine():
           <body>
             <div class="container">
               <div class="header">
-                <h2>TR-GC-Crypto-LS-23-V2.5 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Deduplicated Reconciliation &amp; Stock V3.1 Rules Active)</p>
+                <h2>TR-GC-Crypto-LS-23-V2.6 | Telemetry Dashboard</h2>
+                <p>Timestamp: {timestamp} (BTC Intraday Bounce Gate &amp; Stock V3.1 Rules Active)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -1376,7 +1380,8 @@ def execute_engine():
                 {summary_card_html}
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (V2.5 Patch Active)</div>
+                  <div class="rules-title">&#9989; Active Guardrails (V2.6 Patch Active)</div>
+                  &bull; <b>BTC Bounce Squeeze Entry Gate:</b> Hard-blocks NEW altcoin SHORTs if BTC has bounced &ge; +1.00% off intraday low<br>
                   &bull; <b>Deduplicated Reconciliation Engine:</b> Excludes market-closed trades in real time to prevent ghost double-logging<br>
                   &bull; <b>Stock V3.1 Dynamic Retention Curve (70% &rarr; 95% Lock):</b> Smoothly ratchets profit floor as ROE grows<br>
                   &bull; <b>Stock V3.1 Solid Candle Body Gate (&ge;60% Body):</b> Rejects weak dojis/indecision candles with long rejection wicks<br>
