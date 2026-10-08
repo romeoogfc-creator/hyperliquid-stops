@@ -96,9 +96,31 @@
       "timestamp": "2026-10-05 15:48:14"
     }
   ],
-  "active_position_cache": {},
-  "previous_active_symbols": [],
-  "last_run_timestamp": "2026-10-08 13:48:13",
+  "active_position_cache": {
+    "HON": {
+      "entry_px": 206.35,
+      "current_px": 207.365,
+      "qty": 47.0,
+      "side": "short",
+      "peak_roe": -0.004918827235279936,
+      "best_target_floor_roe": -0.007991969261656701,
+      "best_stop_px": 207.99914285714289
+    },
+    "INTC": {
+      "entry_px": 109.697191,
+      "current_px": 109.53,
+      "qty": 89.0,
+      "side": "short",
+      "peak_roe": 0.0015241137760765681,
+      "best_target_floor_roe": -0.012,
+      "best_stop_px": 111.013557292
+    }
+  },
+  "previous_active_symbols": [
+    "INTC",
+    "HON"
+  ],
+  "last_run_timestamp": "2026-10-08 14:04:43",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42,
