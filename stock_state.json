@@ -1,6 +1,33 @@
 {
   "closed_trades_ledger": [
     {
+      "symbol": "HON",
+      "entry_price": 206.35,
+      "exit_price": 204.862979,
+      "realized_pnl": 69.88998699999993,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-08 15:48:58",
+      "order_id": "c158f9bc-e968-4d43-9ded-a2c39d7a3f52"
+    },
+    {
+      "symbol": "DE",
+      "entry_price": 654.69,
+      "exit_price": 640.16,
+      "realized_pnl": 203.4200000000012,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-08 15:48:58",
+      "order_id": "7c2a0f0a-0036-4a26-b85d-fe08a8c20e62"
+    },
+    {
+      "symbol": "IWM",
+      "entry_price": 276.165429,
+      "exit_price": 275.171429,
+      "realized_pnl": 34.79000000000099,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-08 15:48:58",
+      "order_id": "dbbc5f30-e4b9-49bf-bcbe-38684ea97144"
+    },
+    {
       "symbol": "INTC",
       "entry_price": 109.697191,
       "exit_price": 111.050674,
@@ -108,48 +135,18 @@
   "active_position_cache": {
     "BAC": {
       "entry_px": 52.58,
-      "current_px": 52.355,
+      "current_px": 52.295,
       "qty": 186.0,
       "side": "short",
-      "peak_roe": 0.00427919360973757,
-      "best_target_floor_roe": 0.003112733750825002,
-      "best_stop_px": 52.472375
-    },
-    "DE": {
-      "entry_px": 654.69,
-      "current_px": 638.15,
-      "qty": 14.0,
-      "side": "short",
-      "peak_roe": 0.025263865340848457,
-      "best_target_floor_roe": 0.022823970374653325,
-      "best_stop_px": 639.9839999999999
-    },
-    "HON": {
-      "entry_px": 206.35,
-      "current_px": 204.385,
-      "qty": 47.0,
-      "side": "short",
-      "peak_roe": 0.009522655682093548,
-      "best_target_floor_roe": 0.007996851924467509,
-      "best_stop_px": 204.86599999999999
-    },
-    "IWM": {
-      "entry_px": 276.165429,
-      "current_px": 274.79,
-      "qty": 35.0,
-      "side": "short",
-      "peak_roe": 0.004980453219580923,
-      "best_target_floor_roe": 0.0036976791382857433,
-      "best_stop_px": 275.16512500000005
+      "peak_roe": 0.0054203119056674895,
+      "best_target_floor_roe": 0.004075336450489776,
+      "best_stop_px": 52.412375000000004
     }
   },
   "previous_active_symbols": [
-    "IWM",
-    "BAC",
-    "DE",
-    "HON"
+    "BAC"
   ],
-  "last_run_timestamp": "2026-10-08 15:17:24",
+  "last_run_timestamp": "2026-10-08 15:49:20",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42,
