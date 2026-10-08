@@ -7,7 +7,8 @@
     "PYTH": 1791383431.3566132,
     "ACE": 1791393327.5344515,
     "BCH": 1791502230.9133725,
-    "CRV": 1791506726.931725
+    "CRV": 1791506726.931725,
+    "BTC": 1791523826.6003006
   },
   "stagnation_tracker": {
     "APT": 28,
@@ -50,10 +51,20 @@
     "BSV": 0,
     "MINA": 2,
     "IMX": 2,
-    "BTC": 0,
     "NEAR": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "BTC",
+      "entry_price": 82693.0,
+      "exit_price": 82917.0,
+      "pnl_usd": -0.0784,
+      "roe_pct": -0.2708814530855091,
+      "side": "SHORT",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-08 05:30:26",
+      "ts_sec": 1791437426.6003006
+    },
     {
       "coin": "CRV",
       "entry_price": 0.39197,
@@ -256,33 +267,11 @@
       "side": "LONG",
       "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-0.4%)",
       "timestamp": "2026-09-30 13:05:33"
-    },
-    {
-      "coin": "ZRO",
-      "entry_price": 1.7884,
-      "exit_price": 1.78855,
-      "pnl_usd": 0.0017,
-      "roe_pct": 0.04193692686202597,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Profit Lock (+0.0%)",
-      "timestamp": "2026-09-30 13:05:33"
     }
   ],
-  "active_position_cache": {
-    "BTC": {
-      "entry_px": 82693.0,
-      "current_px": 82732.5,
-      "szi": -0.00035,
-      "margin": 28.95655,
-      "side": "SHORT",
-      "peak_roe": 0.002811604367963431,
-      "strategy": "BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "BTC"
-  ],
-  "last_run_timestamp": "2026-10-08 05:15:25",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-08 05:31:25",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -292,12 +281,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791435622.0437503,
-  "last_scan_timestamp": 1791435622.0437503,
+  "last_email_timestamp": 1791437426.6003006,
+  "last_scan_timestamp": 1791437426.6003006,
   "gemini_cache": {
-    "timestamp": 1791435622.0437503,
+    "timestamp": 1791437426.6003006,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic shifts, fluctuating regulatory clarity, and precarious leverage levels, creating significant potential for rapid volatility."
+    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly susceptible to significant volatility driven by uncertainty surrounding macroeconomic policy shifts, ongoing regulatory scrutiny, and precarious leverage levels within the ecosystem."
   },
   "recent_losses": [],
   "last_traded_candle": {
