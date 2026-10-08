@@ -45,7 +45,7 @@
     "NEO": 1,
     "GMX": 2,
     "TIA": 1,
-    "ZRO": 1,
+    "ZRO": 0,
     "SUI": 8,
     "ETH": 12,
     "BSV": 0,
@@ -274,33 +274,38 @@
   "active_position_cache": {
     "DOGE": {
       "entry_px": 0.08719,
-      "current_px": 0.08708,
+      "current_px": 0.08684,
       "szi": -327.0,
-      "margin": 2.847516,
+      "margin": 2.840354,
       "side": "SHORT",
-      "peak_roe": 0.00126161257024887,
+      "peak_roe": 0.004014221814428296,
       "strategy": "BREAKOUT"
     },
     "XRP": {
       "entry_px": 1.4002,
-      "current_px": 1.39685,
+      "current_px": 1.39255,
       "szi": -21.0,
-      "margin": 29.3328,
+      "margin": 29.2488,
       "side": "SHORT",
-      "peak_roe": 0.0027496071989715105,
+      "peak_roe": 0.005463505213540876,
       "strategy": "BREAKOUT"
     },
     "ZRO": {
-      "strategy": "BREAKOUT",
-      "entry_px": 2.01265,
-      "side": "SHORT"
+      "entry_px": 2.0152,
+      "current_px": 2.02315,
+      "szi": -14.2,
+      "margin": 5.74816,
+      "side": "SHORT",
+      "peak_roe": -0.003945017864231679,
+      "strategy": "BREAKOUT"
     }
   },
   "previous_active_coins": [
     "DOGE",
+    "ZRO",
     "XRP"
   ],
-  "last_run_timestamp": "2026-10-08 12:01:25",
+  "last_run_timestamp": "2026-10-08 12:15:38",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
