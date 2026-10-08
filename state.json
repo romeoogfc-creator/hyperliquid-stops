@@ -271,9 +271,9 @@
   "active_position_cache": {
     "BTC": {
       "entry_px": 82693.0,
-      "current_px": 82460.5,
+      "current_px": 82634.5,
       "szi": -0.00035,
-      "margin": 28.863765,
+      "margin": 28.92197,
       "side": "SHORT",
       "peak_roe": 0.002811604367963431,
       "strategy": "BREAKOUT"
@@ -282,7 +282,7 @@
   "previous_active_coins": [
     "BTC"
   ],
-  "last_run_timestamp": "2026-10-08 04:45:30",
+  "last_run_timestamp": "2026-10-08 05:01:03",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -292,12 +292,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791433820.436475,
-  "last_scan_timestamp": 1791433820.436475,
+  "last_email_timestamp": 1791435622.0437503,
+  "last_scan_timestamp": 1791435622.0437503,
   "gemini_cache": {
-    "timestamp": 1791433820.436475,
+    "timestamp": 1791435622.0437503,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic shifts, upcoming regulatory developments, and significant liquidity volatility, necessitating extreme caution despite recent price momentum."
+    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic shifts, fluctuating regulatory clarity, and precarious leverage levels, creating significant potential for rapid volatility."
   },
   "recent_losses": [],
   "last_traded_candle": {
@@ -336,6 +336,7 @@
     "2026-10-04": 114.8464092,
     "2026-10-05": 114.8956392,
     "2026-10-06": 114.9279982,
-    "2026-10-07": 114.7945692
+    "2026-10-07": 114.7945692,
+    "2026-10-08": 114.3417812
   }
 }
