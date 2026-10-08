@@ -34,7 +34,7 @@
     "DYDX": 0,
     "ATOM": 4,
     "SUSHI": 3,
-    "BIGTIME": 0,
+    "BIGTIME": 1,
     "RSR": 5,
     "SNX": 2,
     "TRB": 1,
@@ -277,9 +277,9 @@
   "active_position_cache": {
     "BIGTIME": {
       "entry_px": 0.007802,
-      "current_px": 0.007908,
+      "current_px": 0.007963,
       "szi": -3682.0,
-      "margin": 9.710661,
+      "margin": 9.765891,
       "side": "SHORT",
       "peak_roe": -0.00038451679056657244,
       "strategy": "BREAKOUT"
@@ -288,7 +288,7 @@
   "previous_active_coins": [
     "BIGTIME"
   ],
-  "last_run_timestamp": "2026-10-08 19:15:39",
+  "last_run_timestamp": "2026-10-08 19:31:16",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -299,11 +299,11 @@
     "scan_date": "2026-09-24"
   },
   "last_email_timestamp": 1791486935.7300677,
-  "last_scan_timestamp": 1791486030.8675108,
+  "last_scan_timestamp": 1791487831.3249056,
   "gemini_cache": {
-    "timestamp": 1791486030.8675108,
+    "timestamp": 1791487831.3249056,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic shifts, fluctuating regulatory clarity, and extreme volatility driven by speculative leverage, necessitating caution despite recent bullish momentum."
+    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic uncertainty, shifting regulatory landscapes, and sudden liquidity contractions, all of which continue to drive significant price volatility."
   },
   "recent_losses": [],
   "last_traded_candle": {
