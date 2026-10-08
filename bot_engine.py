@@ -1136,6 +1136,8 @@ def execute_engine():
     if trades_executed:
         time.sleep(2.5)
 
+    # --- DYNAMIC RECALCULATION OF MARGIN & RESERVE CASH FOR DASHBOARD ---
+    total_margin_used = sum(float(p.get("collateral", 0.0)) for p in positions_data)
     static_usdc = max(0.0, account_value - total_margin_used)
     margin_util_pct = (total_margin_used / account_value * 100) if account_value > 0 else 0.0
 
