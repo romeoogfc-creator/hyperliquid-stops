@@ -34,7 +34,7 @@
     "DYDX": 0,
     "ATOM": 4,
     "SUSHI": 3,
-    "BIGTIME": 0,
+    "BIGTIME": 1,
     "RSR": 5,
     "SNX": 2,
     "TRB": 1,
@@ -279,38 +279,38 @@
   "active_position_cache": {
     "ETH": {
       "entry_px": 2520.4,
-      "current_px": 2418.45,
+      "current_px": 2437.25,
       "szi": -0.0113,
-      "margin": 27.32566,
+      "margin": 27.54036,
       "side": "SHORT",
       "peak_roe": 0.043643866053007456,
       "strategy": "BREAKOUT"
     },
     "GMX": {
       "entry_px": 7.7487,
-      "current_px": 7.7512,
+      "current_px": 7.8226,
       "szi": -3.71,
-      "margin": 9.584785,
+      "margin": 9.675803,
       "side": "SHORT",
       "peak_roe": 0.004091008814381861,
       "strategy": "BREAKOUT"
     },
     "BIGTIME": {
       "entry_px": 0.007802,
-      "current_px": 0.007861,
+      "current_px": 0.007923,
       "szi": -3682.0,
-      "margin": 9.644385,
+      "margin": 9.727844,
       "side": "SHORT",
       "peak_roe": -0.00038451679056657244,
       "strategy": "BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "ETH",
     "GMX",
-    "BIGTIME"
+    "BIGTIME",
+    "ETH"
   ],
-  "last_run_timestamp": "2026-10-08 18:15:58",
+  "last_run_timestamp": "2026-10-08 18:30:47",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -320,12 +320,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791482425.9964466,
+  "last_email_timestamp": 1791484227.5667768,
   "last_scan_timestamp": 1791478834.259524,
   "gemini_cache": {
-    "timestamp": 1791483331.3378286,
+    "timestamp": 1791484227.5667768,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to geopolitical instability, all of which contribute to an elevated risk of sudden, sharp price corrections."
+    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating significant macroeconomic uncertainty, volatile regulatory landscapes, and high leverage, leaving prices hypersensitive to sudden shifts in interest rate expectations and institutional liquidity."
   },
   "recent_losses": [],
   "last_traded_candle": {
