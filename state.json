@@ -276,7 +276,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-08 21:15:27",
+  "last_run_timestamp": "2026-10-08 21:31:15",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -287,11 +287,11 @@
     "scan_date": "2026-09-24"
   },
   "last_email_timestamp": 1791494126.2924376,
-  "last_scan_timestamp": 1791493228.2698455,
+  "last_scan_timestamp": 1791495027.7020319,
   "gemini_cache": {
-    "timestamp": 1791493228.2698455,
-    "risk": "HIGH",
-    "briefing": "Risk Level: **MODERATE** \u2014 While Bitcoin's proximity to all-time highs and anticipation of further monetary easing provide bullish momentum, the market remains susceptible to sudden volatility driven by geopolitical tensions and uncertainty surrounding upcoming macroeconomic data releases."
+    "timestamp": 1791495027.7020319,
+    "risk": "MODERATE",
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, the asset class continues to face significant volatility risks stemming from regulatory uncertainty and sensitive reactions to macroeconomic data."
   },
   "recent_losses": [],
   "last_traded_candle": {
