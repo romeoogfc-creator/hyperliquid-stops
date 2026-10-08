@@ -6,7 +6,8 @@
     "BNB": 1791249326.6402626,
     "PYTH": 1791383431.3566132,
     "ACE": 1791393327.5344515,
-    "BCH": 1791502230.9133725
+    "BCH": 1791502230.9133725,
+    "CRV": 1791506726.931725
   },
   "stagnation_tracker": {
     "APT": 28,
@@ -53,6 +54,17 @@
     "NEAR": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "CRV",
+      "entry_price": 0.39197,
+      "exit_price": 0.3885,
+      "pnl_usd": -0.315492,
+      "roe_pct": -0.8852718320279545,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-08 00:45:26",
+      "ts_sec": 1791420326.931725
+    },
     {
       "coin": "BCH",
       "entry_price": 298.5,
@@ -254,27 +266,11 @@
       "side": "LONG",
       "exit_reason": "\ud83c\udfaf Profit Lock (+0.0%)",
       "timestamp": "2026-09-30 13:05:33"
-    },
-    {
-      "coin": "TRB",
-      "entry_price": 20.937,
-      "exit_price": 20.705,
-      "pnl_usd": -0.1692,
-      "roe_pct": -3.3242584897550205,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-3.3%)",
-      "timestamp": "2026-09-30 12:57:05"
     }
   ],
-  "active_position_cache": {
-    "CRV": {
-      "strategy": "BREAKOUT",
-      "entry_px": 0.39197,
-      "side": "LONG"
-    }
-  },
+  "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-08 00:31:20",
+  "last_run_timestamp": "2026-10-08 00:45:28",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -284,7 +280,7 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791419428.325797,
+  "last_email_timestamp": 1791420326.931725,
   "last_scan_timestamp": 1791419428.325797,
   "gemini_cache": {
     "timestamp": 1791419428.325797,
