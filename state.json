@@ -278,28 +278,28 @@
   "active_position_cache": {
     "LINK": {
       "entry_px": 12.974,
-      "current_px": 12.8955,
+      "current_px": 12.8495,
       "szi": -2.2,
-      "margin": 28.369,
+      "margin": 28.2656,
       "side": "SHORT",
-      "peak_roe": 0.006050562663789118,
+      "peak_roe": 0.009596115307538107,
       "strategy": "BREAKOUT"
     },
     "WIF": {
       "entry_px": 0.220525,
-      "current_px": 0.219495,
+      "current_px": 0.219415,
       "szi": -130.0,
-      "margin": 5.70752,
+      "margin": 5.7044,
       "side": "SHORT",
-      "peak_roe": 0.0046706722593810365,
+      "peak_roe": 0.00503344292030382,
       "strategy": "BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "LINK",
-    "WIF"
+    "WIF",
+    "LINK"
   ],
-  "last_run_timestamp": "2026-10-08 13:39:24",
+  "last_run_timestamp": "2026-10-08 13:45:33",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
