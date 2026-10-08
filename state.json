@@ -276,33 +276,38 @@
   "active_position_cache": {
     "DOGE": {
       "entry_px": 0.08719,
-      "current_px": 0.086886,
+      "current_px": 0.086924,
       "szi": -327.0,
-      "margin": 2.841172,
+      "margin": 2.842414,
       "side": "SHORT",
       "peak_roe": 0.00540199564170202,
       "strategy": "BREAKOUT"
     },
     "LINK": {
       "entry_px": 12.974,
-      "current_px": 12.9415,
+      "current_px": 12.9535,
       "szi": -2.2,
-      "margin": 28.4724,
+      "margin": 28.4966,
       "side": "SHORT",
       "peak_roe": 0.005433944812702396,
       "strategy": "BREAKOUT"
     },
     "WIF": {
-      "strategy": "BREAKOUT",
-      "entry_px": 0.220665,
-      "side": "SHORT"
+      "entry_px": 0.220525,
+      "current_px": 0.22086,
+      "szi": -130.0,
+      "margin": 5.7421,
+      "side": "SHORT",
+      "peak_roe": -0.001519102142614225,
+      "strategy": "BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "LINK",
-    "DOGE"
+    "DOGE",
+    "WIF",
+    "LINK"
   ],
-  "last_run_timestamp": "2026-10-08 13:16:13",
+  "last_run_timestamp": "2026-10-08 13:17:21",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
