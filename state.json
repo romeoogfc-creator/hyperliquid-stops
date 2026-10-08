@@ -275,38 +275,38 @@
   "active_position_cache": {
     "DOGE": {
       "entry_px": 0.08719,
-      "current_px": 0.086927,
+      "current_px": 0.086719,
       "szi": -327.0,
-      "margin": 2.843036,
+      "margin": 2.835809,
       "side": "SHORT",
-      "peak_roe": 0.004828535382498046,
+      "peak_roe": 0.00540199564170202,
       "strategy": "BREAKOUT"
     },
     "LINK": {
       "entry_px": 12.974,
-      "current_px": 12.925,
+      "current_px": 12.9035,
       "szi": -2.2,
-      "margin": 28.4394,
+      "margin": 28.3866,
       "side": "SHORT",
-      "peak_roe": 0.003776784337906543,
+      "peak_roe": 0.005433944812702396,
       "strategy": "BREAKOUT"
     },
     "XRP": {
       "entry_px": 1.4002,
-      "current_px": 1.39555,
+      "current_px": 1.39355,
       "szi": -21.0,
-      "margin": 29.3181,
+      "margin": 29.2635,
       "side": "SHORT",
       "peak_roe": 0.005463505213540876,
       "strategy": "BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "LINK",
+    "DOGE",
     "XRP",
-    "DOGE"
+    "LINK"
   ],
-  "last_run_timestamp": "2026-10-08 13:00:42",
+  "last_run_timestamp": "2026-10-08 13:05:19",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -319,9 +319,9 @@
   "last_email_timestamp": 1791464432.7662904,
   "last_scan_timestamp": 1791462636.5697,
   "gemini_cache": {
-    "timestamp": 1791462636.5697,
+    "timestamp": 1791464712.0073047,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe market is currently characterized by heightened volatility driven by shifting macroeconomic expectations, significant regulatory uncertainty, and the potential for rapid deleveraging following recent price breakouts."
+    "briefing": "**Risk Level: HIGH** \n\nCrypto markets currently face severe vulnerability due to macroeconomic uncertainty, shifting regulatory crackdowns, and fragile liquidity conditions that heighten the potential for sudden, cascading liquidations."
   },
   "recent_losses": [],
   "last_traded_candle": {
