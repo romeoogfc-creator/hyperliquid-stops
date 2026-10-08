@@ -10,7 +10,8 @@
     "CRV": 1791506726.931725,
     "BTC": 1791523826.6003006,
     "SOL": 1791526523.5036547,
-    "ZRO": 1791549036.5697
+    "ZRO": 1791549036.5697,
+    "DOGE": 1791552644.4488678
   },
   "stagnation_tracker": {
     "APT": 28,
@@ -54,6 +55,17 @@
     "NEAR": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "DOGE",
+      "entry_price": 0.08719,
+      "exit_price": 0.087195,
+      "pnl_usd": -0.001635,
+      "roe_pct": -0.00573460259203019,
+      "side": "SHORT",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-08 13:30:44",
+      "ts_sec": 1791466244.4488678
+    },
     {
       "coin": "XRP",
       "entry_price": 1.4002,
@@ -261,53 +273,33 @@
       "side": "SHORT",
       "exit_reason": "\ud83d\udcc8 Gaussian Filter Invalidation ($0.0017 > $0.0017)",
       "timestamp": "2026-10-01 03:01:40"
-    },
-    {
-      "coin": "TRB",
-      "entry_price": 21.469,
-      "exit_price": 20.916,
-      "pnl_usd": -0.26688,
-      "roe_pct": -2.5758069775024492,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udcc9 Gaussian Upper Band Invalidation ($20.9160 < $20.9845)",
-      "timestamp": "2026-09-30 22:14:46"
     }
   ],
   "active_position_cache": {
-    "DOGE": {
-      "entry_px": 0.08719,
-      "current_px": 0.086924,
-      "szi": -327.0,
-      "margin": 2.842414,
-      "side": "SHORT",
-      "peak_roe": 0.00540199564170202,
-      "strategy": "BREAKOUT"
-    },
     "LINK": {
       "entry_px": 12.974,
-      "current_px": 12.9535,
+      "current_px": 12.945,
       "szi": -2.2,
-      "margin": 28.4966,
+      "margin": 28.4746,
       "side": "SHORT",
       "peak_roe": 0.005433944812702396,
       "strategy": "BREAKOUT"
     },
     "WIF": {
       "entry_px": 0.220525,
-      "current_px": 0.22086,
+      "current_px": 0.221,
       "szi": -130.0,
-      "margin": 5.7421,
+      "margin": 5.74236,
       "side": "SHORT",
       "peak_roe": -0.001519102142614225,
       "strategy": "BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "DOGE",
     "WIF",
     "LINK"
   ],
-  "last_run_timestamp": "2026-10-08 13:17:21",
+  "last_run_timestamp": "2026-10-08 13:31:53",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -317,12 +309,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791465320.378066,
-  "last_scan_timestamp": 1791465320.378066,
+  "last_email_timestamp": 1791466244.4488678,
+  "last_scan_timestamp": 1791466244.4488678,
   "gemini_cache": {
-    "timestamp": 1791465320.378066,
+    "timestamp": 1791466244.4488678,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, upcoming interest rate decisions, and ongoing regulatory uncertainty, which continue to drive significant volatility and potential for sharp directional swings."
+    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic shifts, upcoming regulatory pivots, and significant volatility surrounding global liquidity trends, necessitating extreme caution for short-term participants."
   },
   "recent_losses": [],
   "last_traded_candle": {
