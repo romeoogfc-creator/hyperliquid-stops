@@ -274,28 +274,33 @@
   "active_position_cache": {
     "DOGE": {
       "entry_px": 0.08719,
-      "current_px": 0.087265,
+      "current_px": 0.08708,
       "szi": -327.0,
-      "margin": 2.853565,
+      "margin": 2.847516,
       "side": "SHORT",
-      "peak_roe": 0.0004702374125473032,
+      "peak_roe": 0.00126161257024887,
       "strategy": "BREAKOUT"
     },
     "XRP": {
       "entry_px": 1.4002,
-      "current_px": 1.39995,
+      "current_px": 1.39685,
       "szi": -21.0,
-      "margin": 29.4,
+      "margin": 29.3328,
       "side": "SHORT",
       "peak_roe": 0.0027496071989715105,
       "strategy": "BREAKOUT"
+    },
+    "ZRO": {
+      "strategy": "BREAKOUT",
+      "entry_px": 2.01265,
+      "side": "SHORT"
     }
   },
   "previous_active_coins": [
-    "XRP",
-    "DOGE"
+    "DOGE",
+    "XRP"
   ],
-  "last_run_timestamp": "2026-10-08 11:45:31",
+  "last_run_timestamp": "2026-10-08 12:01:25",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -305,12 +310,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791459029.526802,
-  "last_scan_timestamp": 1791459029.526802,
+  "last_email_timestamp": 1791460825.6353962,
+  "last_scan_timestamp": 1791460825.6353962,
   "gemini_cache": {
-    "timestamp": 1791459029.526802,
+    "timestamp": 1791460825.6353962,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating significant volatility driven by shifting macroeconomic interest rate expectations, evolving regulatory scrutiny, and a precarious geopolitical landscape."
+    "briefing": "Risk Level: **HIGH** \u2014 Markets are currently exhibiting extreme volatility driven by shifting macroeconomic expectations, regulatory uncertainty, and heavy leverage, creating a landscape prone to sharp, sudden corrections."
   },
   "recent_losses": [],
   "last_traded_candle": {
@@ -341,7 +346,8 @@
     "SEI": 1791356400000,
     "BCH": 1791410400000,
     "SOL": 1791439200000,
-    "XRP": 1791457200000
+    "XRP": 1791457200000,
+    "ZRO": 1791460800000
   },
   "hibernating_until": 0,
   "daily_starting_equity": {
