@@ -2,7 +2,7 @@
   "cooldown_blocklist": {
     "kBONK": 1791039716.6179557,
     "YGG": 1791042424.9776292,
-    "GMX": 1791045514.2652674,
+    "GMX": 1791571525.9375882,
     "BNB": 1791249326.6402626,
     "PYTH": 1791383431.3566132,
     "ACE": 1791393327.5344515,
@@ -34,7 +34,7 @@
     "DYDX": 0,
     "ATOM": 4,
     "SUSHI": 3,
-    "BIGTIME": 1,
+    "BIGTIME": 0,
     "RSR": 5,
     "SNX": 2,
     "TRB": 1,
@@ -45,16 +45,36 @@
     "DOT": 9,
     "LDO": 1,
     "NEO": 1,
-    "GMX": 0,
     "TIA": 1,
     "SUI": 8,
-    "ETH": 0,
     "BSV": 0,
     "MINA": 2,
     "IMX": 2,
     "NEAR": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "GMX",
+      "entry_price": 7.7487,
+      "exit_price": 7.8702,
+      "pnl_usd": -0.147015,
+      "roe_pct": -1.568004955669974,
+      "side": "SHORT",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-08 18:45:25",
+      "ts_sec": 1791485125.9375882
+    },
+    {
+      "coin": "ETH",
+      "entry_price": 2520.4,
+      "exit_price": 2440.3,
+      "pnl_usd": 0.90513,
+      "roe_pct": 3.1780669734962665,
+      "side": "SHORT",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-08 18:45:25",
+      "ts_sec": 1791485125.9375882
+    },
     {
       "coin": "WIF",
       "entry_price": 0.220525,
@@ -252,65 +272,23 @@
       "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-1.10%)",
       "timestamp": "2026-10-02 16:38:34",
       "ts_sec": 1790959114.2652674
-    },
-    {
-      "coin": "YGG",
-      "entry_price": 0.028095,
-      "exit_price": 0.0278,
-      "pnl_usd": -0.111696,
-      "roe_pct": -1.0500088983804952,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-1.05%)",
-      "timestamp": "2026-10-02 15:47:04",
-      "ts_sec": 1790956024.9776292
-    },
-    {
-      "coin": "kBONK",
-      "entry_price": 0.003941,
-      "exit_price": 0.003828,
-      "pnl_usd": -0.29371,
-      "roe_pct": -2.867292565338753,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-2.87%)",
-      "timestamp": "2026-10-02 15:01:56",
-      "ts_sec": 1790953316.6179557
     }
   ],
   "active_position_cache": {
-    "ETH": {
-      "entry_px": 2520.4,
-      "current_px": 2437.25,
-      "szi": -0.0113,
-      "margin": 27.54036,
-      "side": "SHORT",
-      "peak_roe": 0.043643866053007456,
-      "strategy": "BREAKOUT"
-    },
-    "GMX": {
-      "entry_px": 7.7487,
-      "current_px": 7.8226,
-      "szi": -3.71,
-      "margin": 9.675803,
-      "side": "SHORT",
-      "peak_roe": 0.004091008814381861,
-      "strategy": "BREAKOUT"
-    },
     "BIGTIME": {
       "entry_px": 0.007802,
-      "current_px": 0.007923,
+      "current_px": 0.007919,
       "szi": -3682.0,
-      "margin": 9.727844,
+      "margin": 9.716798,
       "side": "SHORT",
       "peak_roe": -0.00038451679056657244,
       "strategy": "BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "GMX",
-    "BIGTIME",
-    "ETH"
+    "BIGTIME"
   ],
-  "last_run_timestamp": "2026-10-08 18:30:47",
+  "last_run_timestamp": "2026-10-08 18:46:13",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -320,12 +298,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791484227.5667768,
-  "last_scan_timestamp": 1791478834.259524,
+  "last_email_timestamp": 1791485125.9375882,
+  "last_scan_timestamp": 1791485125.9375882,
   "gemini_cache": {
-    "timestamp": 1791484227.5667768,
+    "timestamp": 1791485125.9375882,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating significant macroeconomic uncertainty, volatile regulatory landscapes, and high leverage, leaving prices hypersensitive to sudden shifts in interest rate expectations and institutional liquidity."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic indicators, shifting regulatory landscapes, and high levels of leverage that leave assets vulnerable to sharp, sudden corrections."
   },
   "recent_losses": [],
   "last_traded_candle": {
