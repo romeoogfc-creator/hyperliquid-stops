@@ -34,7 +34,7 @@
     "DYDX": 0,
     "ATOM": 4,
     "SUSHI": 3,
-    "BIGTIME": 1,
+    "BIGTIME": 2,
     "RSR": 5,
     "SNX": 2,
     "TRB": 1,
@@ -277,9 +277,9 @@
   "active_position_cache": {
     "BIGTIME": {
       "entry_px": 0.007802,
-      "current_px": 0.007963,
+      "current_px": 0.007971,
       "szi": -3682.0,
-      "margin": 9.765891,
+      "margin": 9.783074,
       "side": "SHORT",
       "peak_roe": -0.00038451679056657244,
       "strategy": "BREAKOUT"
@@ -288,7 +288,7 @@
   "previous_active_coins": [
     "BIGTIME"
   ],
-  "last_run_timestamp": "2026-10-08 19:31:16",
+  "last_run_timestamp": "2026-10-08 19:35:20",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
