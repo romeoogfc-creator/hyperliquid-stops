@@ -9,7 +9,8 @@
     "BCH": 1791502230.9133725,
     "CRV": 1791506726.931725,
     "BTC": 1791523826.6003006,
-    "SOL": 1791526523.5036547
+    "SOL": 1791526523.5036547,
+    "ZRO": 1791549036.5697
   },
   "stagnation_tracker": {
     "APT": 28,
@@ -45,7 +46,6 @@
     "NEO": 1,
     "GMX": 2,
     "TIA": 1,
-    "ZRO": 0,
     "SUI": 8,
     "ETH": 12,
     "BSV": 0,
@@ -54,6 +54,17 @@
     "NEAR": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "ZRO",
+      "entry_price": 2.0152,
+      "exit_price": 2.0299,
+      "pnl_usd": -0.20874,
+      "roe_pct": -0.7294561333862611,
+      "side": "SHORT",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-08 12:30:36",
+      "ts_sec": 1791462636.5697
+    },
     {
       "coin": "SOL",
       "entry_price": 114.825,
@@ -259,53 +270,38 @@
       "side": "LONG",
       "exit_reason": "\ud83d\udee1\ufe0f Hard Loss Cap Triggered (-1.57%)",
       "timestamp": "2026-09-30 17:07:10"
-    },
-    {
-      "coin": "kBONK",
-      "entry_price": 0.003926,
-      "exit_price": 0.00386,
-      "pnl_usd": -0.254932,
-      "roe_pct": -16.811003565970367,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-16.8%)",
-      "timestamp": "2026-09-30 14:24:28"
     }
   ],
   "active_position_cache": {
     "DOGE": {
       "entry_px": 0.08719,
-      "current_px": 0.08684,
+      "current_px": 0.0868,
       "szi": -327.0,
-      "margin": 2.840354,
+      "margin": 2.839014,
       "side": "SHORT",
-      "peak_roe": 0.004014221814428296,
+      "peak_roe": 0.004472990021791507,
       "strategy": "BREAKOUT"
     },
     "XRP": {
       "entry_px": 1.4002,
-      "current_px": 1.39255,
+      "current_px": 1.39265,
       "szi": -21.0,
-      "margin": 29.2488,
+      "margin": 29.2551,
       "side": "SHORT",
       "peak_roe": 0.005463505213540876,
       "strategy": "BREAKOUT"
     },
-    "ZRO": {
-      "entry_px": 2.0152,
-      "current_px": 2.02315,
-      "szi": -14.2,
-      "margin": 5.74816,
-      "side": "SHORT",
-      "peak_roe": -0.003945017864231679,
-      "strategy": "BREAKOUT"
+    "LINK": {
+      "strategy": "BREAKOUT",
+      "entry_px": 12.9705,
+      "side": "SHORT"
     }
   },
   "previous_active_coins": [
-    "DOGE",
-    "ZRO",
-    "XRP"
+    "XRP",
+    "DOGE"
   ],
-  "last_run_timestamp": "2026-10-08 12:15:38",
+  "last_run_timestamp": "2026-10-08 12:31:37",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -315,12 +311,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791460825.6353962,
-  "last_scan_timestamp": 1791460825.6353962,
+  "last_email_timestamp": 1791462636.5697,
+  "last_scan_timestamp": 1791462636.5697,
   "gemini_cache": {
-    "timestamp": 1791460825.6353962,
+    "timestamp": 1791462636.5697,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Markets are currently exhibiting extreme volatility driven by shifting macroeconomic expectations, regulatory uncertainty, and heavy leverage, creating a landscape prone to sharp, sudden corrections."
+    "briefing": "**Risk Level: HIGH**\n\nThe market is currently characterized by heightened volatility driven by shifting macroeconomic expectations, significant regulatory uncertainty, and the potential for rapid deleveraging following recent price breakouts."
   },
   "recent_losses": [],
   "last_traded_candle": {
@@ -344,7 +340,7 @@
     "SUI": 1791154800000,
     "kPEPE": 1791158400000,
     "BNB": 1791158400000,
-    "LINK": 1791212400000,
+    "LINK": 1791460800000,
     "PYTH": 1791288000000,
     "RSR": 1791284400000,
     "ACE": 1791295200000,
