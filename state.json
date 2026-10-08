@@ -279,38 +279,38 @@
   "active_position_cache": {
     "ETH": {
       "entry_px": 2520.4,
-      "current_px": 2423.55,
+      "current_px": 2420.35,
       "szi": -0.0113,
-      "margin": 27.38103,
+      "margin": 27.35052,
       "side": "SHORT",
       "peak_roe": 0.043643866053007456,
       "strategy": "BREAKOUT"
     },
     "GMX": {
       "entry_px": 7.7487,
-      "current_px": 7.807,
+      "current_px": 7.7766,
       "szi": -3.71,
-      "margin": 9.653172,
+      "margin": 9.614341,
       "side": "SHORT",
-      "peak_roe": -0.007523842709099593,
+      "peak_roe": -0.003600603972279197,
       "strategy": "BREAKOUT"
     },
     "BIGTIME": {
       "entry_px": 0.007802,
-      "current_px": 0.007866,
+      "current_px": 0.007822,
       "szi": -3682.0,
-      "margin": 9.657886,
+      "margin": 9.603883,
       "side": "SHORT",
-      "peak_roe": -0.0082030248654191,
+      "peak_roe": -0.002563445270443594,
       "strategy": "BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "GMX",
     "BIGTIME",
-    "ETH"
+    "ETH",
+    "GMX"
   ],
-  "last_run_timestamp": "2026-10-08 17:15:32",
+  "last_run_timestamp": "2026-10-08 17:30:56",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -320,12 +320,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791478834.259524,
+  "last_email_timestamp": 1791480643.2200909,
   "last_scan_timestamp": 1791478834.259524,
   "gemini_cache": {
-    "timestamp": 1791478834.259524,
+    "timestamp": 1791480643.2200909,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic data, shifting regulatory landscapes, and high levels of leverage that leave prices vulnerable to sudden, sharp liquidations."
+    "briefing": "Risk Level: HIGH; while institutional inflows provide a foundational floor, the market remains hypersensitive to shifting macroeconomic interest rate expectations, geopolitical volatility, and the potential for significant liquidity drainage."
   },
   "recent_losses": [],
   "last_traded_candle": {
