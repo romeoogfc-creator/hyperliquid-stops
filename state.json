@@ -35,7 +35,6 @@
     "SUSHI": 3,
     "BIGTIME": 0,
     "RSR": 5,
-    "LINK": 0,
     "SNX": 2,
     "TRB": 1,
     "JUP": 0,
@@ -55,6 +54,17 @@
     "NEAR": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "LINK",
+      "entry_price": 12.974,
+      "exit_price": 12.925,
+      "pnl_usd": 0.1078,
+      "roe_pct": 0.3776784337906543,
+      "side": "SHORT",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-08 14:00:30",
+      "ts_sec": 1791468030.806313
+    },
     {
       "coin": "DOGE",
       "entry_price": 0.08719,
@@ -263,43 +273,28 @@
       "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.89%)",
       "timestamp": "2026-10-01 18:50:05",
       "ts_sec": 1790880605.637801
-    },
-    {
-      "coin": "RSR",
-      "entry_price": 0.00169,
-      "exit_price": 0.001701,
-      "pnl_usd": -0.05924,
-      "roe_pct": -0.6508875739644936,
-      "side": "SHORT",
-      "exit_reason": "\ud83d\udcc8 Gaussian Filter Invalidation ($0.0017 > $0.0017)",
-      "timestamp": "2026-10-01 03:01:40"
     }
   ],
   "active_position_cache": {
-    "LINK": {
-      "entry_px": 12.974,
-      "current_px": 12.8495,
-      "szi": -2.2,
-      "margin": 28.2656,
-      "side": "SHORT",
-      "peak_roe": 0.009596115307538107,
-      "strategy": "BREAKOUT"
-    },
     "WIF": {
       "entry_px": 0.220525,
-      "current_px": 0.219415,
+      "current_px": 0.221555,
       "szi": -130.0,
-      "margin": 5.7044,
+      "margin": 5.758792,
       "side": "SHORT",
       "peak_roe": 0.00503344292030382,
       "strategy": "BREAKOUT"
+    },
+    "ETH": {
+      "strategy": "BREAKOUT",
+      "entry_px": 2519.25,
+      "side": "SHORT"
     }
   },
   "previous_active_coins": [
-    "WIF",
-    "LINK"
+    "WIF"
   ],
-  "last_run_timestamp": "2026-10-08 13:45:33",
+  "last_run_timestamp": "2026-10-08 14:01:32",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -309,12 +304,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791466244.4488678,
-  "last_scan_timestamp": 1791466244.4488678,
+  "last_email_timestamp": 1791468030.806313,
+  "last_scan_timestamp": 1791468030.806313,
   "gemini_cache": {
-    "timestamp": 1791466244.4488678,
+    "timestamp": 1791468030.806313,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic shifts, upcoming regulatory pivots, and significant volatility surrounding global liquidity trends, necessitating extreme caution for short-term participants."
+    "briefing": "**Risk Level: HIGH** \n\nPersistent macroeconomic uncertainty, stringent regulatory headwinds, and ongoing liquidity concerns continue to create extreme vulnerability to sudden market-wide deleveraging and sharp downward corrections."
   },
   "recent_losses": [],
   "last_traded_candle": {
@@ -347,7 +342,8 @@
     "SOL": 1791439200000,
     "XRP": 1791457200000,
     "ZRO": 1791460800000,
-    "WIF": 1791464400000
+    "WIF": 1791464400000,
+    "ETH": 1791468000000
   },
   "hibernating_until": 0,
   "daily_starting_equity": {
