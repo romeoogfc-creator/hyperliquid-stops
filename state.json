@@ -8,7 +8,8 @@
     "ACE": 1791393327.5344515,
     "BCH": 1791502230.9133725,
     "CRV": 1791506726.931725,
-    "BTC": 1791523826.6003006
+    "BTC": 1791523826.6003006,
+    "SOL": 1791526523.5036547
   },
   "stagnation_tracker": {
     "APT": 28,
@@ -40,7 +41,6 @@
     "UNI": 2,
     "OP": 0,
     "DOT": 9,
-    "SOL": 3,
     "LDO": 1,
     "NEO": 1,
     "GMX": 2,
@@ -54,6 +54,28 @@
     "NEAR": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "SOL",
+      "entry_price": 114.825,
+      "exit_price": 115.35,
+      "pnl_usd": -0.1175,
+      "roe_pct": -0.45721750489875157,
+      "side": "SHORT",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-08 06:15:23",
+      "ts_sec": 1791440123.5036547
+    },
+    {
+      "coin": "SOL",
+      "entry_price": 114.88,
+      "exit_price": 115.345,
+      "pnl_usd": -0.1175,
+      "roe_pct": -0.4047701949860754,
+      "side": "SHORT",
+      "exit_reason": "\ud83d\udde1\ufe0f Falling Knife Stagnation Cut (-0.40% after 2 runs)",
+      "timestamp": "2026-10-08 06:15:23",
+      "ts_sec": 1791440123.5036547
+    },
     {
       "coin": "BTC",
       "entry_price": 82693.0,
@@ -247,37 +269,11 @@
       "side": "LONG",
       "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-16.8%)",
       "timestamp": "2026-09-30 14:24:28"
-    },
-    {
-      "coin": "ZRO",
-      "entry_price": 1.8036,
-      "exit_price": 1.74485,
-      "pnl_usd": -0.491484,
-      "roe_pct": -16.28687070303839,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-16.3%)",
-      "timestamp": "2026-09-30 14:24:28"
-    },
-    {
-      "coin": "TRB",
-      "entry_price": 20.712,
-      "exit_price": 20.6855,
-      "pnl_usd": -0.01944,
-      "roe_pct": -0.3838354577056581,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udee1\ufe0f Tight Stop Loss (-0.4%)",
-      "timestamp": "2026-09-30 13:05:33"
     }
   ],
-  "active_position_cache": {
-    "SOL": {
-      "strategy": "BREAKOUT",
-      "entry_px": 114.825,
-      "side": "SHORT"
-    }
-  },
+  "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-08 06:01:20",
+  "last_run_timestamp": "2026-10-08 06:15:28",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -287,7 +283,7 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791439231.0981386,
+  "last_email_timestamp": 1791440123.5036547,
   "last_scan_timestamp": 1791439231.0981386,
   "gemini_cache": {
     "timestamp": 1791439231.0981386,
