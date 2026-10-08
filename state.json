@@ -279,18 +279,28 @@
   "active_position_cache": {
     "ETH": {
       "entry_px": 2520.4,
-      "current_px": 2431.25,
+      "current_px": 2410.4,
       "szi": -0.0113,
-      "margin": 27.4703,
+      "margin": 27.24204,
       "side": "SHORT",
-      "peak_roe": 0.03965640374543734,
+      "peak_roe": 0.043643866053007456,
       "strategy": "BREAKOUT"
+    },
+    "BIGTIME": {
+      "strategy": "BREAKOUT",
+      "entry_px": 0.007806,
+      "side": "SHORT"
+    },
+    "GMX": {
+      "strategy": "BREAKOUT",
+      "entry_px": 7.7483,
+      "side": "SHORT"
     }
   },
   "previous_active_coins": [
     "ETH"
   ],
-  "last_run_timestamp": "2026-10-08 16:45:42",
+  "last_run_timestamp": "2026-10-08 17:01:25",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -300,12 +310,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791477938.4444187,
-  "last_scan_timestamp": 1791477033.8436275,
+  "last_email_timestamp": 1791478834.259524,
+  "last_scan_timestamp": 1791478834.259524,
   "gemini_cache": {
-    "timestamp": 1791477033.8436275,
+    "timestamp": 1791478834.259524,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity cycles, which continue to drive sharp price fluctuations."
+    "briefing": "Risk Level: **HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic data, shifting regulatory landscapes, and high levels of leverage that leave prices vulnerable to sudden, sharp liquidations."
   },
   "recent_losses": [],
   "last_traded_candle": {
@@ -317,7 +327,7 @@
     "kBONK": 1790917200000,
     "GMT": 1790953200000,
     "YGG": 1790953200000,
-    "GMX": 1790953200000,
+    "GMX": 1791478800000,
     "JTO": 1790964000000,
     "DOGE": 1791457200000,
     "kSHIB": 1790967600000,
@@ -339,7 +349,8 @@
     "XRP": 1791457200000,
     "ZRO": 1791460800000,
     "WIF": 1791464400000,
-    "ETH": 1791468000000
+    "ETH": 1791468000000,
+    "BIGTIME": 1791478800000
   },
   "hibernating_until": 0,
   "daily_starting_equity": {
