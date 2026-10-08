@@ -279,9 +279,9 @@
   "active_position_cache": {
     "ETH": {
       "entry_px": 2520.4,
-      "current_px": 2428.95,
+      "current_px": 2431.25,
       "szi": -0.0113,
-      "margin": 27.44883,
+      "margin": 27.4703,
       "side": "SHORT",
       "peak_roe": 0.03965640374543734,
       "strategy": "BREAKOUT"
@@ -290,7 +290,7 @@
   "previous_active_coins": [
     "ETH"
   ],
-  "last_run_timestamp": "2026-10-08 16:31:23",
+  "last_run_timestamp": "2026-10-08 16:45:42",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -300,7 +300,7 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791476127.4188635,
+  "last_email_timestamp": 1791477938.4444187,
   "last_scan_timestamp": 1791477033.8436275,
   "gemini_cache": {
     "timestamp": 1791477033.8436275,
