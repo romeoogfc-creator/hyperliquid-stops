@@ -1,6 +1,15 @@
 {
   "closed_trades_ledger": [
     {
+      "symbol": "BAC",
+      "entry_price": 52.58,
+      "exit_price": 52.41,
+      "realized_pnl": 31.620000000000317,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-08 16:18:16",
+      "order_id": "601b40bd-eee2-48e6-b24b-ffce24ba6fe1"
+    },
+    {
       "symbol": "HON",
       "entry_price": 206.35,
       "exit_price": 204.862979,
@@ -132,21 +141,9 @@
       "timestamp": "2026-10-05 15:48:14"
     }
   ],
-  "active_position_cache": {
-    "BAC": {
-      "entry_px": 52.58,
-      "current_px": 52.295,
-      "qty": 186.0,
-      "side": "short",
-      "peak_roe": 0.0054203119056674895,
-      "best_target_floor_roe": 0.004075336450489776,
-      "best_stop_px": 52.412375000000004
-    }
-  },
-  "previous_active_symbols": [
-    "BAC"
-  ],
-  "last_run_timestamp": "2026-10-08 15:49:20",
+  "active_position_cache": {},
+  "previous_active_symbols": [],
+  "last_run_timestamp": "2026-10-08 16:18:48",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42,
