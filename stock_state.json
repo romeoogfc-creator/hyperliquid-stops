@@ -97,9 +97,18 @@
     }
   ],
   "active_position_cache": {
+    "DE": {
+      "entry_px": 654.69,
+      "current_px": 654.59,
+      "qty": 14.0,
+      "side": "short",
+      "peak_roe": 0.00015274404680081066,
+      "best_target_floor_roe": -0.009604545662832762,
+      "best_stop_px": 660.9780000000001
+    },
     "HON": {
       "entry_px": 206.35,
-      "current_px": 206.86,
+      "current_px": 207.015,
       "qty": 47.0,
       "side": "short",
       "peak_roe": -0.0024715289556579566,
@@ -108,7 +117,7 @@
     },
     "INTC": {
       "entry_px": 109.697191,
-      "current_px": 110.03,
+      "current_px": 110.7308,
       "qty": 89.0,
       "side": "short",
       "peak_roe": 0.0015241137760765681,
@@ -117,20 +126,21 @@
     },
     "IWM": {
       "entry_px": 276.165429,
-      "current_px": 276.17,
+      "current_px": 276.165,
       "qty": 35.0,
       "side": "short",
-      "peak_roe": -1.6551673453662253e-05,
+      "peak_roe": 1.5534167384756333e-06,
       "best_target_floor_roe": -0.005,
       "best_stop_px": 277.546256145
     }
   },
   "previous_active_symbols": [
+    "HON",
+    "DE",
     "INTC",
-    "IWM",
-    "HON"
+    "IWM"
   ],
-  "last_run_timestamp": "2026-10-08 14:19:09",
+  "last_run_timestamp": "2026-10-08 14:21:02",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42,
