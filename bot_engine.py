@@ -884,139 +884,177 @@ def execute_engine():
     min_notional_usd = 10.50
 
     if is_30m_scan_window and available_slots > 0:
+        # OPTION A: HARD REGIME LOCKOUT ON NEUTRAL BTC DAILY CANDLES
         if effective_regime == "NEUTRAL":
-            required_vol_ratio = max(required_vol_ratio, 1.15)
-            audit_logs.append(f"ℹ BTC Neutral Regime: Balanced All-Weather Scan (Vol Gate >= {required_vol_ratio:.2f}x)")
-
-        state["last_scan_timestamp"] = now_ts
-
-        btc_candles_5d = api_retry(info.candles_snapshot, name="BTC", interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
-        btc_closes = [float(c["c"]) for c in btc_candles_5d]
-        btc_highs = [float(c["h"]) for c in btc_candles_5d]
-        btc_lows = [float(c["l"]) for c in btc_candles_5d]
-        
-        btc_ci = calculate_choppiness_index(btc_highs, btc_lows, btc_closes)
-        btc_adx = calculate_adx(btc_highs, btc_lows, btc_closes)
-
-        if (btc_ci < 48.0 and btc_adx > 21.0) or (btc_adx >= 28.0):
-            market_mode = "TRENDING"
-        elif btc_ci > 62.0:
-            market_mode = "CHOP_HOLD"
+            audit_logs.append("🛡️ BTC Regime Shield: Daily Candle NEUTRAL. Hard Lockout Active (0 trades allowed).")
         else:
-            market_mode = "RANGING"
+            state["last_scan_timestamp"] = now_ts
 
-        audit_logs.append(f"🌐 MARKET REGIME CLASSIFIER: Mode = [{market_mode}] (BTC CI: {btc_ci:.1f}, ADX: {btc_adx:.1f}). Scanning candidates...")
+            btc_candles_5d = api_retry(info.candles_snapshot, name="BTC", interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
+            btc_closes = [float(c["c"]) for c in btc_candles_5d]
+            btc_highs = [float(c["h"]) for c in btc_candles_5d]
+            btc_lows = [float(c["l"]) for c in btc_candles_5d]
+            
+            btc_ci = calculate_choppiness_index(btc_highs, btc_lows, btc_closes)
+            btc_adx = calculate_adx(btc_highs, btc_lows, btc_closes)
 
-        if market_mode != "CHOP_HOLD":
-            for coin in universe:
-                if coin in active_coins or coin in ["USDC", "USDT"]:
-                    continue
+            if (btc_ci < 48.0 and btc_adx > 21.0) or (btc_adx >= 28.0):
+                market_mode = "TRENDING"
+            elif btc_ci > 62.0:
+                market_mode = "CHOP_HOLD"
+            else:
+                market_mode = "RANGING"
 
-                cooldown_expiry = float(state.get("cooldown_blocklist", {}).get(coin, 0))
-                if now_ts < cooldown_expiry:
-                    continue
+            audit_logs.append(f"🌐 MARKET REGIME CLASSIFIER: Mode = [{market_mode}] (BTC CI: {btc_ci:.1f}, ADX: {btc_adx:.1f}). Scanning candidates...")
 
-                try:
-                    curr_live_px = float(all_mids.get(coin, 0))
-                    if curr_live_px <= 0:
-                        continue
-                    
-                    time.sleep(0.12)
-                    candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
-                    if not candles or len(candles) < 50:
-                        continue
-
-                    current_candle_ts = candles[-1]["t"]
-                    if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
+            if market_mode != "CHOP_HOLD":
+                for coin in universe:
+                    if coin in active_coins or coin in ["USDC", "USDT"]:
                         continue
 
-                    is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=6000.0)
-                    if not is_liquid:
+                    cooldown_expiry = float(state.get("cooldown_blocklist", {}).get(coin, 0))
+                    if now_ts < cooldown_expiry:
                         continue
 
-                    closes = [float(c["c"]) for c in candles]
-                    highs = [float(c["h"]) for c in candles]
-                    lows = [float(c["l"]) for c in candles]
-                    volumes = [float(c.get("v", 0)) for c in candles]
+                    try:
+                        curr_live_px = float(all_mids.get(coin, 0))
+                        if curr_live_px <= 0:
+                            continue
+                        
+                        time.sleep(0.12)
+                        candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
+                        if not candles or len(candles) < 50:
+                            continue
 
-                    c_open = float(candles[-1]["o"])
-                    c_high = float(candles[-1]["h"])
-                    c_low = float(candles[-1]["l"])
-                    c_range = c_high - c_low if c_high > c_low else 1e-8
-                    live_body = abs(curr_live_px - c_open)
+                        current_candle_ts = candles[-1]["t"]
+                        if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
+                            continue
 
-                    prev_open = float(candles[-2]["o"])
-                    prev_close = float(candles[-2]["c"])
+                        is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=6000.0)
+                        if not is_liquid:
+                            continue
 
-                    is_true_green = (curr_live_px > c_open) and (live_body / c_range >= 0.35) and (prev_close > prev_open)
-                    is_true_red = (curr_live_px < c_open) and (live_body / c_range >= 0.35) and (prev_close < prev_open)
+                        closes = [float(c["c"]) for c in candles]
+                        highs = [float(c["h"]) for c in candles]
+                        lows = [float(c["l"]) for c in candles]
+                        volumes = [float(c.get("v", 0)) for c in candles]
 
-                    rsi_1h = calculate_rsi(closes)
-                    bb_upper, bb_lower, bb_mid = calculate_bollinger_bands(closes)
-                    vwap_val = calculate_vwap(candles[-24:])
-                    
-                    avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
-                    comp_vol = volumes[-2]
-                    vol_ratio = comp_vol / avg_vol if avg_vol > 0 else 1.0
+                        c_open = float(candles[-1]["o"])
+                        c_high = float(candles[-1]["h"])
+                        c_low = float(candles[-1]["l"])
+                        c_range = c_high - c_low if c_high > c_low else 1e-8
+                        live_body = abs(curr_live_px - c_open)
 
-                    upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
-                    comp_close = closes[-2]
+                        prev_open = float(candles[-2]["o"])
+                        prev_close = float(candles[-2]["c"])
 
-                    is_holding_breakout = curr_live_px >= comp_close
-                    is_holding_breakdown = curr_live_px <= comp_close
+                        is_true_green = (curr_live_px > c_open) and (live_body / c_range >= 0.35) and (prev_close > prev_open)
+                        is_true_red = (curr_live_px < c_open) and (live_body / c_range >= 0.35) and (prev_close < prev_open)
 
-                    # STRATEGY A: TRENDING BREAKOUT / BREAKDOWN ENGINE
-                    if market_mode == "TRENDING" or (market_mode == "RANGING" and vol_ratio >= required_vol_ratio):
-                        ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
-                        if ci_1h <= 52.0 and vol_ratio >= required_vol_ratio:
-                            if effective_regime in ["GREEN", "NEUTRAL"]:
-                                if comp_close > upper and comp_close <= (upper * 1.030):
-                                    if is_true_green and is_holding_breakout:
-                                        extension_pct = ((comp_close - upper) / upper) * 100
-                                        market_candidates.append({
-                                            "coin": coin, "close": curr_live_px, "is_long": True, 
-                                            "score": (curr_live_px - upper) / upper, "candle_ts": current_candle_ts,
-                                            "strategy": "BREAKOUT"
-                                        })
-                                        audit_logs.append(f"1H TRUE GREEN BREAKOUT MATCH (LONG): {coin} @ ${curr_live_px:.4f} (True Green Body, Ext: +{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
+                        rsi_1h = calculate_rsi(closes)
+                        bb_upper, bb_lower, bb_mid = calculate_bollinger_bands(closes)
+                        vwap_val = calculate_vwap(candles[-24:])
+                        
+                        avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
+                        comp_vol = volumes[-2]
+                        vol_ratio = comp_vol / avg_vol if avg_vol > 0 else 1.0
 
-                            if effective_regime in ["RED", "NEUTRAL"]:
-                                if comp_close < lower and comp_close >= (lower * 0.970):
-                                    if is_true_red and is_holding_breakdown:
-                                        extension_pct = ((lower - comp_close) / lower) * 100
-                                        market_candidates.append({
-                                            "coin": coin, "close": curr_live_px, "is_long": False, 
-                                            "score": (lower - curr_live_px) / lower, "candle_ts": current_candle_ts,
-                                            "strategy": "BREAKOUT"
-                                        })
-                                        audit_logs.append(f"1H TRUE RED BREAKDOWN MATCH (SHORT): {coin} @ ${curr_live_px:.4f} (True Red Body, Ext: -{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
+                        upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
+                        comp_close = closes[-2]
 
-                    # STRATEGY B: RANGING MEAN-REVERSION
-                    if market_mode == "RANGING" and vol_ratio >= required_vol_ratio and btc_adx < 25.0:
-                        if effective_regime in ["GREEN", "NEUTRAL"]:
-                            if curr_live_px <= bb_lower * 1.005 and curr_live_px < vwap_val and rsi_1h <= 35.0 and is_true_green:
-                                market_candidates.append({
-                                    "coin": coin, "close": curr_live_px, "is_long": True,
-                                    "score": (vwap_val - curr_live_px) / vwap_val, "candle_ts": current_candle_ts,
-                                    "strategy": "MEAN_REVERSION"
-                                })
-                                audit_logs.append(f"1H VWAP TRUE DIP BOUNCE (LONG): {coin} @ ${curr_live_px:.4f} (RSI: {rsi_1h:.1f}, VolRatio: {vol_ratio:.2f}x)")
+                        is_holding_breakout = curr_live_px >= comp_close
+                        is_holding_breakdown = curr_live_px <= comp_close
 
-                        if effective_regime in ["RED", "NEUTRAL"]:
-                            if curr_live_px >= bb_upper * 0.995 and curr_live_px > vwap_val and rsi_1h >= 65.0 and is_true_red:
-                                market_candidates.append({
-                                    "coin": coin, "close": curr_live_px, "is_long": False,
-                                    "score": (curr_live_px - vwap_val) / vwap_val, "candle_ts": current_candle_ts,
-                                    "strategy": "MEAN_REVERSION"
-                                })
-                                audit_logs.append(f"1H VWAP TRUE SHORT FADE (SHORT): {coin} @ ${curr_live_px:.4f} (RSI: {rsi_1h:.1f}, VolRatio: {vol_ratio:.2f}x)")
+                        # --- SMART VOLUME QUALITY VERIFICATION ENGINE ---
+                        is_vol_verified = False
+                        if vol_ratio >= 1.40:
+                            is_vol_verified = True
+                        elif vol_ratio >= required_vol_ratio:
+                            comp_open_px = float(candles[-2]["o"])
+                            comp_high_px = float(candles[-2]["h"])
+                            comp_low_px = float(candles[-2]["l"])
+                            comp_close_px = float(candles[-2]["c"])
+                            comp_range_sz = max(comp_high_px - comp_low_px, 1e-8)
 
-                except Exception:
-                    continue
+                            # Volume Persistence Check (T-1 relative to completed bar, i.e., bar [-3])
+                            prev_bar_vol = float(candles[-3].get("v", 0)) if len(candles) >= 3 else 0
+                            prev_vol_ratio = prev_bar_vol / avg_vol if avg_vol > 0 else 1.0
+                            has_vol_persistence = prev_vol_ratio >= 0.85
 
-            audit_logs.append(f"🌐 Scan complete: {len(market_candidates)} candidate(s) qualified out of {len(universe)} coins scanned.")
-        else:
-            audit_logs.append(f"⏳ Market is in EXTREME CHOP (CI > 62.0). Skipping scans to preserve cash.")
+                            if effective_regime == "GREEN" and is_true_green and comp_close > upper:
+                                dist_to_extreme = (comp_high_px - comp_close_px) / comp_range_sz
+                                clean_close = dist_to_extreme <= 0.25
+                                if clean_close and has_vol_persistence:
+                                    is_vol_verified = True
+                                else:
+                                    reject_reason = "Rejection Wick" if not clean_close else "Isolated 1-Tick Volume Spike"
+                                    audit_logs.append(f"FILTERED SWEEP FAKEOUT [{coin}]: Vol {vol_ratio:.2f}x rejected ({reject_reason})")
+                            elif effective_regime == "RED" and is_true_red and comp_close < lower:
+                                dist_to_extreme = (comp_close_px - comp_low_px) / comp_range_sz
+                                clean_close = dist_to_extreme <= 0.25
+                                if clean_close and has_vol_persistence:
+                                    is_vol_verified = True
+                                else:
+                                    reject_reason = "Rejection Wick" if not clean_close else "Isolated 1-Tick Volume Spike"
+                                    audit_logs.append(f"FILTERED SWEEP FAKEOUT [{coin}]: Vol {vol_ratio:.2f}x rejected ({reject_reason})")
+                            else:
+                                is_vol_verified = True
+
+                        if not is_vol_verified:
+                            continue
+
+                        # STRATEGY A: TRENDING BREAKOUT / BREAKDOWN ENGINE
+                        if market_mode == "TRENDING" or (market_mode == "RANGING" and vol_ratio >= required_vol_ratio):
+                            ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
+                            if ci_1h <= 52.0 and vol_ratio >= required_vol_ratio:
+                                if effective_regime in ["GREEN"]:
+                                    if comp_close > upper and comp_close <= (upper * 1.030):
+                                        if is_true_green and is_holding_breakout:
+                                            extension_pct = ((comp_close - upper) / upper) * 100
+                                            market_candidates.append({
+                                                "coin": coin, "close": curr_live_px, "is_long": True, 
+                                                "score": (curr_live_px - upper) / upper, "candle_ts": current_candle_ts,
+                                                "strategy": "BREAKOUT"
+                                            })
+                                            audit_logs.append(f"1H TRUE GREEN BREAKOUT MATCH (LONG): {coin} @ ${curr_live_px:.4f} (True Green Body, Ext: +{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
+
+                                if effective_regime in ["RED"]:
+                                    if comp_close < lower and comp_close >= (lower * 0.970):
+                                        if is_true_red and is_holding_breakdown:
+                                            extension_pct = ((lower - comp_close) / lower) * 100
+                                            market_candidates.append({
+                                                "coin": coin, "close": curr_live_px, "is_long": False, 
+                                                "score": (lower - curr_live_px) / lower, "candle_ts": current_candle_ts,
+                                                "strategy": "BREAKOUT"
+                                            })
+                                            audit_logs.append(f"1H TRUE RED BREAKDOWN MATCH (SHORT): {coin} @ ${curr_live_px:.4f} (True Red Body, Ext: -{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
+
+                        # STRATEGY B: RANGING MEAN-REVERSION
+                        if market_mode == "RANGING" and vol_ratio >= required_vol_ratio and btc_adx < 25.0:
+                            if effective_regime in ["GREEN"]:
+                                if curr_live_px <= bb_lower * 1.005 and curr_live_px < vwap_val and rsi_1h <= 35.0 and is_true_green:
+                                    market_candidates.append({
+                                        "coin": coin, "close": curr_live_px, "is_long": True,
+                                        "score": (vwap_val - curr_live_px) / vwap_val, "candle_ts": current_candle_ts,
+                                        "strategy": "MEAN_REVERSION"
+                                    })
+                                    audit_logs.append(f"1H VWAP TRUE DIP BOUNCE (LONG): {coin} @ ${curr_live_px:.4f} (RSI: {rsi_1h:.1f}, VolRatio: {vol_ratio:.2f}x)")
+
+                            if effective_regime in ["RED"]:
+                                if curr_live_px >= bb_upper * 0.995 and curr_live_px > vwap_val and rsi_1h >= 65.0 and is_true_red:
+                                    market_candidates.append({
+                                        "coin": coin, "close": curr_live_px, "is_long": False,
+                                        "score": (curr_live_px - vwap_val) / vwap_val, "candle_ts": current_candle_ts,
+                                        "strategy": "MEAN_REVERSION"
+                                    })
+                                    audit_logs.append(f"1H VWAP TRUE SHORT FADE (SHORT): {coin} @ ${curr_live_px:.4f} (RSI: {rsi_1h:.1f}, VolRatio: {vol_ratio:.2f}x)")
+
+                    except Exception:
+                        continue
+
+                audit_logs.append(f"🌐 Scan complete: {len(market_candidates)} candidate(s) qualified out of {len(universe)} coins scanned.")
+            else:
+                audit_logs.append(f"⏳ Market is in EXTREME CHOP (CI > 62.0). Skipping scans to preserve cash.")
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
 
