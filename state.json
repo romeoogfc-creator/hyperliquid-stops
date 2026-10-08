@@ -12,7 +12,8 @@
     "SOL": 1791526523.5036547,
     "ZRO": 1791549036.5697,
     "DOGE": 1791552644.4488678,
-    "WIF": 1791555323.6166713
+    "WIF": 1791555323.6166713,
+    "BIGTIME": 1791575141.9079013
   },
   "stagnation_tracker": {
     "APT": 28,
@@ -34,7 +35,6 @@
     "DYDX": 0,
     "ATOM": 4,
     "SUSHI": 3,
-    "BIGTIME": 2,
     "RSR": 5,
     "SNX": 2,
     "TRB": 1,
@@ -53,6 +53,28 @@
     "NEAR": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "BIGTIME",
+      "entry_price": 0.007802,
+      "exit_price": 0.007976,
+      "pnl_usd": -0.640668,
+      "roe_pct": -2.2301973852858312,
+      "side": "SHORT",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-08 19:45:41",
+      "ts_sec": 1791488741.9079013
+    },
+    {
+      "coin": "BIGTIME",
+      "entry_price": 0.007802,
+      "exit_price": 0.007973,
+      "pnl_usd": -0.624272,
+      "roe_pct": -2.1917457062291628,
+      "side": "SHORT",
+      "exit_reason": "\ud83d\udde1\ufe0f Stagnation Cut (-2.19% after 3 runs)",
+      "timestamp": "2026-10-08 19:45:41",
+      "ts_sec": 1791488741.9079013
+    },
     {
       "coin": "GMX",
       "entry_price": 7.7487,
@@ -250,45 +272,11 @@
       "exit_reason": "\ud83c\udfaf RANGING Fair-Value TP Target ($85596.5000 <= $85692.8500)",
       "timestamp": "2026-10-05 04:32:26",
       "ts_sec": 1791174746.7219043
-    },
-    {
-      "coin": "BNB",
-      "entry_price": 793.54,
-      "exit_price": 797.375,
-      "pnl_usd": -0.04875,
-      "roe_pct": -0.48327746553419315,
-      "side": "SHORT",
-      "exit_reason": "\ud83d\udfe2 BTC Daily Bullish Flip Purge",
-      "timestamp": "2026-10-05 01:15:26",
-      "ts_sec": 1791162926.6402626
-    },
-    {
-      "coin": "GMX",
-      "entry_price": 8.2,
-      "exit_price": 8.1102,
-      "pnl_usd": -0.108336,
-      "roe_pct": -1.0951219512194945,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-1.10%)",
-      "timestamp": "2026-10-02 16:38:34",
-      "ts_sec": 1790959114.2652674
     }
   ],
-  "active_position_cache": {
-    "BIGTIME": {
-      "entry_px": 0.007802,
-      "current_px": 0.007971,
-      "szi": -3682.0,
-      "margin": 9.783074,
-      "side": "SHORT",
-      "peak_roe": -0.00038451679056657244,
-      "strategy": "BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "BIGTIME"
-  ],
-  "last_run_timestamp": "2026-10-08 19:35:20",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-08 19:45:46",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -298,7 +286,7 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791486935.7300677,
+  "last_email_timestamp": 1791488741.9079013,
   "last_scan_timestamp": 1791487831.3249056,
   "gemini_cache": {
     "timestamp": 1791487831.3249056,
