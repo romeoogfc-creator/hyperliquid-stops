@@ -271,18 +271,18 @@
   "active_position_cache": {
     "BTC": {
       "entry_px": 82693.0,
-      "current_px": 82876.5,
+      "current_px": 82460.5,
       "szi": -0.00035,
-      "margin": 29.0038,
+      "margin": 28.863765,
       "side": "SHORT",
-      "peak_roe": 0.00033255535535051334,
+      "peak_roe": 0.002811604367963431,
       "strategy": "BREAKOUT"
     }
   },
   "previous_active_coins": [
     "BTC"
   ],
-  "last_run_timestamp": "2026-10-08 04:31:07",
+  "last_run_timestamp": "2026-10-08 04:45:30",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
