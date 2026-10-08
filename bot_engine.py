@@ -356,7 +356,7 @@ def calculate_atr(highs, lows, closes, period=14):
         return 1.0
 
 # ==============================================================================
-# SMART PROTECTION ENGINE (PORTED STOCK V3.1 DYNAMIC RETENTION CURVE)
+# SMART PROTECTION ENGINE (STOCK V3.1 DYNAMIC RETENTION CURVE)
 # ==============================================================================
 def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_long):
     """Analyzes live candle structure to distinguish liquidity absorption wicks from true falling knives."""
@@ -389,7 +389,7 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
 
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0, coin="ETH"):
     """
-    V2.4 HARDENED: Ported Stock V3.1 Continuous Dynamic Retention Curve (70% -> 95% Lock)
+    V2.5 HARDENED: Ported Stock V3.1 Continuous Dynamic Retention Curve (70% -> 95% Lock)
     & Strict Altcoin Hard Loss Caps (-1.50% ROE / -$0.22 max).
     """
     if is_long:
@@ -552,7 +552,7 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V2.4 Master Engine Started (Stock V3.1 Dynamic Retention & Solid Body Filters Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V2.5 Master Engine Started (Deduplicated Reconciliation & Stock V3.1 Rules Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -625,6 +625,7 @@ def execute_engine():
     current_active_cache = state.get("active_position_cache", {})
     new_active_cache = {}
     trade_closed_this_run = False
+    closed_coins_this_run = set()  # Track coins closed this cycle to prevent duplicate reconciliation
 
     spot_usdc = 0.0
     total_spot_net_worth = 0.0
@@ -672,6 +673,7 @@ def execute_engine():
                     
                     cancel_native_trigger_orders(exchange, info, coin, ACCOUNT_ADDRESS)
                     exchange.market_close(coin, slippage=0.01)
+                    closed_coins_this_run.add(coin)
 
                     if pnl < 0:
                         state["cooldown_blocklist"][coin] = now_ts + 86400
@@ -799,6 +801,7 @@ def execute_engine():
                     
                     cancel_native_trigger_orders(exchange, info, coin, ACCOUNT_ADDRESS)
                     exchange.market_close(coin, slippage=0.01)
+                    closed_coins_this_run.add(coin)  # Mark coin as closed in this run
 
                     if "stagnation_tracker" in state:
                         state["stagnation_tracker"].pop(coin, None)
@@ -831,7 +834,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V2.4", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V2.5", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -841,9 +844,13 @@ def execute_engine():
                 "status": leash_status
             })
 
-    # NATIVE EXCHANGE FILL RECONCILIATION
+    # DEDUPLICATED NATIVE EXCHANGE FILL RECONCILIATION
     prev_cache = state.get("active_position_cache", {})
     for coin, cache_data in list(prev_cache.items()):
+        # EXPLICIT GHOST DEDUPLICATION FIX: Skip if market-closed in this exact execution run
+        if coin in closed_coins_this_run:
+            continue
+
         if coin not in active_coins:
             try:
                 user_fills = api_retry(info.user_fills, ACCOUNT_ADDRESS)
@@ -851,6 +858,13 @@ def execute_engine():
                 
                 if coin_fills:
                     latest_fill = coin_fills[0]
+                    fill_hash = f"{coin}_{latest_fill.get('tid', latest_fill.get('time', 0))}"
+                    
+                    # Deduplication guard: verify fill ID has not been previously logged
+                    existing_hashes = [t.get("fill_hash") for t in state.get("closed_trades_ledger", []) if "fill_hash" in t]
+                    if fill_hash in existing_hashes:
+                        continue
+
                     exit_px = float(latest_fill.get("px", 0.0))
                     entry_px = cache_data.get("entry_px", exit_px)
                     side = cache_data.get("side", "LONG")
@@ -865,7 +879,8 @@ def execute_engine():
                     state["closed_trades_ledger"].insert(0, {
                         "coin": coin, "entry_price": entry_px, "exit_price": exit_px,
                         "pnl_usd": pnl_usd, "roe_pct": roe_pct, "side": side,
-                        "exit_reason": "🎯 Native Orderbook TPSL Fill", "timestamp": timestamp, "ts_sec": now_ts
+                        "exit_reason": "🎯 Native Orderbook TPSL Fill", "timestamp": timestamp, "ts_sec": now_ts,
+                        "fill_hash": fill_hash
                     })
 
                     if "stagnation_tracker" in state:
@@ -1166,7 +1181,7 @@ def execute_engine():
 
                     tier_label = "Tier-1 Major (25% NAV)" if is_major_coin else "Tier-2 Altcoin (15% NAV)"
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V2.4", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V2.5", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -1219,7 +1234,7 @@ def execute_engine():
         
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V2.4 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V2.5 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         summary_card_html = f"""
         <div class="summary-card">
@@ -1344,8 +1359,8 @@ def execute_engine():
           <body>
             <div class="container">
               <div class="header">
-                <h2>TR-GC-Crypto-LS-23-V2.4 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Stock V3.1 Dynamic Retention &amp; Solid Body Filters Active)</p>
+                <h2>TR-GC-Crypto-LS-23-V2.5 | Telemetry Dashboard</h2>
+                <p>Timestamp: {timestamp} (Deduplicated Reconciliation &amp; Stock V3.1 Rules Active)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -1361,8 +1376,9 @@ def execute_engine():
                 {summary_card_html}
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (Stock V3.1 Ported Rules Active)</div>
-                  &bull; <b>Stock V3.1 Dynamic Retention Curve (70% &rarr; 95% Lock):</b> Smoothly ratchets profit floor as ROE grows (locks 70% at +1.5% ROE up to 95% on moonshots)<br>
+                  <div class="rules-title">&#9989; Active Guardrails (V2.5 Patch Active)</div>
+                  &bull; <b>Deduplicated Reconciliation Engine:</b> Excludes market-closed trades in real time to prevent ghost double-logging<br>
+                  &bull; <b>Stock V3.1 Dynamic Retention Curve (70% &rarr; 95% Lock):</b> Smoothly ratchets profit floor as ROE grows<br>
                   &bull; <b>Stock V3.1 Solid Candle Body Gate (&ge;60% Body):</b> Rejects weak dojis/indecision candles with long rejection wicks<br>
                   &bull; <b>Stock V3.1 Extension Cap (&le;1.5% Band Distance):</b> Prevents buying or shorting over-extended price spikes<br>
                   &bull; <b>Strict Altcoin Loss Cap (-1.50% ROE):</b> Hard-caps altcoin losses at max -$0.22 so 1 major win covers 4 altcoin losses<br>
