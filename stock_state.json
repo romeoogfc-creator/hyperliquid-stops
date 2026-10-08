@@ -99,28 +99,38 @@
   "active_position_cache": {
     "HON": {
       "entry_px": 206.35,
-      "current_px": 207.365,
+      "current_px": 206.86,
       "qty": 47.0,
       "side": "short",
-      "peak_roe": -0.004918827235279936,
+      "peak_roe": -0.0024715289556579566,
       "best_target_floor_roe": -0.007991969261656701,
       "best_stop_px": 207.99914285714289
     },
     "INTC": {
       "entry_px": 109.697191,
-      "current_px": 109.53,
+      "current_px": 110.03,
       "qty": 89.0,
       "side": "short",
       "peak_roe": 0.0015241137760765681,
       "best_target_floor_roe": -0.012,
       "best_stop_px": 111.013557292
+    },
+    "IWM": {
+      "entry_px": 276.165429,
+      "current_px": 276.17,
+      "qty": 35.0,
+      "side": "short",
+      "peak_roe": -1.6551673453662253e-05,
+      "best_target_floor_roe": -0.005,
+      "best_stop_px": 277.546256145
     }
   },
   "previous_active_symbols": [
     "INTC",
+    "IWM",
     "HON"
   ],
-  "last_run_timestamp": "2026-10-08 14:04:43",
+  "last_run_timestamp": "2026-10-08 14:19:09",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42,
