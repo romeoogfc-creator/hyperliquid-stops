@@ -171,16 +171,25 @@
   "active_position_cache": {
     "ARM": {
       "entry_px": 268.756111,
-      "current_px": 266.72,
+      "current_px": 266.67,
       "qty": 36.0,
       "side": "short",
-      "peak_roe": 0.007576054707831178,
-      "best_target_floor_roe": 0.006046133455750911,
-      "best_stop_px": 268.284625
+      "peak_roe": 0.007762096989117245,
+      "best_target_floor_roe": 0.006225550578834456,
+      "best_stop_px": 268.234625
+    },
+    "DE": {
+      "entry_px": 639.161333,
+      "current_px": 630.0,
+      "qty": 15.0,
+      "side": "short",
+      "peak_roe": 0.01433336550100726,
+      "best_target_floor_roe": 0.012400751666370044,
+      "best_stop_px": 632.281
     },
     "MU": {
       "entry_px": 1023.33,
-      "current_px": 1026.57,
+      "current_px": 1028.505,
       "qty": 9.0,
       "side": "short",
       "peak_roe": -0.0020912120234919196,
@@ -189,7 +198,7 @@
     },
     "NVDA": {
       "entry_px": 230.17,
-      "current_px": 229.52,
+      "current_px": 229.57,
       "qty": 42.0,
       "side": "short",
       "peak_roe": 0.0028239996524307134,
@@ -198,7 +207,7 @@
     },
     "SMCI": {
       "entry_px": 41.424093,
-      "current_px": 41.1099,
+      "current_px": 41.28,
       "qty": 237.0,
       "side": "short",
       "peak_roe": 0.007584788881195201,
@@ -207,12 +216,13 @@
     }
   },
   "previous_active_symbols": [
-    "MU",
     "SMCI",
     "NVDA",
+    "MU",
+    "DE",
     "ARM"
   ],
-  "last_run_timestamp": "2026-10-09 16:16:17",
+  "last_run_timestamp": "2026-10-09 16:47:55",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42,
@@ -225,6 +235,6 @@
     "2026-10-06": 98061.5,
     "2026-10-07": 98193.28,
     "2026-10-08": 98437.76,
-    "2026-10-09": 98591.63
+    "2026-10-09": 98671.03
   }
 }
