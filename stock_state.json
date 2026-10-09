@@ -93,7 +93,11 @@
   ],
   "active_position_cache": {},
   "previous_active_symbols": [],
+<<<<<<< Updated upstream
   "last_run_timestamp": "2026-10-09 19:57:41",
+=======
+  "last_run_timestamp": "2026-10-09 19:58:13",
+>>>>>>> Stashed changes
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42,
@@ -108,5 +112,9 @@
     "2026-10-08": 98437.76,
     "2026-10-09": 98671.03
   },
+<<<<<<< Updated upstream
   "last_email_timestamp": 1791575850.0910404
+=======
+  "last_email_timestamp": 1791575882.221916
+>>>>>>> Stashed changes
 }
