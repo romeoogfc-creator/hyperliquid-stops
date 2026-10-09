@@ -168,9 +168,51 @@
       "timestamp": "2026-10-05 15:48:14"
     }
   ],
-  "active_position_cache": {},
-  "previous_active_symbols": [],
-  "last_run_timestamp": "2026-10-09 15:16:06",
+  "active_position_cache": {
+    "ARM": {
+      "entry_px": 268.756111,
+      "current_px": 267.22,
+      "qty": 36.0,
+      "side": "short",
+      "peak_roe": 0.005715631894970934,
+      "best_target_floor_roe": 0.004333547018063144,
+      "best_stop_px": 268.48735488899996
+    },
+    "MU": {
+      "entry_px": 1023.33,
+      "current_px": 1025.47,
+      "qty": 9.0,
+      "side": "short",
+      "peak_roe": -0.0020912120234919196,
+      "best_target_floor_roe": -0.010445310896778177,
+      "best_stop_px": 1034.019
+    },
+    "NVDA": {
+      "entry_px": 230.17,
+      "current_px": 229.97,
+      "qty": 42.0,
+      "side": "short",
+      "peak_roe": 0.000868922969978662,
+      "best_target_floor_roe": -0.007276609214307414,
+      "best_stop_px": 231.84485714285714
+    },
+    "SMCI": {
+      "entry_px": 41.424093,
+      "current_px": 41.29,
+      "qty": 237.0,
+      "side": "short",
+      "peak_roe": 0.0032370775142861914,
+      "best_target_floor_roe": 0.002282399366228306,
+      "best_stop_px": 41.382668906999996
+    }
+  },
+  "previous_active_symbols": [
+    "NVDA",
+    "SMCI",
+    "MU",
+    "ARM"
+  ],
+  "last_run_timestamp": "2026-10-09 15:48:31",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42,
@@ -183,6 +225,6 @@
     "2026-10-06": 98061.5,
     "2026-10-07": 98193.28,
     "2026-10-08": 98437.76,
-    "2026-10-09": 98512.8
+    "2026-10-09": 98522.28
   }
 }
