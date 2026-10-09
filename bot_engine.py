@@ -392,7 +392,7 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
 
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0, coin="ETH"):
     """
-    UPGRADED V3.4 ENGINE: Ported Continuous Dynamic Retention Curve (70% -> 95% Lock)
+    UPGRADED V3.5 ENGINE: Ported Continuous Dynamic Retention Curve (70% -> 95% Lock)
     with ATR Noise Shield & Strict 0.75% Max Giveback Clamp.
     """
     if is_long:
@@ -563,7 +563,7 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.4 Master Engine Started (Dynamic Volume Pacing & Giveback Clamp Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.5 Master Engine Started (Adaptive Volatility Sizing & Giveback Clamp Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -609,13 +609,13 @@ def execute_engine():
 
     if gemini_risk == "HIGH":
         required_vol_ratio = 1.25
-        audit_logs.append(f"⚠️ Gemini Macro Risk HIGH: Balanced breakout volume gate >= {required_vol_ratio:.2f}x")
+        audit_logs.append(f"⚠️ Gemini Macro Risk HIGH: Balanced breakout volume gate >= {required_vol_ratio:.2f}x | Adaptive Sizing: 0.70x")
     elif gemini_risk == "MODERATE":
         required_vol_ratio = 1.18
-        audit_logs.append(f"ℹ Gemini Macro Risk MODERATE: Balanced breakout volume gate >= {required_vol_ratio:.2f}x")
+        audit_logs.append(f"ℹ Gemini Macro Risk MODERATE: Balanced breakout volume gate >= {required_vol_ratio:.2f}x | Adaptive Sizing: 0.85x")
     else:
         required_vol_ratio = 1.12
-        audit_logs.append(f"✅ Gemini Macro Risk LOW: Standard breakout volume gate >= {required_vol_ratio:.2f}x active")
+        audit_logs.append(f"✅ Gemini Macro Risk LOW: Standard breakout volume gate >= {required_vol_ratio:.2f}x active | Adaptive Sizing: 1.00x")
 
     btc_regime, btc_change_pct, btc_bounce_pct = get_btc_regime(info, now_ms)
     audit_logs.append(f"BTC Directional Shield: Daily Candle is {btc_regime} ({btc_change_pct:+.2f}%, Intraday Bounce: +{btc_bounce_pct:.2f}%).")
@@ -858,7 +858,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V3.4", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V3.5", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -1120,9 +1120,10 @@ def execute_engine():
             candle_ts = candidate["candle_ts"]
             strat_used = candidate["strategy"]
             
-            # TIERED VOLATILITY CAPITAL ALLOCATION (25% Majors | 15% Altcoins)
-            is_major_coin = coin.upper() in ["BTC", "ETH", "SOL"]
-            slot_alloc_pct = 0.25 if is_major_coin else 0.15
+            # ADAPTIVE VOLATILITY CAPITAL ALLOCATION (Uniform 25% Base NAV, Scaled by Gemini Risk)
+            base_alloc_pct = 0.25
+            risk_multiplier = 0.70 if gemini_risk == "HIGH" else (0.85 if gemini_risk == "MODERATE" else 1.00)
+            slot_alloc_pct = base_alloc_pct * risk_multiplier
             target_notional_usd = max(min_notional_usd, account_value * slot_alloc_pct)
 
             decimals = sz_decimals_map.get(coin, 4)
@@ -1175,19 +1176,19 @@ def execute_engine():
 
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
-                    tier_label = "Tier-1 Major (25% NAV)" if is_major_coin else "Tier-2 Altcoin (15% NAV)"
+                    alloc_label = f"Uniform 25% NAV (Scaled {risk_multiplier*100:.0f}%)"
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V3.4", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V3.5", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
                         "pnl": 0.0, "roe": 0.0,
                         "stop": round_sig_figs(initial_stop_px, 5),
                         "tp_target": "UNCAPPED 🚀",
-                        "status": f"🛡️ {tier_label} Noise Shield Active"
+                        "status": f"🛡️ {alloc_label} Noise Shield Active"
                     })
 
-                    audit_logs.append(f"1H EXECUTION SUCCESS [{strat_used}]: Opened {'LONG' if is_long else 'SHORT'} on {coin} ({tier_label}, Size: {sz} ~${(sz * px):.2f})")
+                    audit_logs.append(f"1H EXECUTION SUCCESS [{strat_used}]: Opened {'LONG' if is_long else 'SHORT'} on {coin} ({alloc_label}, Size: {sz} ~${(sz * px):.2f})")
 
             except Exception as e:
                 audit_logs.append(f"EXECUTION FAILED on {coin}: {e}")
@@ -1233,7 +1234,7 @@ def execute_engine():
         
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V3.4 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V3.5 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         summary_card_html = f"""
         <div class="summary-card">
@@ -1358,8 +1359,8 @@ def execute_engine():
           <body>
             <div class="container">
               <div class="header">
-                <h2>TR-GC-Crypto-LS-23-V3.4 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Dynamic Volume Pacing & Giveback Clamp Active)</p>
+                <h2>TR-GC-Crypto-LS-23-V3.5 | Telemetry Dashboard</h2>
+                <p>Timestamp: {timestamp} (Adaptive Volatility Sizing & Giveback Clamp Active)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -1375,7 +1376,8 @@ def execute_engine():
                 {summary_card_html}
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (V3.4 Active)</div>
+                  <div class="rules-title">&#9989; Active Guardrails (V3.5 Active)</div>
+                  &bull; <b>Adaptive Volatility Sizing (25% Base NAV):</b> Automatically scales position size (1.00x / 0.85x / 0.70x) based on Gemini Macro Risk<br>
                   &bull; <b>Strict 0.75% Max Giveback Clamp:</b> Guarantees crypto winners never give back more than 0.75% from their peak<br>
                   &bull; <b>Dynamic Paced Volume Scaling:</b> Annualizes live forming candle volume rate to unlock early breakouts<br>
                   &bull; <b>Stock V3.3 Dynamic Retention Curve (70% &rarr; 95% Lock):</b> Smoothly ratchets profit floor as ROE grows<br>
@@ -1392,7 +1394,6 @@ def execute_engine():
                   &bull; <b>Extension Cap (&le;1.5% Band Distance):</b> Prevents buying or shorting over-extended price spikes<br>
                   &bull; <b>Strict Altcoin Loss Cap (-1.50% ROE):</b> Hard-caps altcoin losses at max -$0.22<br>
                   &bull; <b>BTC Relief Bounce Shield:</b> Cuts altcoin SHORTs immediately if BTC rebounds &gt; +0.40% off intraday low<br>
-                  &bull; <b>Tiered Volatility Capital Allocation:</b> 25% NAV on Tier-1 Majors (ETH/BTC/SOL) | 15% NAV on Tier-2 Altcoins<br>
                   &bull; <b>Strict Altcoin Choppiness Gate:</b> Rejects entries if Altcoin CI &gt; 40.0 (guarantees smooth trend momentum)<br>
                   &bull; <b>Live Anatomy Falling-Knife Detector:</b> Distinguishes absorption wicks from solid red dumps (&gt;60% body, &gt;1.4x vol)<br>
                   &bull; <b>24/7 Native Orderbook Sync:</b> Posts resting trigger orders on Hyperliquid L1 orderbook to protect while sleeping<br>
