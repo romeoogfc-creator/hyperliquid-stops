@@ -182,7 +182,7 @@
   "active_position_cache": {
     "ARM": {
       "entry_px": 268.756111,
-      "current_px": 266.365,
+      "current_px": 266.565,
       "qty": 36.0,
       "side": "short",
       "peak_roe": 0.008896954904962019,
@@ -193,7 +193,7 @@
   "previous_active_symbols": [
     "ARM"
   ],
-  "last_run_timestamp": "2026-10-09 18:17:21",
+  "last_run_timestamp": "2026-10-09 18:50:03",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42,
