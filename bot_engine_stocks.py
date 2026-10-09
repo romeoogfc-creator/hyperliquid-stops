@@ -691,12 +691,30 @@ def execute_stock_engine():
             if ci > req_ci:
                 continue
 
-            volume_series = [float(b.get("v", 1)) for b in bars[-11:-1]]
-            avg_vol = np.mean(volume_series) if volume_series else 1.0
-            latest_vol = float(bars[-1].get("v", 0))
-            vol_ratio = latest_vol / avg_vol if avg_vol > 0 else 1.0
+            # ==============================================================================
+            # V3.3 DYNAMIC VOLUME PACING CALIBRATION
+            # ==============================================================================
+            comp_vol = float(bars[-2].get("v", 0))
+            past_vols = [float(b.get("v", 1)) for b in bars[-12:-2]]
+            avg_vol = np.mean(past_vols) if past_vols else 1.0
+            comp_vol_ratio = comp_vol / avg_vol if avg_vol > 0 else 1.0
 
-            # VOLUME GATE: Fresh Breakout Dynamic Volume Calibration
+            latest_vol = float(bars[-1].get("v", 0))
+            bar_start_str = bars[-1].get("t", "")
+            
+            try:
+                bar_dt = datetime.fromisoformat(bar_start_str.replace("Z", "+00:00"))
+                now_utc = datetime.now(timezone.utc)
+                elapsed_mins = max(1.0, min(60.0, (now_utc - bar_dt).total_seconds() / 60.0))
+            except Exception:
+                elapsed_mins = max(1.0, float(ct_now.minute % 60 or 60))
+
+            paced_live_vol = latest_vol * (60.0 / elapsed_mins)
+            live_vol_ratio = paced_live_vol / avg_vol if avg_vol > 0 else 1.0
+
+            vol_ratio = max(comp_vol_ratio, live_vol_ratio)
+
+            # VOLUME GATE EVALUATION
             if is_premarket_runner_window and vol_ratio < 2.50:
                 continue
             elif is_opening_15m_window and vol_ratio < 1.80:
@@ -734,9 +752,6 @@ def execute_stock_engine():
             if live_close > max_ext_upper or live_close < max_ext_lower:
                 continue
 
-            # ==============================================================================
-            # V3.2 FRESH BREAKOUT TRIGGER CALIBRATION (UNLOCKED LIVE MORNING RUNNERS)
-            # ==============================================================================
             fresh_long_breakout = (
                 ((live_close > upper and comp_close <= upper * 1.008) or 
                  (comp_close > upper and prev_close <= upper * 1.008)) 
@@ -937,7 +952,7 @@ def execute_stock_engine():
     </tr>
     """
 
-    text_fallback = f"TR-GC-Equities-LS-01 | 1H Master Engine V3.2\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
+    text_fallback = f"TR-GC-Equities-LS-01 | 1H Master Engine V3.3\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
     positions_rows = "".join([
         f"<tr>"
@@ -1013,8 +1028,8 @@ def execute_stock_engine():
       <body>
         <div class="container">
           <div class="header">
-            <h2>TR-GC-Equities-LS-01 | 1H Master Engine V3.2</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: FRESH BREAKOUT &amp; SMART PROTECTION ACTIVE</p>
+            <h2>TR-GC-Equities-LS-01 | 1H Master Engine V3.3</h2>
+            <p>Timestamp: {timestamp} &bull; Mode: DYNAMIC PACED VOLUME &amp; SMART PROTECTION ACTIVE</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -1031,7 +1046,8 @@ def execute_stock_engine():
 
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Guardrails (Full Strategy Display)</div>
-              &bull; <b>Fresh Breakout Calibration (V3.2 Active):</b> Unlocks live morning runners by evaluating active candle crossovers<br>
+              &bull; <b>Dynamic Paced Volume Scaling (V3.3 Active):</b> Annualizes live forming candle volume to unlock early-hour breakouts<br>
+              &bull; <b>Fresh Breakout Calibration:</b> Evaluates both live and completed candle crossovers to prevent breakout deadlocks<br>
               &bull; <b>Premarket Runner Gate (8:00–8:30 AM CT / 9:00–9:30 AM ET):</b> Active with strict &gt;=2.50x volume surge, &gt;=70% body &amp; CI &le; 45.0 for extended-hours limit orders<br>
               &bull; <b>Live Stock Anatomy Falling-Knife Detector:</b> Distinguishes absorption wicks from solid dumps (&gt;60% body, &gt;1.4x vol)<br>
               &bull; <b>Opening 15m Gated Window (8:30–8:45 AM CT / 9:30–9:45 AM ET):</b> Active with strict &gt;=1.80x volume surge &amp; &gt;=65% body gate<br>
@@ -1088,7 +1104,7 @@ def execute_stock_engine():
     """
 
     send_html_dashboard_email(f"Alpaca Quantitative Report — USD ${equity:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] 1H Master Engine V3.2 report complete.", flush=True)
+    print(f"[{timestamp}] 1H Master Engine V3.3 report complete.", flush=True)
 
 if __name__ == "__main__":
     try:
