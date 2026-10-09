@@ -276,7 +276,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-09 03:45:36",
+  "last_run_timestamp": "2026-10-09 04:01:24",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -287,11 +287,11 @@
     "scan_date": "2026-09-24"
   },
   "last_email_timestamp": 1791517533.9671702,
-  "last_scan_timestamp": 1791516627.6702402,
+  "last_scan_timestamp": 1791518436.3991528,
   "gemini_cache": {
-    "timestamp": 1791516627.6702402,
+    "timestamp": 1791518436.3991528,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH**\n\nCurrent market volatility is driven by significant macroeconomic uncertainty, ongoing regulatory shifts, and heightened sensitivity to geopolitical tensions, all of which continue to create unstable conditions for speculative assets."
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, the asset class remains highly vulnerable to sudden volatility driven by macroeconomic uncertainty and regulatory shifts."
   },
   "recent_losses": [],
   "last_traded_candle": {
