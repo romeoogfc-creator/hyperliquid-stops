@@ -1,6 +1,15 @@
 {
   "closed_trades_ledger": [
     {
+      "symbol": "ARM",
+      "entry_price": 268.756111,
+      "exit_price": 268.100556,
+      "realized_pnl": 23.599979999999732,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-09 19:14:07",
+      "order_id": "2c232119-daaa-4a53-a5c6-bce11ae8af1c"
+    },
+    {
       "symbol": "MU",
       "entry_price": 1023.33,
       "exit_price": 1034.053333,
@@ -169,31 +178,11 @@
       "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
       "timestamp": "2026-10-06 15:46:01",
       "order_id": "97bb92a6-3660-42f4-a870-da1149d74813"
-    },
-    {
-      "symbol": "XLF",
-      "entry_price": 54.22,
-      "exit_price": 54.135,
-      "exit_reason": "\ud83d\udcc9 1H Trend Invalidation (Close $54.13 < Upper Band $54.16)",
-      "realized_pnl": -15.300000000000153,
-      "timestamp": "2026-10-06 15:46:01"
     }
   ],
-  "active_position_cache": {
-    "ARM": {
-      "entry_px": 268.756111,
-      "current_px": 266.565,
-      "qty": 36.0,
-      "side": "short",
-      "peak_roe": 0.008896954904962019,
-      "best_target_floor_roe": 0.007352117187745734,
-      "best_stop_px": 267.929625
-    }
-  },
-  "previous_active_symbols": [
-    "ARM"
-  ],
-  "last_run_timestamp": "2026-10-09 18:50:03",
+  "active_position_cache": {},
+  "previous_active_symbols": [],
+  "last_run_timestamp": "2026-10-09 19:14:25",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42,
