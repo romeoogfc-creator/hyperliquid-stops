@@ -293,11 +293,9 @@ def calculate_smart_stock_targets(entry_px, is_long, current_px, atr_val, entry_
     # 2. UPSIDE: CONTINUOUS DYNAMIC WATERMARK RATCHET (70% -> 95% RETENTION)
     if peak_roe >= 0.0025:  # Activates at +0.25% ROE (~$25 gain on $10k position)
         if peak_roe < 0.0030:
-            # +0.25% to +0.30% ROE: Fee Cover Shield
             target_floor_roe = 0.0010
             leash_status = f"🛡 BREAK-EVEN SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +0.10%]"
         else:
-            # Smooth Continuous Scaling Curve
             if peak_roe < 0.0100:     # +0.30% to +1.00%: Retention scales 70% -> 85%
                 retention = 0.70 + ((peak_roe - 0.003) / 0.007) * 0.15
             elif peak_roe < 0.0300:   # +1.00% to +3.00%: Retention scales 85% -> 92%
@@ -313,7 +311,7 @@ def calculate_smart_stock_targets(entry_px, is_long, current_px, atr_val, entry_
 
     # 3. ATR NOISE SHIELD: Enforces minimum breathing room from peak price
     peak_px = entry_px * (1 + peak_roe) if is_long else entry_px * (1 - peak_roe)
-    min_atr_distance = atr_val * 0.35  # Enforces at least 0.35 ATR distance from peak
+    min_atr_distance = atr_val * 0.35
 
     if is_long:
         calc_stop_px = entry_px * (1 + target_floor_roe)
@@ -560,7 +558,6 @@ def execute_stock_engine():
             except Exception as e:
                 audit_logs.append(f"Execution Failed on {symbol}: {e}")
 
-        # Sync resting native stop directly on Alpaca matching engine
         active_symbols.add(symbol)
         sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px_calc, open_orders, audit_logs)
 
@@ -622,15 +619,15 @@ def execute_stock_engine():
     MAX_STOCK_SLOTS = 5
     
     # TIME-WINDOWED ENTRY REGULATION (TEXAS CENTRAL TIME)
-    is_hard_night_lockout = (ct_now.hour < 8)  # Hard lockout before 8:00 AM CT
-    is_premarket_runner_window = (ct_now.hour == 8 and ct_now.minute < 30)  # 8:00–8:30 AM CT (9:00–9:30 AM ET Premarket)
-    is_opening_15m_window = (ct_now.hour == 8 and 30 <= ct_now.minute < 45)  # 8:30–8:45 AM CT (9:30–9:45 AM ET Opening)
+    is_hard_night_lockout = (ct_now.hour < 8)
+    is_premarket_runner_window = (ct_now.hour == 8 and ct_now.minute < 30)
+    is_opening_15m_window = (ct_now.hour == 8 and 30 <= ct_now.minute < 45)
     is_prime_morning_window = (ct_now.hour == 8 and ct_now.minute >= 30) or (9 <= ct_now.hour < 11) or (ct_now.hour == 11 and ct_now.minute <= 30)
-    is_news_catalyst_window = (ct_now.hour == 11 and ct_now.minute > 30) or (ct_now.hour == 12) or (ct_now.hour == 13 and ct_now.minute < 45)  # 11:30 AM - 1:45 PM CT
-    is_afternoon_cutoff = (ct_now.hour == 13 and ct_now.minute >= 45) or (ct_now.hour >= 14)  # 1:45 PM CT+ Hard Cutoff
+    is_news_catalyst_window = (ct_now.hour == 11 and ct_now.minute > 30) or (ct_now.hour == 12) or (ct_now.hour == 13 and ct_now.minute < 45)
+    is_afternoon_cutoff = (ct_now.hour == 13 and ct_now.minute >= 45) or (ct_now.hour >= 14)
     is_post_1030_ct = (ct_now.hour > 10) or (ct_now.hour == 10 and ct_now.minute >= 30)
 
-    # HIGH-WATER & DRAWDOWN LOCKOUT SHIELD ($500 Cap for $98k Account)
+    # HIGH-WATER & DRAWDOWN LOCKOUT SHIELD ($500 Cap)
     peak_giveback_lockout = (giveback_from_peak >= 500.0) or (daily_loss_usd >= 500.0)
     if peak_giveback_lockout:
         audit_logs.append(f"🛡️ HIGH-WATER SHIELD ACTIVE: Drawdown/Giveback exceeds $500 cap (Loss: ${daily_loss_usd:.2f}, Giveback: ${giveback_from_peak:.2f}). Blocking new trades.")
@@ -690,7 +687,6 @@ def execute_stock_engine():
 
             ci = calculate_choppiness_index(highs, lows, closes)
             
-            # CHOPPINESS GATE: Requires ultra-clean trend (CI <= 45.0) during Premarket or Late-Day News
             req_ci = 45.0 if (is_premarket_runner_window or is_news_catalyst_window) else 58.0
             if ci > req_ci:
                 continue
@@ -700,12 +696,14 @@ def execute_stock_engine():
             latest_vol = float(bars[-1].get("v", 0))
             vol_ratio = latest_vol / avg_vol if avg_vol > 0 else 1.0
 
-            # VOLUME GATE: Ultra-strict >=2.50x surge required during Premarket & Late-Day News
+            # VOLUME GATE: Fresh Breakout Dynamic Volume Calibration
             if is_premarket_runner_window and vol_ratio < 2.50:
                 continue
             elif is_opening_15m_window and vol_ratio < 1.80:
                 continue
             elif is_news_catalyst_window and vol_ratio < 2.50:
+                continue
+            elif is_prime_morning_window and vol_ratio < 1.20:
                 continue
             elif is_post_1030_ct and not is_opening_15m_window and not is_news_catalyst_window and not is_premarket_runner_window:
                 if vol_ratio < 1.40:
@@ -720,7 +718,6 @@ def execute_stock_engine():
             c_range = max(highs[-1] - lows[-1], 1e-8)
             live_body_ratio = abs(live_close - live_open) / c_range
 
-            # CANDLE BODY GATE: Requires solid body >= 70% for Premarket, >= 75% for news, >= 65% for opening 15m
             if is_premarket_runner_window and live_body_ratio < 0.70:
                 continue
             elif is_opening_15m_window and live_body_ratio < 0.65:
@@ -731,22 +728,37 @@ def execute_stock_engine():
             is_candle_green = (live_close > live_open) and (live_close >= comp_close)
             is_candle_red = (live_close < live_open) and (live_close <= comp_close)
 
-            # EXTENSION CAP: Prevents chasing blown-out news spikes
+            # EXTENSION CAP
             max_ext_upper = upper * 1.015
             max_ext_lower = lower * 0.985
             if live_close > max_ext_upper or live_close < max_ext_lower:
                 continue
 
+            # ==============================================================================
+            # V3.2 FRESH BREAKOUT TRIGGER CALIBRATION (UNLOCKED LIVE MORNING RUNNERS)
+            # ==============================================================================
+            fresh_long_breakout = (
+                ((live_close > upper and comp_close <= upper * 1.008) or 
+                 (comp_close > upper and prev_close <= upper * 1.008)) 
+                and is_candle_green
+            )
+
+            fresh_short_breakdown = (
+                ((live_close < lower and comp_close >= lower * 0.992) or 
+                 (comp_close < lower and prev_close >= lower * 0.992)) 
+                and is_candle_red
+            )
+
             candidate_obj = None
             if spy_regime in ["GREEN", "NEUTRAL"]:
-                if comp_close > upper and prev_close <= upper and is_candle_green:
+                if fresh_long_breakout:
                     candidate_obj = {
                         "symbol": symbol, "close": live_close, "is_long": True,
                         "score": (live_close - upper) / upper, "ci": ci
                     }
 
             if spy_regime in ["RED", "NEUTRAL"] and candidate_obj is None:
-                if comp_close < lower and prev_close >= lower and is_candle_red:
+                if fresh_short_breakdown:
                     candidate_obj = {
                         "symbol": symbol, "close": live_close, "is_long": False,
                         "score": (lower - live_close) / lower, "ci": ci
@@ -792,11 +804,7 @@ def execute_stock_engine():
             qty = max(1, int(raw_qty))
             order_side = "buy" if is_long else "sell"
 
-            # ==============================================================================
-            # PREMARKET VS REGULAR HOURS ORDER EXECUTION
-            # ==============================================================================
             if is_premarket_runner_window:
-                # Extended-Hours Limit Order for Premarket Execution
                 limit_px = round(px * (1.001 if is_long else 0.999), 2)
                 order_payload = {
                     "symbol": symbol,
@@ -818,7 +826,6 @@ def execute_stock_engine():
                 except Exception as e:
                     audit_logs.append(f"PREMARKET ORDER EXCEPTION on {symbol}: {e}")
             else:
-                # Regular Market Hours OTO Order with Native Stop
                 initial_stop_px = px * 0.9920 if is_long else px * 1.0080
                 clean_initial_stop = round(initial_stop_px, 2)
 
@@ -930,7 +937,7 @@ def execute_stock_engine():
     </tr>
     """
 
-    text_fallback = f"TR-GC-Equities-LS-01 | 1H Adaptive Engine V3.1\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
+    text_fallback = f"TR-GC-Equities-LS-01 | 1H Master Engine V3.2\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
     positions_rows = "".join([
         f"<tr>"
@@ -1006,8 +1013,8 @@ def execute_stock_engine():
       <body>
         <div class="container">
           <div class="header">
-            <h2>TR-GC-Equities-LS-01 | 1H Master Engine V3.1</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: PREMARKET RUNNER & SMART PROTECTION ACTIVE</p>
+            <h2>TR-GC-Equities-LS-01 | 1H Master Engine V3.2</h2>
+            <p>Timestamp: {timestamp} &bull; Mode: FRESH BREAKOUT &amp; SMART PROTECTION ACTIVE</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -1024,6 +1031,7 @@ def execute_stock_engine():
 
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Guardrails (Full Strategy Display)</div>
+              &bull; <b>Fresh Breakout Calibration (V3.2 Active):</b> Unlocks live morning runners by evaluating active candle crossovers<br>
               &bull; <b>Premarket Runner Gate (8:00–8:30 AM CT / 9:00–9:30 AM ET):</b> Active with strict &gt;=2.50x volume surge, &gt;=70% body &amp; CI &le; 45.0 for extended-hours limit orders<br>
               &bull; <b>Live Stock Anatomy Falling-Knife Detector:</b> Distinguishes absorption wicks from solid dumps (&gt;60% body, &gt;1.4x vol)<br>
               &bull; <b>Opening 15m Gated Window (8:30–8:45 AM CT / 9:30–9:45 AM ET):</b> Active with strict &gt;=1.80x volume surge &amp; &gt;=65% body gate<br>
@@ -1080,7 +1088,7 @@ def execute_stock_engine():
     """
 
     send_html_dashboard_email(f"Alpaca Quantitative Report — USD ${equity:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] 1H Master Engine V3.1 report complete.", flush=True)
+    print(f"[{timestamp}] 1H Master Engine V3.2 report complete.", flush=True)
 
 if __name__ == "__main__":
     try:
