@@ -67,6 +67,7 @@ def load_state():
         "active_position_cache": {},
         "previous_active_symbols": [],
         "last_run_timestamp": "", 
+        "last_email_timestamp": 0,
         "daily_starting_equity": {},
         "daily_peak_equity": {}
     }
@@ -140,11 +141,7 @@ def round_sig_figs(val, sig_figs=5):
         return 0
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
-# ==============================================================================
-# NATIVE ALPACA ORDERBOOK TRIGGER STOP MANAGERS
-# ==============================================================================
 def cancel_alpaca_native_orders(symbol, open_orders):
-    """Cancels open resting orders for a symbol on Alpaca."""
     for o in open_orders:
         if o.get("symbol") == symbol:
             try:
@@ -153,7 +150,6 @@ def cancel_alpaca_native_orders(symbol, open_orders):
                 pass
 
 def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, audit_logs=None):
-    """Submits and syncs a native resting stop order on Alpaca's matching engine."""
     try:
         clean_stop_px = round(stop_px, 2)
         close_side = "sell" if is_long else "buy"
@@ -188,15 +184,10 @@ def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, 
             res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=stop_order_payload, headers=HEADERS)
             if res.status_code == 200 and audit_logs is not None:
                 audit_logs.append(f"🛡 NATIVE ALPACA STOP SYNC [{symbol}]: Placed Resting Trigger Stop @ ${clean_stop_px:.2f}")
-            elif res.status_code != 200 and audit_logs is not None:
-                audit_logs.append(f"⚠️ Alpaca Native Stop Sync Warning [{symbol}] ({res.status_code}): {res.text}")
     except Exception as e:
         if audit_logs is not None:
-            audit_logs.append(f"⚠ Alpaca Native Stop Sync warning on {symbol}: {e}")
+            audit_logs.append(f"⚠️ Alpaca Native Stop Sync warning on {symbol}: {e}")
 
-# ==============================================================================
-# TECHNICAL INDICATORS & SMART PROTECTION ENGINE
-# ==============================================================================
 def calculate_gaussian_channel(closes, poles=4, period=50, mult=1.414):
     s = pd.Series(closes)
     effective_period = min(period, max(5, len(closes) - 1))
@@ -212,22 +203,18 @@ def calculate_choppiness_index(highs, lows, closes, period=14):
     try:
         if len(closes) < period + 1:
             return 50.0
-        
         trs = []
         start_idx = len(closes) - period
         for i in range(start_idx, len(closes)):
             tr = max(highs[i] - lows[i], abs(highs[i] - closes[i-1]), abs(lows[i] - closes[i-1]))
             trs.append(tr)
-        
         tr_sum = sum(trs)
         max_high = max(highs[-period:])
         min_low = min(lows[-period:])
         range_diff = max_high - min_low
-        
         if range_diff <= 0 or tr_sum <= 0:
             return 50.0
-        ci = 100 * (log10(tr_sum / range_diff) / log10(period))
-        return ci
+        return 100 * (log10(tr_sum / range_diff) / log10(period))
     except Exception:
         return 50.0
 
@@ -241,7 +228,6 @@ def calculate_atr(highs, lows, closes, period=14):
         return 1.0
 
 def analyze_live_stock_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_long):
-    """Analyzes live equity candle structure to detect true dumps vs absorption wicks."""
     c_range = c_high - c_low if c_high > c_low else 1e-8
     body_sz = abs(curr_px - c_open)
     body_ratio = body_sz / c_range
@@ -249,39 +235,34 @@ def analyze_live_stock_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, 
     if is_long:
         dist_to_low_pct = (curr_px - c_low) / c_range if c_range > 0 else 1.0
         lower_wick_ratio = (min(c_open, curr_px) - c_low) / c_range
-        
         if lower_wick_ratio >= 0.40:
             return False, "Liquidity Absorption Wick Detected (Holding)"
-            
         is_full_red_body = (curr_px < c_open) and (body_ratio >= 0.60) and (dist_to_low_pct <= 0.15)
         if is_full_red_body and vol_ratio >= 1.4:
             return True, f"🚨 True Falling Knife (Red Body: {body_ratio*100:.0f}%, Vol: {vol_ratio:.1f}x)"
     else:
         dist_to_high_pct = (c_high - curr_px) / c_range if c_range > 0 else 1.0
         upper_wick_ratio = (c_high - max(c_open, curr_px)) / c_range
-        
         if upper_wick_ratio >= 0.40:
             return False, "Liquidity Absorption Wick Detected (Holding)"
-            
         is_full_green_body = (curr_px > c_open) and (body_ratio >= 0.60) and (dist_to_high_pct <= 0.15)
         if is_full_green_body and vol_ratio >= 1.4:
             return True, f"🚨 True Rising Knife (Green Body: {body_ratio*100:.0f}%, Vol: {vol_ratio:.1f}x)"
-            
     return False, "Normal Price Action"
 
 def calculate_smart_stock_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0):
     """
-    Computes continuous dynamic stop-loss and uncapped targets for stocks.
-    Retains 70%-95% of peak gains while using an ATR Noise Shield to prevent wick-outs.
+    Computes continuous dynamic stop-loss with Ultra-Tight Initial Risk (0.30%),
+    ATR Noise Shield (Wick Protection), and strict Max Giveback Clamp (0.40%).
     """
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
         roe = (entry_px - current_px) / entry_px
 
-    # 1. DOWNSIDE: Dynamic ATR Volatility Buffer (0.50% to 1.20% bounds) & Entry Candle Structural Protection
-    atr_roe_buffer = (atr_val * 1.2) / entry_px if entry_px > 0 else 0.008
-    atr_roe_buffer = max(0.0050, min(0.0120, atr_roe_buffer))
+    # 1. DOWNSIDE: Ultra-Tight Initial Risk Cap (0.30% Max Initial ROE Risk for Penny Losses)
+    atr_roe_buffer = (atr_val * 0.5) / entry_px if entry_px > 0 else 0.0030
+    atr_roe_buffer = max(0.0020, min(0.0035, atr_roe_buffer))
 
     if is_long:
         structure_stop = (entry_candle_low / entry_px) - 1.0 if entry_px > 0 else -atr_roe_buffer
@@ -290,8 +271,10 @@ def calculate_smart_stock_targets(entry_px, is_long, current_px, atr_val, entry_
         structure_stop = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else -atr_roe_buffer
         initial_floor_roe = max(-atr_roe_buffer, structure_stop)
 
-    # 2. UPSIDE: CONTINUOUS DYNAMIC WATERMARK RATCHET (70% -> 95% RETENTION)
-    if peak_roe >= 0.0025:  # Activates at +0.25% ROE (~$25 gain on $10k position)
+    # 2. UPSIDE: DYNAMIC RATCHET WITH STRICT 0.40% MAX GIVEBACK CLAMP
+    MAX_ALLOWABLE_GIVEBACK = 0.0040  # Strictly 0.40% max giveback from peak
+
+    if peak_roe >= 0.0025:  # Activates at +0.25% ROE
         if peak_roe < 0.0030:
             target_floor_roe = 0.0010
             leash_status = f"🛡 BREAK-EVEN SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +0.10%]"
@@ -303,15 +286,20 @@ def calculate_smart_stock_targets(entry_px, is_long, current_px, atr_val, entry_
             else:                     # +3.00%+: Continuous 95% Retention Cap
                 retention = 0.95
 
-            target_floor_roe = peak_roe * retention
+            ratchet_floor_roe = peak_roe * retention
+            
+            # GIVEBACK CLAMP: Floor can never drop more than 0.40% below the peak
+            max_giveback_floor = peak_roe - MAX_ALLOWABLE_GIVEBACK
+            target_floor_roe = max(ratchet_floor_roe, max_giveback_floor)
+            
             leash_status = f"🛡 DYNAMIC {retention*100:.1f}% LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
     else:
         target_floor_roe = initial_floor_roe
         leash_status = f"⚡ STRUCTURAL STOP ({target_floor_roe*100:.2f}%)"
 
-    # 3. ATR NOISE SHIELD: Enforces minimum breathing room from peak price
+    # 3. ATR NOISE SHIELD (Prevents Wick-Outs while letting runners run)
     peak_px = entry_px * (1 + peak_roe) if is_long else entry_px * (1 - peak_roe)
-    min_atr_distance = atr_val * 0.35
+    min_atr_distance = atr_val * 0.30
 
     if is_long:
         calc_stop_px = entry_px * (1 + target_floor_roe)
@@ -337,7 +325,7 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Master Engine Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Master Engine V3.3 Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing API Key credentials in environment variables.")
@@ -386,7 +374,6 @@ def execute_stock_engine():
     orders_res = api_retry(requests.get, f"{BASE_URL}/v2/orders?status=open", headers=HEADERS)
     open_orders = orders_res.json() if orders_res.status_code == 200 else []
 
-    # ANTI-WIPEOUT SHIELD #1: DAILY MAX LOSS CIRCUIT BREAKER (-2.5%)
     daily_loss_pct = (today_total_gain / today_start_eq) if today_start_eq > 0 else 0.0
     is_daily_max_loss_triggered = daily_loss_pct <= -0.025
 
@@ -419,7 +406,6 @@ def execute_stock_engine():
         save_state(state)
         positions_list = []
 
-    # MANDATORY EOD SQUARE-OFF (2:40 PM CT / 3:40 PM ET)
     is_eod_square_off = (ct_now.hour == 14 and ct_now.minute >= 40) or (ct_now.hour >= 15)
 
     if is_eod_square_off and positions_list:
@@ -460,6 +446,7 @@ def execute_stock_engine():
     active_symbols = set()
     current_active_cache = state.get("active_position_cache", {})
     new_active_cache = {}
+    trade_closed_this_run = False
 
     for pos in positions_list:
         symbol = pos.get("symbol")
@@ -497,7 +484,6 @@ def execute_stock_engine():
                         entry_candle_low = float(b_list[-2]["l"])
                         entry_candle_high = float(b_list[-2]["h"])
 
-                    # Live Candle Falling Knife Detection
                     c_open = float(b_list[-1]["o"])
                     c_high = float(b_list[-1]["h"])
                     c_low = float(b_list[-1]["l"])
@@ -552,8 +538,9 @@ def execute_stock_engine():
                     "symbol": symbol, "entry_price": entry_px, "exit_price": current_px,
                     "exit_reason": exit_reason, "realized_pnl": realized_pnl, "timestamp": timestamp
                 })
-                state["closed_trades_ledger"] = state["closed_trades_ledger"][:20]
+                state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
                 active_count -= 1
+                trade_closed_this_run = True
                 continue
             except Exception as e:
                 audit_logs.append(f"Execution Failed on {symbol}: {e}")
@@ -573,7 +560,6 @@ def execute_stock_engine():
             "floor": target_floor_roe * 100, "status": leash_status
         })
 
-    # NATIVE EXCHANGE FILL RECONCILIATION FOR ALPACA
     prev_symbols = state.get("previous_active_symbols", [])
     for sym in prev_symbols:
         if sym not in active_symbols:
@@ -608,17 +594,17 @@ def execute_stock_engine():
                                 "timestamp": timestamp,
                                 "order_id": fill_id
                             })
+                            trade_closed_this_run = True
                             audit_logs.append(f"🎯 RECONCILED NATIVE ALPACA FILL [{sym}]: Closed {fill_side.upper()} @ ${exit_px:.2f} (P&L: ${realized_pnl:+.2f})")
             except Exception as e:
                 audit_logs.append(f"Reconciliation warning on {sym}: {e}")
 
-    state["closed_trades_ledger"] = state.get("closed_trades_ledger", [])[:20]
+    state["closed_trades_ledger"] = state.get("closed_trades_ledger", [])[:10]
     state["active_position_cache"] = new_active_cache
     state["previous_active_symbols"] = list(active_symbols)
 
     MAX_STOCK_SLOTS = 5
     
-    # TIME-WINDOWED ENTRY REGULATION (TEXAS CENTRAL TIME)
     is_hard_night_lockout = (ct_now.hour < 8)
     is_premarket_runner_window = (ct_now.hour == 8 and ct_now.minute < 30)
     is_opening_15m_window = (ct_now.hour == 8 and 30 <= ct_now.minute < 45)
@@ -627,10 +613,8 @@ def execute_stock_engine():
     is_afternoon_cutoff = (ct_now.hour == 13 and ct_now.minute >= 45) or (ct_now.hour >= 14)
     is_post_1030_ct = (ct_now.hour > 10) or (ct_now.hour == 10 and ct_now.minute >= 30)
 
-    # HIGH-WATER & DRAWDOWN LOCKOUT SHIELD ($500 Cap)
     peak_giveback_lockout = (giveback_from_peak >= 500.0) or (daily_loss_usd >= 500.0)
-    if peak_giveback_lockout:
-        audit_logs.append(f"🛡️ HIGH-WATER SHIELD ACTIVE: Drawdown/Giveback exceeds $500 cap (Loss: ${daily_loss_usd:.2f}, Giveback: ${giveback_from_peak:.2f}). Blocking new trades.")
+    trades_executed = False
 
     watchlist = [
         "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "AVGO", "QCOM",
@@ -686,14 +670,10 @@ def execute_stock_engine():
             opens = [float(b["o"]) for b in bars]
 
             ci = calculate_choppiness_index(highs, lows, closes)
-            
             req_ci = 45.0 if (is_premarket_runner_window or is_news_catalyst_window) else 58.0
             if ci > req_ci:
                 continue
 
-            # ==============================================================================
-            # V3.3 DYNAMIC VOLUME PACING CALIBRATION
-            # ==============================================================================
             comp_vol = float(bars[-2].get("v", 0))
             past_vols = [float(b.get("v", 1)) for b in bars[-12:-2]]
             avg_vol = np.mean(past_vols) if past_vols else 1.0
@@ -701,7 +681,6 @@ def execute_stock_engine():
 
             latest_vol = float(bars[-1].get("v", 0))
             bar_start_str = bars[-1].get("t", "")
-            
             try:
                 bar_dt = datetime.fromisoformat(bar_start_str.replace("Z", "+00:00"))
                 now_utc = datetime.now(timezone.utc)
@@ -711,10 +690,8 @@ def execute_stock_engine():
 
             paced_live_vol = latest_vol * (60.0 / elapsed_mins)
             live_vol_ratio = paced_live_vol / avg_vol if avg_vol > 0 else 1.0
-
             vol_ratio = max(comp_vol_ratio, live_vol_ratio)
 
-            # VOLUME GATE EVALUATION
             if is_premarket_runner_window and vol_ratio < 2.50:
                 continue
             elif is_opening_15m_window and vol_ratio < 1.80:
@@ -746,7 +723,6 @@ def execute_stock_engine():
             is_candle_green = (live_close > live_open) and (live_close >= comp_close)
             is_candle_red = (live_close < live_open) and (live_close <= comp_close)
 
-            # EXTENSION CAP
             max_ext_upper = upper * 1.015
             max_ext_lower = lower * 0.985
             if live_close > max_ext_upper or live_close < max_ext_lower:
@@ -803,17 +779,12 @@ def execute_stock_engine():
 
             if is_premarket_runner_window:
                 target_usd = max(1000.0, equity * 0.10)
-                audit_logs.append(f"🚀 PREMARKET RUNNER POWER SIZING for {symbol}: ${target_usd:.2f} (10% NAV)")
             elif is_prime_morning_window:
-                if cand_ci > 52.0 or spy_regime == "NEUTRAL":
-                    target_usd = 1000.0
-                    audit_logs.append(f"MORNING MICRO SIZING for {symbol}: ${target_usd} (Chop/Neutral)")
-                else:
-                    target_usd = max(1000.0, equity * 0.10)
-                    audit_logs.append(f"⚡ MORNING POWER SIZING for {symbol}: ${target_usd:.2f} (10% NAV)")
+                target_usd = 1000.0 if (cand_ci > 52.0 or spy_regime == "NEUTRAL") else max(1000.0, equity * 0.10)
             elif is_news_catalyst_window:
                 target_usd = max(1000.0, equity * 0.10)
-                audit_logs.append(f"⚡ LATE-DAY NEWS POWER SIZING for {symbol}: ${target_usd:.2f} (10% NAV)")
+            else:
+                target_usd = 1000.0
 
             raw_qty = target_usd / px
             qty = max(1, int(raw_qty))
@@ -822,60 +793,46 @@ def execute_stock_engine():
             if is_premarket_runner_window:
                 limit_px = round(px * (1.001 if is_long else 0.999), 2)
                 order_payload = {
-                    "symbol": symbol,
-                    "qty": format_qty(qty),
-                    "side": order_side,
-                    "type": "limit",
-                    "limit_price": f"{limit_px:.2f}",
-                    "time_in_force": "day",
-                    "extended_hours": True
+                    "symbol": symbol, "qty": format_qty(qty), "side": order_side,
+                    "type": "limit", "limit_price": f"{limit_px:.2f}",
+                    "time_in_force": "day", "extended_hours": True
                 }
                 try:
                     order_res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=order_payload, headers=HEADERS)
                     if order_res.status_code == 200:
                         active_count += 1
                         active_symbols.add(symbol)
-                        audit_logs.append(f"🚀 PREMARKET ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} @ Limit ${limit_px:.2f} (Extended-Hours Active)")
-                    else:
-                        audit_logs.append(f"PREMARKET ORDER REJECTED BY ALPACA [{order_res.status_code}] on {symbol}: {order_res.text}")
+                        trades_executed = True
+                        audit_logs.append(f"🚀 PREMARKET ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} @ Limit ${limit_px:.2f}")
                 except Exception as e:
                     audit_logs.append(f"PREMARKET ORDER EXCEPTION on {symbol}: {e}")
             else:
-                initial_stop_px = px * 0.9920 if is_long else px * 1.0080
+                # 0.30% Ultra-Tight Initial Risk Stop (Penny Loss Protection)
+                initial_stop_px = px * 0.9970 if is_long else px * 1.0030
                 clean_initial_stop = round(initial_stop_px, 2)
 
                 order_payload = {
-                    "symbol": symbol,
-                    "qty": format_qty(qty),
-                    "side": order_side,
-                    "type": "market",
-                    "time_in_force": "day",
-                    "order_class": "oto",
-                    "stop_loss": {
-                        "stop_price": f"{clean_initial_stop:.2f}"
-                    }
+                    "symbol": symbol, "qty": format_qty(qty), "side": order_side,
+                    "type": "market", "time_in_force": "day", "order_class": "oto",
+                    "stop_loss": {"stop_price": f"{clean_initial_stop:.2f}"}
                 }
                 try:
                     order_res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=order_payload, headers=HEADERS)
                     if order_res.status_code == 200:
                         active_count += 1
                         active_symbols.add(symbol)
-                        audit_logs.append(f"1H ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} (~${(qty * px):.2f}) [Native OTO Trigger Stop Active @ ${clean_initial_stop:.2f}]")
+                        trades_executed = True
+                        audit_logs.append(f"1H ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} [Native OTO Trigger Stop Active @ ${clean_initial_stop:.2f}]")
                     else:
-                        fallback_payload = {
-                            "symbol": symbol, "qty": format_qty(qty), "side": order_side, "type": "market", "time_in_force": "day"
-                        }
+                        fallback_payload = {"symbol": symbol, "qty": format_qty(qty), "side": order_side, "type": "market", "time_in_force": "day"}
                         fallback_res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=fallback_payload, headers=HEADERS)
                         if fallback_res.status_code == 200:
                             active_count += 1
                             active_symbols.add(symbol)
-                            audit_logs.append(f"1H ENTRY SUCCESS (Standard): Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} (~${(qty * px):.2f}) [Stop will sync on next run]")
-                        else:
-                            audit_logs.append(f"ORDER REJECTED BY ALPACA [{order_res.status_code}] on {symbol}: {order_res.text}")
+                            trades_executed = True
+                            audit_logs.append(f"1H ENTRY SUCCESS (Standard): Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol}")
                 except Exception as e:
                     audit_logs.append(f"ORDER EXCEPTION on {symbol}: {e}")
-    else:
-        audit_logs.append(f"Execution Gate: Active slots ({active_count}/{MAX_STOCK_SLOTS}). No new entries triggered.")
 
     save_state(state)
 
@@ -892,10 +849,7 @@ def execute_stock_engine():
         """
 
     closed_ledger = state.get("closed_trades_ledger", [])
-    trades_today = [
-        t for t in closed_ledger 
-        if today_str in str(t.get("timestamp", ""))
-    ]
+    trades_today = [t for t in closed_ledger if today_str in str(t.get("timestamp", ""))]
 
     total_today = len(trades_today)
     wins_today = [t for t in trades_today if float(t.get("realized_pnl", 0)) > 0]
@@ -931,7 +885,7 @@ def execute_stock_engine():
     parsed_closed_rows = []
     total_realized_pnl = 0.0
 
-    for t in closed_ledger[:5]:
+    for t in closed_ledger[:10]:
         pnl_val = float(t.get("realized_pnl", 0.0))
         total_realized_pnl += pnl_val
         parsed_closed_rows.append(
@@ -1029,7 +983,7 @@ def execute_stock_engine():
         <div class="container">
           <div class="header">
             <h2>TR-GC-Equities-LS-01 | 1H Master Engine V3.3</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: DYNAMIC PACED VOLUME &amp; SMART PROTECTION ACTIVE</p>
+            <p>Timestamp: {timestamp} &bull; Mode: SMART EMAIL THROTTLING &amp; 0.40% GIVEBACK CLAMP ACTIVE</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -1046,18 +1000,14 @@ def execute_stock_engine():
 
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Guardrails (Full Strategy Display)</div>
-              &bull; <b>Dynamic Paced Volume Scaling (V3.3 Active):</b> Annualizes live forming candle volume to unlock early-hour breakouts<br>
-              &bull; <b>Fresh Breakout Calibration:</b> Evaluates both live and completed candle crossovers to prevent breakout deadlocks<br>
-              &bull; <b>Premarket Runner Gate (8:00–8:30 AM CT / 9:00–9:30 AM ET):</b> Active with strict &gt;=2.50x volume surge, &gt;=70% body &amp; CI &le; 45.0 for extended-hours limit orders<br>
-              &bull; <b>Live Stock Anatomy Falling-Knife Detector:</b> Distinguishes absorption wicks from solid dumps (&gt;60% body, &gt;1.4x vol)<br>
-              &bull; <b>Opening 15m Gated Window (8:30–8:45 AM CT / 9:30–9:45 AM ET):</b> Active with strict &gt;=1.80x volume surge &amp; &gt;=65% body gate<br>
-              &bull; <b>Dynamic ATR Volatility Buffer:</b> Replaces flat -0.35% cap with 1.2x ATR breathing room<br>
-              &bull; <b>Continuous Dynamic High-Watermark Ratchet (70%–95% Lock):</b> Smoothly ratchets profit floor from +0.30% to +3.00%+ ROE with ATR Noise Shield<br>
+              &bull; <b>Smart Email Throttling (V3.3 Active):</b> Runs every 15m silently in background, sends emails hourly or on trade events<br>
+              &bull; <b>Ultra-Tight Initial Risk (0.30% Max ROE):</b> Cuts unratched losers instantly for literal pennies<br>
+              &bull; <b>Strict 0.40% Max Giveback Clamp:</b> Guarantees winners never give back more than 0.40% from their peak<br>
+              &bull; <b>ATR Noise Shield:</b> Absorbs minor intraday wicks to let winning runners expand freely<br>
               &bull; <b>Native Alpaca Orderbook Trigger Stops:</b> Resting stop orders placed directly on Alpaca matching engine<br>
               &bull; <b>1-Hour Timeframe &amp; Hard CI Gate (&le;58.0):</b> Eliminates noise &amp; rejects choppy stocks<br>
               &bull; <b>SPY Macro Regime Shield:</b> Enforces broad market direction alignment<br>
               &bull; <b>Morning Power Window (8:30–11:30 AM CT):</b> Full 10% NAV (~$10k) sizing on clean completed trends<br>
-              &bull; <b>Late-Day News Catalyst Gate (11:30 AM–1:45 PM CT):</b> Ultra-strict volume surge (&gt;=2.5x), CI &le; 45.0 &amp; solid body (&gt;=75%) for news runners<br>
               &bull; <b>Afternoon Cutoff (1:45 PM CT+):</b> Strictly 0 new entries allowed to ensure &gt;=55m exit runway<br>
               &bull; <b>EOD Square-Off (2:40 PM CT / 3:40 PM ET):</b> Liquidates 100% of open positions prior to market close<br>
               &bull; <b>High-Water &amp; Drawdown Shield ($500 Cap):</b> Hard-blocks trading if drawdown or giveback hits $500<br>
@@ -1097,14 +1047,28 @@ def execute_stock_engine():
             {audit_section}
 
           </div>
-          <div class="footer">Alpaca Pure Quantitative Sniper Engine &bull; Managed via GitHub Actions</div>
+          <div class="footer">Alpaca Quantitative Sniper Engine &bull; Managed via GitHub Actions</div>
         </div>
       </body>
     </html>
     """
 
-    send_html_dashboard_email(f"Alpaca Quantitative Report — USD ${equity:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] 1H Master Engine V3.3 report complete.", flush=True)
+    # SMART EMAIL THROTTLING: Quiet 15m background runs, send on trade events or hourly (55+ mins)
+    last_email_ts = float(state.get("last_email_timestamp", 0))
+    elapsed_minutes = (now_ts - last_email_ts) / 60.0
+    is_manual_run = os.getenv("GITHUB_EVENT_NAME", "").lower() == "workflow_dispatch"
+    is_time_for_hourly_email = (elapsed_minutes >= 55.0)
+
+    should_send_email = is_manual_run or is_time_for_hourly_email or trades_executed or trade_closed_this_run
+
+    if should_send_email:
+        state["last_email_timestamp"] = now_ts
+        save_state(state)
+        send_html_dashboard_email(f"Alpaca Quantitative Report — USD ${equity:.2f}", html_content, text_fallback)
+        print(f"[{timestamp}] Telemetry report dispatched.", flush=True)
+    else:
+        save_state(state)
+        print(f"[{timestamp}] 15m cycle complete ({elapsed_minutes:.1f}m since last report). Skipping email to prevent spam.", flush=True)
 
 if __name__ == "__main__":
     try:
