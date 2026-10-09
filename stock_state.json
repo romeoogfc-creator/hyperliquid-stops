@@ -89,100 +89,11 @@
       "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
       "timestamp": "2026-10-08 15:48:58",
       "order_id": "c158f9bc-e968-4d43-9ded-a2c39d7a3f52"
-    },
-    {
-      "symbol": "DE",
-      "entry_price": 654.69,
-      "exit_price": 640.16,
-      "realized_pnl": 203.4200000000012,
-      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
-      "timestamp": "2026-10-08 15:48:58",
-      "order_id": "7c2a0f0a-0036-4a26-b85d-fe08a8c20e62"
-    },
-    {
-      "symbol": "IWM",
-      "entry_price": 276.165429,
-      "exit_price": 275.171429,
-      "realized_pnl": 34.79000000000099,
-      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
-      "timestamp": "2026-10-08 15:48:58",
-      "order_id": "dbbc5f30-e4b9-49bf-bcbe-38684ea97144"
-    },
-    {
-      "symbol": "INTC",
-      "entry_price": 109.697191,
-      "exit_price": 111.050674,
-      "realized_pnl": -120.45998699999974,
-      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
-      "timestamp": "2026-10-08 14:49:54",
-      "order_id": "c542bfe5-5eda-4b8e-93e7-d0ff789eb710"
-    },
-    {
-      "symbol": "LLY",
-      "entry_price": 1185.0,
-      "exit_price": 1200.77,
-      "realized_pnl": 126.15999999999985,
-      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
-      "timestamp": "2026-10-07 16:18:13",
-      "order_id": "d28ff76b-1f35-4465-bd38-1066c764eda6"
-    },
-    {
-      "symbol": "WMT",
-      "entry_price": 108.2,
-      "exit_price": 108.3,
-      "realized_pnl": 8.999999999999488,
-      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
-      "timestamp": "2026-10-07 16:18:13",
-      "order_id": "54ecba2b-b6f3-4128-a590-3dfc739a577f"
-    },
-    {
-      "symbol": "COST",
-      "entry_price": 930.542,
-      "exit_price": 936.48,
-      "exit_reason": "EOD Square-Off (100% Cash Flat)",
-      "realized_pnl": 59.37999999999988,
-      "timestamp": "2026-10-06 19:44:55"
-    },
-    {
-      "symbol": "AMZN",
-      "entry_price": 255.083333,
-      "exit_price": 255.11,
-      "realized_pnl": 0.08000100000000998,
-      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
-      "timestamp": "2026-10-06 16:16:40",
-      "order_id": "a9283384-05ae-411c-a18c-5efa16b474d8"
-    },
-    {
-      "symbol": "MSFT",
-      "entry_price": 534.48,
-      "exit_price": 532.56,
-      "realized_pnl": -34.56000000000131,
-      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
-      "timestamp": "2026-10-06 16:16:40",
-      "order_id": "39f8847e-083d-4319-b367-fb419e467a13"
-    },
-    {
-      "symbol": "NVDA",
-      "entry_price": 242.44025,
-      "exit_price": 242.44025,
-      "realized_pnl": 0.0,
-      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
-      "timestamp": "2026-10-06 15:46:01",
-      "order_id": "323c83c4-1536-4953-87b1-89f9397fd1cd"
-    },
-    {
-      "symbol": "XLF",
-      "entry_price": 54.22,
-      "exit_price": 54.22,
-      "realized_pnl": 0.0,
-      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
-      "timestamp": "2026-10-06 15:46:01",
-      "order_id": "97bb92a6-3660-42f4-a870-da1149d74813"
     }
   ],
   "active_position_cache": {},
   "previous_active_symbols": [],
-  "last_run_timestamp": "2026-10-09 19:45:40",
+  "last_run_timestamp": "2026-10-09 19:57:41",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42,
@@ -196,5 +107,6 @@
     "2026-10-07": 98193.28,
     "2026-10-08": 98437.76,
     "2026-10-09": 98671.03
-  }
+  },
+  "last_email_timestamp": 1791575850.0910404
 }
