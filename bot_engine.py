@@ -1194,8 +1194,11 @@ def execute_engine():
     last_email_ts = float(state.get("last_email_timestamp", 0))
     elapsed_minutes = (now_ts - last_email_ts) / 60.0
     
+    # Automatically detect manual GitHub Actions workflow runs for instant feedback
+    is_manual_run = os.getenv("GITHUB_EVENT_NAME", "").lower() == "workflow_dispatch"
+
     is_time_for_periodic_email = (elapsed_minutes >= 25.0)
-    should_send_email = is_time_for_periodic_email or trades_executed or trade_closed_this_run
+    should_send_email = is_manual_run or is_time_for_periodic_email or trades_executed or trade_closed_this_run
 
     if should_send_email:
         state["last_email_timestamp"] = now_ts
