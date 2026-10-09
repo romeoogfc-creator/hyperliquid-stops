@@ -1,6 +1,33 @@
 {
   "closed_trades_ledger": [
     {
+      "symbol": "SMCI",
+      "entry_price": 41.424093,
+      "exit_price": 41.37,
+      "realized_pnl": 12.820041000000408,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-09 17:45:55",
+      "order_id": "8b1a5ad0-0570-45cd-8bf9-1c0707c0e174"
+    },
+    {
+      "symbol": "DE",
+      "entry_price": 639.161333,
+      "exit_price": 633.32,
+      "realized_pnl": 87.61999499999945,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-09 17:45:55",
+      "order_id": "53081675-2e39-47d1-8944-19a1dad7017a"
+    },
+    {
+      "symbol": "NVDA",
+      "entry_price": 230.17,
+      "exit_price": 229.95,
+      "realized_pnl": 9.239999999999952,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-09 17:45:55",
+      "order_id": "28470d66-e4cd-4606-813a-a215aac517d0"
+    },
+    {
       "symbol": "MU",
       "entry_price": 1034.5,
       "exit_price": 1025.95,
@@ -149,80 +176,33 @@
       "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.43%)",
       "realized_pnl": -41.40999999999963,
       "timestamp": "2026-10-06 15:46:01"
-    },
-    {
-      "symbol": "SPY",
-      "entry_price": 772.47,
-      "exit_price": 778.6525,
-      "realized_pnl": 74.19000000000005,
-      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
-      "timestamp": "2026-10-06 14:36:51",
-      "order_id": "45e8be00-858e-4b1e-ac92-1b86176b40ef"
-    },
-    {
-      "symbol": "AVGO",
-      "entry_price": 362.53,
-      "exit_price": 361.25,
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.35%)",
-      "realized_pnl": -34.55999999999926,
-      "timestamp": "2026-10-05 15:48:14"
     }
   ],
   "active_position_cache": {
     "ARM": {
       "entry_px": 268.756111,
-      "current_px": 266.6225,
+      "current_px": 267.62,
       "qty": 36.0,
       "side": "short",
       "peak_roe": 0.007938837156339019,
       "best_target_floor_roe": 0.006397370807848426,
       "best_stop_px": 268.187125
     },
-    "DE": {
-      "entry_px": 639.161333,
-      "current_px": 631.32,
-      "qty": 15.0,
-      "side": "short",
-      "peak_roe": 0.01433336550100726,
-      "best_target_floor_roe": 0.012400751666370044,
-      "best_stop_px": 632.281
-    },
     "MU": {
       "entry_px": 1023.33,
-      "current_px": 1029.14,
+      "current_px": 1030.48,
       "qty": 9.0,
       "side": "short",
       "peak_roe": -0.0020912120234919196,
       "best_target_floor_roe": -0.010445310896778177,
       "best_stop_px": 1034.019
-    },
-    "NVDA": {
-      "entry_px": 230.17,
-      "current_px": 229.5,
-      "qty": 42.0,
-      "side": "short",
-      "peak_roe": 0.002910891949428629,
-      "best_target_floor_roe": 0.001,
-      "best_stop_px": 229.93983
-    },
-    "SMCI": {
-      "entry_px": 41.424093,
-      "current_px": 41.235,
-      "qty": 237.0,
-      "side": "short",
-      "peak_roe": 0.007584788881195201,
-      "best_target_floor_roe": 0.006054523411023428,
-      "best_stop_px": 41.359025
     }
   },
   "previous_active_symbols": [
-    "NVDA",
-    "DE",
-    "SMCI",
     "MU",
     "ARM"
   ],
-  "last_run_timestamp": "2026-10-09 17:14:24",
+  "last_run_timestamp": "2026-10-09 17:46:23",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42,
