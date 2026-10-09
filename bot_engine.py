@@ -389,7 +389,7 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
 
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0, coin="ETH"):
     """
-    V2.6 HARDENED: Ported Stock V3.1 Continuous Dynamic Retention Curve (70% -> 95% Lock)
+    V2.7 HARDENED: Ported Stock V3.1 Continuous Dynamic Retention Curve (70% -> 95% Lock)
     & Strict Altcoin Hard Loss Caps (-1.50% ROE / -$0.22 max).
     """
     if is_long:
@@ -552,7 +552,7 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V2.6 Master Engine Started (BTC Intraday Bounce Gate & Deduplicated Reconciliation Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V2.7 All-Weather Master Engine Started (Relative Weakness & Multi-Bar Volume Gate Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -834,7 +834,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V2.6", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V2.7", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -847,7 +847,6 @@ def execute_engine():
     # DEDUPLICATED NATIVE EXCHANGE FILL RECONCILIATION
     prev_cache = state.get("active_position_cache", {})
     for coin, cache_data in list(prev_cache.items()):
-        # EXPLICIT GHOST DEDUPLICATION FIX: Skip if market-closed in this exact execution run
         if coin in closed_coins_this_run:
             continue
 
@@ -860,7 +859,6 @@ def execute_engine():
                     latest_fill = coin_fills[0]
                     fill_hash = f"{coin}_{latest_fill.get('tid', latest_fill.get('time', 0))}"
                     
-                    # Deduplication guard: verify fill ID has not been previously logged
                     existing_hashes = [t.get("fill_hash") for t in state.get("closed_trades_ledger", []) if "fill_hash" in t]
                     if fill_hash in existing_hashes:
                         continue
@@ -909,213 +907,208 @@ def execute_engine():
     min_notional_usd = 10.50
 
     if is_30m_scan_window and available_slots > 0:
-        if effective_regime == "NEUTRAL":
-            audit_logs.append("🛡️ BTC Regime Shield: Daily Candle NEUTRAL. Hard Lockout Active (0 trades allowed).")
+        # V2.7 UNLOCKED: No hard lockout for NEUTRAL regime. Elevated gates applied dynamically instead.
+        state["last_scan_timestamp"] = now_ts
+
+        btc_candles_5d = api_retry(info.candles_snapshot, name="BTC", interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
+        btc_closes = [float(c["c"]) for c in btc_candles_5d]
+        btc_highs = [float(c["h"]) for c in btc_candles_5d]
+        btc_lows = [float(c["l"]) for c in btc_candles_5d]
+        
+        btc_ci = calculate_choppiness_index(btc_highs, btc_lows, btc_closes)
+        btc_adx = calculate_adx(btc_highs, btc_lows, btc_closes)
+
+        if (btc_ci < 48.0 and btc_adx > 21.0) or (btc_adx >= 28.0):
+            market_mode = "TRENDING"
+        elif btc_ci > 62.0:
+            market_mode = "CHOP_HOLD"
         else:
-            state["last_scan_timestamp"] = now_ts
+            market_mode = "RANGING"
 
-            btc_candles_5d = api_retry(info.candles_snapshot, name="BTC", interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
-            btc_closes = [float(c["c"]) for c in btc_candles_5d]
-            btc_highs = [float(c["h"]) for c in btc_candles_5d]
-            btc_lows = [float(c["l"]) for c in btc_candles_5d]
-            
-            btc_ci = calculate_choppiness_index(btc_highs, btc_lows, btc_closes)
-            btc_adx = calculate_adx(btc_highs, btc_lows, btc_closes)
+        audit_logs.append(f"🌐 MARKET REGIME CLASSIFIER: Mode = [{market_mode}] (BTC Daily: {effective_regime} [{btc_change_pct:+.2f}%], CI: {btc_ci:.1f}, ADX: {btc_adx:.1f}). Scanning candidates...")
 
-            if (btc_ci < 48.0 and btc_adx > 21.0) or (btc_adx >= 28.0):
-                market_mode = "TRENDING"
-            elif btc_ci > 62.0:
-                market_mode = "CHOP_HOLD"
-            else:
-                market_mode = "RANGING"
+        if market_mode != "CHOP_HOLD":
+            for coin in universe:
+                if coin in active_coins or coin in ["USDC", "USDT"]:
+                    continue
 
-            audit_logs.append(f"🌐 MARKET REGIME CLASSIFIER: Mode = [{market_mode}] (BTC CI: {btc_ci:.1f}, ADX: {btc_adx:.1f}). Scanning candidates...")
+                cooldown_expiry = float(state.get("cooldown_blocklist", {}).get(coin, 0))
+                if now_ts < cooldown_expiry:
+                    continue
 
-            if market_mode != "CHOP_HOLD":
-                for coin in universe:
-                    if coin in active_coins or coin in ["USDC", "USDT"]:
+                is_altcoin = coin.upper() not in ["BTC", "ETH", "SOL"]
+
+                try:
+                    curr_live_px = float(all_mids.get(coin, 0))
+                    if curr_live_px <= 0:
+                        continue
+                    
+                    time.sleep(0.12)
+                    candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
+                    if not candles or len(candles) < 50:
                         continue
 
-                    cooldown_expiry = float(state.get("cooldown_blocklist", {}).get(coin, 0))
-                    if now_ts < cooldown_expiry:
+                    current_candle_ts = candles[-1]["t"]
+                    if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
                         continue
 
-                    # V2.6 ENHANCED: BTC EXTENSION & INTRADAY BOUNCE SQUEEZE SHIELD FOR ALTCOINS
-                    is_altcoin = coin.upper() not in ["BTC", "ETH", "SOL"]
-                    if is_altcoin:
-                        if effective_regime == "RED":
-                            if btc_bounce_pct >= 1.00:
-                                audit_logs.append(f"⛔ BTC BOUNCE SQUEEZE SHIELD [{coin}]: BTC bounced +{btc_bounce_pct:.2f}% off low. Altcoin SHORT blocked.")
-                                continue
-                            if btc_change_pct < -2.50:
-                                audit_logs.append(f"⛔ BTC EXTENSION SHIELD [{coin}]: BTC daily drop ({btc_change_pct:+.2f}% < -2.50%) extended. Altcoin SHORT blocked.")
-                                continue
-                        elif effective_regime == "GREEN" and btc_change_pct > 2.50:
-                            audit_logs.append(f"⛔ BTC EXTENSION SHIELD [{coin}]: BTC daily rally ({btc_change_pct:+.2f}% > +2.50%) extended. Altcoin LONG blocked.")
-                            continue
+                    is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=6000.0)
+                    if not is_liquid:
+                        continue
 
-                    try:
-                        curr_live_px = float(all_mids.get(coin, 0))
-                        if curr_live_px <= 0:
-                            continue
-                        
-                        time.sleep(0.12)
-                        candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
-                        if not candles or len(candles) < 50:
-                            continue
+                    closes = [float(c["c"]) for c in candles]
+                    highs = [float(c["h"]) for c in candles]
+                    lows = [float(c["l"]) for c in candles]
+                    volumes = [float(c.get("v", 0)) for c in candles]
 
-                        current_candle_ts = candles[-1]["t"]
-                        if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
-                            continue
+                    # 1. V2.7 RELATIVE STRENGTH / WEAKNESS (RS/RW) GATE vs BTC
+                    coin_24h_change = ((closes[-1] - closes[-25]) / closes[-25]) * 100 if len(closes) >= 25 else 0.0
 
-                        is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=6000.0)
-                        if not is_liquid:
-                            continue
+                    # 2. STRICT 2-CANDLE COLOR LOCK EVALUATION
+                    c_3_open = float(candles[-3]["o"])
+                    c_3_close = float(candles[-3]["c"])
+                    c_2_open = float(candles[-2]["o"])
+                    c_2_close = float(candles[-2]["c"])
+                    c_1_open = float(candles[-1]["o"])
 
-                        closes = [float(c["c"]) for c in candles]
-                        highs = [float(c["h"]) for c in candles]
-                        lows = [float(c["l"]) for c in candles]
-                        volumes = [float(c.get("v", 0)) for c in candles]
+                    c_3_is_green = c_3_close > c_3_open
+                    c_2_is_green = c_2_close > c_2_open
+                    c_1_is_green = curr_live_px > c_1_open
 
-                        # STRICT 2-CANDLE GAIN / COLOR LOCK EVALUATION
-                        c_3_open = float(candles[-3]["o"])
-                        c_3_close = float(candles[-3]["c"])
-                        c_2_open = float(candles[-2]["o"])
-                        c_2_close = float(candles[-2]["c"])
-                        c_1_open = float(candles[-1]["o"])
+                    c_3_is_red = c_3_close < c_3_open
+                    c_2_is_red = c_2_close < c_2_open
+                    c_1_is_red = curr_live_px < c_1_open
 
-                        c_3_is_green = c_3_close > c_3_open
-                        c_2_is_green = c_2_close > c_2_open
-                        c_1_is_green = curr_live_px > c_1_open
+                    upper_t2, lower_t2, _ = calculate_gaussian_channel(closes[:-2])
+                    upper_t1, lower_t1, _ = calculate_gaussian_channel(closes[:-1])
 
-                        c_3_is_red = c_3_close < c_3_open
-                        c_2_is_red = c_2_close < c_2_open
-                        c_1_is_red = curr_live_px < c_1_open
+                    # SOLID CANDLE BODY GATE (>= 60% Solid Range)
+                    c_high_live = float(candles[-1]["h"])
+                    c_low_live = float(candles[-1]["l"])
+                    c_range = max(c_high_live - c_low_live, 1e-8)
+                    live_body_ratio = abs(curr_live_px - c_1_open) / c_range
+                    if live_body_ratio < 0.60:
+                        continue
 
-                        upper_t2, lower_t2, _ = calculate_gaussian_channel(closes[:-2])
-                        upper_t1, lower_t1, _ = calculate_gaussian_channel(closes[:-1])
+                    # EXTENSION CAP (Skip over-extended spikes)
+                    if curr_live_px > (upper_t1 * 1.015) or curr_live_px < (lower_t1 * 0.985):
+                        continue
 
-                        # PORTED FROM STOCK V3.1: SOLID CANDLE BODY GATE (>= 60% Solid Range)
-                        c_high_live = float(candles[-1]["h"])
-                        c_low_live = float(candles[-1]["l"])
-                        c_range = max(c_high_live - c_low_live, 1e-8)
-                        live_body_ratio = abs(curr_live_px - c_1_open) / c_range
-                        if live_body_ratio < 0.60:
-                            continue
+                    strict_2bar_green_breakout = (
+                        c_3_is_green and (c_3_close > upper_t2) and
+                        c_2_is_green and (c_2_close > upper_t1) and
+                        c_1_is_green
+                    )
 
-                        # PORTED FROM STOCK V3.1: EXTENSION CAP (Skip over-extended spikes)
-                        if curr_live_px > (upper_t1 * 1.015) or curr_live_px < (lower_t1 * 0.985):
-                            continue
+                    strict_2bar_red_breakdown = (
+                        c_3_is_red and (c_3_close < lower_t2) and
+                        c_2_is_red and (c_2_close < lower_t1) and
+                        c_1_is_red
+                    )
 
-                        strict_2bar_green_breakout = (
-                            c_3_is_green and (c_3_close > upper_t2) and
-                            c_2_is_green and (c_2_close > upper_t1) and
-                            c_1_is_green
-                        )
+                    rsi_1h = calculate_rsi(closes)
+                    bb_upper, bb_lower, bb_mid = calculate_bollinger_bands(closes)
+                    vwap_val = calculate_vwap(candles[-24:])
+                    
+                    avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
+                    comp_vol = volumes[-2]
+                    prev_vol = volumes[-3] if len(volumes) >= 3 else avg_vol
+                    vol_ratio = comp_vol / avg_vol if avg_vol > 0 else 1.0
 
-                        strict_2bar_red_breakdown = (
-                            c_3_is_red and (c_3_close < lower_t2) and
-                            c_2_is_red and (c_2_close < lower_t1) and
-                            c_1_is_red
-                        )
+                    # 3. V2.7 MULTI-BAR VOLUME PERSISTENCE VERIFICATION
+                    is_vol_verified = False
+                    
+                    # Elevate volume bar during NEUTRAL regimes to 1.60x
+                    effective_vol_threshold = max(required_vol_ratio, 1.60 if effective_regime == "NEUTRAL" else 1.12)
 
-                        rsi_1h = calculate_rsi(closes)
-                        bb_upper, bb_lower, bb_mid = calculate_bollinger_bands(closes)
-                        vwap_val = calculate_vwap(candles[-24:])
-                        
-                        avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
-                        comp_vol = volumes[-2]
-                        vol_ratio = comp_vol / avg_vol if avg_vol > 0 else 1.0
+                    if vol_ratio >= 1.50 and (prev_vol / avg_vol) >= 0.90:
+                        is_vol_verified = True
+                    elif vol_ratio >= effective_vol_threshold:
+                        comp_high_px = float(candles[-2]["h"])
+                        comp_low_px = float(candles[-2]["l"])
+                        comp_close_px = float(candles[-2]["c"])
+                        comp_range_sz = max(comp_high_px - comp_low_px, 1e-8)
 
-                        # SMART VOLUME QUALITY VERIFICATION ENGINE
-                        is_vol_verified = False
-                        if vol_ratio >= 1.40:
-                            is_vol_verified = True
-                        elif vol_ratio >= required_vol_ratio:
-                            comp_high_px = float(candles[-2]["h"])
-                            comp_low_px = float(candles[-2]["l"])
-                            comp_close_px = float(candles[-2]["c"])
-                            comp_range_sz = max(comp_high_px - comp_low_px, 1e-8)
+                        prev_bar_vol = float(candles[-3].get("v", 0)) if len(candles) >= 3 else 0
+                        prev_vol_ratio = prev_bar_vol / avg_vol if avg_vol > 0 else 1.0
+                        has_vol_persistence = prev_vol_ratio >= 0.85
 
-                            prev_bar_vol = float(candles[-3].get("v", 0)) if len(candles) >= 3 else 0
-                            prev_vol_ratio = prev_bar_vol / avg_vol if avg_vol > 0 else 1.0
-                            has_vol_persistence = prev_vol_ratio >= 0.85
-
-                            if effective_regime == "GREEN" and strict_2bar_green_breakout:
-                                dist_to_extreme = (comp_high_px - comp_close_px) / comp_range_sz
-                                clean_close = dist_to_extreme <= 0.25
-                                if clean_close and has_vol_persistence:
-                                    is_vol_verified = True
-                                else:
-                                    reject_reason = "Rejection Wick" if not clean_close else "Isolated 1-Tick Volume Spike"
-                                    audit_logs.append(f"FILTERED SWEEP FAKEOUT [{coin}]: Vol {vol_ratio:.2f}x rejected ({reject_reason})")
-                            elif effective_regime == "RED" and strict_2bar_red_breakdown:
-                                dist_to_extreme = (comp_close_px - comp_low_px) / comp_range_sz
-                                clean_close = dist_to_extreme <= 0.25
-                                if clean_close and has_vol_persistence:
-                                    is_vol_verified = True
-                                else:
-                                    reject_reason = "Rejection Wick" if not clean_close else "Isolated 1-Tick Volume Spike"
-                                    audit_logs.append(f"FILTERED SWEEP FAKEOUT [{coin}]: Vol {vol_ratio:.2f}x rejected ({reject_reason})")
-                            else:
+                        if strict_2bar_green_breakout:
+                            dist_to_extreme = (comp_high_px - comp_close_px) / comp_range_sz
+                            clean_close = dist_to_extreme <= 0.25
+                            if clean_close and has_vol_persistence:
                                 is_vol_verified = True
+                        elif strict_2bar_red_breakdown:
+                            dist_to_extreme = (comp_close_px - comp_low_px) / comp_range_sz
+                            clean_close = dist_to_extreme <= 0.25
+                            if clean_close and has_vol_persistence:
+                                is_vol_verified = True
+                        else:
+                            is_vol_verified = True
 
-                        if not is_vol_verified:
-                            continue
-
-                        # STRATEGY A: STRICT TRENDING BREAKOUT / BREAKDOWN ENGINE
-                        if market_mode == "TRENDING" or (market_mode == "RANGING" and vol_ratio >= required_vol_ratio):
-                            ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
-                            
-                            if ci_1h <= 45.0 and vol_ratio >= required_vol_ratio:
-                                # LONG ENTRY
-                                if effective_regime == "GREEN" and strict_2bar_green_breakout:
-                                    if c_2_close <= (upper_t1 * 1.030):
-                                        extension_pct = ((c_2_close - upper_t1) / upper_t1) * 100
-                                        market_candidates.append({
-                                            "coin": coin, "close": curr_live_px, "is_long": True, 
-                                            "score": (curr_live_px - upper_t1) / upper_t1, "candle_ts": current_candle_ts,
-                                            "strategy": "BREAKOUT"
-                                        })
-                                        audit_logs.append(f"✅ STRICT 2-BAR GREEN CONFIRMED (LONG): {coin} @ ${curr_live_px:.4f} (Ext: +{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
-
-                                # SHORT ENTRY
-                                if effective_regime == "RED" and strict_2bar_red_breakdown:
-                                    if c_2_close >= (lower_t1 * 0.970):
-                                        extension_pct = ((lower_t1 - c_2_close) / lower_t1) * 100
-                                        market_candidates.append({
-                                            "coin": coin, "close": curr_live_px, "is_long": False, 
-                                            "score": (lower_t1 - curr_live_px) / lower_t1, "candle_ts": current_candle_ts,
-                                            "strategy": "BREAKOUT"
-                                        })
-                                        audit_logs.append(f"✅ STRICT 2-BAR RED CONFIRMED (SHORT): {coin} @ ${curr_live_px:.4f} (Ext: -{extension_pct:.2f}%, VolRatio: {vol_ratio:.2f}x)")
-
-                        # STRATEGY B: RANGING MEAN-REVERSION
-                        if market_mode == "RANGING" and vol_ratio >= required_vol_ratio and btc_adx < 25.0:
-                            if effective_regime == "GREEN":
-                                if curr_live_px <= bb_lower * 1.005 and curr_live_px < vwap_val and rsi_1h <= 35.0 and c_1_is_green:
-                                    market_candidates.append({
-                                        "coin": coin, "close": curr_live_px, "is_long": True,
-                                        "score": (vwap_val - curr_live_px) / vwap_val, "candle_ts": current_candle_ts,
-                                        "strategy": "MEAN_REVERSION"
-                                    })
-                                    audit_logs.append(f"1H VWAP TRUE DIP BOUNCE (LONG): {coin} @ ${curr_live_px:.4f} (RSI: {rsi_1h:.1f}, VolRatio: {vol_ratio:.2f}x)")
-
-                            if effective_regime == "RED":
-                                if curr_live_px >= bb_upper * 0.995 and curr_live_px > vwap_val and rsi_1h >= 65.0 and c_1_is_red:
-                                    market_candidates.append({
-                                        "coin": coin, "close": curr_live_px, "is_long": False,
-                                        "score": (curr_live_px - vwap_val) / vwap_val, "candle_ts": current_candle_ts,
-                                        "strategy": "MEAN_REVERSION"
-                                    })
-                                    audit_logs.append(f"1H VWAP TRUE SHORT FADE (SHORT): {coin} @ ${curr_live_px:.4f} (RSI: {rsi_1h:.1f}, VolRatio: {vol_ratio:.2f}x)")
-
-                    except Exception:
+                    if not is_vol_verified:
                         continue
 
-                audit_logs.append(f"🌐 Scan complete: {len(market_candidates)} candidate(s) qualified out of {len(universe)} coins scanned.")
-            else:
-                audit_logs.append(f"⏳ Market is in EXTREME CHOP (CI > 62.0). Skipping scans to preserve cash.")
+                    ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
+                    max_allowable_ci = 38.0 if (is_altcoin and effective_regime == "NEUTRAL") else (40.0 if is_altcoin else 45.0)
+
+                    # STRATEGY A: ALL-WEATHER TRENDING BREAKOUT / BREAKDOWN ENGINE
+                    if market_mode == "TRENDING" or (market_mode == "RANGING" and vol_ratio >= effective_vol_threshold):
+                        if ci_1h <= max_allowable_ci:
+                            # LONG ENTRY EVALUATION
+                            if strict_2bar_green_breakout and (effective_regime in ["GREEN", "NEUTRAL"]):
+                                if is_altcoin and (coin_24h_change < btc_change_pct + 0.50):
+                                    audit_logs.append(f"FILTERED RS WEAKNESS [{coin}]: 24h change ({coin_24h_change:+.2f}%) <= BTC ({btc_change_pct:+.2f}%). LONG rejected.")
+                                elif c_2_close <= (upper_t1 * 1.030):
+                                    extension_pct = ((c_2_close - upper_t1) / upper_t1) * 100
+                                    market_candidates.append({
+                                        "coin": coin, "close": curr_live_px, "is_long": True, 
+                                        "score": (curr_live_px - upper_t1) / upper_t1, "candle_ts": current_candle_ts,
+                                        "strategy": "BREAKOUT"
+                                    })
+                                    audit_logs.append(f"✅ TRUE RUNNER CONFIRMED (LONG): {coin} @ ${curr_live_px:.4f} (RS: {coin_24h_change:+.2f}% vs BTC {btc_change_pct:+.2f}%, VolRatio: {vol_ratio:.2f}x)")
+
+                            # SHORT ENTRY EVALUATION
+                            if strict_2bar_red_breakdown and (effective_regime in ["RED", "NEUTRAL"]):
+                                if is_altcoin and btc_bounce_pct >= 1.00:
+                                    audit_logs.append(f"⛔ BTC BOUNCE SQUEEZE SHIELD [{coin}]: BTC bounced +{btc_bounce_pct:.2f}% off low. SHORT blocked.")
+                                elif is_altcoin and (coin_24h_change > btc_change_pct - 0.50):
+                                    audit_logs.append(f"FILTERED RW STRENGTH [{coin}]: 24h change ({coin_24h_change:+.2f}%) >= BTC ({btc_change_pct:+.2f}%). SHORT rejected.")
+                                elif c_2_close >= (lower_t1 * 0.970):
+                                    extension_pct = ((lower_t1 - c_2_close) / lower_t1) * 100
+                                    market_candidates.append({
+                                        "coin": coin, "close": curr_live_px, "is_long": False, 
+                                        "score": (lower_t1 - curr_live_px) / lower_t1, "candle_ts": current_candle_ts,
+                                        "strategy": "BREAKOUT"
+                                    })
+                                    audit_logs.append(f"✅ TRUE RUNNER CONFIRMED (SHORT): {coin} @ ${curr_live_px:.4f} (RW: {coin_24h_change:+.2f}% vs BTC {btc_change_pct:+.2f}%, VolRatio: {vol_ratio:.2f}x)")
+
+                    # STRATEGY B: RANGING MEAN-REVERSION
+                    if market_mode == "RANGING" and vol_ratio >= effective_vol_threshold and btc_adx < 25.0:
+                        if effective_regime in ["GREEN", "NEUTRAL"]:
+                            if curr_live_px <= bb_lower * 1.005 and curr_live_px < vwap_val and rsi_1h <= 35.0 and c_1_is_green:
+                                market_candidates.append({
+                                    "coin": coin, "close": curr_live_px, "is_long": True,
+                                    "score": (vwap_val - curr_live_px) / vwap_val, "candle_ts": current_candle_ts,
+                                    "strategy": "MEAN_REVERSION"
+                                })
+                                audit_logs.append(f"1H VWAP TRUE DIP BOUNCE (LONG): {coin} @ ${curr_live_px:.4f} (RSI: {rsi_1h:.1f}, VolRatio: {vol_ratio:.2f}x)")
+
+                        if effective_regime in ["RED", "NEUTRAL"]:
+                            if curr_live_px >= bb_upper * 0.995 and curr_live_px > vwap_val and rsi_1h >= 65.0 and c_1_is_red:
+                                market_candidates.append({
+                                    "coin": coin, "close": curr_live_px, "is_long": False,
+                                    "score": (curr_live_px - vwap_val) / vwap_val, "candle_ts": current_candle_ts,
+                                    "strategy": "MEAN_REVERSION"
+                                })
+                                audit_logs.append(f"1H VWAP TRUE SHORT FADE (SHORT): {coin} @ ${curr_live_px:.4f} (RSI: {rsi_1h:.1f}, VolRatio: {vol_ratio:.2f}x)")
+
+                except Exception:
+                    continue
+
+            audit_logs.append(f"🌐 Scan complete: {len(market_candidates)} candidate(s) qualified out of {len(universe)} coins scanned.")
+        else:
+            audit_logs.append(f"⏳ Market is in EXTREME CHOP (CI > 62.0). Skipping scans to preserve cash.")
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
 
@@ -1185,7 +1178,7 @@ def execute_engine():
 
                     tier_label = "Tier-1 Major (25% NAV)" if is_major_coin else "Tier-2 Altcoin (15% NAV)"
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V2.6", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V2.7", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -1238,7 +1231,7 @@ def execute_engine():
         
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V2.6 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V2.7 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         summary_card_html = f"""
         <div class="summary-card">
@@ -1363,8 +1356,8 @@ def execute_engine():
           <body>
             <div class="container">
               <div class="header">
-                <h2>TR-GC-Crypto-LS-23-V2.6 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (BTC Intraday Bounce Gate &amp; Stock V3.1 Rules Active)</p>
+                <h2>TR-GC-Crypto-LS-23-V2.7 | Telemetry Dashboard</h2>
+                <p>Timestamp: {timestamp} (All-Weather Relative Weakness &amp; Multi-Bar Volume Gate Active)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -1380,7 +1373,10 @@ def execute_engine():
                 {summary_card_html}
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (V2.6 Patch Active)</div>
+                  <div class="rules-title">&#9989; Active Guardrails (V2.7 All-Weather Active)</div>
+                  &bull; <b>Relative Strength / Weakness Gate (RS/RW):</b> Verifies altcoin momentum relative to BTC before entering<br>
+                  &bull; <b>Multi-Bar Volume Persistence:</b> Requires 2 consecutive high-volume candles to eliminate 1-tick fakeouts<br>
+                  &bull; <b>All-Weather Dynamic Scanning:</b> Scans NEUTRAL regimes with elevated volume (1.60x) and CI (&le;38.0) gates<br>
                   &bull; <b>BTC Bounce Squeeze Entry Gate:</b> Hard-blocks NEW altcoin SHORTs if BTC has bounced &ge; +1.00% off intraday low<br>
                   &bull; <b>Deduplicated Reconciliation Engine:</b> Excludes market-closed trades in real time to prevent ghost double-logging<br>
                   &bull; <b>Stock V3.1 Dynamic Retention Curve (70% &rarr; 95% Lock):</b> Smoothly ratchets profit floor as ROE grows<br>
@@ -1389,9 +1385,7 @@ def execute_engine():
                   &bull; <b>Strict Altcoin Loss Cap (-1.50% ROE):</b> Hard-caps altcoin losses at max -$0.22 so 1 major win covers 4 altcoin losses<br>
                   &bull; <b>BTC Relief Bounce Shield:</b> Cuts altcoin SHORTs immediately if BTC rebounds &gt; +0.40% off intraday low<br>
                   &bull; <b>Tiered Volatility Capital Allocation:</b> 25% NAV on Tier-1 Majors (ETH/BTC/SOL) | 15% NAV on Tier-2 Altcoins<br>
-                  &bull; <b>BTC Extension Anti-Chasing Shield:</b> Hard-blocks NEW altcoin entries if BTC daily candle is over-extended (&gt; &plusmn;2.50%)<br>
-                  &bull; <b>Strict 2-Candle Color Lock:</b> Requires T-2 &amp; T-1 closed in target direction past historical bands + Live candle actively gaining<br>
-                  &bull; <b>Strict Altcoin Choppiness Gate:</b> Rejects entries if Altcoin CI &gt; 45.0 (guarantees smooth trend momentum)<br>
+                  &bull; <b>Strict Altcoin Choppiness Gate:</b> Rejects entries if Altcoin CI &gt; 40.0 (guarantees smooth trend momentum)<br>
                   &bull; <b>Live Anatomy Falling-Knife Detector:</b> Distinguishes absorption wicks from solid red dumps (&gt;60% body, &gt;1.4x vol)<br>
                   &bull; <b>24/7 Native Orderbook Sync:</b> Posts resting trigger orders on Hyperliquid L1 orderbook to protect while sleeping<br>
                   &bull; <b>BTC Directional Shield:</b> Enforces broad market alignment &amp; active flip purge (GREEN = LONGs, RED = SHORTs)<br>
