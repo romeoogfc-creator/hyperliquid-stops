@@ -1,6 +1,15 @@
 {
   "closed_trades_ledger": [
     {
+      "symbol": "SMCI",
+      "entry_price": 41.4,
+      "exit_price": 41.37,
+      "realized_pnl": 7.110000000000269,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-09 14:49:41",
+      "order_id": "a79b576a-6f52-461f-b29d-da6a2a28e688"
+    },
+    {
       "symbol": "BAC",
       "entry_price": 52.58,
       "exit_price": 52.41,
@@ -144,38 +153,28 @@
   "active_position_cache": {
     "ARM": {
       "entry_px": 268.91,
-      "current_px": 268.8,
+      "current_px": 267.9695,
       "qty": 36.0,
       "side": "short",
-      "peak_roe": 0.00040905879290474,
-      "best_target_floor_roe": -0.012,
-      "best_stop_px": 272.13692000000003
+      "peak_roe": 0.003497452679335252,
+      "best_target_floor_roe": 0.0024854986728100386,
+      "best_stop_px": 268.64109
     },
     "MU": {
       "entry_px": 1034.5,
-      "current_px": 1033.44,
+      "current_px": 1022.44,
       "qty": 9.0,
       "side": "short",
-      "peak_roe": 0.001024649589173461,
-      "best_target_floor_roe": -0.010332527791203493,
-      "best_stop_px": 1045.1889999999999
-    },
-    "SMCI": {
-      "entry_px": 41.4,
-      "current_px": 41.29,
-      "qty": 237.0,
-      "side": "short",
-      "peak_roe": 0.0026570048309178607,
-      "best_target_floor_roe": 0.001,
-      "best_stop_px": 41.358599999999996
+      "peak_roe": 0.011657805703238227,
+      "best_target_floor_roe": 0.009976777166489743,
+      "best_stop_px": 1025.5576250000001
     }
   },
   "previous_active_symbols": [
-    "MU",
-    "SMCI",
-    "ARM"
+    "ARM",
+    "MU"
   ],
-  "last_run_timestamp": "2026-10-09 14:18:06",
+  "last_run_timestamp": "2026-10-09 14:49:50",
   "daily_starting_equity": {
     "2026-10-05": 97996.26,
     "2026-10-06": 98036.42,
@@ -188,6 +187,6 @@
     "2026-10-06": 98061.5,
     "2026-10-07": 98193.28,
     "2026-10-08": 98437.76,
-    "2026-10-09": 98401.96
+    "2026-10-09": 98512.8
   }
 }
