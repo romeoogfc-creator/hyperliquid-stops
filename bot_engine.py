@@ -266,6 +266,7 @@ def calculate_gaussian_channel(closes, poles=4, period=144, mult=1.414):
     return upper.iloc[-1], lower.iloc[-1], filtered.iloc[-1]
 
 def calculate_choppiness_index(highs, lows, closes, period=14):
+    """V2.8 HARDENED: Clamped Choppiness Index (0.0 to 100.0) preventing negative ratio errors."""
     try:
         if len(closes) < period + 1:
             return 50.0
@@ -275,8 +276,10 @@ def calculate_choppiness_index(highs, lows, closes, period=14):
         range_diff = max_high - min_low
         if range_diff <= 0 or tr_sum <= 0:
             return 50.0
-        ci = 100 * (log10(tr_sum / range_diff) / log10(period))
-        return ci
+        
+        ratio = max(tr_sum / range_diff, 1.0)
+        ci = 100 * (log10(ratio) / log10(period))
+        return float(np.clip(ci, 0.0, 100.0))
     except Exception:
         return 50.0
 
@@ -389,7 +392,7 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
 
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0, coin="ETH"):
     """
-    V2.7 HARDENED: Ported Stock V3.1 Continuous Dynamic Retention Curve (70% -> 95% Lock)
+    V2.8 HARDENED: Ported Stock V3.1 Continuous Dynamic Retention Curve (70% -> 95% Lock)
     & Strict Altcoin Hard Loss Caps (-1.50% ROE / -$0.22 max).
     """
     if is_long:
@@ -552,7 +555,7 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V2.7 All-Weather Master Engine Started (Relative Weakness & Multi-Bar Volume Gate Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V2.8 Master Engine Started (Race Condition & Clamped CI Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -699,6 +702,9 @@ def execute_engine():
             if not coin or szi == 0:
                 continue
 
+            if coin in closed_coins_this_run:
+                continue
+
             is_long = szi > 0
             is_altcoin = coin.upper() not in ["BTC", "ETH", "SOL"]
             entry_px = float(pos.get("entryPx", 0))
@@ -799,9 +805,20 @@ def execute_engine():
                 try:
                     audit_logs.append(f"🎯 EXIT TRIGGERED: Closing {coin} {'LONG' if is_long else 'SHORT'} @ ${current_px:.5f} ({exit_reason}).")
                     
+                    # V2.8 RACE CONDITION FIX: Cancel triggers first, then verify live position size
                     cancel_native_trigger_orders(exchange, info, coin, ACCOUNT_ADDRESS)
+                    time.sleep(0.15)
+
+                    live_user_state = api_retry(info.user_state, ACCOUNT_ADDRESS)
+                    live_positions = {p.get("position", {}).get("coin"): float(p.get("position", {}).get("szi", 0)) for p in live_user_state.get("assetPositions", [])}
+
+                    if live_positions.get(coin, 0.0) == 0.0:
+                        audit_logs.append(f"ℹ️ Position on {coin} already flattened on-chain prior to bot market exit. Skipping duplicate cut.")
+                        closed_coins_this_run.add(coin)
+                        continue
+
                     exchange.market_close(coin, slippage=0.01)
-                    closed_coins_this_run.add(coin)  # Mark coin as closed in this run
+                    closed_coins_this_run.add(coin)
 
                     if "stagnation_tracker" in state:
                         state["stagnation_tracker"].pop(coin, None)
@@ -834,7 +851,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V2.7", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V2.8", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -907,7 +924,6 @@ def execute_engine():
     min_notional_usd = 10.50
 
     if is_30m_scan_window and available_slots > 0:
-        # V2.7 UNLOCKED: No hard lockout for NEUTRAL regime. Elevated gates applied dynamically instead.
         state["last_scan_timestamp"] = now_ts
 
         btc_candles_5d = api_retry(info.candles_snapshot, name="BTC", interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
@@ -961,7 +977,7 @@ def execute_engine():
                     lows = [float(c["l"]) for c in candles]
                     volumes = [float(c.get("v", 0)) for c in candles]
 
-                    # 1. V2.7 RELATIVE STRENGTH / WEAKNESS (RS/RW) GATE vs BTC
+                    # 1. RELATIVE STRENGTH / WEAKNESS (RS/RW) GATE vs BTC
                     coin_24h_change = ((closes[-1] - closes[-25]) / closes[-25]) * 100 if len(closes) >= 25 else 0.0
 
                     # 2. STRICT 2-CANDLE COLOR LOCK EVALUATION
@@ -1015,7 +1031,7 @@ def execute_engine():
                     prev_vol = volumes[-3] if len(volumes) >= 3 else avg_vol
                     vol_ratio = comp_vol / avg_vol if avg_vol > 0 else 1.0
 
-                    # 3. V2.7 MULTI-BAR VOLUME PERSISTENCE VERIFICATION
+                    # 3. MULTI-BAR VOLUME PERSISTENCE VERIFICATION
                     is_vol_verified = False
                     
                     # Elevate volume bar during NEUTRAL regimes to 1.60x
@@ -1178,7 +1194,7 @@ def execute_engine():
 
                     tier_label = "Tier-1 Major (25% NAV)" if is_major_coin else "Tier-2 Altcoin (15% NAV)"
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V2.7", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V2.8", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -1231,7 +1247,7 @@ def execute_engine():
         
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V2.7 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V2.8 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         summary_card_html = f"""
         <div class="summary-card">
@@ -1356,8 +1372,8 @@ def execute_engine():
           <body>
             <div class="container">
               <div class="header">
-                <h2>TR-GC-Crypto-LS-23-V2.7 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (All-Weather Relative Weakness &amp; Multi-Bar Volume Gate Active)</p>
+                <h2>TR-GC-Crypto-LS-23-V2.8 | Telemetry Dashboard</h2>
+                <p>Timestamp: {timestamp} (Race Condition Shield &amp; Mathematical CI Clamp Active)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -1373,7 +1389,10 @@ def execute_engine():
                 {summary_card_html}
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (V2.7 All-Weather Active)</div>
+                  <div class="rules-title">&#9989; Active Guardrails (V2.8 Hardened Active)</div>
+                  &bull; <b>On-Chain Race Condition Shield:</b> Cancels trigger orders &amp; verifies live position before sending market close<br>
+                  &bull; <b>Mathematical CI Clamp (0.0 &rarr; 100.0):</b> Prevents negative Choppiness Index math errors during tight consolidations<br>
+                  &bull; <b>24/7 Uncapped Active Scanning:</b> Preserves continuous night-owl breakout access while filtering fakeouts<br>
                   &bull; <b>Relative Strength / Weakness Gate (RS/RW):</b> Verifies altcoin momentum relative to BTC before entering<br>
                   &bull; <b>Multi-Bar Volume Persistence:</b> Requires 2 consecutive high-volume candles to eliminate 1-tick fakeouts<br>
                   &bull; <b>All-Weather Dynamic Scanning:</b> Scans NEUTRAL regimes with elevated volume (1.60x) and CI (&le;38.0) gates<br>
