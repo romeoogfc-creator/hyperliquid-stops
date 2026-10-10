@@ -874,7 +874,7 @@ def execute_engine():
         if coin not in active_coins:
             try:
                 user_fills = api_retry(info.user_fills, ACCOUNT_ADDRESS)
-                coin_fills = [f for f in user_fills if f.get("coin"] == coin]
+                coin_fills = [f for f in user_fills if f.get("coin") == coin]
                 
                 if coin_fills:
                     latest_fill = coin_fills[0]
