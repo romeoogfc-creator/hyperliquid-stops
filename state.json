@@ -1,6 +1,7 @@
 {
   "cooldown_blocklist": {
-    "VVV": 1791755889.7304785
+    "VVV": 1791755889.7304785,
+    "APEX": 1791756028.5847876
   },
   "last_traded_candle": {
     "FET": 1791664200000,
@@ -14,6 +15,18 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "APEX",
+      "entry_price": 0.24623,
+      "exit_price": 0.24557,
+      "pnl_usd": -0.06732,
+      "roe_pct": -0.26804207448320433,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-10 22:00:28",
+      "ts_sec": 1791669628.5847876,
+      "fill_hash": "APEX_406589258706011"
+    },
     {
       "coin": "VVV",
       "entry_price": 23.222,
@@ -86,22 +99,10 @@
       "fill_hash": "JTO_91715091410818"
     }
   ],
-  "active_position_cache": {
-    "APEX": {
-      "entry_px": 0.24623,
-      "current_px": 0.246365,
-      "szi": 102.0,
-      "margin": 8.37624,
-      "side": "LONG",
-      "peak_roe": 0.0005482678796247258,
-      "strategy": "5M_HOD_BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "APEX"
-  ],
-  "last_run_timestamp": "2026-10-10 21:58:28",
-  "last_email_timestamp": 1791669489.7304785,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-10 22:00:31",
+  "last_email_timestamp": 1791669628.5847876,
   "last_scan_timestamp": 1791669489.7304785,
   "gemini_cache": {
     "timestamp": 1791669489.7304785,
