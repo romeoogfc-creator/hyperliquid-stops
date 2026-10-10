@@ -4,7 +4,8 @@
     "APEX": 1791756028.5847876,
     "CFX": 1791757829.543547,
     "NEO": 1791758721.5781262,
-    "NIL": 1791758927.2506123
+    "NIL": 1791758927.2506123,
+    "AZTEC": 1791759628.1382713
   },
   "last_traded_candle": {
     "FET": 1791664200000,
@@ -24,6 +25,18 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "AZTEC",
+      "entry_price": 0.017349,
+      "exit_price": 0.017321,
+      "pnl_usd": -0.040124,
+      "roe_pct": -0.1613925874690198,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-10 23:00:28",
+      "ts_sec": 1791673228.1382713,
+      "fill_hash": "AZTEC_737168391384325"
+    },
     {
       "coin": "SYRUP",
       "entry_price": 0.23682,
@@ -155,26 +168,21 @@
     }
   ],
   "active_position_cache": {
-    "AZTEC": {
-      "entry_px": 0.017349,
-      "current_px": 0.017341,
-      "szi": 1433.0,
-      "margin": 8.280351,
-      "side": "LONG",
-      "peak_roe": -0.00046112167848297086,
-      "strategy": "5M_HOD_BREAKOUT"
-    },
     "PENDLE": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 2.1914,
-      "side": "LONG"
+      "entry_px": 2.1874,
+      "current_px": 2.18915,
+      "szi": 12.0,
+      "margin": 5.25408,
+      "side": "LONG",
+      "peak_roe": 0.0008000365731006503,
+      "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "AZTEC"
+    "PENDLE"
   ],
-  "last_run_timestamp": "2026-10-10 22:59:16",
-  "last_email_timestamp": 1791673115.8140543,
+  "last_run_timestamp": "2026-10-10 23:00:31",
+  "last_email_timestamp": 1791673228.1382713,
   "last_scan_timestamp": 1791673115.8140543,
   "gemini_cache": {
     "timestamp": 1791673115.8140543,
