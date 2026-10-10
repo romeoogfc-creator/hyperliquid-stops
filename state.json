@@ -16,7 +16,8 @@
     "BIGTIME": 1791575141.9079013,
     "MOVE": 1791744811.0017996,
     "MOODENG": 1791747940.9513905,
-    "ZK": 1791748462.7335606
+    "ZK": 1791748462.7335606,
+    "BRETT": 1791748827.423387
   },
   "stagnation_tracker": {
     "APT": 28,
@@ -55,6 +56,18 @@
     "NEAR": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "BRETT",
+      "entry_price": 0.00557,
+      "exit_price": 0.005556,
+      "pnl_usd": -0.062202,
+      "roe_pct": -0.25134649910233614,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-10 20:00:27",
+      "ts_sec": 1791662427.423387,
+      "fill_hash": "BRETT_711431658752744"
+    },
     {
       "coin": "ZK",
       "entry_price": 0.015554,
@@ -269,39 +282,23 @@
       "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
       "timestamp": "2026-10-08 05:30:26",
       "ts_sec": 1791437426.6003006
-    },
-    {
-      "coin": "CRV",
-      "entry_price": 0.39197,
-      "exit_price": 0.3885,
-      "pnl_usd": -0.315492,
-      "roe_pct": -0.8852718320279545,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-08 00:45:26",
-      "ts_sec": 1791420326.931725
     }
   ],
   "active_position_cache": {
-    "BRETT": {
-      "entry_px": 0.00557,
-      "current_px": 0.005558,
-      "szi": 4443.0,
-      "margin": 8.229917,
-      "side": "LONG",
-      "peak_roe": -0.0021543985637344208,
-      "strategy": "5M_HOD_BREAKOUT"
-    },
     "PURR": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.11946,
-      "side": "LONG"
+      "entry_px": 0.11953,
+      "current_px": 0.11933,
+      "szi": 207.0,
+      "margin": 8.23377,
+      "side": "LONG",
+      "peak_roe": -0.0016732201121056793,
+      "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "BRETT"
+    "PURR"
   ],
-  "last_run_timestamp": "2026-10-10 19:54:51",
+  "last_run_timestamp": "2026-10-10 20:00:50",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -311,12 +308,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791662062.7335606,
-  "last_scan_timestamp": 1791662062.7335606,
+  "last_email_timestamp": 1791662427.423387,
+  "last_scan_timestamp": 1791662427.423387,
   "gemini_cache": {
-    "timestamp": 1791662062.7335606,
+    "timestamp": 1791662427.423387,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic indicators, shifting regulatory landscapes, and high levels of leverage that leave assets vulnerable to sharp, sudden corrections."
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of looser monetary policy, the asset class remains highly sensitive to macroeconomic volatility and sudden shifts in liquidity, necessitating a cautious outlook."
   },
   "recent_losses": [],
   "last_traded_candle": {
