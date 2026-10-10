@@ -18,11 +18,23 @@
     "NEO": 1791671700000,
     "NIL": 1791671700000,
     "AZTEC": 1791671700000,
-    "SYRUP": 1791672300000
+    "SYRUP": 1791672300000,
+    "PENDLE": 1791672900000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "SYRUP",
+      "entry_price": 0.23682,
+      "exit_price": 0.23716,
+      "pnl_usd": 0.02415,
+      "roe_pct": 0.14356895532472214,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.14%)",
+      "timestamp": "2026-10-10 22:58:35",
+      "ts_sec": 1791673115.8140543
+    },
     {
       "coin": "NIL",
       "entry_price": 0.091174,
@@ -143,36 +155,31 @@
     }
   ],
   "active_position_cache": {
-    "SYRUP": {
-      "entry_px": 0.23682,
-      "current_px": 0.23676,
-      "szi": 105.0,
-      "margin": 8.28835,
-      "side": "LONG",
-      "peak_roe": -0.00025335697998481757,
-      "strategy": "5M_HOD_BREAKOUT"
-    },
     "AZTEC": {
       "entry_px": 0.017349,
-      "current_px": 0.017329,
+      "current_px": 0.017341,
       "szi": 1433.0,
-      "margin": 8.275097,
+      "margin": 8.280351,
       "side": "LONG",
-      "peak_roe": -0.0011528041962072272,
+      "peak_roe": -0.00046112167848297086,
       "strategy": "5M_HOD_BREAKOUT"
+    },
+    "PENDLE": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 2.1914,
+      "side": "LONG"
     }
   },
   "previous_active_coins": [
-    "AZTEC",
-    "SYRUP"
+    "AZTEC"
   ],
-  "last_run_timestamp": "2026-10-10 22:48:51",
-  "last_email_timestamp": 1791672527.2506123,
-  "last_scan_timestamp": 1791672321.5781262,
+  "last_run_timestamp": "2026-10-10 22:59:16",
+  "last_email_timestamp": 1791673115.8140543,
+  "last_scan_timestamp": 1791673115.8140543,
   "gemini_cache": {
-    "timestamp": 1791672321.5781262,
+    "timestamp": 1791673115.8140543,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic indicators, shifting regulatory landscapes, and high levels of leverage, creating potential for sharp, sudden price corrections."
+    "briefing": "**Risk Level: HIGH** \n\nDriven by persistent macroeconomic uncertainty, potential regulatory crackdowns, and elevated market leverage, current cryptocurrency markets remain highly vulnerable to sudden liquidity shocks and sharp downside volatility."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492
