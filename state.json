@@ -280,23 +280,28 @@
   "active_position_cache": {
     "MOODENG": {
       "entry_px": 0.043997,
-      "current_px": 0.04398,
+      "current_px": 0.043986,
       "szi": 562.0,
-      "margin": 8.233674,
+      "margin": 8.242854,
       "side": "LONG",
-      "peak_roe": -0.0003863899811351484,
+      "peak_roe": -0.0002500170466169071,
       "strategy": "5M_HOD_BREAKOUT"
     },
     "AZTEC": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.016781,
-      "side": "LONG"
+      "entry_px": 0.016857,
+      "current_px": 0.017317,
+      "szi": 1471.0,
+      "margin": 8.48865,
+      "side": "LONG",
+      "peak_roe": 0.027288366850566445,
+      "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "MOODENG"
+    "MOODENG",
+    "AZTEC"
   ],
-  "last_run_timestamp": "2026-10-10 19:30:54",
+  "last_run_timestamp": "2026-10-10 19:31:52",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
