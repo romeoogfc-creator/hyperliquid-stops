@@ -1,5 +1,7 @@
 {
-  "cooldown_blocklist": {},
+  "cooldown_blocklist": {
+    "VVV": 1791755889.7304785
+  },
   "last_traded_candle": {
     "FET": 1791664200000,
     "JTO": 1791664200000,
@@ -12,6 +14,18 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "VVV",
+      "entry_price": 23.222,
+      "exit_price": 23.154,
+      "pnl_usd": -0.07344,
+      "roe_pct": -0.29282576866764876,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-10 21:58:09",
+      "ts_sec": 1791669489.7304785,
+      "fill_hash": "VVV_207563168949744"
+    },
     {
       "coin": "BRETT",
       "entry_price": 0.005691,
@@ -73,36 +87,26 @@
     }
   ],
   "active_position_cache": {
-    "VVV": {
-      "entry_px": 23.222,
-      "current_px": 23.2775,
-      "szi": 1.08,
-      "margin": 25.14024,
-      "side": "LONG",
-      "peak_roe": 0.0023899750236843747,
-      "strategy": "5M_HOD_BREAKOUT"
-    },
     "APEX": {
       "entry_px": 0.24623,
-      "current_px": 0.24612,
+      "current_px": 0.246365,
       "szi": 102.0,
-      "margin": 8.3691,
+      "margin": 8.37624,
       "side": "LONG",
-      "peak_roe": -0.00044673679080534047,
+      "peak_roe": 0.0005482678796247258,
       "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "VVV",
     "APEX"
   ],
-  "last_run_timestamp": "2026-10-10 21:47:43",
-  "last_email_timestamp": 1791668728.8309464,
-  "last_scan_timestamp": 1791668728.8309464,
+  "last_run_timestamp": "2026-10-10 21:58:28",
+  "last_email_timestamp": 1791669489.7304785,
+  "last_scan_timestamp": 1791669489.7304785,
   "gemini_cache": {
-    "timestamp": 1791668728.8309464,
+    "timestamp": 1791669489.7304785,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting regulatory headwinds, and significant volatility surrounding global liquidity trends, necessitating extreme caution for leveraged positions."
+    "briefing": "Risk Level: **HIGH** \u2014 Increased market volatility driven by macroeconomic uncertainty, regulatory scrutiny, and a sensitive liquidity environment makes the crypto market prone to sharp, sudden corrections despite recent institutional inflows."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492
