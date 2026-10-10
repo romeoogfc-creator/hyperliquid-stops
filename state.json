@@ -277,23 +277,28 @@
   "active_position_cache": {
     "STRK": {
       "entry_px": 0.09776,
-      "current_px": 0.10194,
+      "current_px": 0.10332,
       "szi": 248.1,
-      "margin": 5.060247,
+      "margin": 5.123761,
       "side": "LONG",
-      "peak_roe": 0.042757774140752894,
+      "peak_roe": 0.056873977086743,
       "strategy": "5M_HOD_BREAKOUT"
     },
     "MOVE": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.009317,
-      "side": "LONG"
+      "entry_px": 0.009287,
+      "current_px": 0.009315,
+      "szi": 2651.0,
+      "margin": 8.231355,
+      "side": "LONG",
+      "peak_roe": 0.0030149671583934797,
+      "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "STRK"
+    "STRK",
+    "MOVE"
   ],
-  "last_run_timestamp": "2026-10-10 18:38:15",
+  "last_run_timestamp": "2026-10-10 18:45:58",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -304,11 +309,11 @@
     "scan_date": "2026-09-24"
   },
   "last_email_timestamp": 1791657468.6533387,
-  "last_scan_timestamp": 1791657468.6533387,
+  "last_scan_timestamp": 1791657936.2037826,
   "gemini_cache": {
-    "timestamp": 1791657468.6533387,
+    "timestamp": 1791657936.2037826,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Markets are currently characterized by significant volatility, heightened regulatory scrutiny, and uncertainty surrounding macroeconomic policy, making them prone to sharp, unpredictable price swings."
+    "briefing": "Risk Level: **HIGH**\n\nCurrent crypto markets are characterized by heightened volatility driven by uncertain macroeconomic signals, shifting regulatory landscapes, and the leveraged nature of recent price action, necessitating extreme caution for investors."
   },
   "recent_losses": [],
   "last_traded_candle": {
