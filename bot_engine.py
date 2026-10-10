@@ -255,7 +255,8 @@ def calculate_vwap(candles):
     except Exception:
         return float(candles[-1]['c'])
 
-def calculate_gaussian_channel(closes, poles=4, period=144, mult=1.414):
+def calculate_gaussian_channel(closes, poles=4, period=96, mult=1.414):
+    """Adjusted period for 15m timeframe (96 periods = 24 hours of 15m bars)."""
     s = pd.Series(closes)
     alpha = (2.0 / (period + 1)) * (poles ** 0.5)
     filtered = s.ewm(alpha=alpha, adjust=False).mean()
@@ -563,17 +564,16 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.5 Master Engine Started (Adaptive Volatility Sizing & Giveback Clamp Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.6 Master Engine Started (15M Ross-Momentum & Adaptive Sizing Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
 
     state = load_state()
 
-    current_gm_min = time.gmtime(now_ts).tm_min
     last_scan_ts = float(state.get("last_scan_timestamp", 0))
     minutes_since_last_scan = (now_ts - last_scan_ts) / 60.0
-    is_30m_scan_window = (current_gm_min in [0, 1, 2, 30, 31, 32]) or (minutes_since_last_scan >= 25.0)
+    is_5m_scan_window = (minutes_since_last_scan >= 4.0)
 
     if now_ts < float(state.get("hibernating_until", 0)):
         remaining_hrs = (float(state["hibernating_until"]) - now_ts) / 3600.0
@@ -604,18 +604,18 @@ def execute_engine():
     meta = api_retry(info.meta)
     now_ms = int(now_ts * 1000)
 
-    gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_30m_scan_window)
+    gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_5m_scan_window)
     audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] {gemini_briefing}")
 
     if gemini_risk == "HIGH":
         required_vol_ratio = 1.25
-        audit_logs.append(f"⚠️ Gemini Macro Risk HIGH: Balanced breakout volume gate >= {required_vol_ratio:.2f}x | Adaptive Sizing: 0.70x")
+        audit_logs.append(f"⚠️ Gemini Macro Risk HIGH: 15m breakout volume gate >= {required_vol_ratio:.2f}x | Adaptive Sizing: 0.70x")
     elif gemini_risk == "MODERATE":
         required_vol_ratio = 1.18
-        audit_logs.append(f"ℹ Gemini Macro Risk MODERATE: Balanced breakout volume gate >= {required_vol_ratio:.2f}x | Adaptive Sizing: 0.85x")
+        audit_logs.append(f"ℹ Gemini Macro Risk MODERATE: 15m breakout volume gate >= {required_vol_ratio:.2f}x | Adaptive Sizing: 0.85x")
     else:
         required_vol_ratio = 1.12
-        audit_logs.append(f"✅ Gemini Macro Risk LOW: Standard breakout volume gate >= {required_vol_ratio:.2f}x active | Adaptive Sizing: 1.00x")
+        audit_logs.append(f"✅ Gemini Macro Risk LOW: 15m breakout volume gate >= {required_vol_ratio:.2f}x active | Adaptive Sizing: 1.00x")
 
     btc_regime, btc_change_pct, btc_bounce_pct = get_btc_regime(info, now_ms)
     audit_logs.append(f"BTC Directional Shield: Daily Candle is {btc_regime} ({btc_change_pct:+.2f}%, Intraday Bounce: +{btc_bounce_pct:.2f}%).")
@@ -636,7 +636,7 @@ def execute_engine():
     current_active_cache = state.get("active_position_cache", {})
     new_active_cache = {}
     trade_closed_this_run = False
-    closed_coins_this_run = set()  # Track coins closed this cycle to prevent duplicate reconciliation
+    closed_coins_this_run = set()
 
     spot_usdc = 0.0
     total_spot_net_worth = 0.0
@@ -701,7 +701,7 @@ def execute_engine():
         save_state(state)
         return
 
-    # Position Management & Dynamic Exits
+    # Position Management & Dynamic Exits (15m Candles)
     if asset_positions:
         for pos_item in asset_positions:
             pos = pos_item.get("position", {})
@@ -730,7 +730,6 @@ def execute_engine():
             entry_candle_high = entry_px * 1.015
             c_candles = []
 
-            # BTC REGIME FLIP & RELIEF BOUNCE PURGE
             if is_long and btc_regime == "RED":
                 should_exit = True
                 exit_reason = f"🚨 BTC Daily Bearish Flip Purge (BTC Daily is RED {btc_change_pct:+.2f}%)"
@@ -742,7 +741,7 @@ def execute_engine():
                 exit_reason = f"⚡ BTC Relief Bounce Shield (+{btc_bounce_pct:.2f}% bounce off low). Cut altcoin SHORT."
 
             try:
-                c_candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
+                c_candles = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 86400000 * 2, endTime=now_ms)
                 closes = [float(c["c"]) for c in c_candles]
                 highs = [float(c["h"]) for c in c_candles]
                 lows = [float(c["l"]) for c in c_candles]
@@ -780,7 +779,6 @@ def execute_engine():
             except Exception as e:
                 audit_logs.append(f"Indicator calculation warning on {coin}: {e}")
 
-            # RESILIENT STAGNATION SHIELD (-1.50% ROE Floor / 3 Runs)
             stag_map = state.get("stagnation_tracker", {})
             curr_stag = stag_map.get(coin, 0)
             if current_roe < -0.0150:
@@ -790,7 +788,7 @@ def execute_engine():
                 state["stagnation_tracker"][coin] = curr_stag
                 if curr_stag >= (2 if is_altcoin else 3):
                     should_exit = True
-                    exit_reason = f"🗡️ Stagnation Cut ({current_roe*100:.2f}% after {curr_stag} runs)"
+                    exit_reason = f"🗡️ Stagnation Cut ({current_roe*100:.2f}% after {curr_stag} 15m runs)"
             else:
                 if "stagnation_tracker" in state and coin in state["stagnation_tracker"]:
                     state["stagnation_tracker"][coin] = 0
@@ -820,7 +818,7 @@ def execute_engine():
                     live_positions = {p.get("position", {}).get("coin"): float(p.get("position", {}).get("szi", 0)) for p in live_user_state.get("assetPositions", [])}
 
                     if live_positions.get(coin, 0.0) == 0.0:
-                        audit_logs.append(f"ℹ️ Position on {coin} already flattened on-chain prior to bot market exit. Skipping duplicate cut.")
+                        audit_logs.append(f"ℹ️ Position on {coin} already flattened on-chain. Skipping duplicate cut.")
                         closed_coins_this_run.add(coin)
                         continue
 
@@ -844,7 +842,6 @@ def execute_engine():
                 except Exception as e:
                     audit_logs.append(f"Market close failed on {coin}: {e}")
 
-            # 24/7 NATIVE ORDERBOOK SYNC
             sync_native_trigger_orders(exchange, info, coin, is_long, abs(szi), stop_px_calc, tp_px_calc, ACCOUNT_ADDRESS, audit_logs)
 
             active_count += 1
@@ -858,7 +855,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V3.5", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V3.6", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -877,7 +874,7 @@ def execute_engine():
         if coin not in active_coins:
             try:
                 user_fills = api_retry(info.user_fills, ACCOUNT_ADDRESS)
-                coin_fills = [f for f in user_fills if f.get("coin") == coin]
+                coin_fills = [f for f in user_fills if f.get("coin"] == coin]
                 
                 if coin_fills:
                     latest_fill = coin_fills[0]
@@ -918,22 +915,20 @@ def execute_engine():
                 audit_logs.append(f"Reconciliation warning on {coin}: {e}")
 
     state["closed_trades_ledger"] = sorted(state.get("closed_trades_ledger", []), key=lambda x: x.get("timestamp", ""), reverse=True)[:20]
-
     state["active_position_cache"] = new_active_cache
     state["previous_active_coins"] = list(active_coins)
 
     universe = [asset["name"] for asset in meta.get("universe", [])][:100]
     market_candidates = []
 
-    # DYNAMIC 3-SLOT CAPITAL DEPLOYMENT ENGINE (5X CROSS MARGIN)
     MAX_CRYPTO_SLOTS = 3
     available_slots = MAX_CRYPTO_SLOTS - active_count
     min_notional_usd = 10.50
 
-    if is_30m_scan_window and available_slots > 0:
+    if is_5m_scan_window and available_slots > 0:
         state["last_scan_timestamp"] = now_ts
 
-        btc_candles_5d = api_retry(info.candles_snapshot, name="BTC", interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
+        btc_candles_5d = api_retry(info.candles_snapshot, name="BTC", interval="15m", startTime=now_ms - 86400000 * 2, endTime=now_ms)
         btc_closes = [float(c["c"]) for c in btc_candles_5d]
         btc_highs = [float(c["h"]) for c in btc_candles_5d]
         btc_lows = [float(c["l"]) for c in btc_candles_5d]
@@ -941,24 +936,35 @@ def execute_engine():
         btc_ci = calculate_choppiness_index(btc_highs, btc_lows, btc_closes)
         btc_adx = calculate_adx(btc_highs, btc_lows, btc_closes)
 
-        if (btc_ci < 48.0 and btc_adx > 21.0) or (btc_adx >= 28.0):
+        if (btc_ci < 50.0 and btc_adx > 18.0) or (btc_adx >= 25.0):
             market_mode = "TRENDING"
-        elif btc_ci > 62.0:
+        elif btc_ci > 65.0:
             market_mode = "CHOP_HOLD"
         else:
             market_mode = "RANGING"
 
-        audit_logs.append(f"🌐 MARKET REGIME CLASSIFIER: Mode = [{market_mode}] (BTC Daily: {effective_regime} [{btc_change_pct:+.2f}%], CI: {btc_ci:.1f}, ADX: {btc_adx:.1f}). Scanning candidates...")
+        audit_logs.append(f"🌐 15M MARKET REGIME: Mode = [{market_mode}] (BTC Daily: {effective_regime} [{btc_change_pct:+.2f}%], CI: {btc_ci:.1f}, ADX: {btc_adx:.1f}). Scanning 15m momentum...")
 
         if market_mode != "CHOP_HOLD":
+            # Ross-style prioritization: sort universe by 24h percentage gain to scan top movers first
+            scored_universe = []
             for coin in universe:
                 if coin in active_coins or coin in ["USDC", "USDT"]:
                     continue
-
-                cooldown_expiry = float(state.get("cooldown_blocklist", {}).get(coin, 0))
-                if now_ts < cooldown_expiry:
+                if now_ts < float(state.get("cooldown_blocklist", {}).get(coin, 0)):
+                    continue
+                try:
+                    c_peek = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 86400000, endTime=now_ms)
+                    if c_peek and len(c_peek) >= 96:
+                        change_24h = ((float(c_peek[-1]["c"]) - float(c_peek[-96]["c"])) / float(c_peek[-96]["c"])) * 100
+                        scored_universe.append((coin, change_24h))
+                except Exception:
                     continue
 
+            scored_universe = sorted(scored_universe, key=lambda x: x[1], reverse=True)
+            prioritized_universe = [item[0] for item in scored_universe]
+
+            for coin in prioritized_universe:
                 is_altcoin = coin.upper() not in ["BTC", "ETH", "SOL"]
 
                 try:
@@ -966,8 +972,8 @@ def execute_engine():
                     if curr_live_px <= 0:
                         continue
                     
-                    time.sleep(0.12)
-                    candles = api_retry(info.candles_snapshot, name=coin, interval="1h", startTime=now_ms - 86400000 * 5, endTime=now_ms)
+                    time.sleep(0.10)
+                    candles = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 86400000 * 2, endTime=now_ms)
                     if not candles or len(candles) < 50:
                         continue
 
@@ -975,7 +981,7 @@ def execute_engine():
                     if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
                         continue
 
-                    is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=6000.0)
+                    is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0035, min_depth_usd=4000.0)
                     if not is_liquid:
                         continue
 
@@ -984,10 +990,8 @@ def execute_engine():
                     lows = [float(c["l"]) for c in candles]
                     volumes = [float(c.get("v", 0)) for c in candles]
 
-                    # 1. RELATIVE STRENGTH / WEAKNESS (RS/RW) GATE vs BTC
-                    coin_24h_change = ((closes[-1] - closes[-25]) / closes[-25]) * 100 if len(closes) >= 25 else 0.0
+                    coin_24h_change = ((closes[-1] - closes[-96]) / closes[-96]) * 100 if len(closes) >= 96 else 0.0
 
-                    # 2. V3.3 DYNAMIC PACED VOLUME & FRESH BREAKOUT EVALUATION
                     c_3_close = float(candles[-3]["c"])
                     c_2_open = float(candles[-2]["o"])
                     c_2_close = float(candles[-2]["c"])
@@ -999,22 +1003,19 @@ def execute_engine():
                     c_2_is_red = c_2_close < c_2_open
                     c_1_is_red = curr_live_px < c_1_open
 
-                    upper_t2, lower_t2, _ = calculate_gaussian_channel(closes[:-2])
-                    upper_t1, lower_t1, _ = calculate_gaussian_channel(closes[:-1])
+                    upper_t2, lower_t2, _ = calculate_gaussian_channel(closes[:-2], period=96)
+                    upper_t1, lower_t1, _ = calculate_gaussian_channel(closes[:-1], period=96)
 
-                    # SOLID CANDLE BODY GATE (>= 60% Solid Range)
                     c_high_live = float(candles[-1]["h"])
                     c_low_live = float(candles[-1]["l"])
                     c_range = max(c_high_live - c_low_live, 1e-8)
                     live_body_ratio = abs(curr_live_px - c_1_open) / c_range
-                    if live_body_ratio < 0.60:
+                    if live_body_ratio < 0.55:
                         continue
 
-                    # EXTENSION CAP (Skip over-extended spikes > 1.5%)
-                    if curr_live_px > (upper_t1 * 1.015) or curr_live_px < (lower_t1 * 0.985):
+                    if curr_live_px > (upper_t1 * 1.018) or curr_live_px < (lower_t1 * 0.982):
                         continue
 
-                    # FRESH INITIAL BREAKOUT
                     fresh_green_breakout = (
                         (c_3_close <= upper_t2 * 1.008) and
                         c_2_is_green and (c_2_close > upper_t1) and
@@ -1027,87 +1028,53 @@ def execute_engine():
                         c_1_is_red
                     )
 
-                    rsi_1h = calculate_rsi(closes)
+                    rsi_15m = calculate_rsi(closes)
                     bb_upper, bb_lower, bb_mid = calculate_bollinger_bands(closes)
                     vwap_val = calculate_vwap(candles[-24:])
                     
-                    # STOCK V3.3 DYNAMIC PACED VOLUME ENGINE
+                    # 15m Paced Volume Scaling
                     candle_start_ms = candles[-1]["t"]
                     elapsed_mins = max(1.0, (now_ms - candle_start_ms) / 60000.0)
                     live_volume_raw = float(candles[-1].get("v", 0))
-                    paced_volume = live_volume_raw * (60.0 / elapsed_mins)
+                    paced_volume = live_volume_raw * (15.0 / elapsed_mins)
                     
                     avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
                     vol_ratio = paced_volume / avg_vol if avg_vol > 0 else 1.0
 
-                    # 3. MULTI-BAR VOLUME PERSISTENCE VERIFICATION
-                    is_vol_verified = False
-                    effective_vol_threshold = max(required_vol_ratio, 1.60 if effective_regime == "NEUTRAL" else 1.12)
-
-                    if vol_ratio >= effective_vol_threshold:
-                        is_vol_verified = True
-
-                    if not is_vol_verified:
+                    effective_vol_threshold = max(required_vol_ratio, 1.50 if effective_regime == "NEUTRAL" else 1.10)
+                    if vol_ratio < effective_vol_threshold:
                         continue
 
-                    ci_1h = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
-                    max_allowable_ci = 38.0 if (is_altcoin and effective_regime == "NEUTRAL") else (40.0 if is_altcoin else 45.0)
+                    ci_15m = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
+                    max_allowable_ci = 45.0 if is_altcoin else 50.0
 
-                    # STRATEGY A: ALL-WEATHER TRENDING BREAKOUT / BREAKDOWN ENGINE
-                    if market_mode == "TRENDING" or (market_mode == "RANGING" and vol_ratio >= effective_vol_threshold):
-                        if ci_1h <= max_allowable_ci:
-                            # LONG ENTRY EVALUATION
-                            if fresh_green_breakout and (effective_regime in ["GREEN", "NEUTRAL"]):
-                                if is_altcoin and (coin_24h_change < btc_change_pct + 0.50):
-                                    audit_logs.append(f"FILTERED RS WEAKNESS [{coin}]: 24h change ({coin_24h_change:+.2f}%) <= BTC ({btc_change_pct:+.2f}%). LONG rejected.")
-                                else:
-                                    market_candidates.append({
-                                        "coin": coin, "close": curr_live_px, "is_long": True, 
-                                        "score": (curr_live_px - upper_t1) / upper_t1, "candle_ts": current_candle_ts,
-                                        "strategy": "BREAKOUT"
-                                    })
-                                    audit_logs.append(f"✅ TRUE RUNNER CONFIRMED (LONG): {coin} @ ${curr_live_px:.4f} (RS: {coin_24h_change:+.2f}% vs BTC {btc_change_pct:+.2f}%, VolRatio: {vol_ratio:.2f}x)")
+                    if ci_15m <= max_allowable_ci:
+                        if fresh_green_breakout and (effective_regime in ["GREEN", "NEUTRAL"]):
+                            if is_altcoin and (coin_24h_change < btc_change_pct + 0.50):
+                                continue
+                            market_candidates.append({
+                                "coin": coin, "close": curr_live_px, "is_long": True, 
+                                "score": (curr_live_px - upper_t1) / upper_t1, "candle_ts": current_candle_ts,
+                                "strategy": "BREAKOUT"
+                            })
+                            audit_logs.append(f"🚀 ROSS 15M MOMENTUM (LONG): {coin} @ ${curr_live_px:.4f} (24h Gain: {coin_24h_change:+.1f}%, Vol: {vol_ratio:.2f}x)")
 
-                            # SHORT ENTRY EVALUATION
-                            if fresh_red_breakdown and (effective_regime in ["RED", "NEUTRAL"]):
-                                if is_altcoin and btc_bounce_pct >= 1.00:
-                                    audit_logs.append(f"⛔ BTC BOUNCE SQUEEZE SHIELD [{coin}]: BTC bounced +{btc_bounce_pct:.2f}% off low. SHORT blocked.")
-                                elif is_altcoin and (coin_24h_change > btc_change_pct - 0.50):
-                                    audit_logs.append(f"FILTERED RW STRENGTH [{coin}]: 24h change ({coin_24h_change:+.2f}%) >= BTC ({btc_change_pct:+.2f}%). SHORT rejected.")
-                                else:
-                                    market_candidates.append({
-                                        "coin": coin, "close": curr_live_px, "is_long": False, 
-                                        "score": (lower_t1 - curr_live_px) / lower_t1, "candle_ts": current_candle_ts,
-                                        "strategy": "BREAKOUT"
-                                    })
-                                    audit_logs.append(f"✅ TRUE RUNNER CONFIRMED (SHORT): {coin} @ ${curr_live_px:.4f} (RW: {coin_24h_change:+.2f}% vs BTC {btc_change_pct:+.2f}%, VolRatio: {vol_ratio:.2f}x)")
-
-                    # STRATEGY B: RANGING MEAN-REVERSION
-                    if market_mode == "RANGING" and vol_ratio >= effective_vol_threshold and btc_adx < 25.0:
-                        if effective_regime in ["GREEN", "NEUTRAL"]:
-                            if curr_live_px <= bb_lower * 1.005 and curr_live_px < vwap_val and rsi_1h <= 35.0 and c_1_is_green:
-                                market_candidates.append({
-                                    "coin": coin, "close": curr_live_px, "is_long": True,
-                                    "score": (vwap_val - curr_live_px) / vwap_val, "candle_ts": current_candle_ts,
-                                    "strategy": "MEAN_REVERSION"
-                                })
-                                audit_logs.append(f"1H VWAP TRUE DIP BOUNCE (LONG): {coin} @ ${curr_live_px:.4f} (RSI: {rsi_1h:.1f}, VolRatio: {vol_ratio:.2f}x)")
-
-                        if effective_regime in ["RED", "NEUTRAL"]:
-                            if curr_live_px >= bb_upper * 0.995 and curr_live_px > vwap_val and rsi_1h >= 65.0 and c_1_is_red:
-                                market_candidates.append({
-                                    "coin": coin, "close": curr_live_px, "is_long": False,
-                                    "score": (curr_live_px - vwap_val) / vwap_val, "candle_ts": current_candle_ts,
-                                    "strategy": "MEAN_REVERSION"
-                                })
-                                audit_logs.append(f"1H VWAP TRUE SHORT FADE (SHORT): {coin} @ ${curr_live_px:.4f} (RSI: {rsi_1h:.1f}, VolRatio: {vol_ratio:.2f}x)")
+                        if fresh_red_breakdown and (effective_regime in ["RED", "NEUTRAL"]):
+                            if is_altcoin and btc_bounce_pct >= 1.00:
+                                continue
+                            market_candidates.append({
+                                "coin": coin, "close": curr_live_px, "is_long": False, 
+                                "score": (lower_t1 - curr_live_px) / lower_t1, "candle_ts": current_candle_ts,
+                                "strategy": "BREAKOUT"
+                            })
+                            audit_logs.append(f"🔥 ROSS 15M MOMENTUM (SHORT): {coin} @ ${curr_live_px:.4f} (24h Gain: {coin_24h_change:+.1f}%, Vol: {vol_ratio:.2f}x)")
 
                 except Exception:
                     continue
 
-            audit_logs.append(f"🌐 Scan complete: {len(market_candidates)} candidate(s) qualified out of {len(universe)} coins scanned.")
+            audit_logs.append(f"🌐 15M Scan complete: {len(market_candidates)} qualified candidate(s).")
         else:
-            audit_logs.append(f"⏳ Market is in EXTREME CHOP (CI > 62.0). Skipping scans to preserve cash.")
+            audit_logs.append(f"⏳ 15M Market in Chop (CI > 65.0). Skipping scans.")
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
 
@@ -1120,7 +1087,6 @@ def execute_engine():
             candle_ts = candidate["candle_ts"]
             strat_used = candidate["strategy"]
             
-            # ADAPTIVE VOLATILITY CAPITAL ALLOCATION (Uniform 25% Base NAV, Scaled by Gemini Risk)
             base_alloc_pct = 0.25
             risk_multiplier = 0.70 if gemini_risk == "HIGH" else (0.85 if gemini_risk == "MODERATE" else 1.00)
             slot_alloc_pct = base_alloc_pct * risk_multiplier
@@ -1142,7 +1108,6 @@ def execute_engine():
                     sz = round(np.ceil(needed_sz * (10 ** decimals)) / (10 ** decimals), decimals)
 
             if sz <= 0:
-                audit_logs.append(f"⚠️ Sizing guard skipped {coin}: calculated size {sz} <= 0 (Price: ${px:.2f})")
                 continue
 
             try:
@@ -1165,30 +1130,27 @@ def execute_engine():
                     if "active_position_cache" not in state:
                         state["active_position_cache"] = {}
                     state["active_position_cache"][coin] = {
-                        "strategy": strat_used,
-                        "entry_px": px,
-                        "side": "LONG" if is_long else "SHORT"
+                        "strategy": strat_used, "entry_px": px, "side": "LONG" if is_long else "SHORT"
                     }
 
-                    # Initial Stop Set with Hard Noise Buffer (-1.50% ROE)
                     initial_stop_px = px * 0.9850 if is_long else px * 1.0150
                     initial_tp_px = None
 
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
-                    alloc_label = f"Uniform 25% NAV (Scaled {risk_multiplier*100:.0f}%)"
+                    alloc_label = f"15M Ross Momentum (Scaled {risk_multiplier*100:.0f}%)"
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V3.5", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V3.6", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
                         "pnl": 0.0, "roe": 0.0,
                         "stop": round_sig_figs(initial_stop_px, 5),
                         "tp_target": "UNCAPPED 🚀",
-                        "status": f"🛡️ {alloc_label} Noise Shield Active"
+                        "status": f"🛡️ {alloc_label}"
                     })
 
-                    audit_logs.append(f"1H EXECUTION SUCCESS [{strat_used}]: Opened {'LONG' if is_long else 'SHORT'} on {coin} ({alloc_label}, Size: {sz} ~${(sz * px):.2f})")
+                    audit_logs.append(f"15M EXECUTION SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {coin} (Size: {sz} ~${(sz * px):.2f})")
 
             except Exception as e:
                 audit_logs.append(f"EXECUTION FAILED on {coin}: {e}")
@@ -1203,10 +1165,8 @@ def execute_engine():
     last_email_ts = float(state.get("last_email_timestamp", 0))
     elapsed_minutes = (now_ts - last_email_ts) / 60.0
     
-    # Automatically detect manual GitHub Actions workflow runs for instant feedback
     is_manual_run = os.getenv("GITHUB_EVENT_NAME", "").lower() == "workflow_dispatch"
-
-    is_time_for_periodic_email = (elapsed_minutes >= 25.0)
+    is_time_for_periodic_email = (elapsed_minutes >= 15.0)  # Sends periodic updates every 15 minutes as approved
     should_send_email = is_manual_run or is_time_for_periodic_email or trades_executed or trade_closed_this_run
 
     if should_send_email:
@@ -1234,7 +1194,7 @@ def execute_engine():
         
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V3.5 | Telemetry Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V3.6 | 15M Ross-Momentum Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         summary_card_html = f"""
         <div class="summary-card">
@@ -1268,7 +1228,6 @@ def execute_engine():
             """
 
         closed_ledger = sorted(state.get("closed_trades_ledger", []), key=lambda x: x.get("timestamp", ""), reverse=True)
-        
         parsed_closed_rows = []
         total_realized_pnl = 0.0
 
@@ -1359,8 +1318,8 @@ def execute_engine():
           <body>
             <div class="container">
               <div class="header">
-                <h2>TR-GC-Crypto-LS-23-V3.5 | Telemetry Dashboard</h2>
-                <p>Timestamp: {timestamp} (Adaptive Volatility Sizing & Giveback Clamp Active)</p>
+                <h2>TR-GC-Crypto-LS-23-V3.6 | 15M Ross-Momentum Dashboard</h2>
+                <p>Timestamp: {timestamp} (15M Candles & 5M Scanning Active)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -1376,33 +1335,28 @@ def execute_engine():
                 {summary_card_html}
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (V3.5 Active)</div>
+                  <div class="rules-title">&#9989; Active Guardrails (V3.6 15M Ross-Momentum Active)</div>
+                  &bull; <b>15-Minute Momentum Candles:</b> Scans and evaluates breakouts on 15m intervals to catch altcoin ignition early<br>
+                  &bull; <b>5-Minute Scan Cadence:</b> Runs every 5 minutes natively via GitHub Actions to hunt high-ranking movers<br>
                   &bull; <b>Adaptive Volatility Sizing (25% Base NAV):</b> Automatically scales position size (1.00x / 0.85x / 0.70x) based on Gemini Macro Risk<br>
                   &bull; <b>Strict 0.75% Max Giveback Clamp:</b> Guarantees crypto winners never give back more than 0.75% from their peak<br>
-                  &bull; <b>Dynamic Paced Volume Scaling:</b> Annualizes live forming candle volume rate to unlock early breakouts<br>
+                  &bull; <b>Dynamic Paced Volume Scaling:</b> Annualizes live forming 15m candle volume rate to unlock early breakouts<br>
                   &bull; <b>Stock V3.3 Dynamic Retention Curve (70% &rarr; 95% Lock):</b> Smoothly ratchets profit floor as ROE grows<br>
                   &bull; <b>Stock V3.3 ATR Noise Shield:</b> Buffers trailing stop with dynamic ATR distance to prevent wick shakeouts<br>
-                  &bull; <b>Fresh Breakout Calibration:</b> Catches fresh Candle T-2 band crosses before prices get over-extended<br>
                   &bull; <b>On-Chain Race Condition Shield:</b> Cancels trigger orders &amp; verifies live position before sending market close<br>
                   &bull; <b>Mathematical CI Clamp (0.0 &rarr; 100.0):</b> Prevents negative Choppiness Index math errors during tight consolidations<br>
-                  &bull; <b>24/7 Uncapped Active Scanning:</b> Preserves continuous night-owl breakout access while filtering fakeouts<br>
+                  &bull; <b>24/7 Uncapped Active Scanning:</b> Preserves continuous breakout access while filtering fakeouts<br>
                   &bull; <b>Relative Strength / Weakness Gate (RS/RW):</b> Verifies altcoin momentum relative to BTC before entering<br>
-                  &bull; <b>All-Weather Dynamic Scanning:</b> Scans NEUTRAL regimes with elevated volume (1.60x) and CI (&le;38.0) gates<br>
-                  &bull; <b>BTC Bounce Squeeze Entry Gate:</b> Hard-blocks NEW altcoin SHORTs if BTC has bounced &ge; +1.00% off intraday low<br>
-                  &bull; <b>Deduplicated Reconciliation Engine:</b> Excludes market-closed trades in real time to prevent ghost double-logging<br>
-                  &bull; <b>Solid Candle Body Gate (&ge;60% Body):</b> Rejects weak dojis/indecision candles with long rejection wicks<br>
-                  &bull; <b>Extension Cap (&le;1.5% Band Distance):</b> Prevents buying or shorting over-extended price spikes<br>
+                  &bull; <b>Solid Candle Body Gate (&ge;55% Body):</b> Rejects weak dojis/indecision candles with long rejection wicks<br>
+                  &bull; <b>Extension Cap (&le;1.8% Band Distance):</b> Prevents buying or shorting over-extended price spikes<br>
                   &bull; <b>Strict Altcoin Loss Cap (-1.50% ROE):</b> Hard-caps altcoin losses at max -$0.22<br>
-                  &bull; <b>BTC Relief Bounce Shield:</b> Cuts altcoin SHORTs immediately if BTC rebounds &gt; +0.40% off intraday low<br>
-                  &bull; <b>Strict Altcoin Choppiness Gate:</b> Rejects entries if Altcoin CI &gt; 40.0 (guarantees smooth trend momentum)<br>
-                  &bull; <b>Live Anatomy Falling-Knife Detector:</b> Distinguishes absorption wicks from solid red dumps (&gt;60% body, &gt;1.4x vol)<br>
                   &bull; <b>24/7 Native Orderbook Sync:</b> Posts resting trigger orders on Hyperliquid L1 orderbook to protect while sleeping<br>
                   &bull; <b>BTC Directional Shield:</b> Enforces broad market alignment &amp; active flip purge (GREEN = LONGs, RED = SHORTs)<br>
                   &bull; <b>24H Post-Loss Cooldown Blocklist:</b> Auto-bans any coin closed at a loss for 24 hours<br>
                   &bull; <b>Rolling Loss Circuit Breaker:</b> Triggers 12-hour hibernation if 3 losses occur within rolling 60m
                 </div>
 
-                <div class="section-title">Positions per Bot (USD)</div>
+                <div class="section-title">Active Positions (USD)</div>
                 <div class="table-responsive">
                   <table>
                     <thead>
@@ -1435,7 +1389,7 @@ def execute_engine():
                 {audit_section}
 
               </div>
-              <div class="footer">Hyperliquid Autonomous Engine &bull; Managed via GitHub Actions</div>
+              <div class="footer">Hyperliquid 15M Ross-Momentum Autonomous Engine &bull; Managed via GitHub Actions</div>
             </div>
           </body>
         </html>
@@ -1448,10 +1402,10 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing single-run Smart Protection cycle...", flush=True)
+    print(f"[{timestamp}] Executing 15M Ross-Momentum Protection cycle...", flush=True)
     try:
         execute_engine()
-        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Cycle execution completed successfully.", flush=True)
+        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 15M cycle execution completed successfully.", flush=True)
     except Exception as e:
         err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Engine execution error: {e}"
         print(err_msg, flush=True)
