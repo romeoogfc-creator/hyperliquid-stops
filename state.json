@@ -26,6 +26,18 @@
   "stagnation_tracker": {},
   "closed_trades_ledger": [
     {
+      "coin": "PENDLE",
+      "entry_price": 2.1874,
+      "exit_price": 2.1904,
+      "pnl_usd": 0.036,
+      "roe_pct": 0.13714912681723115,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-10 23:15:29",
+      "ts_sec": 1791674129.3406804,
+      "fill_hash": "PENDLE_37118297274645"
+    },
+    {
       "coin": "AZTEC",
       "entry_price": 0.017349,
       "exit_price": 0.017321,
@@ -167,22 +179,10 @@
       "fill_hash": "JTO_91715091410818"
     }
   ],
-  "active_position_cache": {
-    "PENDLE": {
-      "entry_px": 2.1874,
-      "current_px": 2.19455,
-      "szi": 12.0,
-      "margin": 5.26632,
-      "side": "LONG",
-      "peak_roe": 0.0032687208558106486,
-      "strategy": "5M_HOD_BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "PENDLE"
-  ],
-  "last_run_timestamp": "2026-10-10 23:13:08",
-  "last_email_timestamp": 1791673972.0207748,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-10 23:15:31",
+  "last_email_timestamp": 1791674129.3406804,
   "last_scan_timestamp": 1791673972.0207748,
   "gemini_cache": {
     "timestamp": 1791673972.0207748,
