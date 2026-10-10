@@ -277,18 +277,28 @@
   "active_position_cache": {
     "CHIP": {
       "entry_px": 0.059765,
-      "current_px": 0.06,
+      "current_px": 0.061529,
       "szi": 405.0,
-      "margin": 8.1027,
+      "margin": 8.29926,
       "side": "LONG",
-      "peak_roe": 0.003932067263448491,
+      "peak_roe": 0.029515602777545415,
       "strategy": "5M_HOD_BREAKOUT"
+    },
+    "TIA": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.51827,
+      "side": "LONG"
+    },
+    "STRK": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.09781,
+      "side": "LONG"
     }
   },
   "previous_active_coins": [
     "CHIP"
   ],
-  "last_run_timestamp": "2026-10-10 18:15:30",
+  "last_run_timestamp": "2026-10-10 18:19:02",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -298,12 +308,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791656047.5000687,
-  "last_scan_timestamp": 1791656047.5000687,
+  "last_email_timestamp": 1791656311.6515481,
+  "last_scan_timestamp": 1791656311.6515481,
   "gemini_cache": {
-    "timestamp": 1791656047.5000687,
+    "timestamp": 1791656311.6515481,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic data, shifting regulatory landscapes, and high leverage, leaving it susceptible to sharp, liquidity-driven corrections."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts and regulatory uncertainty, leading to significant volatility that can trigger rapid liquidations in either direction."
   },
   "recent_losses": [],
   "last_traded_candle": {
@@ -339,7 +349,9 @@
     "WIF": 1791464400000,
     "ETH": 1791468000000,
     "BIGTIME": 1791478800000,
-    "CHIP": 1791655800000
+    "CHIP": 1791655800000,
+    "TIA": 1791656100000,
+    "STRK": 1791656100000
   },
   "hibernating_until": 0,
   "daily_starting_equity": {
