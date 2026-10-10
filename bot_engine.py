@@ -64,14 +64,14 @@ def save_state(state):
     with open(STATE_FILE, "w") as f:
         json.dump(state, f, indent=2)
 
-def api_retry(func, *args, retries=5, delay=3.0, **kwargs):
+def api_retry(func, *args, retries=5, delay=4.0, **kwargs):
     """Universal resilient API retry decorator for exchange and web queries."""
     for attempt in range(retries):
         try:
             return func(*args, **kwargs)
         except Exception as e:
             if attempt < retries - 1:
-                print(f"[WARN] API Call exception ({e}). Retrying in {delay}s ({attempt+1}/{retries})...", flush=True)
+                print(f"[WARN] API Call exception ({e}). Retrying in {delay:.1f}s ({attempt+1}/{retries})...", flush=True)
                 time.sleep(delay)
                 delay *= 2.0
             else:
@@ -579,14 +579,19 @@ def execute_engine():
 
     user_state = api_retry(info.user_state, ACCOUNT_ADDRESS)
     spot_state = api_retry(info.spot_user_state, ACCOUNT_ADDRESS)
+    
+    # SINGLE BULK API CALL FOR ALL METADATA & ASSET CONTEXTS
+    meta_and_ctxs = api_retry(info.meta_and_asset_ctxs)
+    meta = meta_and_ctxs[0]
+    asset_ctxs = meta_and_ctxs[1]
+    
     all_mids = api_retry(info.all_mids)
-    meta = api_retry(info.meta)
     now_ms = int(now_ts * 1000)
 
     gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_5m_scan_window)
     audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] {gemini_briefing}")
 
-    # ROSS CAMERON HIGH VOLUME GATES (RVOL >= 2.0x - 3.0x)
+    # ROSS CAMERON HIGH VOLUME GATES (RVOL >= 1.8x - 2.5x)
     if gemini_risk == "HIGH":
         required_vol_ratio = 2.50
         audit_logs.append(f"⚠️ Gemini Macro Risk HIGH: 15m Ross Breakout RVOL gate >= {required_vol_ratio:.2f}x | Sizing: 0.70x")
@@ -603,9 +608,11 @@ def execute_engine():
     effective_regime = btc_regime
 
     sz_decimals_map = {}
+    universe_names = []
     for asset in meta.get("universe", []):
         coin_name = asset.get("name")
         sz_decimals_map[coin_name] = asset.get("szDecimals", 4)
+        universe_names.append(coin_name)
 
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
@@ -885,7 +892,6 @@ def execute_engine():
     state["active_position_cache"] = new_active_cache
     state["previous_active_coins"] = list(active_coins)
 
-    universe = [asset["name"] for asset in meta.get("universe", [])][:100]
     market_candidates = []
 
     MAX_CRYPTO_SLOTS = 3
@@ -895,28 +901,33 @@ def execute_engine():
     if is_5m_scan_window and available_slots > 0:
         state["last_scan_timestamp"] = now_ts
 
-        audit_logs.append(f"🌐 ROSS MOMENTUM SCANNER ACTIVE: Evaluating Top 10 Gainers for 15m breakouts...")
+        audit_logs.append(f"🌐 ROSS MOMENTUM SCANNER ACTIVE: Bulk ranking Top Gainers for 15m breakouts...")
 
-        # ROSS CAMERON RULE: FOCUS ON THE TOP 10 LEADING GAINERS ONLY
+        # ZERO RATE-LIMIT BULK GAINER EXTRACTION VIA META_AND_ASSET_CTXS
         scored_universe = []
-        for coin in universe:
-            if coin in active_coins or coin in ["USDC", "USDT"]:
+        for idx, asset in enumerate(meta.get("universe", [])):
+            coin = asset.get("name")
+            if not coin or coin in active_coins or coin in ["USDC", "USDT"]:
                 continue
             if now_ts < float(state.get("cooldown_blocklist", {}).get(coin, 0)):
                 continue
+
             try:
-                c_peek = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 86400000, endTime=now_ms)
-                if c_peek and len(c_peek) >= 96:
-                    change_24h = ((float(c_peek[-1]["c"]) - float(c_peek[-96]["c"])) / float(c_peek[-96]["c"])) * 100
-                    # Filter strictly for positive gainers to match Ross's HOD momentum playbook
-                    if change_24h > 0.0:
+                ctx = asset_ctxs[idx] if idx < len(asset_ctxs) else {}
+                prev_px = float(ctx.get("prevDayPx", 0.0))
+                mark_px = float(ctx.get("markPx", 0.0))
+                
+                if prev_px > 0 and mark_px > 0:
+                    change_24h = ((mark_px - prev_px) / prev_px) * 100
+                    if change_24h > 0.0:  # Positive Gainers Only
                         scored_universe.append((coin, change_24h))
             except Exception:
                 continue
 
         scored_universe = sorted(scored_universe, key=lambda x: x[1], reverse=True)
-        # Take strictly the Top 10 Gainers to scan
         prioritized_universe = [item[0] for item in scored_universe[:10]]
+
+        audit_logs.append(f"📊 Top Gainers Ranked: {', '.join([f'{c} (+{g:.1f}%)' for c, g in scored_universe[:5]])}")
 
         for coin in prioritized_universe:
             is_altcoin = coin.upper() not in ["BTC", "ETH", "SOL"]
@@ -926,7 +937,7 @@ def execute_engine():
                 if curr_live_px <= 0:
                     continue
                 
-                time.sleep(0.10)
+                time.sleep(0.15)  # Respectful 150ms delay between candidate calls
                 candles = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 86400000 * 2, endTime=now_ms)
                 if not candles or len(candles) < 50:
                     continue
@@ -976,7 +987,6 @@ def execute_engine():
                     c_1_is_green
                 )
 
-                # ROSS CAMERON RULE 1: STRICT LONG-ONLY FOR ALTCOIN BREAKOUTS
                 fresh_red_breakdown = False if is_altcoin else (
                     (c_3_close >= lower_t2 * 0.992) and
                     c_2_is_red and (c_2_close < lower_t1) and
@@ -987,7 +997,6 @@ def execute_engine():
                 bb_upper, bb_lower, bb_mid = calculate_bollinger_bands(closes)
                 vwap_val = calculate_vwap(candles[-24:])
                 
-                # 15m Paced Volume Scaling
                 candle_start_ms = candles[-1]["t"]
                 elapsed_mins = max(1.0, (now_ms - candle_start_ms) / 60000.0)
                 live_volume_raw = float(candles[-1].get("v", 0))
@@ -996,7 +1005,6 @@ def execute_engine():
                 avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
                 vol_ratio = paced_volume / avg_vol if avg_vol > 0 else 1.0
 
-                # ROSS CAMERON RULE 3: HIGH RELATIVE VOLUME GATE (RVOL >= 1.8x - 2.5x)
                 if vol_ratio < required_vol_ratio:
                     continue
 
@@ -1004,7 +1012,6 @@ def execute_engine():
                 max_allowable_ci = 52.0 if is_altcoin else 55.0
 
                 if ci_15m <= max_allowable_ci:
-                    # ROSS CAMERON RULE: Relative Strength Gate (Altcoin must outperform BTC daily gain)
                     if fresh_green_breakout and (effective_regime in ["GREEN", "NEUTRAL"]):
                         if is_altcoin and (coin_24h_change < btc_change_pct + 1.00):
                             continue
@@ -1118,7 +1125,7 @@ def execute_engine():
     elapsed_minutes = (now_ts - last_email_ts) / 60.0
     
     is_manual_run = os.getenv("GITHUB_EVENT_NAME", "").lower() == "workflow_dispatch"
-    is_time_for_periodic_email = (elapsed_minutes >= 15.0)  # Sends periodic updates every 15 minutes as approved
+    is_time_for_periodic_email = (elapsed_minutes >= 15.0)
     should_send_email = is_manual_run or is_time_for_periodic_email or trades_executed or trade_closed_this_run
 
     if should_send_email:
@@ -1288,6 +1295,7 @@ def execute_engine():
 
                 <div class="rules-card">
                   <div class="rules-title">&#9989; Active Guardrails (V3.7 Ross Cameron Pure Momentum Active)</div>
+                  &bull; <b>Zero Rate-Limit Bulk Extraction:</b> Ranks Top 10 Gainers in a single API call (`meta_and_asset_ctxs`)<br>
                   &bull; <b>Strict LONG-Only Altcoin Breakouts:</b> Completely bans altcoin shorting; focuses 100% on high-volume HOD bull flags<br>
                   &bull; <b>Top 10 Leading Gainers Focus:</b> Scans only positive 24h gainers to trade top market momentum<br>
                   &bull; <b>High Relative Volume Gate (RVOL &ge; 1.8x - 2.5x):</b> Verifies institutional volume surges before entry<br>
