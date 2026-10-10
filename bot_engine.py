@@ -479,7 +479,7 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.9 Master Engine Started (5M Fast Scalper Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.9.1 Master Engine Started (5M Fast Scalper Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -495,16 +495,18 @@ def execute_engine():
         print(f"[{timestamp}] 🚨 BOT IN 12H EMERGENCY HIBERNATION ({remaining_hrs:.1f}h remaining). Execution halted.", flush=True)
         return
 
+    # HARDENED CIRCUIT BREAKER (Requires 3+ Losses AND Cumulative Rolling Loss <= -$1.00 USD)
     one_hour_ago = now_ts - 3600
     recent_losses = [
         t for t in state.get("closed_trades_ledger", [])
         if float(t.get("pnl_usd", 0)) < 0 and float(t.get("ts_sec", 0)) >= one_hour_ago
     ]
+    net_rolling_loss = sum(float(t.get("pnl_usd", 0)) for t in recent_losses)
 
-    if len(recent_losses) >= 3:
+    if len(recent_losses) >= 3 and net_rolling_loss <= -1.00:
         state["hibernating_until"] = now_ts + 43200
         save_state(state)
-        err_body = f"🚨 ROLLING CIRCUIT BREAKER TRIGGERED: 3 losses recorded within the last 60 minutes. Bot entering 12-hour hibernation."
+        err_body = f"🚨 ROLLING CIRCUIT BREAKER TRIGGERED: 3+ losses totaling ${net_rolling_loss:.2f} recorded in last 60m. Bot entering 12H hibernation."
         print(f"[{timestamp}] {err_body}", flush=True)
         send_html_dashboard_email("🚨 EMERGENCY HALT: Rolling Circuit Breaker Active", f"<h3>{err_body}</h3>", err_body)
         return
@@ -748,7 +750,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V3.9", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V3.9.1", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -983,7 +985,7 @@ def execute_engine():
 
                     alloc_label = "5M Fast Scalp (25% NAV)"
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V3.9", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V3.9.1", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -1037,7 +1039,7 @@ def execute_engine():
         
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V3.9 | 5M Fast Ross Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V3.9.1 | 5M Fast Ross Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         summary_card_html = f"""
         <div class="summary-card">
@@ -1161,7 +1163,7 @@ def execute_engine():
           <body>
             <div class="container">
               <div class="header">
-                <h2>TR-GC-Crypto-LS-23-V3.9 | 5M Fast Ross Scalper</h2>
+                <h2>TR-GC-Crypto-LS-23-V3.9.1 | 5M Fast Ross Scalper</h2>
                 <p>Timestamp: {timestamp} (5M Candles &amp; 5M Scanning Active)</p>
               </div>
               <div class="content">
@@ -1178,7 +1180,7 @@ def execute_engine():
                 {summary_card_html}
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (V3.9 5M Fast Scalper Active)</div>
+                  <div class="rules-title">&#9989; Active Guardrails (V3.9.1 Fast Scalper Active)</div>
                   &bull; <b>5M High-of-Day (HOD) Scalper:</b> Detects fresh 5m candle breakouts as volume surges<br>
                   &bull; <b>Micro-Cap Penny Perp Scope (#20-#200+):</b> Focuses on low-float micro-caps while skipping heavy mega-caps<br>
                   &bull; <b>Zero Rate-Limit Bulk Extraction:</b> Fetches 150+ asset contexts in 1 single bulk call (`meta_and_asset_ctxs`)<br>
@@ -1189,7 +1191,7 @@ def execute_engine():
                   &bull; <b>24/7 Native Orderbook Sync:</b> Posts resting trigger orders directly on Hyperliquid orderbook<br>
                   &bull; <b>BTC Directional Shield:</b> Aligns market direction with daily candle (GREEN = LONGs only)<br>
                   &bull; <b>24H Post-Loss Cooldown Blocklist:</b> Auto-bans any coin closed at a loss for 24 hours<br>
-                  &bull; <b>Rolling Loss Circuit Breaker:</b> Triggers 12-hour hibernation if 3 losses occur within rolling 60m
+                  &bull; <b>Hardened Circuit Breaker:</b> Hibernates 12H strictly if 3+ losses totaling &le; -$1.00 occur within rolling 60m
                 </div>
 
                 <div class="section-title">Active Positions (USD)</div>
