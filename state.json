@@ -5,11 +5,24 @@
     "JTO": 1791664200000,
     "BRETT": 1791664200000,
     "MOODENG": 1791666000000,
-    "BERA": 1791666900000
+    "BERA": 1791666900000,
+    "VVV": 1791667800000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "BERA",
+      "entry_price": 0.22598,
+      "exit_price": 0.22672,
+      "pnl_usd": 0.081252,
+      "roe_pct": 0.3274626073103896,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-10 21:34:13",
+      "ts_sec": 1791668053.3807094,
+      "fill_hash": "BERA_593770806561729"
+    },
     {
       "coin": "MOODENG",
       "entry_price": 0.044081,
@@ -49,34 +62,29 @@
   "active_position_cache": {
     "BRETT": {
       "entry_px": 0.005691,
-      "current_px": 0.006024,
+      "current_px": 0.006068,
       "szi": 4340.0,
-      "margin": 8.716166,
+      "margin": 8.787053,
       "side": "LONG",
-      "peak_roe": 0.05851344227727991,
+      "peak_roe": 0.0662449481637673,
       "strategy": "5M_HOD_BREAKOUT"
     },
-    "BERA": {
-      "entry_px": 0.22598,
-      "current_px": 0.2268,
-      "szi": 109.8,
-      "margin": 4.980308,
-      "side": "LONG",
-      "peak_roe": 0.005442959553942866,
-      "strategy": "5M_HOD_BREAKOUT"
+    "VVV": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 23.1855,
+      "side": "LONG"
     }
   },
   "previous_active_coins": [
-    "BRETT",
-    "BERA"
+    "BRETT"
   ],
-  "last_run_timestamp": "2026-10-10 21:30:50",
-  "last_email_timestamp": 1791666956.3485343,
-  "last_scan_timestamp": 1791667826.017836,
+  "last_run_timestamp": "2026-10-10 21:34:39",
+  "last_email_timestamp": 1791668053.3807094,
+  "last_scan_timestamp": 1791668053.3807094,
   "gemini_cache": {
-    "timestamp": 1791667826.017836,
+    "timestamp": 1791668053.3807094,
     "risk": "HIGH",
-    "briefing": "Risk Level: HIGH; crypto markets currently face significant volatility driven by macroeconomic uncertainty, regulatory scrutiny, and high leverage, leaving them highly sensitive to sudden shifts in investor sentiment and liquidity."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity cycles, all of which keep market sentiment fragile and prone to sharp, sudden corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492
