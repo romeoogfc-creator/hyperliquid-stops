@@ -14,7 +14,8 @@
     "DOGE": 1791552644.4488678,
     "WIF": 1791555323.6166713,
     "BIGTIME": 1791575141.9079013,
-    "MOVE": 1791744811.0017996
+    "MOVE": 1791744811.0017996,
+    "MOODENG": 1791747940.9513905
   },
   "stagnation_tracker": {
     "APT": 28,
@@ -53,6 +54,30 @@
     "NEAR": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "AZTEC",
+      "entry_price": 0.016857,
+      "exit_price": 0.017125,
+      "pnl_usd": 0.394228,
+      "roe_pct": 1.5898439817286638,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-10 19:45:40",
+      "ts_sec": 1791661540.9513905,
+      "fill_hash": "AZTEC_120295670232134"
+    },
+    {
+      "coin": "MOODENG",
+      "entry_price": 0.043997,
+      "exit_price": 0.043808,
+      "pnl_usd": -0.054432,
+      "roe_pct": -0.42957474373253096,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-10 19:45:40",
+      "ts_sec": 1791661540.9513905,
+      "fill_hash": "MOODENG_1061206973098185"
+    },
     {
       "coin": "MOVE",
       "entry_price": 0.009287,
@@ -253,55 +278,28 @@
       "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
       "timestamp": "2026-10-07 23:30:30",
       "ts_sec": 1791415830.9133725
-    },
-    {
-      "coin": "SEI",
-      "entry_price": 0.069178,
-      "exit_price": 0.068073,
-      "pnl_usd": 0.19227,
-      "roe_pct": 1.5973286304894745,
-      "side": "SHORT",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-07 16:00:30",
-      "ts_sec": 1791388830.3344903
-    },
-    {
-      "coin": "PENDLE",
-      "entry_price": 2.2613,
-      "exit_price": 2.2538,
-      "pnl_usd": 0.045,
-      "roe_pct": 0.3316676248175757,
-      "side": "SHORT",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-07 06:45:29",
-      "ts_sec": 1791355529.862923
     }
   ],
   "active_position_cache": {
-    "MOODENG": {
-      "entry_px": 0.043997,
-      "current_px": 0.043986,
-      "szi": 562.0,
-      "margin": 8.242854,
+    "ZK": {
+      "entry_px": 0.015554,
+      "current_px": 0.015529,
+      "szi": 1590.0,
+      "margin": 4.936632,
       "side": "LONG",
-      "peak_roe": -0.0002500170466169071,
-      "strategy": "5M_HOD_BREAKOUT"
+      "peak_roe": -0.0016073035875016533,
+      "strategy": "5M_BREAKOUT"
     },
-    "AZTEC": {
-      "entry_px": 0.016857,
-      "current_px": 0.017317,
-      "szi": 1471.0,
-      "margin": 8.48865,
-      "side": "LONG",
-      "peak_roe": 0.027288366850566445,
-      "strategy": "5M_HOD_BREAKOUT"
+    "BRETT": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.005567,
+      "side": "LONG"
     }
   },
   "previous_active_coins": [
-    "MOODENG",
-    "AZTEC"
+    "ZK"
   ],
-  "last_run_timestamp": "2026-10-10 19:31:52",
+  "last_run_timestamp": "2026-10-10 19:46:12",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -311,12 +309,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791660621.2149148,
-  "last_scan_timestamp": 1791660621.2149148,
+  "last_email_timestamp": 1791661540.9513905,
+  "last_scan_timestamp": 1791661540.9513905,
   "gemini_cache": {
-    "timestamp": 1791660621.2149148,
+    "timestamp": 1791661540.9513905,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting regulatory landscapes, and extreme volatility fueled by high leverage, necessitating extreme caution for retail participants."
+    "briefing": "Risk Level: **HIGH**\n\nThe crypto market remains in a state of elevated risk due to ongoing regulatory uncertainty, extreme price volatility surrounding macroeconomic indicators, and the potential for significant liquidity shifts following recent institutional inflows."
   },
   "recent_losses": [],
   "last_traded_candle": {
@@ -357,7 +355,8 @@
     "STRK": 1791656100000,
     "MOVE": 1791657300000,
     "MOODENG": 1791659400000,
-    "AZTEC": 1791660600000
+    "AZTEC": 1791660600000,
+    "BRETT": 1791661500000
   },
   "hibernating_until": 0,
   "daily_starting_equity": {
