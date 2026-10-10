@@ -277,9 +277,15 @@
       "ts_sec": 1791355529.862923
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "MOODENG": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.043979,
+      "side": "LONG"
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-10 19:03:38",
+  "last_run_timestamp": "2026-10-10 19:15:53",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -289,12 +295,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791658411.0017996,
-  "last_scan_timestamp": 1791658829.4669676,
+  "last_email_timestamp": 1791659726.8713012,
+  "last_scan_timestamp": 1791659726.8713012,
   "gemini_cache": {
-    "timestamp": 1791658829.4669676,
+    "timestamp": 1791659726.8713012,
     "risk": "HIGH",
-    "briefing": "Risk Level: HIGH; while institutional inflows provide a foundational floor, the market remains extremely sensitive to macroeconomic volatility, impending regulatory shifts, and high levels of speculative leverage."
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, the asset class remains highly sensitive to macroeconomic volatility and sudden shifts in regulatory or geopolitical conditions."
   },
   "recent_losses": [],
   "last_traded_candle": {
@@ -333,7 +339,8 @@
     "CHIP": 1791655800000,
     "TIA": 1791656100000,
     "STRK": 1791656100000,
-    "MOVE": 1791657300000
+    "MOVE": 1791657300000,
+    "MOODENG": 1791659400000
   },
   "hibernating_until": 0,
   "daily_starting_equity": {
