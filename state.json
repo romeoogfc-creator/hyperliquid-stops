@@ -276,7 +276,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-10 14:50:49",
+  "last_run_timestamp": "2026-10-10 14:59:36",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -286,12 +286,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791643121.222972,
-  "last_scan_timestamp": 1791643839.0894449,
+  "last_email_timestamp": 1791644368.302987,
+  "last_scan_timestamp": 1791644368.302987,
   "gemini_cache": {
-    "timestamp": 1791643839.0894449,
+    "timestamp": 1791644368.302987,
     "risk": "HIGH",
-    "briefing": "Risk Level: HIGH; while institutional interest remains strong, the market currently faces significant volatility driven by macroeconomic uncertainty, regulatory scrutiny, and highly leveraged speculative positions."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting interest rate expectations, and increased regulatory scrutiny, all of which continue to drive significant short-term volatility."
   },
   "recent_losses": [],
   "last_traded_candle": {
