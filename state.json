@@ -3,52 +3,61 @@
   "last_traded_candle": {
     "FET": 1791664200000,
     "JTO": 1791664200000,
-    "BRETT": 1791664200000
+    "BRETT": 1791664200000,
+    "MOODENG": 1791666000000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
-  "closed_trades_ledger": [],
+  "closed_trades_ledger": [
+    {
+      "coin": "JTO",
+      "entry_price": 0.54501,
+      "exit_price": 0.54662,
+      "pnl_usd": 0.07406,
+      "roe_pct": 0.2954074237169961,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-10 21:00:28",
+      "ts_sec": 1791666028.220164,
+      "fill_hash": "JTO_91715091410818"
+    }
+  ],
   "active_position_cache": {
     "FET": {
       "entry_px": 0.22599,
-      "current_px": 0.22828,
+      "current_px": 0.228095,
       "szi": 110.0,
-      "margin": 5.02172,
+      "margin": 5.01798,
       "side": "LONG",
       "peak_roe": 0.010133191734147591,
       "strategy": "5M_HOD_BREAKOUT"
     },
-    "JTO": {
-      "entry_px": 0.54501,
-      "current_px": 0.547015,
-      "szi": 46.0,
-      "margin": 5.030192,
-      "side": "LONG",
-      "peak_roe": 0.00503660483293884,
-      "strategy": "5M_HOD_BREAKOUT"
-    },
     "BRETT": {
       "entry_px": 0.005691,
-      "current_px": 0.005799,
+      "current_px": 0.005776,
       "szi": 4340.0,
-      "margin": 8.386326,
+      "margin": 8.34148,
       "side": "LONG",
       "peak_roe": 0.018977332630469242,
       "strategy": "5M_HOD_BREAKOUT"
+    },
+    "MOODENG": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.044072,
+      "side": "LONG"
     }
   },
   "previous_active_coins": [
     "FET",
-    "BRETT",
-    "JTO"
+    "BRETT"
   ],
-  "last_run_timestamp": "2026-10-10 20:56:08",
-  "last_email_timestamp": 1791665758.83261,
-  "last_scan_timestamp": 1791664376.9253058,
+  "last_run_timestamp": "2026-10-10 21:00:51",
+  "last_email_timestamp": 1791666028.220164,
+  "last_scan_timestamp": 1791666028.220164,
   "gemini_cache": {
-    "timestamp": 1791665758.83261,
-    "risk": "MODERATE",
-    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, the asset class faces ongoing volatility stemming from macroeconomic uncertainty and sensitive reactions to regulatory developments."
+    "timestamp": 1791666028.220164,
+    "risk": "HIGH",
+    "briefing": "**Risk Level: HIGH** \n\nCrypto markets currently face severe vulnerability due to macroeconomic tightening, persistent regulatory crackdowns, and fragile market liquidity that could trigger sharp liquidations at any moment."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492
