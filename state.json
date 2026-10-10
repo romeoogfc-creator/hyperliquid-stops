@@ -6,11 +6,24 @@
     "BRETT": 1791664200000,
     "MOODENG": 1791666000000,
     "BERA": 1791666900000,
-    "VVV": 1791667800000
+    "VVV": 1791667800000,
+    "APEX": 1791668400000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "BRETT",
+      "entry_price": 0.005691,
+      "exit_price": 0.005967,
+      "pnl_usd": 1.19784,
+      "roe_pct": 4.849762783342123,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-10 21:45:28",
+      "ts_sec": 1791668728.8309464,
+      "fill_hash": "BRETT_1008237730449655"
+    },
     {
       "coin": "BERA",
       "entry_price": 0.22598,
@@ -60,31 +73,31 @@
     }
   ],
   "active_position_cache": {
-    "BRETT": {
-      "entry_px": 0.005691,
-      "current_px": 0.006068,
-      "szi": 4340.0,
-      "margin": 8.787053,
+    "VVV": {
+      "entry_px": 23.222,
+      "current_px": 23.234,
+      "szi": 1.08,
+      "margin": 25.07436,
       "side": "LONG",
-      "peak_roe": 0.0662449481637673,
+      "peak_roe": 0.0005167513564723303,
       "strategy": "5M_HOD_BREAKOUT"
     },
-    "VVV": {
+    "APEX": {
       "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 23.1855,
+      "entry_px": 0.24611,
       "side": "LONG"
     }
   },
   "previous_active_coins": [
-    "BRETT"
+    "VVV"
   ],
-  "last_run_timestamp": "2026-10-10 21:34:39",
-  "last_email_timestamp": 1791668053.3807094,
-  "last_scan_timestamp": 1791668053.3807094,
+  "last_run_timestamp": "2026-10-10 21:45:51",
+  "last_email_timestamp": 1791668728.8309464,
+  "last_scan_timestamp": 1791668728.8309464,
   "gemini_cache": {
-    "timestamp": 1791668053.3807094,
+    "timestamp": 1791668728.8309464,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity cycles, all of which keep market sentiment fragile and prone to sharp, sudden corrections."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting regulatory headwinds, and significant volatility surrounding global liquidity trends, necessitating extreme caution for leveraged positions."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492
