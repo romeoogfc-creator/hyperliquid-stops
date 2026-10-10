@@ -103,24 +103,24 @@
   "active_position_cache": {
     "CFX": {
       "entry_px": 0.063794,
-      "current_px": 0.06393,
+      "current_px": 0.06401,
       "szi": 391.0,
-      "margin": 24.968869,
+      "margin": 25.010706,
       "side": "LONG",
-      "peak_roe": 0.00213186193058904,
+      "peak_roe": 0.0033858983603472733,
       "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
     "CFX"
   ],
-  "last_run_timestamp": "2026-10-10 22:15:46",
+  "last_run_timestamp": "2026-10-10 22:23:38",
   "last_email_timestamp": 1791670121.5587091,
-  "last_scan_timestamp": 1791670525.7363806,
+  "last_scan_timestamp": 1791670998.9430127,
   "gemini_cache": {
-    "timestamp": 1791670525.7363806,
+    "timestamp": 1791670998.9430127,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe market is currently experiencing significant volatility driven by macroeconomic uncertainty, regulatory scrutiny, and high leverage, leaving it highly susceptible to rapid sentiment-driven corrections."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, potential regulatory actions, and intense volatility following recent price fluctuations, necessitating extreme caution for retail participants."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492
