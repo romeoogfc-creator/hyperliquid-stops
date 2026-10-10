@@ -11,44 +11,44 @@
   "active_position_cache": {
     "FET": {
       "entry_px": 0.22599,
-      "current_px": 0.22696,
+      "current_px": 0.22828,
       "szi": 110.0,
-      "margin": 4.99268,
+      "margin": 5.02172,
       "side": "LONG",
-      "peak_roe": 0.0042922253197044055,
+      "peak_roe": 0.010133191734147591,
       "strategy": "5M_HOD_BREAKOUT"
     },
     "JTO": {
       "entry_px": 0.54501,
-      "current_px": 0.547755,
+      "current_px": 0.547015,
       "szi": 46.0,
-      "margin": 5.038867,
+      "margin": 5.030192,
       "side": "LONG",
       "peak_roe": 0.00503660483293884,
       "strategy": "5M_HOD_BREAKOUT"
     },
     "BRETT": {
       "entry_px": 0.005691,
-      "current_px": 0.005767,
+      "current_px": 0.005799,
       "szi": 4340.0,
-      "margin": 8.340033,
+      "margin": 8.386326,
       "side": "LONG",
-      "peak_roe": 0.013354419258478396,
+      "peak_roe": 0.018977332630469242,
       "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "JTO",
+    "FET",
     "BRETT",
-    "FET"
+    "JTO"
   ],
-  "last_run_timestamp": "2026-10-10 20:45:50",
-  "last_email_timestamp": 1791664376.9253058,
+  "last_run_timestamp": "2026-10-10 20:56:08",
+  "last_email_timestamp": 1791665758.83261,
   "last_scan_timestamp": 1791664376.9253058,
   "gemini_cache": {
-    "timestamp": 1791665139.3509703,
-    "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating significant macroeconomic uncertainty, ongoing regulatory shifts, and high volatility, making them susceptible to sudden liquidity swings and geopolitical pressures."
+    "timestamp": 1791665758.83261,
+    "risk": "MODERATE",
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, the asset class faces ongoing volatility stemming from macroeconomic uncertainty and sensitive reactions to regulatory developments."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492
