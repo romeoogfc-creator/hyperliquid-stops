@@ -13,7 +13,8 @@
     "ZRO": 1791549036.5697,
     "DOGE": 1791552644.4488678,
     "WIF": 1791555323.6166713,
-    "BIGTIME": 1791575141.9079013
+    "BIGTIME": 1791575141.9079013,
+    "MOVE": 1791744811.0017996
   },
   "stagnation_tracker": {
     "APT": 28,
@@ -52,6 +53,30 @@
     "NEAR": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "MOVE",
+      "entry_price": 0.009287,
+      "exit_price": 0.009282,
+      "pnl_usd": -0.004335,
+      "roe_pct": -0.05383869925702375,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-10 18:53:31",
+      "ts_sec": 1791658411.0017996,
+      "fill_hash": "MOVE_670833690459993"
+    },
+    {
+      "coin": "STRK",
+      "entry_price": 0.09776,
+      "exit_price": 0.1023,
+      "pnl_usd": 1.126374,
+      "roe_pct": 4.644026186579381,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-10 18:53:31",
+      "ts_sec": 1791658411.0017996,
+      "fill_hash": "STRK_1044350308972843"
+    },
     {
       "coin": "TIA",
       "entry_price": 0.51726,
@@ -250,55 +275,11 @@
       "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
       "timestamp": "2026-10-07 06:45:29",
       "ts_sec": 1791355529.862923
-    },
-    {
-      "coin": "ACE",
-      "entry_price": 0.1974,
-      "exit_price": 0.1967,
-      "pnl_usd": -0.053193,
-      "roe_pct": -0.35460992907800326,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-06 17:15:27",
-      "ts_sec": 1791306927.5344515
-    },
-    {
-      "coin": "PYTH",
-      "entry_price": 0.080468,
-      "exit_price": 0.078989,
-      "pnl_usd": -0.276573,
-      "roe_pct": -1.837997713376739,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-06 14:30:31",
-      "ts_sec": 1791297031.3566132
     }
   ],
-  "active_position_cache": {
-    "STRK": {
-      "entry_px": 0.09776,
-      "current_px": 0.10332,
-      "szi": 248.1,
-      "margin": 5.123761,
-      "side": "LONG",
-      "peak_roe": 0.056873977086743,
-      "strategy": "5M_HOD_BREAKOUT"
-    },
-    "MOVE": {
-      "entry_px": 0.009287,
-      "current_px": 0.009315,
-      "szi": 2651.0,
-      "margin": 8.231355,
-      "side": "LONG",
-      "peak_roe": 0.0030149671583934797,
-      "strategy": "5M_HOD_BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "STRK",
-    "MOVE"
-  ],
-  "last_run_timestamp": "2026-10-10 18:45:58",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-10 18:53:52",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -308,12 +289,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791657468.6533387,
-  "last_scan_timestamp": 1791657936.2037826,
+  "last_email_timestamp": 1791658411.0017996,
+  "last_scan_timestamp": 1791658411.0017996,
   "gemini_cache": {
-    "timestamp": 1791657936.2037826,
+    "timestamp": 1791658411.0017996,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH**\n\nCurrent crypto markets are characterized by heightened volatility driven by uncertain macroeconomic signals, shifting regulatory landscapes, and the leveraged nature of recent price action, necessitating extreme caution for investors."
+    "briefing": "Risk Level: **HIGH**\n\nThe market is currently characterized by heightened volatility driven by macroeconomic uncertainty, regulatory scrutiny, and significant leverage in the derivatives space, making it susceptible to rapid price swings."
   },
   "recent_losses": [],
   "last_traded_candle": {
