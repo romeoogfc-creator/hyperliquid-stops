@@ -276,7 +276,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-10 17:31:38",
+  "last_run_timestamp": "2026-10-10 17:44:25",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -286,12 +286,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791652681.06904,
-  "last_scan_timestamp": 1791653483.3647554,
+  "last_email_timestamp": 1791654242.9756997,
+  "last_scan_timestamp": 1791654242.9756997,
   "gemini_cache": {
-    "timestamp": 1791653483.3647554,
+    "timestamp": 1791654242.9756997,
     "risk": "HIGH",
-    "briefing": "Risk Level: HIGH; while institutional inflows provide a foundational floor, the market remains hypersensitive to macroeconomic volatility, regulatory shifts, and the potential for rapid deleveraging inherent in highly speculative asset classes."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, potential regulatory uncertainty, and liquidity volatility, necessitating extreme caution for short-term participants."
   },
   "recent_losses": [],
   "last_traded_candle": {
