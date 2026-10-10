@@ -45,7 +45,7 @@
     "DOT": 9,
     "LDO": 1,
     "NEO": 1,
-    "TIA": 1,
+    "TIA": 0,
     "SUI": 8,
     "BSV": 0,
     "MINA": 2,
@@ -53,6 +53,18 @@
     "NEAR": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "CHIP",
+      "entry_price": 0.059765,
+      "exit_price": 0.060789,
+      "pnl_usd": 0.41472,
+      "roe_pct": 1.713377394796292,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-10 18:30:31",
+      "ts_sec": 1791657031.9535332,
+      "fill_hash": "CHIP_619152886616205"
+    },
     {
       "coin": "BIGTIME",
       "entry_price": 0.007802,
@@ -261,44 +273,33 @@
       "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
       "timestamp": "2026-10-06 12:15:25",
       "ts_sec": 1791288925.8623273
-    },
-    {
-      "coin": "BTC",
-      "entry_price": 86473.0,
-      "exit_price": 85596.5,
-      "pnl_usd": 0.10512,
-      "roe_pct": 1.01361118499416,
-      "side": "SHORT",
-      "exit_reason": "\ud83c\udfaf RANGING Fair-Value TP Target ($85596.5000 <= $85692.8500)",
-      "timestamp": "2026-10-05 04:32:26",
-      "ts_sec": 1791174746.7219043
     }
   ],
   "active_position_cache": {
-    "CHIP": {
-      "entry_px": 0.059765,
-      "current_px": 0.061529,
-      "szi": 405.0,
-      "margin": 8.29926,
+    "TIA": {
+      "entry_px": 0.51726,
+      "current_px": 0.53615,
+      "szi": 46.9,
+      "margin": 5.027961,
       "side": "LONG",
-      "peak_roe": 0.029515602777545415,
+      "peak_roe": 0.03651935196999567,
       "strategy": "5M_HOD_BREAKOUT"
     },
-    "TIA": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.51827,
-      "side": "LONG"
-    },
     "STRK": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.09781,
-      "side": "LONG"
+      "entry_px": 0.09776,
+      "current_px": 0.10151,
+      "szi": 248.1,
+      "margin": 5.037422,
+      "side": "LONG",
+      "peak_roe": 0.03835924713584291,
+      "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "CHIP"
+    "STRK",
+    "TIA"
   ],
-  "last_run_timestamp": "2026-10-10 18:19:02",
+  "last_run_timestamp": "2026-10-10 18:30:54",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -308,12 +309,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791656311.6515481,
-  "last_scan_timestamp": 1791656311.6515481,
+  "last_email_timestamp": 1791657031.9535332,
+  "last_scan_timestamp": 1791657031.9535332,
   "gemini_cache": {
-    "timestamp": 1791656311.6515481,
+    "timestamp": 1791657031.9535332,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts and regulatory uncertainty, leading to significant volatility that can trigger rapid liquidations in either direction."
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, the asset class remains highly vulnerable to sudden volatility driven by macroeconomic uncertainty and potential regulatory shifts."
   },
   "recent_losses": [],
   "last_traded_candle": {
