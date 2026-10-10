@@ -45,7 +45,6 @@
     "DOT": 9,
     "LDO": 1,
     "NEO": 1,
-    "TIA": 0,
     "SUI": 8,
     "BSV": 0,
     "MINA": 2,
@@ -53,6 +52,17 @@
     "NEAR": 3
   },
   "closed_trades_ledger": [
+    {
+      "coin": "TIA",
+      "entry_price": 0.51726,
+      "exit_price": 0.54529,
+      "pnl_usd": 1.315076,
+      "roe_pct": 5.418938251556277,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udea8 True 5M Falling Knife (Red Body: 90%, Vol: 3.6x)",
+      "timestamp": "2026-10-10 18:37:48",
+      "ts_sec": 1791657468.6533387
+    },
     {
       "coin": "CHIP",
       "entry_price": 0.059765,
@@ -262,44 +272,28 @@
       "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
       "timestamp": "2026-10-06 14:30:31",
       "ts_sec": 1791297031.3566132
-    },
-    {
-      "coin": "RSR",
-      "entry_price": 0.001804,
-      "exit_price": 0.001812,
-      "pnl_usd": 0.006552,
-      "roe_pct": 0.4434589800443447,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-06 12:15:25",
-      "ts_sec": 1791288925.8623273
     }
   ],
   "active_position_cache": {
-    "TIA": {
-      "entry_px": 0.51726,
-      "current_px": 0.53615,
-      "szi": 46.9,
-      "margin": 5.027961,
-      "side": "LONG",
-      "peak_roe": 0.03651935196999567,
-      "strategy": "5M_HOD_BREAKOUT"
-    },
     "STRK": {
       "entry_px": 0.09776,
-      "current_px": 0.10151,
+      "current_px": 0.10194,
       "szi": 248.1,
-      "margin": 5.037422,
+      "margin": 5.060247,
       "side": "LONG",
-      "peak_roe": 0.03835924713584291,
+      "peak_roe": 0.042757774140752894,
       "strategy": "5M_HOD_BREAKOUT"
+    },
+    "MOVE": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.009317,
+      "side": "LONG"
     }
   },
   "previous_active_coins": [
-    "STRK",
-    "TIA"
+    "STRK"
   ],
-  "last_run_timestamp": "2026-10-10 18:30:54",
+  "last_run_timestamp": "2026-10-10 18:38:15",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -309,12 +303,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791657031.9535332,
-  "last_scan_timestamp": 1791657031.9535332,
+  "last_email_timestamp": 1791657468.6533387,
+  "last_scan_timestamp": 1791657468.6533387,
   "gemini_cache": {
-    "timestamp": 1791657031.9535332,
+    "timestamp": 1791657468.6533387,
     "risk": "HIGH",
-    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, the asset class remains highly vulnerable to sudden volatility driven by macroeconomic uncertainty and potential regulatory shifts."
+    "briefing": "Risk Level: **HIGH** \u2014 Markets are currently characterized by significant volatility, heightened regulatory scrutiny, and uncertainty surrounding macroeconomic policy, making them prone to sharp, unpredictable price swings."
   },
   "recent_losses": [],
   "last_traded_candle": {
@@ -352,7 +346,8 @@
     "BIGTIME": 1791478800000,
     "CHIP": 1791655800000,
     "TIA": 1791656100000,
-    "STRK": 1791656100000
+    "STRK": 1791656100000,
+    "MOVE": 1791657300000
   },
   "hibernating_until": 0,
   "daily_starting_equity": {
