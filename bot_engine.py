@@ -325,7 +325,7 @@ def calculate_atr(highs, lows, closes, period=14):
         return 1.0
 
 # ==============================================================================
-# FAST 5M ROSS SCALPER ENGINE (QUICK 3% - 10% PROFIT RATCHET)
+# FAST 5M ROSS SCALPER ENGINE (ULTRA-TIGHT DYNAMIC PROFIT SQUEEZE)
 # ==============================================================================
 def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_long):
     """Analyzes live 5m candle structure to prevent buying falling knives."""
@@ -358,7 +358,8 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
 
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0, coin="ETH"):
     """
-    V3.9 FAST 5M ROSS SCALPER: Quick activation (+1.0% ROE) to capture fast 3% - 10% gains.
+    V3.9.2 ULTRA-TIGHT FAST ROSS SCALPER:
+    Dynamically scales profit floors early (+0.80% activation) to capture fast micro-spikes with minimal giveback.
     """
     if is_long:
         roe = (current_px - entry_px) / entry_px
@@ -378,20 +379,23 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, ent
         structure_stop = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else min_required_stop
         initial_floor_roe = max(min_required_stop, structure_stop) if not is_major else min(min_required_stop, structure_stop)
 
-    # 2. FAST 5M PROFIT RATCHET (+1.00% ACTIVATION FOR QUICK SCALPS)
-    activation_roe = 0.0100  # Activates at +1.00% ROE (~+$0.15)
-    be_floor_roe = 0.0030      # +0.30% ROE floor (covers fees)
+    # 2. ULTRA-TIGHT ROSS SCALPER PROFIT RATCHET (+0.80% EARLY ACTIVATION)
+    activation_roe = 0.0080  # Early activation at +0.80% ROE (~+$0.12)
+    be_floor_roe = 0.0030    # +0.30% ROE base floor (covers taker fees)
 
     if peak_roe >= activation_roe:
-        if peak_roe < 0.0200:   # +1.00% to +2.00% ROE -> Break-Even Floor
-            target_floor_roe = be_floor_roe
-            leash_status = f"🛡 BREAK-EVEN SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-        elif peak_roe < 0.0400:  # +2.00% to +4.00% ROE -> Lock 60% of Gains
-            target_floor_roe = peak_roe * 0.60
-            leash_status = f"⚡ 5M SCALP LOCK (60%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-        else:                   # +4.00%+ ROE -> Lock 85% of Gains (Super-Trend)
-            target_floor_roe = peak_roe * 0.85
-            leash_status = f"🔥 5M MOONSHOT LOCK (85%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+        if peak_roe < 0.0150:   # +0.80% to +1.50% ROE -> Lock 50% (min +0.30% BE floor)
+            target_floor_roe = max(be_floor_roe, peak_roe * 0.50)
+            leash_status = f"⚡ 5M TIGHT LOCK (50%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+        elif peak_roe < 0.0300:  # +1.50% to +3.00% ROE -> Lock 65% of Gains
+            target_floor_roe = peak_roe * 0.65
+            leash_status = f"⚡ 5M SCALP LOCK (65%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+        elif peak_roe < 0.0500:  # +3.00% to +5.00% ROE -> Lock 75% of Gains
+            target_floor_roe = peak_roe * 0.75
+            leash_status = f"🔥 5M SUPER LOCK (75%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+        else:                   # +5.00%+ ROE -> Lock 88% of Gains (Moonshot Squeeze)
+            target_floor_roe = peak_roe * 0.88
+            leash_status = f"🚀 5M MOONSHOT SQUEEZE (88%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
     else:
         target_floor_roe = initial_floor_roe
         leash_status = f"🛡 STRUCTURAL STOP ({target_floor_roe*100:.2f}%)"
@@ -479,7 +483,7 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.9.1 Master Engine Started (5M Fast Scalper Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.9.2 Master Engine Started (5M Ultra-Tight Ross Scalper Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -750,7 +754,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V3.9.1", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V3.9.2", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -985,7 +989,7 @@ def execute_engine():
 
                     alloc_label = "5M Fast Scalp (25% NAV)"
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V3.9.1", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V3.9.2", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -1039,7 +1043,7 @@ def execute_engine():
         
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V3.9.1 | 5M Fast Ross Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V3.9.2 | 5M Fast Ross Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         summary_card_html = f"""
         <div class="summary-card">
@@ -1163,7 +1167,7 @@ def execute_engine():
           <body>
             <div class="container">
               <div class="header">
-                <h2>TR-GC-Crypto-LS-23-V3.9.1 | 5M Fast Ross Scalper</h2>
+                <h2>TR-GC-Crypto-LS-23-V3.9.2 | 5M Fast Ross Scalper</h2>
                 <p>Timestamp: {timestamp} (5M Candles &amp; 5M Scanning Active)</p>
               </div>
               <div class="content">
@@ -1180,12 +1184,12 @@ def execute_engine():
                 {summary_card_html}
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (V3.9.1 Fast Scalper Active)</div>
+                  <div class="rules-title">&#9989; Active Guardrails (V3.9.2 Ultra-Tight Scalper Active)</div>
                   &bull; <b>5M High-of-Day (HOD) Scalper:</b> Detects fresh 5m candle breakouts as volume surges<br>
                   &bull; <b>Micro-Cap Penny Perp Scope (#20-#200+):</b> Focuses on low-float micro-caps while skipping heavy mega-caps<br>
                   &bull; <b>Zero Rate-Limit Bulk Extraction:</b> Fetches 150+ asset contexts in 1 single bulk call (`meta_and_asset_ctxs`)<br>
                   &bull; <b>Fast RVOL Gate (&ge; 1.6x - 1.8x):</b> Captures fresh 5m volume spikes early<br>
-                  &bull; <b>Quick +1.00% ROE Profit Ratchet:</b> Locks break-even (+0.30% ROE) immediately at +1.0% gain<br>
+                  &bull; <b>Ultra-Tight Profit Ratchet (+0.80% Activation):</b> Dynamically locks 50% to 88% of peak gains early to prevent giveback<br>
                   &bull; <b>5-Minute Scan Cadence:</b> Runs every 5 minutes natively via GitHub Actions to hunt high-ranking movers<br>
                   &bull; <b>Strict Altcoin Loss Cap (-1.50% ROE):</b> Hard-caps altcoin losses at max -$0.22<br>
                   &bull; <b>24/7 Native Orderbook Sync:</b> Posts resting trigger orders directly on Hyperliquid orderbook<br>
