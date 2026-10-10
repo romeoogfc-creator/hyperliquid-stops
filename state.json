@@ -276,7 +276,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-10 09:30:39",
+  "last_run_timestamp": "2026-10-10 09:36:43",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -286,12 +286,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791624081.7671266,
-  "last_scan_timestamp": 1791624628.591313,
+  "last_email_timestamp": 1791624995.4125834,
+  "last_scan_timestamp": 1791624995.4125834,
   "gemini_cache": {
-    "timestamp": 1791624628.591313,
+    "timestamp": 1791624995.4125834,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts and regulatory uncertainty, leading to elevated volatility as investors navigate the ongoing tension between institutional inflows and potential liquidity contractions."
+    "briefing": "Risk Level: **HIGH** \u2014 Increased market volatility driven by macroeconomic uncertainty, regulatory shifts, and significant leverage in derivatives markets creates a heightened risk environment for retail participants."
   },
   "recent_losses": [],
   "last_traded_candle": {
