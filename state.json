@@ -298,7 +298,7 @@
   "previous_active_coins": [
     "PURR"
   ],
-  "last_run_timestamp": "2026-10-10 20:00:50",
+  "last_run_timestamp": "2026-10-10 20:01:37",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -358,7 +358,7 @@
     "BRETT": 1791661500000,
     "PURR": 1791661800000
   },
-  "hibernating_until": 0,
+  "hibernating_until": 1791705697.8979762,
   "daily_starting_equity": {
     "2026-10-01": 18.34993784,
     "2026-10-02": 18.3499422,
