@@ -49,29 +49,34 @@
   "active_position_cache": {
     "BRETT": {
       "entry_px": 0.005691,
-      "current_px": 0.005799,
+      "current_px": 0.005909,
       "szi": 4340.0,
-      "margin": 8.390666,
+      "margin": 8.546906,
       "side": "LONG",
-      "peak_roe": 0.019504480759093303,
+      "peak_roe": 0.03830609734668781,
       "strategy": "5M_HOD_BREAKOUT"
     },
     "BERA": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.22566,
-      "side": "LONG"
+      "entry_px": 0.22598,
+      "current_px": 0.22721,
+      "szi": 109.8,
+      "margin": 4.988653,
+      "side": "LONG",
+      "peak_roe": 0.005442959553942866,
+      "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
+    "BERA",
     "BRETT"
   ],
-  "last_run_timestamp": "2026-10-10 21:16:26",
+  "last_run_timestamp": "2026-10-10 21:20:16",
   "last_email_timestamp": 1791666956.3485343,
-  "last_scan_timestamp": 1791666956.3485343,
+  "last_scan_timestamp": 1791667195.889658,
   "gemini_cache": {
-    "timestamp": 1791666956.3485343,
+    "timestamp": 1791667195.889658,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market remains in a state of high volatility driven by macroeconomic uncertainty, regulatory scrutiny, and sensitive liquidity conditions, necessitating extreme caution for participants."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting regulatory headwinds, and significant volatility surrounding global liquidity trends, necessitating extreme caution for leveraged positions."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492
