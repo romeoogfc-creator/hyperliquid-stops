@@ -588,13 +588,13 @@ def execute_engine():
 
     # ROSS CAMERON HIGH VOLUME GATES (RVOL >= 2.0x - 3.0x)
     if gemini_risk == "HIGH":
-        required_vol_ratio = 3.00
+        required_vol_ratio = 2.50
         audit_logs.append(f"⚠️ Gemini Macro Risk HIGH: 15m Ross Breakout RVOL gate >= {required_vol_ratio:.2f}x | Sizing: 0.70x")
     elif gemini_risk == "MODERATE":
-        required_vol_ratio = 2.50
+        required_vol_ratio = 2.20
         audit_logs.append(f"ℹ Gemini Macro Risk MODERATE: 15m Ross Breakout RVOL gate >= {required_vol_ratio:.2f}x | Sizing: 0.85x")
     else:
-        required_vol_ratio = 2.00
+        required_vol_ratio = 1.80
         audit_logs.append(f"✅ Gemini Macro Risk LOW: 15m Ross Breakout RVOL gate >= {required_vol_ratio:.2f}x | Sizing: 1.00x")
 
     btc_regime, btc_change_pct, btc_bounce_pct = get_btc_regime(info, now_ms)
@@ -895,156 +895,138 @@ def execute_engine():
     if is_5m_scan_window and available_slots > 0:
         state["last_scan_timestamp"] = now_ts
 
-        btc_candles_5d = api_retry(info.candles_snapshot, name="BTC", interval="15m", startTime=now_ms - 86400000 * 2, endTime=now_ms)
-        btc_closes = [float(c["c"]) for c in btc_candles_5d]
-        btc_highs = [float(c["h"]) for c in btc_candles_5d]
-        btc_lows = [float(c["l"]) for c in btc_candles_5d]
-        
-        btc_ci = calculate_choppiness_index(btc_highs, btc_lows, btc_closes)
-        btc_adx = calculate_adx(btc_highs, btc_lows, btc_closes)
+        audit_logs.append(f"🌐 ROSS MOMENTUM SCANNER ACTIVE: Evaluating Top 10 Gainers for 15m breakouts...")
 
-        if (btc_ci < 50.0 and btc_adx > 18.0) or (btc_adx >= 25.0):
-            market_mode = "TRENDING"
-        elif btc_ci > 65.0:
-            market_mode = "CHOP_HOLD"
-        else:
-            market_mode = "RANGING"
+        # ROSS CAMERON RULE: FOCUS ON THE TOP 10 LEADING GAINERS ONLY
+        scored_universe = []
+        for coin in universe:
+            if coin in active_coins or coin in ["USDC", "USDT"]:
+                continue
+            if now_ts < float(state.get("cooldown_blocklist", {}).get(coin, 0)):
+                continue
+            try:
+                c_peek = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 86400000, endTime=now_ms)
+                if c_peek and len(c_peek) >= 96:
+                    change_24h = ((float(c_peek[-1]["c"]) - float(c_peek[-96]["c"])) / float(c_peek[-96]["c"])) * 100
+                    # Filter strictly for positive gainers to match Ross's HOD momentum playbook
+                    if change_24h > 0.0:
+                        scored_universe.append((coin, change_24h))
+            except Exception:
+                continue
 
-        audit_logs.append(f"🌐 15M MARKET REGIME: Mode = [{market_mode}] (BTC Daily: {effective_regime} [{btc_change_pct:+.2f}%], CI: {btc_ci:.1f}, ADX: {btc_adx:.1f}). Scanning 15m momentum...")
+        scored_universe = sorted(scored_universe, key=lambda x: x[1], reverse=True)
+        # Take strictly the Top 10 Gainers to scan
+        prioritized_universe = [item[0] for item in scored_universe[:10]]
 
-        if market_mode != "CHOP_HOLD":
-            # ROSS CAMERON RULE: FOCUS ON THE TOP 10 LEADING GAINERS ONLY
-            scored_universe = []
-            for coin in universe:
-                if coin in active_coins or coin in ["USDC", "USDT"]:
+        for coin in prioritized_universe:
+            is_altcoin = coin.upper() not in ["BTC", "ETH", "SOL"]
+
+            try:
+                curr_live_px = float(all_mids.get(coin, 0))
+                if curr_live_px <= 0:
                     continue
-                if now_ts < float(state.get("cooldown_blocklist", {}).get(coin, 0)):
-                    continue
-                try:
-                    c_peek = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 86400000, endTime=now_ms)
-                    if c_peek and len(c_peek) >= 96:
-                        change_24h = ((float(c_peek[-1]["c"]) - float(c_peek[-96]["c"])) / float(c_peek[-96]["c"])) * 100
-                        # Filter strictly for positive gainers to match Ross's HOD momentum playbook
-                        if change_24h > 0.0:
-                            scored_universe.append((coin, change_24h))
-                except Exception:
-                    continue
-
-            scored_universe = sorted(scored_universe, key=lambda x: x[1], reverse=True)
-            # Take strictly the Top 10 Gainers to scan
-            prioritized_universe = [item[0] for item in scored_universe[:10]]
-
-            for coin in prioritized_universe:
-                is_altcoin = coin.upper() not in ["BTC", "ETH", "SOL"]
-
-                try:
-                    curr_live_px = float(all_mids.get(coin, 0))
-                    if curr_live_px <= 0:
-                        continue
-                    
-                    time.sleep(0.10)
-                    candles = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 86400000 * 2, endTime=now_ms)
-                    if not candles or len(candles) < 50:
-                        continue
-
-                    current_candle_ts = candles[-1]["t"]
-                    if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
-                        continue
-
-                    is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0035, min_depth_usd=5000.0)
-                    if not is_liquid:
-                        continue
-
-                    closes = [float(c["c"]) for c in candles]
-                    highs = [float(c["h"]) for c in candles]
-                    lows = [float(c["l"]) for c in candles]
-                    volumes = [float(c.get("v", 0)) for c in candles]
-
-                    coin_24h_change = ((closes[-1] - closes[-96]) / closes[-96]) * 100 if len(closes) >= 96 else 0.0
-
-                    c_3_close = float(candles[-3]["c"])
-                    c_2_open = float(candles[-2]["o"])
-                    c_2_close = float(candles[-2]["c"])
-                    c_1_open = float(candles[-1]["o"])
-
-                    c_2_is_green = c_2_close > c_2_open
-                    c_1_is_green = curr_live_px > c_1_open
-
-                    c_2_is_red = c_2_close < c_2_open
-                    c_1_is_red = curr_live_px < c_1_open
-
-                    upper_t2, lower_t2, _ = calculate_gaussian_channel(closes[:-2], period=96)
-                    upper_t1, lower_t1, _ = calculate_gaussian_channel(closes[:-1], period=96)
-
-                    c_high_live = float(candles[-1]["h"])
-                    c_low_live = float(candles[-1]["l"])
-                    c_range = max(c_high_live - c_low_live, 1e-8)
-                    live_body_ratio = abs(curr_live_px - c_1_open) / c_range
-                    if live_body_ratio < 0.55:
-                        continue
-
-                    if curr_live_px > (upper_t1 * 1.018) or curr_live_px < (lower_t1 * 0.982):
-                        continue
-
-                    fresh_green_breakout = (
-                        (c_3_close <= upper_t2 * 1.008) and
-                        c_2_is_green and (c_2_close > upper_t1) and
-                        c_1_is_green
-                    )
-
-                    # ROSS CAMERON RULE 1: STRICT LONG-ONLY FOR ALTCOIN BREAKOUTS
-                    fresh_red_breakdown = False if is_altcoin else (
-                        (c_3_close >= lower_t2 * 0.992) and
-                        c_2_is_red and (c_2_close < lower_t1) and
-                        c_1_is_red
-                    )
-
-                    rsi_15m = calculate_rsi(closes)
-                    bb_upper, bb_lower, bb_mid = calculate_bollinger_bands(closes)
-                    vwap_val = calculate_vwap(candles[-24:])
-                    
-                    # 15m Paced Volume Scaling
-                    candle_start_ms = candles[-1]["t"]
-                    elapsed_mins = max(1.0, (now_ms - candle_start_ms) / 60000.0)
-                    live_volume_raw = float(candles[-1].get("v", 0))
-                    paced_volume = live_volume_raw * (15.0 / elapsed_mins)
-                    
-                    avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
-                    vol_ratio = paced_volume / avg_vol if avg_vol > 0 else 1.0
-
-                    # ROSS CAMERON RULE 3: HIGH RELATIVE VOLUME GATE (RVOL >= 2.0x - 3.0x)
-                    if vol_ratio < required_vol_ratio:
-                        continue
-
-                    ci_15m = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
-                    max_allowable_ci = 45.0 if is_altcoin else 50.0
-
-                    if ci_15m <= max_allowable_ci:
-                        # ROSS CAMERON RULE: Relative Strength Gate (Altcoin must outperform BTC by +1.50%)
-                        if fresh_green_breakout and (effective_regime in ["GREEN", "NEUTRAL"]):
-                            if is_altcoin and (coin_24h_change < btc_change_pct + 1.50):
-                                continue
-                            market_candidates.append({
-                                "coin": coin, "close": curr_live_px, "is_long": True, 
-                                "score": (curr_live_px - upper_t1) / upper_t1, "candle_ts": current_candle_ts,
-                                "strategy": "BREAKOUT"
-                            })
-                            audit_logs.append(f"🚀 ROSS 15M MOMENTUM (LONG): {coin} @ ${curr_live_px:.4f} (24h Gain: {coin_24h_change:+.1f}%, Vol: {vol_ratio:.2f}x)")
-
-                        if fresh_red_breakdown and (effective_regime in ["RED", "NEUTRAL"]) and not is_altcoin:
-                            market_candidates.append({
-                                "coin": coin, "close": curr_live_px, "is_long": False, 
-                                "score": (lower_t1 - curr_live_px) / lower_t1, "candle_ts": current_candle_ts,
-                                "strategy": "BREAKOUT"
-                            })
-                            audit_logs.append(f"🔥 MAJOR 15M BREAKDOWN (SHORT): {coin} @ ${curr_live_px:.4f} (24h Gain: {coin_24h_change:+.1f}%, Vol: {vol_ratio:.2f}x)")
-
-                except Exception:
+                
+                time.sleep(0.10)
+                candles = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 86400000 * 2, endTime=now_ms)
+                if not candles or len(candles) < 50:
                     continue
 
-            audit_logs.append(f"🌐 15M Scan complete: {len(market_candidates)} qualified candidate(s).")
-        else:
-            audit_logs.append(f"⏳ 15M Market in Chop (CI > 65.0). Skipping scans.")
+                current_candle_ts = candles[-1]["t"]
+                if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
+                    continue
+
+                is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0035, min_depth_usd=5000.0)
+                if not is_liquid:
+                    continue
+
+                closes = [float(c["c"]) for c in candles]
+                highs = [float(c["h"]) for c in candles]
+                lows = [float(c["l"]) for c in candles]
+                volumes = [float(c.get("v", 0)) for c in candles]
+
+                coin_24h_change = ((closes[-1] - closes[-96]) / closes[-96]) * 100 if len(closes) >= 96 else 0.0
+
+                c_3_close = float(candles[-3]["c"])
+                c_2_open = float(candles[-2]["o"])
+                c_2_close = float(candles[-2]["c"])
+                c_1_open = float(candles[-1]["o"])
+
+                c_2_is_green = c_2_close > c_2_open
+                c_1_is_green = curr_live_px > c_1_open
+
+                c_2_is_red = c_2_close < c_2_open
+                c_1_is_red = curr_live_px < c_1_open
+
+                upper_t2, lower_t2, _ = calculate_gaussian_channel(closes[:-2], period=96)
+                upper_t1, lower_t1, _ = calculate_gaussian_channel(closes[:-1], period=96)
+
+                c_high_live = float(candles[-1]["h"])
+                c_low_live = float(candles[-1]["l"])
+                c_range = max(c_high_live - c_low_live, 1e-8)
+                live_body_ratio = abs(curr_live_px - c_1_open) / c_range
+                if live_body_ratio < 0.55:
+                    continue
+
+                if curr_live_px > (upper_t1 * 1.018) or curr_live_px < (lower_t1 * 0.982):
+                    continue
+
+                fresh_green_breakout = (
+                    (c_3_close <= upper_t2 * 1.008) and
+                    c_2_is_green and (c_2_close > upper_t1) and
+                    c_1_is_green
+                )
+
+                # ROSS CAMERON RULE 1: STRICT LONG-ONLY FOR ALTCOIN BREAKOUTS
+                fresh_red_breakdown = False if is_altcoin else (
+                    (c_3_close >= lower_t2 * 0.992) and
+                    c_2_is_red and (c_2_close < lower_t1) and
+                    c_1_is_red
+                )
+
+                rsi_15m = calculate_rsi(closes)
+                bb_upper, bb_lower, bb_mid = calculate_bollinger_bands(closes)
+                vwap_val = calculate_vwap(candles[-24:])
+                
+                # 15m Paced Volume Scaling
+                candle_start_ms = candles[-1]["t"]
+                elapsed_mins = max(1.0, (now_ms - candle_start_ms) / 60000.0)
+                live_volume_raw = float(candles[-1].get("v", 0))
+                paced_volume = live_volume_raw * (15.0 / elapsed_mins)
+                
+                avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
+                vol_ratio = paced_volume / avg_vol if avg_vol > 0 else 1.0
+
+                # ROSS CAMERON RULE 3: HIGH RELATIVE VOLUME GATE (RVOL >= 1.8x - 2.5x)
+                if vol_ratio < required_vol_ratio:
+                    continue
+
+                ci_15m = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
+                max_allowable_ci = 52.0 if is_altcoin else 55.0
+
+                if ci_15m <= max_allowable_ci:
+                    # ROSS CAMERON RULE: Relative Strength Gate (Altcoin must outperform BTC daily gain)
+                    if fresh_green_breakout and (effective_regime in ["GREEN", "NEUTRAL"]):
+                        if is_altcoin and (coin_24h_change < btc_change_pct + 1.00):
+                            continue
+                        market_candidates.append({
+                            "coin": coin, "close": curr_live_px, "is_long": True, 
+                            "score": (curr_live_px - upper_t1) / upper_t1, "candle_ts": current_candle_ts,
+                            "strategy": "BREAKOUT"
+                        })
+                        audit_logs.append(f"🚀 ROSS 15M MOMENTUM (LONG): {coin} @ ${curr_live_px:.4f} (24h Gain: {coin_24h_change:+.1f}%, Vol: {vol_ratio:.2f}x)")
+
+                    if fresh_red_breakdown and (effective_regime in ["RED", "NEUTRAL"]) and not is_altcoin:
+                        market_candidates.append({
+                            "coin": coin, "close": curr_live_px, "is_long": False, 
+                            "score": (lower_t1 - curr_live_px) / lower_t1, "candle_ts": current_candle_ts,
+                            "strategy": "BREAKOUT"
+                        })
+                        audit_logs.append(f"🔥 MAJOR 15M BREAKDOWN (SHORT): {coin} @ ${curr_live_px:.4f} (24h Gain: {coin_24h_change:+.1f}%, Vol: {vol_ratio:.2f}x)")
+
+            except Exception:
+                continue
+
+        audit_logs.append(f"🌐 15M Scan complete: {len(market_candidates)} qualified candidate(s).")
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
 
@@ -1308,9 +1290,9 @@ def execute_engine():
                   <div class="rules-title">&#9989; Active Guardrails (V3.7 Ross Cameron Pure Momentum Active)</div>
                   &bull; <b>Strict LONG-Only Altcoin Breakouts:</b> Completely bans altcoin shorting; focuses 100% on high-volume HOD bull flags<br>
                   &bull; <b>Top 10 Leading Gainers Focus:</b> Scans only positive 24h gainers to trade top market momentum<br>
-                  &bull; <b>High Relative Volume Gate (RVOL &ge; 2.0x - 3.0x):</b> Verifies institutional volume surges before entry<br>
+                  &bull; <b>High Relative Volume Gate (RVOL &ge; 1.8x - 2.5x):</b> Verifies institutional volume surges before entry<br>
                   &bull; <b>Asymmetric 2:1+ Profit Trailing:</b> Delays profit locking until +1.20% to +2.50% ROE to maximize win size<br>
-                  &bull; <b>Relative Strength vs. BTC Gate (+1.50%):</b> Demands altcoins outperform BTC daily gain before buying<br>
+                  &bull; <b>Relative Strength vs. BTC Gate (+1.00%):</b> Demands altcoins outperform BTC daily gain before buying<br>
                   &bull; <b>5-Minute Scan Cadence:</b> Runs every 5 minutes natively via GitHub Actions to hunt high-ranking movers<br>
                   &bull; <b>Adaptive Volatility Sizing (25% Base NAV):</b> Scales position size based on Gemini Macro Risk<br>
                   &bull; <b>Strict Altcoin Loss Cap (-1.50% ROE):</b> Hard-caps altcoin losses at max -$0.22<br>
