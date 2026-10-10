@@ -280,18 +280,23 @@
   "active_position_cache": {
     "MOODENG": {
       "entry_px": 0.043997,
-      "current_px": 0.043865,
+      "current_px": 0.04398,
       "szi": 562.0,
-      "margin": 8.21644,
+      "margin": 8.233674,
       "side": "LONG",
-      "peak_roe": -0.003000204559401781,
+      "peak_roe": -0.0003863899811351484,
       "strategy": "5M_HOD_BREAKOUT"
+    },
+    "AZTEC": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.016781,
+      "side": "LONG"
     }
   },
   "previous_active_coins": [
     "MOODENG"
   ],
-  "last_run_timestamp": "2026-10-10 19:18:15",
+  "last_run_timestamp": "2026-10-10 19:30:54",
   "ai_shield_cache": {
     "high_risk_detected": true,
     "risk_level": "HIGH",
@@ -301,12 +306,12 @@
     "timestamp": "2026-09-24 00:07:15",
     "scan_date": "2026-09-24"
   },
-  "last_email_timestamp": 1791659726.8713012,
-  "last_scan_timestamp": 1791659726.8713012,
+  "last_email_timestamp": 1791660621.2149148,
+  "last_scan_timestamp": 1791660621.2149148,
   "gemini_cache": {
-    "timestamp": 1791659726.8713012,
+    "timestamp": 1791660621.2149148,
     "risk": "HIGH",
-    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, the asset class remains highly sensitive to macroeconomic volatility and sudden shifts in regulatory or geopolitical conditions."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting regulatory landscapes, and extreme volatility fueled by high leverage, necessitating extreme caution for retail participants."
   },
   "recent_losses": [],
   "last_traded_candle": {
@@ -346,7 +351,8 @@
     "TIA": 1791656100000,
     "STRK": 1791656100000,
     "MOVE": 1791657300000,
-    "MOODENG": 1791659400000
+    "MOODENG": 1791659400000,
+    "AZTEC": 1791660600000
   },
   "hibernating_until": 0,
   "daily_starting_equity": {
