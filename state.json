@@ -1,14 +1,40 @@
 {
   "cooldown_blocklist": {},
-  "last_traded_candle": {},
+  "last_traded_candle": {
+    "FET": 1791664200000,
+    "JTO": 1791664200000,
+    "BRETT": 1791664200000
+  },
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "FET": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.22597,
+      "side": "LONG"
+    },
+    "JTO": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.544665,
+      "side": "LONG"
+    },
+    "BRETT": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.005676,
+      "side": "LONG"
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "",
-  "last_email_timestamp": 0,
-  "last_scan_timestamp": 0,
-  "gemini_cache": {},
-  "daily_starting_equity": {}
+  "last_run_timestamp": "2026-10-10 20:33:24",
+  "last_email_timestamp": 1791664376.9253058,
+  "last_scan_timestamp": 1791664376.9253058,
+  "gemini_cache": {
+    "timestamp": 1791664376.9253058,
+    "risk": "HIGH",
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and historical pre-election market instability, leaving assets highly susceptible to sudden liquidity swings."
+  },
+  "daily_starting_equity": {
+    "2026-10-10": 115.9235492
+  }
 }
