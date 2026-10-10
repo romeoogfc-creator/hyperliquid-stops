@@ -107,7 +107,7 @@ def round_sig_figs(val, sig_figs=5):
         return 0
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
-def check_liquidity_and_spread(info, coin, max_spread=0.0030, min_depth_usd=6000.0):
+def check_liquidity_and_spread(info, coin, max_spread=0.0035, min_depth_usd=5000.0):
     try:
         l2_book = api_retry(info.l2_snapshot, name=coin)
         levels = l2_book.get("levels", [[], []])
@@ -360,7 +360,7 @@ def calculate_atr(highs, lows, closes, period=14):
         return 1.0
 
 # ==============================================================================
-# SMART PROTECTION ENGINE (STOCK V3.3 CONTINUOUS DYNAMIC RETENTION CURVE)
+# SMART PROTECTION ENGINE (ROSS CAMERON ASYMMETRIC 2:1+ R:R RATIO TUNING)
 # ==============================================================================
 def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_long):
     """Analyzes live candle structure to distinguish liquidity absorption wicks from true falling knives."""
@@ -393,8 +393,8 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
 
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0, coin="ETH"):
     """
-    UPGRADED V3.5 ENGINE: Ported Continuous Dynamic Retention Curve (70% -> 95% Lock)
-    with ATR Noise Shield & Strict 0.75% Max Giveback Clamp.
+    UPGRADED V3.7 ROSS MOMENTUM ENGINE: Tuned activation and trailing thresholds
+    to guarantee 2:1 and 3:1 R:R expansion without choking early winners.
     """
     if is_long:
         roe = (current_px - entry_px) / entry_px
@@ -418,56 +418,35 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, ent
         structure_stop = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else min_required_stop
         initial_floor_roe = max(min_required_stop, structure_stop) if not is_major else min(min_required_stop, structure_stop)
 
-    # 2. UPSIDE: STOCK V3.3 CONTINUOUS DYNAMIC WATERMARK RATCHET (70% -> 95% LOCK)
-    activation_roe = 0.0120 if is_major else 0.0080
-    be_floor_roe = 0.0050 if is_major else 0.0030
+    # 2. UPSIDE: ROSS CAMERON 2:1+ ASYMMETRIC RATCHET (+1.20% ACTIVATION)
+    activation_roe = 0.0120  # Requires +1.20% ROE before trailing locks begin
+    be_floor_roe = 0.0030      # +0.30% ROE floor (covers exchange fees)
 
     if peak_roe >= activation_roe:
-        if is_major:
-            if peak_roe < 0.0200:
-                target_floor_roe = be_floor_roe
-                leash_status = f"🛡 BREAK-EVEN SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-            elif peak_roe < 0.0500:  # +2.0% to +5.0% ROE: Retention scales 70% -> 85%
-                retention = 0.70 + ((peak_roe - 0.02) / 0.03) * 0.15
-                target_floor_roe = peak_roe * retention
-                leash_status = f"🛡 DYNAMIC {retention*100:.1f}% LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-            elif peak_roe < 0.1500: # +5.0% to +15.0% ROE: Retention scales 85% -> 92%
-                retention = 0.85 + ((peak_roe - 0.05) / 0.10) * 0.07
-                target_floor_roe = peak_roe * retention
-                leash_status = f"🛡 DYNAMIC {retention*100:.1f}% LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-            else:                   # +15.0%+ ROE: 95% Retention Cap
-                retention = 0.95
-                target_floor_roe = peak_roe * retention
-                leash_status = f"🚀 MOONSHOT {retention*100:.1f}% LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-        else: # Altcoins
-            if peak_roe < 0.0150:
-                target_floor_roe = be_floor_roe
-                leash_status = f"🛡 BREAK-EVEN SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-            elif peak_roe < 0.0400:  # +1.5% to +4.0% ROE: Retention scales 70% -> 85%
-                retention = 0.70 + ((peak_roe - 0.015) / 0.025) * 0.15
-                target_floor_roe = peak_roe * retention
-                leash_status = f"🛡 DYNAMIC {retention*100:.1f}% LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-            elif peak_roe < 0.1000: # +4.0% to +10.0% ROE: Retention scales 85% -> 92%
-                retention = 0.85 + ((peak_roe - 0.04) / 0.06) * 0.07
-                target_floor_roe = peak_roe * retention
-                leash_status = f"🛡 DYNAMIC {retention*100:.1f}% LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-            else:                   # +10.0%+ ROE: 95% Retention Cap
-                retention = 0.95
-                target_floor_roe = peak_roe * retention
-                leash_status = f"🚀 MOONSHOT {retention*100:.1f}% LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+        if peak_roe < 0.0250:   # +1.20% to +2.50% ROE (1:1 to 2:1 R:R zone)
+            target_floor_roe = be_floor_roe
+            leash_status = f"🛡 BREAK-EVEN SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+        elif peak_roe < 0.0500:  # +2.50% to +5.00% ROE (2:1 to 3:1 R:R zone)
+            retention = 0.70 + ((peak_roe - 0.025) / 0.025) * 0.15  # 70% -> 85% retention
+            target_floor_roe = peak_roe * retention
+            leash_status = f"🚀 2:1+ ROSS LOCK ({retention*100:.0f}%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+        else:                   # +5.00%+ ROE (Super-Trend / Moonshot)
+            retention = 0.90
+            target_floor_roe = peak_roe * retention
+            leash_status = f"🔥 MOONSHOT 90% LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
     else:
         target_floor_roe = initial_floor_roe
         leash_status = f"🛡 STRUCTURAL STOP ({target_floor_roe*100:.2f}%)"
 
-    # 3. STRICT 0.75% MAX GIVEBACK CLAMP
-    giveback_allowance = 0.0075
+    # 3. ROSS 1.00% MAX GIVEBACK CLAMP (Gives 15m candle noise room to breathe)
+    giveback_allowance = 0.0100
     if peak_roe >= activation_roe:
         giveback_floor = peak_roe - giveback_allowance
         if giveback_floor > target_floor_roe:
             target_floor_roe = giveback_floor
-            leash_status = f"⚡ GIVEBACK CLAMP (0.75%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+            leash_status = f"⚡ GIVEBACK CLAMP (1.00%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
 
-    # 4. STOCK V3.3 ATR NOISE SHIELD
+    # 4. ATR NOISE SHIELD
     peak_px = entry_px * (1 + peak_roe) if is_long else entry_px * (1 - peak_roe)
     min_atr_distance = atr_val * (0.40 if is_major else 0.25)
 
@@ -564,7 +543,7 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.6 Master Engine Started (15M Ross-Momentum & Adaptive Sizing Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.7 Master Engine Started (Ross Cameron Pure Momentum Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -607,15 +586,16 @@ def execute_engine():
     gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_5m_scan_window)
     audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] {gemini_briefing}")
 
+    # ROSS CAMERON HIGH VOLUME GATES (RVOL >= 2.0x - 3.0x)
     if gemini_risk == "HIGH":
-        required_vol_ratio = 1.25
-        audit_logs.append(f"⚠️ Gemini Macro Risk HIGH: 15m breakout volume gate >= {required_vol_ratio:.2f}x | Adaptive Sizing: 0.70x")
+        required_vol_ratio = 3.00
+        audit_logs.append(f"⚠️ Gemini Macro Risk HIGH: 15m Ross Breakout RVOL gate >= {required_vol_ratio:.2f}x | Sizing: 0.70x")
     elif gemini_risk == "MODERATE":
-        required_vol_ratio = 1.18
-        audit_logs.append(f"ℹ Gemini Macro Risk MODERATE: 15m breakout volume gate >= {required_vol_ratio:.2f}x | Adaptive Sizing: 0.85x")
+        required_vol_ratio = 2.50
+        audit_logs.append(f"ℹ Gemini Macro Risk MODERATE: 15m Ross Breakout RVOL gate >= {required_vol_ratio:.2f}x | Sizing: 0.85x")
     else:
-        required_vol_ratio = 1.12
-        audit_logs.append(f"✅ Gemini Macro Risk LOW: 15m breakout volume gate >= {required_vol_ratio:.2f}x active | Adaptive Sizing: 1.00x")
+        required_vol_ratio = 2.00
+        audit_logs.append(f"✅ Gemini Macro Risk LOW: 15m Ross Breakout RVOL gate >= {required_vol_ratio:.2f}x | Sizing: 1.00x")
 
     btc_regime, btc_change_pct, btc_bounce_pct = get_btc_regime(info, now_ms)
     audit_logs.append(f"BTC Directional Shield: Daily Candle is {btc_regime} ({btc_change_pct:+.2f}%, Intraday Bounce: +{btc_bounce_pct:.2f}%).")
@@ -736,9 +716,6 @@ def execute_engine():
             elif (not is_long) and btc_regime == "GREEN":
                 should_exit = True
                 exit_reason = f"🚨 BTC Daily Bullish Flip Purge (BTC Daily is GREEN {btc_change_pct:+.2f}%)"
-            elif (not is_long) and is_altcoin and btc_bounce_pct >= 0.40:
-                should_exit = True
-                exit_reason = f"⚡ BTC Relief Bounce Shield (+{btc_bounce_pct:.2f}% bounce off low). Cut altcoin SHORT."
 
             try:
                 c_candles = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 86400000 * 2, endTime=now_ms)
@@ -766,16 +743,6 @@ def execute_engine():
                 if is_knife:
                     should_exit = True
                     exit_reason = knife_reason
-
-                strat_type = current_active_cache.get(coin, {}).get("strategy", "BREAKOUT")
-                if strat_type == "MEAN_REVERSION":
-                    target_tp = max(bb_mid, vwap_val) if is_long else min(bb_mid, vwap_val)
-                    if is_long and current_px >= target_tp:
-                        should_exit = True
-                        exit_reason = f"🎯 RANGING Fair-Value TP Target (${current_px:.4f} >= ${target_tp:.4f})"
-                    elif (not is_long) and current_px <= target_tp:
-                        should_exit = True
-                        exit_reason = f"🎯 RANGING Fair-Value TP Target (${current_px:.4f} <= ${target_tp:.4f})"
             except Exception as e:
                 audit_logs.append(f"Indicator calculation warning on {coin}: {e}")
 
@@ -855,7 +822,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V3.6", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V3.7", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -946,7 +913,7 @@ def execute_engine():
         audit_logs.append(f"🌐 15M MARKET REGIME: Mode = [{market_mode}] (BTC Daily: {effective_regime} [{btc_change_pct:+.2f}%], CI: {btc_ci:.1f}, ADX: {btc_adx:.1f}). Scanning 15m momentum...")
 
         if market_mode != "CHOP_HOLD":
-            # Ross-style prioritization: sort universe by 24h percentage gain to scan top movers first
+            # ROSS CAMERON RULE: FOCUS ON THE TOP 10 LEADING GAINERS ONLY
             scored_universe = []
             for coin in universe:
                 if coin in active_coins or coin in ["USDC", "USDT"]:
@@ -957,12 +924,15 @@ def execute_engine():
                     c_peek = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 86400000, endTime=now_ms)
                     if c_peek and len(c_peek) >= 96:
                         change_24h = ((float(c_peek[-1]["c"]) - float(c_peek[-96]["c"])) / float(c_peek[-96]["c"])) * 100
-                        scored_universe.append((coin, change_24h))
+                        # Filter strictly for positive gainers to match Ross's HOD momentum playbook
+                        if change_24h > 0.0:
+                            scored_universe.append((coin, change_24h))
                 except Exception:
                     continue
 
             scored_universe = sorted(scored_universe, key=lambda x: x[1], reverse=True)
-            prioritized_universe = [item[0] for item in scored_universe]
+            # Take strictly the Top 10 Gainers to scan
+            prioritized_universe = [item[0] for item in scored_universe[:10]]
 
             for coin in prioritized_universe:
                 is_altcoin = coin.upper() not in ["BTC", "ETH", "SOL"]
@@ -981,7 +951,7 @@ def execute_engine():
                     if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
                         continue
 
-                    is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0035, min_depth_usd=4000.0)
+                    is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0035, min_depth_usd=5000.0)
                     if not is_liquid:
                         continue
 
@@ -1022,7 +992,8 @@ def execute_engine():
                         c_1_is_green
                     )
 
-                    fresh_red_breakdown = (
+                    # ROSS CAMERON RULE 1: STRICT LONG-ONLY FOR ALTCOIN BREAKOUTS
+                    fresh_red_breakdown = False if is_altcoin else (
                         (c_3_close >= lower_t2 * 0.992) and
                         c_2_is_red and (c_2_close < lower_t1) and
                         c_1_is_red
@@ -1041,16 +1012,17 @@ def execute_engine():
                     avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
                     vol_ratio = paced_volume / avg_vol if avg_vol > 0 else 1.0
 
-                    effective_vol_threshold = max(required_vol_ratio, 1.50 if effective_regime == "NEUTRAL" else 1.10)
-                    if vol_ratio < effective_vol_threshold:
+                    # ROSS CAMERON RULE 3: HIGH RELATIVE VOLUME GATE (RVOL >= 2.0x - 3.0x)
+                    if vol_ratio < required_vol_ratio:
                         continue
 
                     ci_15m = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
                     max_allowable_ci = 45.0 if is_altcoin else 50.0
 
                     if ci_15m <= max_allowable_ci:
+                        # ROSS CAMERON RULE: Relative Strength Gate (Altcoin must outperform BTC by +1.50%)
                         if fresh_green_breakout and (effective_regime in ["GREEN", "NEUTRAL"]):
-                            if is_altcoin and (coin_24h_change < btc_change_pct + 0.50):
+                            if is_altcoin and (coin_24h_change < btc_change_pct + 1.50):
                                 continue
                             market_candidates.append({
                                 "coin": coin, "close": curr_live_px, "is_long": True, 
@@ -1059,15 +1031,13 @@ def execute_engine():
                             })
                             audit_logs.append(f"🚀 ROSS 15M MOMENTUM (LONG): {coin} @ ${curr_live_px:.4f} (24h Gain: {coin_24h_change:+.1f}%, Vol: {vol_ratio:.2f}x)")
 
-                        if fresh_red_breakdown and (effective_regime in ["RED", "NEUTRAL"]):
-                            if is_altcoin and btc_bounce_pct >= 1.00:
-                                continue
+                        if fresh_red_breakdown and (effective_regime in ["RED", "NEUTRAL"]) and not is_altcoin:
                             market_candidates.append({
                                 "coin": coin, "close": curr_live_px, "is_long": False, 
                                 "score": (lower_t1 - curr_live_px) / lower_t1, "candle_ts": current_candle_ts,
                                 "strategy": "BREAKOUT"
                             })
-                            audit_logs.append(f"🔥 ROSS 15M MOMENTUM (SHORT): {coin} @ ${curr_live_px:.4f} (24h Gain: {coin_24h_change:+.1f}%, Vol: {vol_ratio:.2f}x)")
+                            audit_logs.append(f"🔥 MAJOR 15M BREAKDOWN (SHORT): {coin} @ ${curr_live_px:.4f} (24h Gain: {coin_24h_change:+.1f}%, Vol: {vol_ratio:.2f}x)")
 
                 except Exception:
                     continue
@@ -1138,9 +1108,9 @@ def execute_engine():
 
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
-                    alloc_label = f"15M Ross Momentum (Scaled {risk_multiplier*100:.0f}%)"
+                    alloc_label = f"Ross Momentum (Scaled {risk_multiplier*100:.0f}%)"
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V3.6", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V3.7", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -1194,7 +1164,7 @@ def execute_engine():
         
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V3.6 | 15M Ross-Momentum Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V3.7 | Ross Cameron Pure Momentum Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         summary_card_html = f"""
         <div class="summary-card">
@@ -1318,8 +1288,8 @@ def execute_engine():
           <body>
             <div class="container">
               <div class="header">
-                <h2>TR-GC-Crypto-LS-23-V3.6 | 15M Ross-Momentum Dashboard</h2>
-                <p>Timestamp: {timestamp} (15M Candles & 5M Scanning Active)</p>
+                <h2>TR-GC-Crypto-LS-23-V3.7 | Ross Cameron Pure Momentum</h2>
+                <p>Timestamp: {timestamp} (15M Candles &amp; 5M Scanning Active)</p>
               </div>
               <div class="content">
                 <div class="net-worth-card">
@@ -1335,23 +1305,17 @@ def execute_engine():
                 {summary_card_html}
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (V3.6 15M Ross-Momentum Active)</div>
-                  &bull; <b>15-Minute Momentum Candles:</b> Scans and evaluates breakouts on 15m intervals to catch altcoin ignition early<br>
+                  <div class="rules-title">&#9989; Active Guardrails (V3.7 Ross Cameron Pure Momentum Active)</div>
+                  &bull; <b>Strict LONG-Only Altcoin Breakouts:</b> Completely bans altcoin shorting; focuses 100% on high-volume HOD bull flags<br>
+                  &bull; <b>Top 10 Leading Gainers Focus:</b> Scans only positive 24h gainers to trade top market momentum<br>
+                  &bull; <b>High Relative Volume Gate (RVOL &ge; 2.0x - 3.0x):</b> Verifies institutional volume surges before entry<br>
+                  &bull; <b>Asymmetric 2:1+ Profit Trailing:</b> Delays profit locking until +1.20% to +2.50% ROE to maximize win size<br>
+                  &bull; <b>Relative Strength vs. BTC Gate (+1.50%):</b> Demands altcoins outperform BTC daily gain before buying<br>
                   &bull; <b>5-Minute Scan Cadence:</b> Runs every 5 minutes natively via GitHub Actions to hunt high-ranking movers<br>
-                  &bull; <b>Adaptive Volatility Sizing (25% Base NAV):</b> Automatically scales position size (1.00x / 0.85x / 0.70x) based on Gemini Macro Risk<br>
-                  &bull; <b>Strict 0.75% Max Giveback Clamp:</b> Guarantees crypto winners never give back more than 0.75% from their peak<br>
-                  &bull; <b>Dynamic Paced Volume Scaling:</b> Annualizes live forming 15m candle volume rate to unlock early breakouts<br>
-                  &bull; <b>Stock V3.3 Dynamic Retention Curve (70% &rarr; 95% Lock):</b> Smoothly ratchets profit floor as ROE grows<br>
-                  &bull; <b>Stock V3.3 ATR Noise Shield:</b> Buffers trailing stop with dynamic ATR distance to prevent wick shakeouts<br>
-                  &bull; <b>On-Chain Race Condition Shield:</b> Cancels trigger orders &amp; verifies live position before sending market close<br>
-                  &bull; <b>Mathematical CI Clamp (0.0 &rarr; 100.0):</b> Prevents negative Choppiness Index math errors during tight consolidations<br>
-                  &bull; <b>24/7 Uncapped Active Scanning:</b> Preserves continuous breakout access while filtering fakeouts<br>
-                  &bull; <b>Relative Strength / Weakness Gate (RS/RW):</b> Verifies altcoin momentum relative to BTC before entering<br>
-                  &bull; <b>Solid Candle Body Gate (&ge;55% Body):</b> Rejects weak dojis/indecision candles with long rejection wicks<br>
-                  &bull; <b>Extension Cap (&le;1.8% Band Distance):</b> Prevents buying or shorting over-extended price spikes<br>
+                  &bull; <b>Adaptive Volatility Sizing (25% Base NAV):</b> Scales position size based on Gemini Macro Risk<br>
                   &bull; <b>Strict Altcoin Loss Cap (-1.50% ROE):</b> Hard-caps altcoin losses at max -$0.22<br>
-                  &bull; <b>24/7 Native Orderbook Sync:</b> Posts resting trigger orders on Hyperliquid L1 orderbook to protect while sleeping<br>
-                  &bull; <b>BTC Directional Shield:</b> Enforces broad market alignment &amp; active flip purge (GREEN = LONGs, RED = SHORTs)<br>
+                  &bull; <b>24/7 Native Orderbook Sync:</b> Posts resting trigger orders directly on Hyperliquid orderbook<br>
+                  &bull; <b>BTC Directional Shield:</b> Aligns market direction with daily candle (GREEN = LONGs only)<br>
                   &bull; <b>24H Post-Loss Cooldown Blocklist:</b> Auto-bans any coin closed at a loss for 24 hours<br>
                   &bull; <b>Rolling Loss Circuit Breaker:</b> Triggers 12-hour hibernation if 3 losses occur within rolling 60m
                 </div>
@@ -1402,7 +1366,7 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing 15M Ross-Momentum Protection cycle...", flush=True)
+    print(f"[{timestamp}] Executing Ross Cameron Pure Momentum Protection cycle...", flush=True)
     try:
         execute_engine()
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 15M cycle execution completed successfully.", flush=True)
