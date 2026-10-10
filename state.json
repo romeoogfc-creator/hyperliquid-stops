@@ -4,11 +4,35 @@
     "FET": 1791664200000,
     "JTO": 1791664200000,
     "BRETT": 1791664200000,
-    "MOODENG": 1791666000000
+    "MOODENG": 1791666000000,
+    "BERA": 1791666900000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "MOODENG",
+      "entry_price": 0.044081,
+      "exit_price": 0.044151,
+      "pnl_usd": 0.03934,
+      "roe_pct": 0.1587985753499254,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-10 21:15:56",
+      "ts_sec": 1791666956.3485343,
+      "fill_hash": "MOODENG_335412021131743"
+    },
+    {
+      "coin": "FET",
+      "entry_price": 0.22599,
+      "exit_price": 0.22688,
+      "pnl_usd": 0.0957,
+      "roe_pct": 0.3938227355192716,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.39%)",
+      "timestamp": "2026-10-10 21:15:56",
+      "ts_sec": 1791666956.3485343
+    },
     {
       "coin": "JTO",
       "entry_price": 0.54501,
@@ -23,46 +47,31 @@
     }
   ],
   "active_position_cache": {
-    "FET": {
-      "entry_px": 0.22599,
-      "current_px": 0.228115,
-      "szi": 110.0,
-      "margin": 5.01754,
-      "side": "LONG",
-      "peak_roe": 0.010133191734147591,
-      "strategy": "5M_HOD_BREAKOUT"
-    },
     "BRETT": {
       "entry_px": 0.005691,
-      "current_px": 0.005802,
+      "current_px": 0.005799,
       "szi": 4340.0,
-      "margin": 8.392113,
+      "margin": 8.390666,
       "side": "LONG",
       "peak_roe": 0.019504480759093303,
       "strategy": "5M_HOD_BREAKOUT"
     },
-    "MOODENG": {
-      "entry_px": 0.044081,
-      "current_px": 0.044472,
-      "szi": 562.0,
-      "margin": 8.329964,
-      "side": "LONG",
-      "peak_roe": 0.008870034708831367,
-      "strategy": "5M_HOD_BREAKOUT"
+    "BERA": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.22566,
+      "side": "LONG"
     }
   },
   "previous_active_coins": [
-    "MOODENG",
-    "BRETT",
-    "FET"
+    "BRETT"
   ],
-  "last_run_timestamp": "2026-10-10 21:05:21",
-  "last_email_timestamp": 1791666028.220164,
-  "last_scan_timestamp": 1791666028.220164,
+  "last_run_timestamp": "2026-10-10 21:16:26",
+  "last_email_timestamp": 1791666956.3485343,
+  "last_scan_timestamp": 1791666956.3485343,
   "gemini_cache": {
-    "timestamp": 1791666310.6560388,
+    "timestamp": 1791666956.3485343,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting interest rate expectations, and increased regulatory scrutiny, all of which continue to drive significant volatility across major asset classes."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market remains in a state of high volatility driven by macroeconomic uncertainty, regulatory scrutiny, and sensitive liquidity conditions, necessitating extreme caution for participants."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492
