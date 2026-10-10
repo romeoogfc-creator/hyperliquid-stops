@@ -25,39 +25,44 @@
   "active_position_cache": {
     "FET": {
       "entry_px": 0.22599,
-      "current_px": 0.228095,
+      "current_px": 0.228115,
       "szi": 110.0,
-      "margin": 5.01798,
+      "margin": 5.01754,
       "side": "LONG",
       "peak_roe": 0.010133191734147591,
       "strategy": "5M_HOD_BREAKOUT"
     },
     "BRETT": {
       "entry_px": 0.005691,
-      "current_px": 0.005776,
+      "current_px": 0.005802,
       "szi": 4340.0,
-      "margin": 8.34148,
+      "margin": 8.392113,
       "side": "LONG",
-      "peak_roe": 0.018977332630469242,
+      "peak_roe": 0.019504480759093303,
       "strategy": "5M_HOD_BREAKOUT"
     },
     "MOODENG": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.044072,
-      "side": "LONG"
+      "entry_px": 0.044081,
+      "current_px": 0.044472,
+      "szi": 562.0,
+      "margin": 8.329964,
+      "side": "LONG",
+      "peak_roe": 0.008870034708831367,
+      "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "FET",
-    "BRETT"
+    "MOODENG",
+    "BRETT",
+    "FET"
   ],
-  "last_run_timestamp": "2026-10-10 21:00:51",
+  "last_run_timestamp": "2026-10-10 21:05:21",
   "last_email_timestamp": 1791666028.220164,
   "last_scan_timestamp": 1791666028.220164,
   "gemini_cache": {
-    "timestamp": 1791666028.220164,
+    "timestamp": 1791666310.6560388,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nCrypto markets currently face severe vulnerability due to macroeconomic tightening, persistent regulatory crackdowns, and fragile market liquidity that could trigger sharp liquidations at any moment."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting interest rate expectations, and increased regulatory scrutiny, all of which continue to drive significant volatility across major asset classes."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492
