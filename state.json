@@ -75,23 +75,28 @@
   "active_position_cache": {
     "VVV": {
       "entry_px": 23.222,
-      "current_px": 23.234,
+      "current_px": 23.2775,
       "szi": 1.08,
-      "margin": 25.07436,
+      "margin": 25.14024,
       "side": "LONG",
-      "peak_roe": 0.0005167513564723303,
+      "peak_roe": 0.0023899750236843747,
       "strategy": "5M_HOD_BREAKOUT"
     },
     "APEX": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.24611,
-      "side": "LONG"
+      "entry_px": 0.24623,
+      "current_px": 0.24612,
+      "szi": 102.0,
+      "margin": 8.3691,
+      "side": "LONG",
+      "peak_roe": -0.00044673679080534047,
+      "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "VVV"
+    "VVV",
+    "APEX"
   ],
-  "last_run_timestamp": "2026-10-10 21:45:51",
+  "last_run_timestamp": "2026-10-10 21:47:43",
   "last_email_timestamp": 1791668728.8309464,
   "last_scan_timestamp": 1791668728.8309464,
   "gemini_cache": {
