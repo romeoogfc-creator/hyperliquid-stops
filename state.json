@@ -1,7 +1,8 @@
 {
   "cooldown_blocklist": {
     "VVV": 1791755889.7304785,
-    "APEX": 1791756028.5847876
+    "APEX": 1791756028.5847876,
+    "CFX": 1791757829.543547
   },
   "last_traded_candle": {
     "FET": 1791664200000,
@@ -16,6 +17,18 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "CFX",
+      "entry_price": 0.063794,
+      "exit_price": 0.063416,
+      "pnl_usd": -0.147798,
+      "roe_pct": -0.5925322130607946,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-10 22:30:29",
+      "ts_sec": 1791671429.543547,
+      "fill_hash": "CFX_105955706357986"
+    },
     {
       "coin": "APEX",
       "entry_price": 0.24623,
@@ -100,27 +113,15 @@
       "fill_hash": "JTO_91715091410818"
     }
   ],
-  "active_position_cache": {
-    "CFX": {
-      "entry_px": 0.063794,
-      "current_px": 0.06401,
-      "szi": 391.0,
-      "margin": 25.010706,
-      "side": "LONG",
-      "peak_roe": 0.0033858983603472733,
-      "strategy": "5M_HOD_BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "CFX"
-  ],
-  "last_run_timestamp": "2026-10-10 22:23:38",
-  "last_email_timestamp": 1791670121.5587091,
-  "last_scan_timestamp": 1791670998.9430127,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-10 22:30:45",
+  "last_email_timestamp": 1791671429.543547,
+  "last_scan_timestamp": 1791671429.543547,
   "gemini_cache": {
-    "timestamp": 1791670998.9430127,
+    "timestamp": 1791671429.543547,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, potential regulatory actions, and intense volatility following recent price fluctuations, necessitating extreme caution for retail participants."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic indicators, shifting regulatory landscapes, and high levels of leverage, making it susceptible to sharp, unpredictable price swings."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492
