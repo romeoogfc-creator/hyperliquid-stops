@@ -393,7 +393,7 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
 
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0, coin="ETH"):
     """
-    UPGRADED V3.7 ROSS MOMENTUM ENGINE: Tuned activation and trailing thresholds
+    UPGRADED V3.8 ROSS MOMENTUM ENGINE: Tuned activation and trailing thresholds
     to guarantee 2:1 and 3:1 R:R expansion without choking early winners.
     """
     if is_long:
@@ -543,7 +543,7 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.7 Master Engine Started (Ross Cameron Pure Momentum Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.8.1 Master Engine Started (Ross Penny-Stock Filter Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -591,28 +591,26 @@ def execute_engine():
     gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_5m_scan_window)
     audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] {gemini_briefing}")
 
-    # ROSS CAMERON HIGH VOLUME GATES (RVOL >= 1.8x - 2.5x)
+    btc_regime, btc_change_pct, btc_bounce_pct = get_btc_regime(info, now_ms)
+    audit_logs.append(f"BTC Directional Shield: Daily Candle is {btc_regime} ({btc_change_pct:+.2f}%, Intraday Bounce: +{btc_bounce_pct:.2f}%).")
+
+    # ADAPTIVE VOLUME GATE TUNING
     if gemini_risk == "HIGH":
-        required_vol_ratio = 2.50
+        required_vol_ratio = 2.00 if btc_regime == "GREEN" else 2.50
         audit_logs.append(f"⚠️ Gemini Macro Risk HIGH: 15m Ross Breakout RVOL gate >= {required_vol_ratio:.2f}x | Sizing: 0.70x")
     elif gemini_risk == "MODERATE":
-        required_vol_ratio = 2.20
+        required_vol_ratio = 1.90 if btc_regime == "GREEN" else 2.20
         audit_logs.append(f"ℹ Gemini Macro Risk MODERATE: 15m Ross Breakout RVOL gate >= {required_vol_ratio:.2f}x | Sizing: 0.85x")
     else:
         required_vol_ratio = 1.80
         audit_logs.append(f"✅ Gemini Macro Risk LOW: 15m Ross Breakout RVOL gate >= {required_vol_ratio:.2f}x | Sizing: 1.00x")
 
-    btc_regime, btc_change_pct, btc_bounce_pct = get_btc_regime(info, now_ms)
-    audit_logs.append(f"BTC Directional Shield: Daily Candle is {btc_regime} ({btc_change_pct:+.2f}%, Intraday Bounce: +{btc_bounce_pct:.2f}%).")
-
     effective_regime = btc_regime
 
     sz_decimals_map = {}
-    universe_names = []
     for asset in meta.get("universe", []):
         coin_name = asset.get("name")
         sz_decimals_map[coin_name] = asset.get("szDecimals", 4)
-        universe_names.append(coin_name)
 
     asset_positions = user_state.get("assetPositions", [])
     active_count = 0
@@ -829,7 +827,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V3.7", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V3.8.1", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -901,15 +899,19 @@ def execute_engine():
     if is_5m_scan_window and available_slots > 0:
         state["last_scan_timestamp"] = now_ts
 
-        audit_logs.append(f"🌐 ROSS MOMENTUM SCANNER ACTIVE: Bulk ranking Top Gainers for 15m breakouts...")
+        audit_logs.append(f"🌐 ROSS MOMENTUM SCANNER ACTIVE: Scanning Micro-Cap Penny Coins (#50-#200+)...")
 
-        # ZERO RATE-LIMIT BULK GAINER EXTRACTION VIA META_AND_ASSET_CTXS
+        # ZERO RATE-LIMIT BULK EXTRACTION: Focus strictly on low-float micro-caps (index >= 50)
         scored_universe = []
         for idx, asset in enumerate(meta.get("universe", [])):
             coin = asset.get("name")
             if not coin or coin in active_coins or coin in ["USDC", "USDT"]:
                 continue
             if now_ts < float(state.get("cooldown_blocklist", {}).get(coin, 0)):
+                continue
+
+            # Strict Micro-Cap / Penny Perp Filter (Skips heavy mega-caps like BTC, ETH, SOL)
+            if idx < 30:
                 continue
 
             try:
@@ -920,14 +922,14 @@ def execute_engine():
                 if prev_px > 0 and mark_px > 0:
                     change_24h = ((mark_px - prev_px) / prev_px) * 100
                     if change_24h > 0.0:  # Positive Gainers Only
-                        scored_universe.append((coin, change_24h))
+                        scored_universe.append((coin, change_24h, idx))
             except Exception:
                 continue
 
         scored_universe = sorted(scored_universe, key=lambda x: x[1], reverse=True)
-        prioritized_universe = [item[0] for item in scored_universe[:10]]
+        prioritized_universe = [item[0] for item in scored_universe[:25]]
 
-        audit_logs.append(f"📊 Top Gainers Ranked: {', '.join([f'{c} (+{g:.1f}%)' for c, g in scored_universe[:5]])}")
+        audit_logs.append(f"📊 Top Penny Gainers Ranked: {', '.join([f'{c} (+{g:.1f}%)' for c, g, i in scored_universe[:8]])}")
 
         for coin in prioritized_universe:
             is_altcoin = coin.upper() not in ["BTC", "ETH", "SOL"]
@@ -937,7 +939,7 @@ def execute_engine():
                 if curr_live_px <= 0:
                     continue
                 
-                time.sleep(0.15)  # Respectful 150ms delay between candidate calls
+                time.sleep(0.10)
                 candles = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 86400000 * 2, endTime=now_ms)
                 if not candles or len(candles) < 50:
                     continue
@@ -1013,7 +1015,7 @@ def execute_engine():
 
                 if ci_15m <= max_allowable_ci:
                     if fresh_green_breakout and (effective_regime in ["GREEN", "NEUTRAL"]):
-                        if is_altcoin and (coin_24h_change < btc_change_pct + 1.00):
+                        if is_altcoin and (coin_24h_change < btc_change_pct + 0.50):
                             continue
                         market_candidates.append({
                             "coin": coin, "close": curr_live_px, "is_long": True, 
@@ -1099,7 +1101,7 @@ def execute_engine():
 
                     alloc_label = f"Ross Momentum (Scaled {risk_multiplier*100:.0f}%)"
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V3.7", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V3.8.1", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -1153,7 +1155,7 @@ def execute_engine():
         
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V3.7 | Ross Cameron Pure Momentum Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V3.8.1 | Ross Cameron Pure Momentum Dashboard\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         summary_card_html = f"""
         <div class="summary-card">
@@ -1277,7 +1279,7 @@ def execute_engine():
           <body>
             <div class="container">
               <div class="header">
-                <h2>TR-GC-Crypto-LS-23-V3.7 | Ross Cameron Pure Momentum</h2>
+                <h2>TR-GC-Crypto-LS-23-V3.8.1 | Ross Cameron Pure Momentum</h2>
                 <p>Timestamp: {timestamp} (15M Candles &amp; 5M Scanning Active)</p>
               </div>
               <div class="content">
@@ -1294,13 +1296,13 @@ def execute_engine():
                 {summary_card_html}
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (V3.7 Ross Cameron Pure Momentum Active)</div>
-                  &bull; <b>Zero Rate-Limit Bulk Extraction:</b> Ranks Top 10 Gainers in a single API call (`meta_and_asset_ctxs`)<br>
+                  <div class="rules-title">&#9989; Active Guardrails (V3.8.1 Ross Penny-Stock Active)</div>
+                  &bull; <b>Micro-Cap Penny Perp Scanner (#30-#200+):</b> Focuses on low-float micro-caps while ignoring heavy mega-caps<br>
+                  &bull; <b>Zero Rate-Limit Bulk Extraction:</b> Fetches 150+ asset contexts in 1 single bulk call (`meta_and_asset_ctxs`)<br>
                   &bull; <b>Strict LONG-Only Altcoin Breakouts:</b> Completely bans altcoin shorting; focuses 100% on high-volume HOD bull flags<br>
-                  &bull; <b>Top 10 Leading Gainers Focus:</b> Scans only positive 24h gainers to trade top market momentum<br>
                   &bull; <b>High Relative Volume Gate (RVOL &ge; 1.8x - 2.5x):</b> Verifies institutional volume surges before entry<br>
                   &bull; <b>Asymmetric 2:1+ Profit Trailing:</b> Delays profit locking until +1.20% to +2.50% ROE to maximize win size<br>
-                  &bull; <b>Relative Strength vs. BTC Gate (+1.00%):</b> Demands altcoins outperform BTC daily gain before buying<br>
+                  &bull; <b>Relative Strength vs. BTC Gate (+0.50%):</b> Demands altcoins outperform BTC daily gain before buying<br>
                   &bull; <b>5-Minute Scan Cadence:</b> Runs every 5 minutes natively via GitHub Actions to hunt high-ranking movers<br>
                   &bull; <b>Adaptive Volatility Sizing (25% Base NAV):</b> Scales position size based on Gemini Macro Risk<br>
                   &bull; <b>Strict Altcoin Loss Cap (-1.50% ROE):</b> Hard-caps altcoin losses at max -$0.22<br>
