@@ -297,28 +297,28 @@
   "active_position_cache": {
     "W": {
       "entry_px": 0.01891,
-      "current_px": 0.01939,
+      "current_px": 0.01979,
       "szi": 1319.9,
-      "margin": 5.123851,
+      "margin": 5.226804,
       "side": "LONG",
-      "peak_roe": 0.025383395029085206,
+      "peak_roe": 0.04653622421998936,
       "strategy": "5M_HOD_BREAKOUT"
     },
     "CC": {
       "entry_px": 0.12691,
-      "current_px": 0.126605,
+      "current_px": 0.12666,
       "szi": 197.0,
-      "margin": 8.3134,
+      "margin": 8.31734,
       "side": "LONG",
       "peak_roe": 0.0012213379560319616,
       "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "CC",
-    "W"
+    "W",
+    "CC"
   ],
-  "last_run_timestamp": "2026-10-11 17:45:52",
+  "last_run_timestamp": "2026-10-11 17:48:59",
   "last_email_timestamp": 1791740729.7251124,
   "last_scan_timestamp": 1791740729.7251124,
   "gemini_cache": {
