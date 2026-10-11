@@ -52,7 +52,8 @@
     "MON": 1791735000000,
     "PUMP": 1791737700000,
     "W": 1791739800000,
-    "CC": 1791739500000
+    "CC": 1791739500000,
+    "ZEC": 1791740100000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
@@ -295,24 +296,40 @@
   ],
   "active_position_cache": {
     "W": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.01886,
-      "side": "LONG"
+      "entry_px": 0.01891,
+      "current_px": 0.01915,
+      "szi": 1319.9,
+      "margin": 5.052577,
+      "side": "LONG",
+      "peak_roe": 0.012691697514542603,
+      "strategy": "5M_HOD_BREAKOUT"
     },
     "CC": {
+      "entry_px": 0.12691,
+      "current_px": 0.127065,
+      "szi": 197.0,
+      "margin": 8.343606,
+      "side": "LONG",
+      "peak_roe": 0.0012213379560319616,
+      "strategy": "5M_HOD_BREAKOUT"
+    },
+    "ZEC": {
       "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.126905,
+      "entry_px": 1297.2,
       "side": "LONG"
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-11 17:30:53",
-  "last_email_timestamp": 1791739824.6361263,
-  "last_scan_timestamp": 1791739824.6361263,
+  "previous_active_coins": [
+    "W",
+    "CC"
+  ],
+  "last_run_timestamp": "2026-10-11 17:36:32",
+  "last_email_timestamp": 1791740170.342002,
+  "last_scan_timestamp": 1791740170.342002,
   "gemini_cache": {
-    "timestamp": 1791739824.6361263,
-    "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic data, shifting regulatory landscapes, and high levels of speculative leverage that make it prone to sharp, sudden corrections."
+    "timestamp": 1791740170.342002,
+    "risk": "MODERATE",
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, the asset class continues to face elevated volatility and heightened sensitivity to macroeconomic data, requiring investors to navigate persistent uncertainty regarding near-term regulatory shifts and liquidity fluctuations."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
