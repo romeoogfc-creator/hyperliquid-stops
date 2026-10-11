@@ -308,19 +308,25 @@
   ],
   "active_position_cache": {
     "FET": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.238685,
-      "side": "LONG"
+      "entry_px": 0.23892,
+      "current_px": 0.238335,
+      "szi": 105.0,
+      "margin": 5.00367,
+      "side": "LONG",
+      "peak_roe": -0.002448518332496242,
+      "strategy": "5M_HOD_BREAKOUT"
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-11 23:01:18",
+  "previous_active_coins": [
+    "FET"
+  ],
+  "last_run_timestamp": "2026-10-11 23:14:14",
   "last_email_timestamp": 1791759647.9128397,
-  "last_scan_timestamp": 1791759647.9128397,
+  "last_scan_timestamp": 1791760431.9358149,
   "gemini_cache": {
-    "timestamp": 1791759647.9128397,
+    "timestamp": 1791760431.9358149,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, potential regulatory uncertainty, and typical high-volatility cycles, keeping it in a state of elevated risk for speculative investors."
+    "briefing": "Risk Level: HIGH; market sentiment remains fragile due to heightened macroeconomic uncertainty, ongoing regulatory scrutiny, and significant volatility surrounding global liquidity shifts."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
