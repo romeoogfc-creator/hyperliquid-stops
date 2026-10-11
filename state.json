@@ -277,18 +277,18 @@
   "active_position_cache": {
     "ZRO": {
       "entry_px": 2.088,
-      "current_px": 2.09445,
+      "current_px": 2.1027,
       "szi": 11.9,
-      "margin": 4.984457,
+      "margin": 5.006092,
       "side": "LONG",
-      "peak_roe": 0.003089080459770147,
+      "peak_roe": 0.00704022988505744,
       "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
     "ZRO"
   ],
-  "last_run_timestamp": "2026-10-11 10:13:04",
+  "last_run_timestamp": "2026-10-11 10:15:32",
   "last_email_timestamp": 1791713563.0666742,
   "last_scan_timestamp": 1791713563.0666742,
   "gemini_cache": {
