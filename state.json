@@ -28,7 +28,7 @@
     "SYRUP": 1791839587.6187005
   },
   "last_traded_candle": {
-    "FET": 1791664200000,
+    "FET": 1791759600000,
     "JTO": 1791664200000,
     "BRETT": 1791707700000,
     "MOODENG": 1791666000000,
@@ -306,15 +306,21 @@
       "fill_hash": "S_647431910911051"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "FET": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.238685,
+      "side": "LONG"
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-11 22:51:25",
-  "last_email_timestamp": 1791758726.0361562,
-  "last_scan_timestamp": 1791759053.4465265,
+  "last_run_timestamp": "2026-10-11 23:01:18",
+  "last_email_timestamp": 1791759647.9128397,
+  "last_scan_timestamp": 1791759647.9128397,
   "gemini_cache": {
-    "timestamp": 1791759053.4465265,
+    "timestamp": 1791759647.9128397,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Increased market volatility driven by macroeconomic uncertainty, regulatory scrutiny, and a trend of aggressive profit-taking across major assets suggests a heightened risk of short-term downside corrections."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, potential regulatory uncertainty, and typical high-volatility cycles, keeping it in a state of elevated risk for speculative investors."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
