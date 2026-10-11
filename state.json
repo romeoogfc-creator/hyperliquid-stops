@@ -27,6 +27,18 @@
   "stagnation_tracker": {},
   "closed_trades_ledger": [
     {
+      "coin": "WLD",
+      "entry_price": 0.55527,
+      "exit_price": 0.55624,
+      "pnl_usd": 0.043456,
+      "roe_pct": 0.17468979055232864,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-11 00:30:26",
+      "ts_sec": 1791678626.6116207,
+      "fill_hash": "WLD_755765724105232"
+    },
+    {
       "coin": "PENDLE",
       "entry_price": 2.1874,
       "exit_price": 2.1904,
@@ -180,27 +192,15 @@
       "fill_hash": "JTO_91715091410818"
     }
   ],
-  "active_position_cache": {
-    "WLD": {
-      "entry_px": 0.55527,
-      "current_px": 0.55821,
-      "szi": 44.8,
-      "margin": 25.008256,
-      "side": "LONG",
-      "peak_roe": 0.005294721486844134,
-      "strategy": "5M_HOD_BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "WLD"
-  ],
-  "last_run_timestamp": "2026-10-11 00:16:02",
-  "last_email_timestamp": 1791677726.0003958,
-  "last_scan_timestamp": 1791677726.0003958,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-11 00:30:43",
+  "last_email_timestamp": 1791678626.6116207,
+  "last_scan_timestamp": 1791678626.6116207,
   "gemini_cache": {
-    "timestamp": 1791677726.0003958,
+    "timestamp": 1791678626.6116207,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to geopolitical instability, all of which contribute to an elevated potential for rapid price swings."
+    "briefing": "**Risk Level: HIGH**\n\nThe market is currently characterized by heightened volatility driven by macroeconomic uncertainty, regulatory scrutiny, and a leveraged derivative environment that leaves prices susceptible to sharp, liquidation-driven swings."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492
