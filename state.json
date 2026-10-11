@@ -18,7 +18,8 @@
     "MANTA": 1791815333.0653274,
     "TIA": 1791816327.504644,
     "MON": 1791822487.9778652,
-    "PUMP": 1791825707.6416981
+    "PUMP": 1791825707.6416981,
+    "ZEC": 1791827129.7251124
   },
   "last_traded_candle": {
     "FET": 1791664200000,
@@ -58,6 +59,17 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "ZEC",
+      "entry_price": 1296.5,
+      "exit_price": 1288.4,
+      "pnl_usd": -0.17,
+      "roe_pct": -0.6247589664481226,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.62%)",
+      "timestamp": "2026-10-11 17:45:29",
+      "ts_sec": 1791740729.7251124
+    },
     {
       "coin": "PUMP",
       "entry_price": 0.005844,
@@ -280,56 +292,39 @@
       "timestamp": "2026-10-11 01:54:08",
       "ts_sec": 1791683648.642008,
       "fill_hash": "S_1906339077340"
-    },
-    {
-      "coin": "STRK",
-      "entry_price": 0.11615,
-      "exit_price": 0.11422,
-      "pnl_usd": -0.412827,
-      "roe_pct": -1.6616444253120972,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-11 01:54:08",
-      "ts_sec": 1791683648.642008,
-      "fill_hash": "STRK_979641569462792"
     }
   ],
   "active_position_cache": {
     "W": {
       "entry_px": 0.01891,
-      "current_px": 0.01915,
+      "current_px": 0.01939,
       "szi": 1319.9,
-      "margin": 5.052577,
+      "margin": 5.123851,
       "side": "LONG",
-      "peak_roe": 0.012691697514542603,
+      "peak_roe": 0.025383395029085206,
       "strategy": "5M_HOD_BREAKOUT"
     },
     "CC": {
       "entry_px": 0.12691,
-      "current_px": 0.127065,
+      "current_px": 0.126605,
       "szi": 197.0,
-      "margin": 8.343606,
+      "margin": 8.3134,
       "side": "LONG",
       "peak_roe": 0.0012213379560319616,
       "strategy": "5M_HOD_BREAKOUT"
-    },
-    "ZEC": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 1297.2,
-      "side": "LONG"
     }
   },
   "previous_active_coins": [
-    "W",
-    "CC"
+    "CC",
+    "W"
   ],
-  "last_run_timestamp": "2026-10-11 17:36:32",
-  "last_email_timestamp": 1791740170.342002,
-  "last_scan_timestamp": 1791740170.342002,
+  "last_run_timestamp": "2026-10-11 17:45:52",
+  "last_email_timestamp": 1791740729.7251124,
+  "last_scan_timestamp": 1791740729.7251124,
   "gemini_cache": {
-    "timestamp": 1791740170.342002,
-    "risk": "MODERATE",
-    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, the asset class continues to face elevated volatility and heightened sensitivity to macroeconomic data, requiring investors to navigate persistent uncertainty regarding near-term regulatory shifts and liquidity fluctuations."
+    "timestamp": 1791740729.7251124,
+    "risk": "HIGH",
+    "briefing": "Risk Level: HIGH; crypto markets currently face significant volatility driven by macroeconomic uncertainty, regulatory scrutiny, and a precarious technical setup following recent price swings."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
