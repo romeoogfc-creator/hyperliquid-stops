@@ -286,44 +286,44 @@
   "active_position_cache": {
     "APT": {
       "entry_px": 0.9067,
-      "current_px": 0.9089,
+      "current_px": 0.9261,
       "szi": 27.11,
-      "margin": 24.634857,
+      "margin": 25.090305,
       "side": "LONG",
-      "peak_roe": 0.0024263813830374885,
+      "peak_roe": 0.021396272195875244,
       "strategy": "5M_HOD_BREAKOUT"
     },
     "TIA": {
       "entry_px": 0.59252,
-      "current_px": 0.59279,
+      "current_px": 0.59222,
       "szi": 41.7,
-      "margin": 4.942617,
+      "margin": 4.938697,
       "side": "LONG",
       "peak_roe": 0.00045568082090054754,
       "strategy": "5M_HOD_BREAKOUT"
     },
     "IO": {
       "entry_px": 0.16503,
-      "current_px": 0.16541,
+      "current_px": 0.16908,
       "szi": 149.8,
-      "margin": 8.256976,
+      "margin": 8.436236,
       "side": "LONG",
-      "peak_roe": 0.0023026116463672752,
+      "peak_roe": 0.024540992546809658,
       "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "IO",
     "APT",
+    "IO",
     "TIA"
   ],
-  "last_run_timestamp": "2026-10-11 14:30:35",
-  "last_email_timestamp": 1791728933.0653274,
+  "last_run_timestamp": "2026-10-11 14:44:06",
+  "last_email_timestamp": 1791729838.7161355,
   "last_scan_timestamp": 1791728933.0653274,
   "gemini_cache": {
-    "timestamp": 1791728933.0653274,
+    "timestamp": 1791729838.7161355,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to geopolitical instability, all of which contribute to an environment of unpredictable price swings and elevated downside risk."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to geopolitical instability, all of which keep market participants in a state of elevated caution."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
