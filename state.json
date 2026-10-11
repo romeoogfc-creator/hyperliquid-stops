@@ -50,7 +50,9 @@
     "TIA": 1791728700000,
     "NEAR": 1791733500000,
     "MON": 1791735000000,
-    "PUMP": 1791737700000
+    "PUMP": 1791737700000,
+    "W": 1791739800000,
+    "CC": 1791739500000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
@@ -291,15 +293,26 @@
       "fill_hash": "STRK_979641569462792"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "W": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.01886,
+      "side": "LONG"
+    },
+    "CC": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.126905,
+      "side": "LONG"
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-11 17:22:06",
-  "last_email_timestamp": 1791739307.6416981,
-  "last_scan_timestamp": 1791739307.6416981,
+  "last_run_timestamp": "2026-10-11 17:30:53",
+  "last_email_timestamp": 1791739824.6361263,
+  "last_scan_timestamp": 1791739824.6361263,
   "gemini_cache": {
-    "timestamp": 1791739307.6416981,
+    "timestamp": 1791739824.6361263,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity fluctuations, making it prone to sharp, sudden corrections."
+    "briefing": "Risk Level: **HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic data, shifting regulatory landscapes, and high levels of speculative leverage that make it prone to sharp, sudden corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
