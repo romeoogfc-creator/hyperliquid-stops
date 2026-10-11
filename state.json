@@ -11,7 +11,8 @@
     "DYM": 1791788994.3433616,
     "ZK": 1791788994.3433616,
     "BRETT": 1791795126.127315,
-    "ZRO": 1791800885.41498
+    "ZRO": 1791800885.41498,
+    "S": 1791808386.7883759
   },
   "last_traded_candle": {
     "FET": 1791664200000,
@@ -39,6 +40,18 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "S",
+      "entry_price": 0.048906,
+      "exit_price": 0.048892,
+      "pnl_usd": -0.007098,
+      "roe_pct": -0.028626344415818353,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-11 12:33:06",
+      "ts_sec": 1791721986.7883759,
+      "fill_hash": "S_647431910911051"
+    },
     {
       "coin": "ZRO",
       "entry_price": 2.088,
@@ -261,36 +274,12 @@
       "timestamp": "2026-10-10 21:58:09",
       "ts_sec": 1791669489.7304785,
       "fill_hash": "VVV_207563168949744"
-    },
-    {
-      "coin": "BRETT",
-      "entry_price": 0.005691,
-      "exit_price": 0.005967,
-      "pnl_usd": 1.19784,
-      "roe_pct": 4.849762783342123,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-10 21:45:28",
-      "ts_sec": 1791668728.8309464,
-      "fill_hash": "BRETT_1008237730449655"
     }
   ],
-  "active_position_cache": {
-    "S": {
-      "entry_px": 0.048906,
-      "current_px": 0.04895,
-      "szi": 507.0,
-      "margin": 4.961806,
-      "side": "LONG",
-      "peak_roe": 0.0008996851102114745,
-      "strategy": "5M_HOD_BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "S"
-  ],
-  "last_run_timestamp": "2026-10-11 12:30:46",
-  "last_email_timestamp": 1791721824.6769593,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-11 12:33:09",
+  "last_email_timestamp": 1791721986.7883759,
   "last_scan_timestamp": 1791721824.6769593,
   "gemini_cache": {
     "timestamp": 1791721824.6769593,
