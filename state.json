@@ -183,24 +183,24 @@
   "active_position_cache": {
     "WLD": {
       "entry_px": 0.55527,
-      "current_px": 0.55532,
+      "current_px": 0.55599,
       "szi": 44.8,
-      "margin": 24.876992,
+      "margin": 24.907008,
       "side": "LONG",
-      "peak_roe": 9.004628378985807e-05,
+      "peak_roe": 0.001296666486573996,
       "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
     "WLD"
   ],
-  "last_run_timestamp": "2026-10-11 00:00:50",
+  "last_run_timestamp": "2026-10-11 00:09:59",
   "last_email_timestamp": 1791676594.8281655,
-  "last_scan_timestamp": 1791676830.119801,
+  "last_scan_timestamp": 1791677382.969232,
   "gemini_cache": {
-    "timestamp": 1791676830.119801,
+    "timestamp": 1791677382.969232,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts and regulatory uncertainty, leading to elevated volatility as prices struggle to maintain momentum near critical resistance levels."
+    "briefing": "Risk Level: **HIGH**\n\nThe market is currently experiencing heightened volatility driven by macroeconomic uncertainty, shifting regulatory signals, and significant liquidity fluctuations that leave prices susceptible to sharp, unpredictable swings."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492
