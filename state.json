@@ -51,6 +51,18 @@
   "stagnation_tracker": {},
   "closed_trades_ledger": [
     {
+      "coin": "APT",
+      "entry_price": 0.9067,
+      "exit_price": 0.9204,
+      "pnl_usd": 0.371407,
+      "roe_pct": 1.510973861255106,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-11 14:56:02",
+      "ts_sec": 1791730562.3446121,
+      "fill_hash": "APT_327628061343094"
+    },
+    {
       "coin": "TIA",
       "entry_price": 0.59252,
       "exit_price": 0.58628,
@@ -271,51 +283,29 @@
       "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.14%)",
       "timestamp": "2026-10-10 22:58:35",
       "ts_sec": 1791673115.8140543
-    },
-    {
-      "coin": "NIL",
-      "entry_price": 0.091174,
-      "exit_price": 0.090853,
-      "pnl_usd": -0.023433,
-      "roe_pct": -0.3520740562002345,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-10 22:48:47",
-      "ts_sec": 1791672527.2506123,
-      "fill_hash": "NIL_479194015794685"
     }
   ],
   "active_position_cache": {
-    "APT": {
-      "entry_px": 0.9067,
-      "current_px": 0.9287,
-      "szi": 27.11,
-      "margin": 25.174346,
-      "side": "LONG",
-      "peak_roe": 0.024263813830373907,
-      "strategy": "5M_HOD_BREAKOUT"
-    },
     "IO": {
       "entry_px": 0.16503,
-      "current_px": 0.16863,
+      "current_px": 0.172,
       "szi": 149.8,
-      "margin": 8.423254,
+      "margin": 8.56806,
       "side": "LONG",
-      "peak_roe": 0.024540992546809658,
+      "peak_roe": 0.04223474519784267,
       "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "IO",
-    "APT"
+    "IO"
   ],
-  "last_run_timestamp": "2026-10-11 14:45:47",
-  "last_email_timestamp": 1791729927.504644,
-  "last_scan_timestamp": 1791729927.504644,
+  "last_run_timestamp": "2026-10-11 14:56:23",
+  "last_email_timestamp": 1791730562.3446121,
+  "last_scan_timestamp": 1791730562.3446121,
   "gemini_cache": {
-    "timestamp": 1791729927.504644,
+    "timestamp": 1791730562.3446121,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts and regulatory uncertainty, leading to elevated volatility and the potential for significant liquidity swings."
+    "briefing": "Risk Level: HIGH; while institutional inflows provide a foundational floor, the market remains highly susceptible to intense volatility driven by macroeconomic uncertainty, regulatory shifts, and significant leverage-induced liquidations."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
