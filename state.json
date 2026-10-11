@@ -277,13 +277,19 @@
   ],
   "active_position_cache": {
     "S": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.048922,
-      "side": "LONG"
+      "entry_px": 0.048906,
+      "current_px": 0.048681,
+      "szi": 507.0,
+      "margin": 4.934631,
+      "side": "LONG",
+      "peak_roe": -0.0046006624953992565,
+      "strategy": "5M_HOD_BREAKOUT"
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-11 12:12:27",
+  "previous_active_coins": [
+    "S"
+  ],
+  "last_run_timestamp": "2026-10-11 12:15:29",
   "last_email_timestamp": 1791720718.148919,
   "last_scan_timestamp": 1791720718.148919,
   "gemini_cache": {
