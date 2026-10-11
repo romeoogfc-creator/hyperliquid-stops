@@ -284,24 +284,40 @@
     }
   ],
   "active_position_cache": {
-    "IO": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.16482,
-      "side": "LONG"
-    },
     "APT": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.9106,
-      "side": "LONG"
+      "entry_px": 0.9067,
+      "current_px": 0.9089,
+      "szi": 27.11,
+      "margin": 24.634857,
+      "side": "LONG",
+      "peak_roe": 0.0024263813830374885,
+      "strategy": "5M_HOD_BREAKOUT"
     },
     "TIA": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.59257,
-      "side": "LONG"
+      "entry_px": 0.59252,
+      "current_px": 0.59279,
+      "szi": 41.7,
+      "margin": 4.942617,
+      "side": "LONG",
+      "peak_roe": 0.00045568082090054754,
+      "strategy": "5M_HOD_BREAKOUT"
+    },
+    "IO": {
+      "entry_px": 0.16503,
+      "current_px": 0.16541,
+      "szi": 149.8,
+      "margin": 8.256976,
+      "side": "LONG",
+      "peak_roe": 0.0023026116463672752,
+      "strategy": "5M_HOD_BREAKOUT"
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-11 14:29:15",
+  "previous_active_coins": [
+    "IO",
+    "APT",
+    "TIA"
+  ],
+  "last_run_timestamp": "2026-10-11 14:30:35",
   "last_email_timestamp": 1791728933.0653274,
   "last_scan_timestamp": 1791728933.0653274,
   "gemini_cache": {
