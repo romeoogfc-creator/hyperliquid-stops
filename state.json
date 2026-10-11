@@ -22,7 +22,9 @@
     "SYRUP": 1791672300000,
     "PENDLE": 1791672900000,
     "WLD": 1791676500000,
-    "S": 1791682200000
+    "S": 1791682200000,
+    "EIGEN": 1791682800000,
+    "STRK": 1791682800000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
@@ -195,19 +197,35 @@
   ],
   "active_position_cache": {
     "S": {
+      "entry_px": 0.04775,
+      "current_px": 0.048474,
+      "szi": 520.0,
+      "margin": 5.040672,
+      "side": "LONG",
+      "peak_roe": 0.015162303664921516,
+      "strategy": "5M_HOD_BREAKOUT"
+    },
+    "EIGEN": {
       "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.047791,
+      "entry_px": 0.2474,
+      "side": "LONG"
+    },
+    "STRK": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.11635,
       "side": "LONG"
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-11 01:30:52",
-  "last_email_timestamp": 1791682228.385379,
-  "last_scan_timestamp": 1791682228.385379,
+  "previous_active_coins": [
+    "S"
+  ],
+  "last_run_timestamp": "2026-10-11 01:41:38",
+  "last_email_timestamp": 1791682873.760628,
+  "last_scan_timestamp": 1791682873.760628,
   "gemini_cache": {
-    "timestamp": 1791682228.385379,
+    "timestamp": 1791682873.760628,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic data, shifting regulatory landscapes, and high levels of leverage that leave prices susceptible to sharp, liquidation-driven corrections."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity fluctuations, which collectively increase the potential for rapid price swings."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492
