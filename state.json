@@ -60,6 +60,18 @@
   "stagnation_tracker": {},
   "closed_trades_ledger": [
     {
+      "coin": "CC",
+      "entry_price": 0.12691,
+      "exit_price": 0.12706,
+      "pnl_usd": 0.02955,
+      "roe_pct": 0.11819399574502501,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-11 18:12:18",
+      "ts_sec": 1791742338.4290745,
+      "fill_hash": "CC_584145261630013"
+    },
+    {
       "coin": "W",
       "entry_price": 0.01891,
       "exit_price": 0.01953,
@@ -280,41 +292,17 @@
       "timestamp": "2026-10-11 03:51:47",
       "ts_sec": 1791690707.4896111,
       "fill_hash": "ZK_419391960085958"
-    },
-    {
-      "coin": "EIGEN",
-      "entry_price": 0.2477,
-      "exit_price": 0.2466,
-      "pnl_usd": -0.110649,
-      "roe_pct": -0.44408558740411375,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-11 02:00:28",
-      "ts_sec": 1791684028.4489343,
-      "fill_hash": "EIGEN_899883074927998"
     }
   ],
-  "active_position_cache": {
-    "CC": {
-      "entry_px": 0.12691,
-      "current_px": 0.127295,
-      "szi": 197.0,
-      "margin": 8.35674,
-      "side": "LONG",
-      "peak_roe": 0.0030336458907887203,
-      "strategy": "5M_HOD_BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "CC"
-  ],
-  "last_run_timestamp": "2026-10-11 18:00:33",
-  "last_email_timestamp": 1791741529.601687,
-  "last_scan_timestamp": 1791741529.601687,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-11 18:12:41",
+  "last_email_timestamp": 1791742338.4290745,
+  "last_scan_timestamp": 1791742338.4290745,
   "gemini_cache": {
-    "timestamp": 1791741529.601687,
+    "timestamp": 1791742338.4290745,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity cycles, all of which keep market sentiment fragile and prone to sharp, sudden corrections."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic indicators, shifting regulatory landscapes, and high levels of leverage that leave assets prone to sharp, sudden corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
