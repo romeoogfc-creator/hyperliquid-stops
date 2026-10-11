@@ -22,7 +22,8 @@
     "ZEC": 1791827129.7251124,
     "GRASS": 1791834925.8997676,
     "CC": 1791835230.5704474,
-    "ENA": 1791836341.8394768
+    "ENA": 1791836341.8394768,
+    "USELESS": 1791838841.0562112
   },
   "last_traded_candle": {
     "FET": 1791664200000,
@@ -65,6 +66,18 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "USELESS",
+      "entry_price": 0.1993,
+      "exit_price": 0.19865,
+      "pnl_usd": -0.0819,
+      "roe_pct": -0.3261414952333225,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-11 21:00:41",
+      "ts_sec": 1791752441.0562112,
+      "fill_hash": "USELESS_475868128703952"
+    },
     {
       "coin": "ENA",
       "entry_price": 0.24229,
@@ -288,51 +301,39 @@
       "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.03%)",
       "timestamp": "2026-10-11 09:16:38",
       "ts_sec": 1791710198.398669
-    },
-    {
-      "coin": "BRETT",
-      "entry_price": 0.00587,
-      "exit_price": 0.005854,
-      "pnl_usd": -0.003264,
-      "roe_pct": -0.2725724020442996,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-11 08:52:06",
-      "ts_sec": 1791708726.127315,
-      "fill_hash": "BRETT_843554268487076"
     }
   ],
   "active_position_cache": {
-    "USELESS": {
-      "entry_px": 0.1993,
-      "current_px": 0.199955,
-      "szi": 126.0,
-      "margin": 8.3979,
+    "ALGO": {
+      "entry_px": 0.12594,
+      "current_px": 0.125965,
+      "szi": 199.0,
+      "margin": 25.06803,
       "side": "LONG",
-      "peak_roe": 0.00328650275965875,
+      "peak_roe": 0.00019850722566299228,
       "strategy": "5M_HOD_BREAKOUT"
     },
-    "ALGO": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.125905,
-      "side": "LONG"
-    },
     "SYRUP": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.24686,
-      "side": "LONG"
+      "entry_px": 0.24684,
+      "current_px": 0.245755,
+      "szi": 102.0,
+      "margin": 8.35754,
+      "side": "LONG",
+      "peak_roe": -0.00439555987684331,
+      "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "USELESS"
+    "ALGO",
+    "SYRUP"
   ],
-  "last_run_timestamp": "2026-10-11 20:49:45",
-  "last_email_timestamp": 1791751750.7726986,
-  "last_scan_timestamp": 1791751750.7726986,
+  "last_run_timestamp": "2026-10-11 21:01:01",
+  "last_email_timestamp": 1791752441.0562112,
+  "last_scan_timestamp": 1791752441.0562112,
   "gemini_cache": {
-    "timestamp": 1791751750.7726986,
+    "timestamp": 1791752441.0562112,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Increased market volatility driven by macroeconomic uncertainty, regulatory shifts, and high leverage creates a precarious environment prone to sudden, sharp liquidations."
+    "briefing": "**Risk Level: HIGH** \n\nCrypto markets currently face severe vulnerability due to heightened macroeconomic uncertainty, persistent regulatory crackdowns, and fragile liquidity conditions that leave digital assets prone to sudden, cascading liquidations."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
