@@ -61,6 +61,18 @@
   "closed_trades_ledger": [
     {
       "coin": "CC",
+      "entry_price": 0.12682,
+      "exit_price": 0.12694,
+      "pnl_usd": 0.02376,
+      "roe_pct": 0.09462229932188061,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-11 19:31:14",
+      "ts_sec": 1791747074.4269888,
+      "fill_hash": "CC_766176828765570"
+    },
+    {
+      "coin": "CC",
       "entry_price": 0.12691,
       "exit_price": 0.12706,
       "pnl_usd": 0.02955,
@@ -280,41 +292,17 @@
       "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.27%)",
       "timestamp": "2026-10-11 07:09:54",
       "ts_sec": 1791702594.3433616
-    },
-    {
-      "coin": "ZK",
-      "entry_price": 0.01561,
-      "exit_price": 0.015995,
-      "pnl_usd": 0.61138,
-      "roe_pct": 2.4663677130044728,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-11 03:51:47",
-      "ts_sec": 1791690707.4896111,
-      "fill_hash": "ZK_419391960085958"
     }
   ],
-  "active_position_cache": {
-    "CC": {
-      "entry_px": 0.12682,
-      "current_px": 0.127085,
-      "szi": 198.0,
-      "margin": 8.38662,
-      "side": "LONG",
-      "peak_roe": 0.002089575776691494,
-      "strategy": "5M_HOD_BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "CC"
-  ],
-  "last_run_timestamp": "2026-10-11 19:16:21",
-  "last_email_timestamp": 1791746131.065319,
-  "last_scan_timestamp": 1791746131.065319,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-11 19:31:33",
+  "last_email_timestamp": 1791747074.4269888,
+  "last_scan_timestamp": 1791747074.4269888,
   "gemini_cache": {
-    "timestamp": 1791746131.065319,
+    "timestamp": 1791747074.4269888,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Increased macroeconomic uncertainty, regulatory scrutiny, and high market volatility driven by speculative leverage suggest a precarious environment for investors."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to geopolitical instability, all of which contribute to an elevated potential for rapid price swings."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
