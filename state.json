@@ -292,19 +292,25 @@
   ],
   "active_position_cache": {
     "PUMP": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.005842,
-      "side": "LONG"
+      "entry_px": 0.005844,
+      "current_px": 0.005831,
+      "szi": 4265.0,
+      "margin": 24.86495,
+      "side": "LONG",
+      "peak_roe": -0.0022245037645448307,
+      "strategy": "5M_HOD_BREAKOUT"
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-11 16:56:52",
+  "previous_active_coins": [
+    "PUMP"
+  ],
+  "last_run_timestamp": "2026-10-11 17:00:59",
   "last_email_timestamp": 1791737789.642557,
-  "last_scan_timestamp": 1791737789.642557,
+  "last_scan_timestamp": 1791738036.5578136,
   "gemini_cache": {
-    "timestamp": 1791737789.642557,
-    "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe market is currently characterized by heightened volatility driven by macroeconomic uncertainty, regulatory scrutiny, and a leveraged derivative environment that leaves prices vulnerable to sharp, sudden corrections."
+    "timestamp": 1791738036.5578136,
+    "risk": "MODERATE",
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, the asset class continues to face elevated volatility and heightened sensitivity to macroeconomic data, requiring investors to navigate persistent uncertainty regarding regulatory landscapes and potential liquidity contractions."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
