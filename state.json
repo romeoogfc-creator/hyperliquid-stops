@@ -46,11 +46,24 @@
     "IO": 1791728700000,
     "APT": 1791728700000,
     "TIA": 1791728700000,
-    "NEAR": 1791733500000
+    "NEAR": 1791733500000,
+    "MON": 1791735000000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "NEAR",
+      "entry_price": 5.6607,
+      "exit_price": 5.74,
+      "pnl_usd": 0.34892,
+      "roe_pct": 1.4008868161181465,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-11 16:12:14",
+      "ts_sec": 1791735134.8540509,
+      "fill_hash": "NEAR_817511367584965"
+    },
     {
       "coin": "IO",
       "entry_price": 0.16503,
@@ -273,41 +286,23 @@
       "timestamp": "2026-10-10 23:15:29",
       "ts_sec": 1791674129.3406804,
       "fill_hash": "PENDLE_37118297274645"
-    },
-    {
-      "coin": "AZTEC",
-      "entry_price": 0.017349,
-      "exit_price": 0.017321,
-      "pnl_usd": -0.040124,
-      "roe_pct": -0.1613925874690198,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-10 23:00:28",
-      "ts_sec": 1791673228.1382713,
-      "fill_hash": "AZTEC_737168391384325"
     }
   ],
   "active_position_cache": {
-    "NEAR": {
-      "entry_px": 5.6607,
-      "current_px": 5.7746,
-      "szi": 4.4,
-      "margin": 25.4122,
-      "side": "LONG",
-      "peak_roe": 0.023866306287208216,
-      "strategy": "5M_HOD_BREAKOUT"
+    "MON": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.026917,
+      "side": "LONG"
     }
   },
-  "previous_active_coins": [
-    "NEAR"
-  ],
-  "last_run_timestamp": "2026-10-11 16:00:29",
-  "last_email_timestamp": 1791733789.5527716,
-  "last_scan_timestamp": 1791734373.724763,
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-11 16:12:38",
+  "last_email_timestamp": 1791735134.8540509,
+  "last_scan_timestamp": 1791735134.8540509,
   "gemini_cache": {
-    "timestamp": 1791734373.724763,
+    "timestamp": 1791735134.8540509,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to geopolitical instability, all of which contribute to an environment of unpredictable price swings."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity fluctuations, making it prone to sharp, sudden corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
