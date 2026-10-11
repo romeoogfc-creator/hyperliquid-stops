@@ -27,7 +27,8 @@
     "S": 1791682200000,
     "EIGEN": 1791682800000,
     "STRK": 1791682800000,
-    "ZK": 1791701100000
+    "ZK": 1791701100000,
+    "DYM": 1791701700000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
@@ -248,19 +249,30 @@
   ],
   "active_position_cache": {
     "ZK": {
+      "entry_px": 0.016139,
+      "current_px": 0.016155,
+      "szi": 1549.0,
+      "margin": 5.004509,
+      "side": "LONG",
+      "peak_roe": 0.0009913873226345283,
+      "strategy": "5M_HOD_BREAKOUT"
+    },
+    "DYM": {
       "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.016054,
+      "entry_px": 0.01881,
       "side": "LONG"
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-11 06:45:57",
-  "last_email_timestamp": 1791701128.3071256,
-  "last_scan_timestamp": 1791701128.3071256,
+  "previous_active_coins": [
+    "ZK"
+  ],
+  "last_run_timestamp": "2026-10-11 06:57:35",
+  "last_email_timestamp": 1791701832.667632,
+  "last_scan_timestamp": 1791701832.667632,
   "gemini_cache": {
-    "timestamp": 1791701128.3071256,
+    "timestamp": 1791701832.667632,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, potential regulatory volatility, and significant technical overextension, necessitating extreme caution for short-term participants."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces heightened volatility driven by macroeconomic uncertainty, regulatory scrutiny, and significant leverage in derivatives markets, warranting a cautious outlook."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
