@@ -28,7 +28,7 @@
     "SYRUP": 1791672300000,
     "PENDLE": 1791672900000,
     "WLD": 1791676500000,
-    "S": 1791682200000,
+    "S": 1791720600000,
     "EIGEN": 1791682800000,
     "STRK": 1791682800000,
     "ZK": 1791701100000,
@@ -275,15 +275,21 @@
       "fill_hash": "BRETT_1008237730449655"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "S": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.048922,
+      "side": "LONG"
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-11 12:00:25",
-  "last_email_timestamp": 1791719125.2005742,
-  "last_scan_timestamp": 1791719881.667419,
+  "last_run_timestamp": "2026-10-11 12:12:27",
+  "last_email_timestamp": 1791720718.148919,
+  "last_scan_timestamp": 1791720718.148919,
   "gemini_cache": {
-    "timestamp": 1791719881.667419,
-    "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, upcoming regulatory pivots, and extreme volatility fueled by speculative leverage, making it prone to sharp, sudden corrections."
+    "timestamp": 1791720718.148919,
+    "risk": "MODERATE",
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of interest rate cuts, elevated volatility and the threat of sudden regulatory or macroeconomic shifts maintain a cautious outlook for investors."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
