@@ -297,18 +297,18 @@
   "active_position_cache": {
     "CC": {
       "entry_px": 0.12682,
-      "current_px": 0.127075,
+      "current_px": 0.127085,
       "szi": 198.0,
-      "margin": 8.386224,
+      "margin": 8.38662,
       "side": "LONG",
-      "peak_roe": 0.0020107238605898536,
+      "peak_roe": 0.002089575776691494,
       "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
     "CC"
   ],
-  "last_run_timestamp": "2026-10-11 19:15:49",
+  "last_run_timestamp": "2026-10-11 19:16:21",
   "last_email_timestamp": 1791746131.065319,
   "last_scan_timestamp": 1791746131.065319,
   "gemini_cache": {
