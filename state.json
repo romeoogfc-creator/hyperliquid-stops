@@ -277,24 +277,24 @@
   "active_position_cache": {
     "INIT": {
       "entry_px": 0.119937,
-      "current_px": 0.119995,
+      "current_px": 0.120095,
       "szi": 207.0,
-      "margin": 8.27862,
+      "margin": 8.28552,
       "side": "LONG",
-      "peak_roe": 0.0004835872166220807,
+      "peak_roe": 0.0013173582797634715,
       "strategy": "5M_BREAKOUT"
     }
   },
   "previous_active_coins": [
     "INIT"
   ],
-  "last_run_timestamp": "2026-10-11 09:01:42",
-  "last_email_timestamp": 1791708726.127315,
-  "last_scan_timestamp": 1791709283.2070882,
+  "last_run_timestamp": "2026-10-11 09:15:43",
+  "last_email_timestamp": 1791710123.4783132,
+  "last_scan_timestamp": 1791710123.4783132,
   "gemini_cache": {
-    "timestamp": 1791709283.2070882,
+    "timestamp": 1791710123.4783132,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, potential regulatory uncertainty, and liquidity volatility, necessitating extreme caution for short-term participants."
+    "briefing": "Risk Level: **HIGH**\n\nThe market is currently characterized by extreme volatility driven by shifting macroeconomic expectations, significant regulatory uncertainty, and speculative exhaustion following recent price corrections, necessitating extreme caution for leveraged positions."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
