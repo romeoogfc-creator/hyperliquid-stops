@@ -278,24 +278,24 @@
   "active_position_cache": {
     "S": {
       "entry_px": 0.048906,
-      "current_px": 0.048681,
+      "current_px": 0.04895,
       "szi": 507.0,
-      "margin": 4.934631,
+      "margin": 4.961806,
       "side": "LONG",
-      "peak_roe": -0.0046006624953992565,
+      "peak_roe": 0.0008996851102114745,
       "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
     "S"
   ],
-  "last_run_timestamp": "2026-10-11 12:15:29",
-  "last_email_timestamp": 1791720718.148919,
-  "last_scan_timestamp": 1791720718.148919,
+  "last_run_timestamp": "2026-10-11 12:30:46",
+  "last_email_timestamp": 1791721824.6769593,
+  "last_scan_timestamp": 1791721824.6769593,
   "gemini_cache": {
-    "timestamp": 1791720718.148919,
-    "risk": "MODERATE",
-    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of interest rate cuts, elevated volatility and the threat of sudden regulatory or macroeconomic shifts maintain a cautious outlook for investors."
+    "timestamp": 1791721824.6769593,
+    "risk": "HIGH",
+    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating significant volatility driven by macroeconomic uncertainty, regulatory scrutiny, and high levels of leverage, making them prone to sharp, sudden corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
