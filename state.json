@@ -53,7 +53,7 @@
     "MON": 1791735000000,
     "PUMP": 1791737700000,
     "W": 1791739800000,
-    "CC": 1791739500000,
+    "CC": 1791744900000,
     "ZEC": 1791740100000
   },
   "hibernating_until": 0,
@@ -294,15 +294,21 @@
       "fill_hash": "ZK_419391960085958"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "CC": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.1268,
+      "side": "LONG"
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-11 18:50:05",
-  "last_email_timestamp": 1791744586.0243876,
-  "last_scan_timestamp": 1791744586.0243876,
+  "last_run_timestamp": "2026-10-11 19:00:50",
+  "last_email_timestamp": 1791745227.6316478,
+  "last_scan_timestamp": 1791745227.6316478,
   "gemini_cache": {
-    "timestamp": 1791744586.0243876,
+    "timestamp": 1791745227.6316478,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nCrypto markets currently face severe vulnerability due to macroeconomic tightening, persistent regulatory crackdowns, and fragile liquidity conditions that heighten the potential for sudden, cascading liquidations."
+    "briefing": "Risk Level: HIGH; while institutional inflows provide a foundational floor, the market remains highly volatile and susceptible to sudden liquidity crunches driven by shifting macroeconomic expectations and geopolitical uncertainty."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
