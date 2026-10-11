@@ -27,7 +27,7 @@
     "S": 1791682200000,
     "EIGEN": 1791682800000,
     "STRK": 1791682800000,
-    "ZK": 1791689700000
+    "ZK": 1791701100000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
@@ -246,15 +246,21 @@
       "fill_hash": "JTO_91715091410818"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "ZK": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.016054,
+      "side": "LONG"
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-11 06:38:55",
-  "last_email_timestamp": 1791700713.3305793,
-  "last_scan_timestamp": 1791700713.3305793,
+  "last_run_timestamp": "2026-10-11 06:45:57",
+  "last_email_timestamp": 1791701128.3071256,
+  "last_scan_timestamp": 1791701128.3071256,
   "gemini_cache": {
-    "timestamp": 1791700713.3305793,
+    "timestamp": 1791701128.3071256,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to geopolitical instability, which collectively create a high probability of rapid price swings."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, potential regulatory volatility, and significant technical overextension, necessitating extreme caution for short-term participants."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
