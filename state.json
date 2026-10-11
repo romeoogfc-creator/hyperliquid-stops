@@ -17,7 +17,8 @@
     "ETHFI": 1791813055.716594,
     "MANTA": 1791815333.0653274,
     "TIA": 1791816327.504644,
-    "MON": 1791822487.9778652
+    "MON": 1791822487.9778652,
+    "PUMP": 1791825707.6416981
   },
   "last_traded_candle": {
     "FET": 1791664200000,
@@ -54,6 +55,18 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "PUMP",
+      "entry_price": 0.005844,
+      "exit_price": 0.005825,
+      "pnl_usd": -0.081035,
+      "roe_pct": -0.32511978097193567,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-11 17:21:47",
+      "ts_sec": 1791739307.6416981,
+      "fill_hash": "PUMP_395482862096"
+    },
     {
       "coin": "MON",
       "entry_price": 0.026924,
@@ -276,41 +289,17 @@
       "timestamp": "2026-10-11 01:54:08",
       "ts_sec": 1791683648.642008,
       "fill_hash": "STRK_979641569462792"
-    },
-    {
-      "coin": "WLD",
-      "entry_price": 0.55527,
-      "exit_price": 0.55624,
-      "pnl_usd": 0.043456,
-      "roe_pct": 0.17468979055232864,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-11 00:30:26",
-      "ts_sec": 1791678626.6116207,
-      "fill_hash": "WLD_755765724105232"
     }
   ],
-  "active_position_cache": {
-    "PUMP": {
-      "entry_px": 0.005844,
-      "current_px": 0.005831,
-      "szi": 4265.0,
-      "margin": 24.87348,
-      "side": "LONG",
-      "peak_roe": -0.0022245037645448307,
-      "strategy": "5M_HOD_BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "PUMP"
-  ],
-  "last_run_timestamp": "2026-10-11 17:15:45",
-  "last_email_timestamp": 1791738928.7698357,
-  "last_scan_timestamp": 1791738928.7698357,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-11 17:22:06",
+  "last_email_timestamp": 1791739307.6416981,
+  "last_scan_timestamp": 1791739307.6416981,
   "gemini_cache": {
-    "timestamp": 1791738928.7698357,
+    "timestamp": 1791739307.6416981,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory landscapes, and the precarious nature of recent speculative price rallies."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity fluctuations, making it prone to sharp, sudden corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
