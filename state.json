@@ -38,6 +38,17 @@
   "stagnation_tracker": {},
   "closed_trades_ledger": [
     {
+      "coin": "INIT",
+      "entry_price": 0.119937,
+      "exit_price": 0.11997,
+      "pnl_usd": 0.0025,
+      "roe_pct": 0.02751444508366173,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.03%)",
+      "timestamp": "2026-10-11 09:16:38",
+      "ts_sec": 1791710198.398669
+    },
+    {
       "coin": "BRETT",
       "entry_price": 0.00587,
       "exit_price": 0.005854,
@@ -260,36 +271,12 @@
       "timestamp": "2026-10-10 21:34:13",
       "ts_sec": 1791668053.3807094,
       "fill_hash": "BERA_593770806561729"
-    },
-    {
-      "coin": "MOODENG",
-      "entry_price": 0.044081,
-      "exit_price": 0.044151,
-      "pnl_usd": 0.03934,
-      "roe_pct": 0.1587985753499254,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-10 21:15:56",
-      "ts_sec": 1791666956.3485343,
-      "fill_hash": "MOODENG_335412021131743"
     }
   ],
-  "active_position_cache": {
-    "INIT": {
-      "entry_px": 0.119937,
-      "current_px": 0.120095,
-      "szi": 207.0,
-      "margin": 8.28552,
-      "side": "LONG",
-      "peak_roe": 0.0013173582797634715,
-      "strategy": "5M_BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "INIT"
-  ],
-  "last_run_timestamp": "2026-10-11 09:15:43",
-  "last_email_timestamp": 1791710123.4783132,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-11 09:16:44",
+  "last_email_timestamp": 1791710198.398669,
   "last_scan_timestamp": 1791710123.4783132,
   "gemini_cache": {
     "timestamp": 1791710123.4783132,
