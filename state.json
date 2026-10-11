@@ -9,7 +9,8 @@
     "STRK": 1791770048.642008,
     "EIGEN": 1791770428.4489343,
     "DYM": 1791788994.3433616,
-    "ZK": 1791788994.3433616
+    "ZK": 1791788994.3433616,
+    "BRETT": 1791795126.127315
   },
   "last_traded_candle": {
     "FET": 1791664200000,
@@ -36,6 +37,29 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "BRETT",
+      "entry_price": 0.00587,
+      "exit_price": 0.005854,
+      "pnl_usd": -0.003264,
+      "roe_pct": -0.2725724020442996,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-11 08:52:06",
+      "ts_sec": 1791708726.127315,
+      "fill_hash": "BRETT_843554268487076"
+    },
+    {
+      "coin": "BOME",
+      "entry_price": 0.001121,
+      "exit_price": 0.001125,
+      "pnl_usd": 0.088732,
+      "roe_pct": 0.3568242640499447,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.36%)",
+      "timestamp": "2026-10-11 08:52:06",
+      "ts_sec": 1791708726.127315
+    },
     {
       "coin": "ZK",
       "entry_price": 0.016139,
@@ -248,62 +272,17 @@
       "timestamp": "2026-10-10 21:15:56",
       "ts_sec": 1791666956.3485343,
       "fill_hash": "MOODENG_335412021131743"
-    },
-    {
-      "coin": "FET",
-      "entry_price": 0.22599,
-      "exit_price": 0.22688,
-      "pnl_usd": 0.0957,
-      "roe_pct": 0.3938227355192716,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.39%)",
-      "timestamp": "2026-10-10 21:15:56",
-      "ts_sec": 1791666956.3485343
-    },
-    {
-      "coin": "JTO",
-      "entry_price": 0.54501,
-      "exit_price": 0.54662,
-      "pnl_usd": 0.07406,
-      "roe_pct": 0.2954074237169961,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-10 21:00:28",
-      "ts_sec": 1791666028.220164,
-      "fill_hash": "JTO_91715091410818"
     }
   ],
-  "active_position_cache": {
-    "BOME": {
-      "entry_px": 0.001121,
-      "current_px": 0.001128,
-      "szi": 22183.0,
-      "margin": 8.340808,
-      "side": "LONG",
-      "peak_roe": 0.006244424620874274,
-      "strategy": "5M_HOD_BREAKOUT"
-    },
-    "BRETT": {
-      "entry_px": 0.00587,
-      "current_px": 0.005864,
-      "szi": 4229.0,
-      "margin": 8.269104,
-      "side": "LONG",
-      "peak_roe": -0.0010221465076660867,
-      "strategy": "5M_HOD_BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "BRETT",
-    "BOME"
-  ],
-  "last_run_timestamp": "2026-10-11 08:45:44",
-  "last_email_timestamp": 1791707858.285026,
-  "last_scan_timestamp": 1791708324.6100397,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-11 08:52:29",
+  "last_email_timestamp": 1791708726.127315,
+  "last_scan_timestamp": 1791708726.127315,
   "gemini_cache": {
-    "timestamp": 1791708324.6100397,
-    "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, potential regulatory uncertainty, and liquidity volatility, necessitating extreme caution despite recent price momentum."
+    "timestamp": 1791708726.127315,
+    "risk": "MODERATE",
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of interest rate cuts, elevated volatility persists due to ongoing macroeconomic uncertainty and significant short-term liquidations across the derivatives landscape."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
