@@ -19,7 +19,8 @@
     "TIA": 1791816327.504644,
     "MON": 1791822487.9778652,
     "PUMP": 1791825707.6416981,
-    "ZEC": 1791827129.7251124
+    "ZEC": 1791827129.7251124,
+    "GRASS": 1791834925.8997676
   },
   "last_traded_candle": {
     "FET": 1791664200000,
@@ -59,6 +60,18 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "GRASS",
+      "entry_price": 0.79079,
+      "exit_price": 0.78582,
+      "pnl_usd": -0.157549,
+      "roe_pct": -0.6284854386120248,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-11 19:55:25",
+      "ts_sec": 1791748525.8997676,
+      "fill_hash": "GRASS_428836442678255"
+    },
     {
       "coin": "CC",
       "entry_price": 0.12682,
@@ -281,50 +294,29 @@
       "timestamp": "2026-10-11 07:09:54",
       "ts_sec": 1791702594.3433616,
       "fill_hash": "ZK_23927257202217"
-    },
-    {
-      "coin": "DYM",
-      "entry_price": 0.01882,
-      "exit_price": 0.01877,
-      "pnl_usd": -0.052868,
-      "roe_pct": -0.26567481402763776,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.27%)",
-      "timestamp": "2026-10-11 07:09:54",
-      "ts_sec": 1791702594.3433616
     }
   ],
   "active_position_cache": {
-    "GRASS": {
-      "entry_px": 0.79079,
-      "current_px": 0.79081,
-      "szi": 31.7,
-      "margin": 8.356014,
-      "side": "LONG",
-      "peak_roe": 2.5291164531696155e-05,
-      "strategy": "5M_BREAKOUT"
-    },
     "CC": {
       "entry_px": 0.12726,
-      "current_px": 0.127235,
+      "current_px": 0.127105,
       "szi": 197.0,
-      "margin": 8.355426,
+      "margin": 8.34689,
       "side": "LONG",
       "peak_roe": -0.0001964482162503929,
       "strategy": "5M_BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "CC",
-    "GRASS"
+    "CC"
   ],
-  "last_run_timestamp": "2026-10-11 19:45:53",
-  "last_email_timestamp": 1791747074.4269888,
-  "last_scan_timestamp": 1791747933.5984309,
+  "last_run_timestamp": "2026-10-11 19:55:47",
+  "last_email_timestamp": 1791748525.8997676,
+  "last_scan_timestamp": 1791748525.8997676,
   "gemini_cache": {
-    "timestamp": 1791747933.5984309,
+    "timestamp": 1791748525.8997676,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to evolving macroeconomic policy, shifting regulatory landscapes, and sudden liquidity volatility, necessitating extreme caution for all participants."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, potential regulatory uncertainty, and liquidity volatility, necessitating extreme caution despite recent price momentum."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
