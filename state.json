@@ -196,36 +196,46 @@
     }
   ],
   "active_position_cache": {
-    "S": {
-      "entry_px": 0.04775,
-      "current_px": 0.048474,
-      "szi": 520.0,
-      "margin": 5.040672,
+    "STRK": {
+      "entry_px": 0.11615,
+      "current_px": 0.11588,
+      "szi": 213.9,
+      "margin": 4.953496,
       "side": "LONG",
-      "peak_roe": 0.015162303664921516,
+      "peak_roe": -0.0023245802841154227,
       "strategy": "5M_HOD_BREAKOUT"
     },
     "EIGEN": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.2474,
-      "side": "LONG"
+      "entry_px": 0.2477,
+      "current_px": 0.2469,
+      "szi": 100.59,
+      "margin": 4.969146,
+      "side": "LONG",
+      "peak_roe": -0.0032297133629390195,
+      "strategy": "5M_HOD_BREAKOUT"
     },
-    "STRK": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.11635,
-      "side": "LONG"
+    "S": {
+      "entry_px": 0.04775,
+      "current_px": 0.048395,
+      "szi": 520.0,
+      "margin": 5.030168,
+      "side": "LONG",
+      "peak_roe": 0.015162303664921516,
+      "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
+    "EIGEN",
+    "STRK",
     "S"
   ],
-  "last_run_timestamp": "2026-10-11 01:41:38",
+  "last_run_timestamp": "2026-10-11 01:45:37",
   "last_email_timestamp": 1791682873.760628,
   "last_scan_timestamp": 1791682873.760628,
   "gemini_cache": {
-    "timestamp": 1791682873.760628,
+    "timestamp": 1791683130.8000848,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity fluctuations, which collectively increase the potential for rapid price swings."
+    "briefing": "Risk Level: **HIGH** \u2014 Increased market volatility driven by shifting macroeconomic expectations, regulatory uncertainty, and heightened leverage makes the current environment prone to sudden, significant price swings."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492
