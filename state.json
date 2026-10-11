@@ -290,9 +290,9 @@
   "active_position_cache": {
     "NEAR": {
       "entry_px": 5.6607,
-      "current_px": 5.7958,
+      "current_px": 5.7746,
       "szi": 4.4,
-      "margin": 25.498,
+      "margin": 25.4122,
       "side": "LONG",
       "peak_roe": 0.023866306287208216,
       "strategy": "5M_HOD_BREAKOUT"
@@ -301,7 +301,7 @@
   "previous_active_coins": [
     "NEAR"
   ],
-  "last_run_timestamp": "2026-10-11 15:59:54",
+  "last_run_timestamp": "2026-10-11 16:00:29",
   "last_email_timestamp": 1791733789.5527716,
   "last_scan_timestamp": 1791734373.724763,
   "gemini_cache": {
