@@ -14,7 +14,8 @@
     "ZRO": 1791800885.41498,
     "S": 1791808386.7883759,
     "MEGA": 1791810031.9638827,
-    "ETHFI": 1791813055.716594
+    "ETHFI": 1791813055.716594,
+    "MANTA": 1791815333.0653274
   },
   "last_traded_candle": {
     "FET": 1791664200000,
@@ -40,11 +41,26 @@
     "ZRO": 1791711900000,
     "MEGA": 1791723000000,
     "ETHFI": 1791726300000,
-    "MANTA": 1791727800000
+    "MANTA": 1791727800000,
+    "IO": 1791728700000,
+    "APT": 1791728700000,
+    "TIA": 1791728700000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "MANTA",
+      "entry_price": 0.07173,
+      "exit_price": 0.07117,
+      "pnl_usd": -0.093968,
+      "roe_pct": -0.7807054231144639,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-11 14:28:53",
+      "ts_sec": 1791728933.0653274,
+      "fill_hash": "MANTA_156354822367133"
+    },
     {
       "coin": "ETHFI",
       "entry_price": 0.71783,
@@ -265,41 +281,33 @@
       "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.30%)",
       "timestamp": "2026-10-10 22:45:21",
       "ts_sec": 1791672321.5781262
-    },
-    {
-      "coin": "CFX",
-      "entry_price": 0.063794,
-      "exit_price": 0.063416,
-      "pnl_usd": -0.147798,
-      "roe_pct": -0.5925322130607946,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-10 22:30:29",
-      "ts_sec": 1791671429.543547,
-      "fill_hash": "CFX_105955706357986"
     }
   ],
   "active_position_cache": {
-    "MANTA": {
-      "entry_px": 0.07173,
-      "current_px": 0.07158,
-      "szi": 344.9,
-      "margin": 8.228164,
-      "side": "LONG",
-      "peak_roe": -0.0020911752404851156,
-      "strategy": "5M_HOD_BREAKOUT"
+    "IO": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.16482,
+      "side": "LONG"
+    },
+    "APT": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.9106,
+      "side": "LONG"
+    },
+    "TIA": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.59257,
+      "side": "LONG"
     }
   },
-  "previous_active_coins": [
-    "MANTA"
-  ],
-  "last_run_timestamp": "2026-10-11 14:15:29",
-  "last_email_timestamp": 1791727974.3864856,
-  "last_scan_timestamp": 1791727974.3864856,
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-11 14:29:15",
+  "last_email_timestamp": 1791728933.0653274,
+  "last_scan_timestamp": 1791728933.0653274,
   "gemini_cache": {
-    "timestamp": 1791727974.3864856,
+    "timestamp": 1791728933.0653274,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting regulatory headwinds, and significant volatility surrounding global liquidity trends, necessitating extreme caution."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to geopolitical instability, all of which contribute to an environment of unpredictable price swings and elevated downside risk."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
