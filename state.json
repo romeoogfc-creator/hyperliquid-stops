@@ -33,6 +33,18 @@
   "stagnation_tracker": {},
   "closed_trades_ledger": [
     {
+      "coin": "ZK",
+      "entry_price": 0.01561,
+      "exit_price": 0.015995,
+      "pnl_usd": 0.61138,
+      "roe_pct": 2.4663677130044728,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-11 03:51:47",
+      "ts_sec": 1791690707.4896111,
+      "fill_hash": "ZK_419391960085958"
+    },
+    {
       "coin": "EIGEN",
       "entry_price": 0.2477,
       "exit_price": 0.2466,
@@ -234,27 +246,15 @@
       "fill_hash": "JTO_91715091410818"
     }
   ],
-  "active_position_cache": {
-    "ZK": {
-      "entry_px": 0.01561,
-      "current_px": 0.016142,
-      "szi": 1588.0,
-      "margin": 5.118441,
-      "side": "LONG",
-      "peak_roe": 0.0340807174887892,
-      "strategy": "5M_HOD_BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "ZK"
-  ],
-  "last_run_timestamp": "2026-10-11 03:45:41",
-  "last_email_timestamp": 1791689743.6265223,
-  "last_scan_timestamp": 1791690324.4544752,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-11 03:52:08",
+  "last_email_timestamp": 1791690707.4896111,
+  "last_scan_timestamp": 1791690707.4896111,
   "gemini_cache": {
-    "timestamp": 1791690324.4544752,
+    "timestamp": 1791690707.4896111,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nDriven by persistent macroeconomic tightening, ongoing regulatory crackdowns, and fragile market liquidity, current crypto conditions expose investors to acute volatility and severe downside risk."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity cycles, all of which keep market sentiment fragile and prone to sharp, sudden corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492
