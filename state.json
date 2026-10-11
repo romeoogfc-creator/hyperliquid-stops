@@ -37,7 +37,8 @@
     "DYM": 1791701700000,
     "BOME": 1791707700000,
     "ZRO": 1791711900000,
-    "MEGA": 1791723000000
+    "MEGA": 1791723000000,
+    "ETHFI": 1791726300000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
@@ -277,15 +278,21 @@
       "fill_hash": "APEX_406589258706011"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "ETHFI": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.71827,
+      "side": "LONG"
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-11 13:37:29",
-  "last_email_timestamp": 1791724967.4377484,
-  "last_scan_timestamp": 1791725830.939181,
+  "last_run_timestamp": "2026-10-11 13:45:54",
+  "last_email_timestamp": 1791726328.3250656,
+  "last_scan_timestamp": 1791726328.3250656,
   "gemini_cache": {
-    "timestamp": 1791725830.939181,
+    "timestamp": 1791726328.3250656,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts and regulatory uncertainty, leading to significant volatility that can trigger rapid liquidations in either direction."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting regulatory landscapes, and elevated volatility surrounding upcoming interest rate decisions, necessitating extreme caution for leveraged positions."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
