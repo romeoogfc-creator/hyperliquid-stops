@@ -301,9 +301,9 @@
   "active_position_cache": {
     "ENA": {
       "entry_px": 0.24229,
-      "current_px": 0.24239,
+      "current_px": 0.24163,
       "szi": 103.0,
-      "margin": 24.969054,
+      "margin": 24.88686,
       "side": "LONG",
       "peak_roe": 0.0004127285484336497,
       "strategy": "5M_HOD_BREAKOUT"
@@ -312,13 +312,13 @@
   "previous_active_coins": [
     "ENA"
   ],
-  "last_run_timestamp": "2026-10-11 20:03:50",
+  "last_run_timestamp": "2026-10-11 20:15:54",
   "last_email_timestamp": 1791748830.5704474,
-  "last_scan_timestamp": 1791748830.5704474,
+  "last_scan_timestamp": 1791749723.9165053,
   "gemini_cache": {
-    "timestamp": 1791748830.5704474,
+    "timestamp": 1791749723.9165053,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, evolving regulatory scrutiny, and significant volatility surrounding potential interest rate changes, all of which continue to drive unpredictable price swings."
+    "briefing": "Risk Level: **HIGH** \u2014 The market is currently characterized by heightened volatility driven by macroeconomic uncertainty, regulatory scrutiny, and significant leverage in the derivatives space, necessitating extreme caution for short-term participants."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
