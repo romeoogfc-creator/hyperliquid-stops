@@ -325,7 +325,7 @@ def calculate_atr(highs, lows, closes, period=14):
         return 1.0
 
 # ==============================================================================
-# FAST 5M ROSS SCALPER ENGINE (V3.9.3 PURE ROSS VOLUME SQUEEZE)
+# FAST 5M ROSS SCALPER ENGINE (V3.9.4 ANTI-CHASING ROSS SCALPER)
 # ==============================================================================
 def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_long):
     """Analyzes live 5m candle structure to prevent buying falling knives."""
@@ -358,7 +358,7 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
 
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0, coin="ETH"):
     """
-    V3.9.3 ULTRA-TIGHT FAST ROSS SCALPER:
+    V3.9.4 ULTRA-TIGHT FAST ROSS SCALPER:
     Dynamically scales profit floors early (+0.80% activation) to capture fast micro-spikes with minimal giveback.
     """
     if is_long:
@@ -483,7 +483,7 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.9.3 Master Engine Started (5M Pure Ross Volume Squeeze Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.9.4 Master Engine Started (5M Anti-Chasing Ross Scalper Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -535,7 +535,7 @@ def execute_engine():
     btc_regime, btc_change_pct, btc_bounce_pct = get_btc_regime(info, now_ms)
     audit_logs.append(f"BTC Directional Shield: Daily Candle is {btc_regime} ({btc_change_pct:+.2f}%, Intraday Bounce: +{btc_bounce_pct:.2f}%).")
 
-    # ADAPTIVE VOLUME GATE FOR 5M ROSS SCALPING (V3.9.3 PURE VOLUME SQUEEZE)
+    # ADAPTIVE VOLUME GATE FOR 5M ROSS SCALPING (V3.9.4 PURE VOLUME SQUEEZE)
     required_vol_ratio = 2.50 if gemini_risk == "HIGH" else 2.20
     audit_logs.append(f"⚡ 5M Fast Scalper Active: Target RVOL >= {required_vol_ratio:.2f}x | Sizing: 0.85x")
 
@@ -754,7 +754,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V3.9.3", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V3.9.4", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -889,14 +889,21 @@ def execute_engine():
                 c_2_close = float(candles[-2]["c"])
                 c_1_open = float(candles[-1]["o"])
 
-                # 5M HIGH-OF-DAY (HOD) BREAKOUT CONDITION
+                # 5M HIGH-OF-DAY (HOD) BREAKOUT STRUCTURE
                 c_high_live = float(candles[-1]["h"])
                 c_low_live = float(candles[-1]["l"])
                 c_range = max(c_high_live - c_low_live, 1e-8)
                 live_body_ratio = abs(curr_live_px - c_1_open) / c_range
+                upper_wick_ratio = (c_high_live - max(c_1_open, curr_live_px)) / c_range
 
-                # Live 5m candle breaking above previous 5m high with strong body (>= 65%)
-                is_5m_hod_breakout = (curr_live_px > c_2_high) and (curr_live_px > c_1_open) and (live_body_ratio >= 0.65)
+                # V3.9.4 ANTI-CHASING EXTENSION CAP: Max +0.80% above previous 5m high
+                max_extension_px = c_2_high * 1.0080
+                is_near_breakout = (curr_live_px > c_2_high) and (curr_live_px <= max_extension_px)
+
+                # V3.9.4 UPPER WICK REJECTION GATE: Max 25% upper wick allowed (rejects seller dump wicks)
+                is_clean_structure = (upper_wick_ratio <= 0.25) and (live_body_ratio >= 0.65)
+
+                is_5m_hod_breakout = is_near_breakout and (curr_live_px > c_1_open) and is_clean_structure
 
                 candle_start_ms = candles[-1]["t"]
                 elapsed_mins = max(0.5, (now_ms - candle_start_ms) / 60000.0)
@@ -906,7 +913,7 @@ def execute_engine():
                 avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
                 vol_ratio = paced_volume / avg_vol if avg_vol > 0 else 1.0
 
-                # V3.9.3 PURE ROSS MOMENTUM FILTER: High RVOL (>=2.2x), strong body (>=65%), and active 24h trend (>=5.0%)
+                # V3.9.4 PURE ROSS MOMENTUM FILTER: High RVOL (>=2.2x), strong body (>=65%), and active 24h trend (>=5.0%)
                 if vol_ratio < required_vol_ratio or coin_24h_change < 5.0:
                     continue
 
@@ -914,12 +921,16 @@ def execute_engine():
 
                 if ci_5m <= 55.0:
                     if is_5m_hod_breakout and (effective_regime in ["GREEN", "NEUTRAL"]):
+                        # V3.9.4 EXTENSION-PENALIZED SCORE: Penalizes over-extended chasing entries
+                        extension_pct = max(0.0, (curr_live_px - c_2_high) / c_2_high)
+                        breakout_score = vol_ratio * (1.0 - extension_pct)
+
                         market_candidates.append({
                             "coin": coin, "close": curr_live_px, "is_long": True, 
-                            "score": vol_ratio * (curr_live_px / c_2_high), "candle_ts": current_candle_ts,
+                            "score": breakout_score, "candle_ts": current_candle_ts,
                             "strategy": "5M_HOD_BREAKOUT"
                         })
-                        audit_logs.append(f"🚀 5M HOD BREAKOUT (LONG): {coin} @ ${curr_live_px:.4f} (24h Gain: {coin_24h_change:+.1f}%, Vol: {vol_ratio:.2f}x)")
+                        audit_logs.append(f"🚀 5M HOD BREAKOUT (LONG): {coin} @ ${curr_live_px:.4f} (24h Gain: {coin_24h_change:+.1f}%, Vol: {vol_ratio:.2f}x, Ext: +{extension_pct*100:.2f}%)")
 
             except Exception:
                 continue
@@ -990,7 +1001,7 @@ def execute_engine():
 
                     alloc_label = "5M Fast Scalp (25% NAV)"
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V3.9.3", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V3.9.4", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -1044,7 +1055,7 @@ def execute_engine():
         
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V3.9.3 | 5M Pure Ross Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V3.9.4 | 5M Anti-Chasing Ross Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         summary_card_html = f"""
         <div class="summary-card">
@@ -1168,7 +1179,7 @@ def execute_engine():
           <body>
             <div class="container">
               <div class="header">
-                <h2>TR-GC-Crypto-LS-23-V3.9.3 | 5M Pure Ross Scalper</h2>
+                <h2>TR-GC-Crypto-LS-23-V3.9.4 | 5M Anti-Chasing Ross Scalper</h2>
                 <p>Timestamp: {timestamp} (5M Candles &amp; 5M Scanning Active)</p>
               </div>
               <div class="content">
@@ -1185,15 +1196,15 @@ def execute_engine():
                 {summary_card_html}
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (V3.9.3 Pure Ross Volume Squeeze Active)</div>
-                  &bull; <b>5M High-of-Day (HOD) Scalper:</b> Detects fresh 5m candle breakouts as volume surges<br>
+                  <div class="rules-title">&#9989; Active Guardrails (V3.9.4 Anti-Chasing Squeeze Active)</div>
+                  &bull; <b>5M Anti-Chasing Cap (&le; +0.80%):</b> Rejects entries extended past previous 5m high<br>
+                  &bull; <b>Upper Wick Rejection Gate (&le; 25%):</b> Blocks entries when top wicks indicate seller dumping<br>
                   &bull; <b>Micro-Cap Penny Perp Scope (#20-#200+):</b> Focuses on low-float micro-caps while skipping heavy mega-caps<br>
                   &bull; <b>Zero Rate-Limit Bulk Extraction:</b> Fetches 150+ asset contexts in 1 single bulk call (`meta_and_asset_ctxs`)<br>
                   &bull; <b>Pure Ross Volume Gate (&ge; 2.2x - 2.5x):</b> Eliminates low-volume chop fakeouts early<br>
                   &bull; <b>24H Momentum Floor (&ge; +5.0%):</b> Trades exclusively in active daily uptrends<br>
-                  &bull; <b>Solid 5M Body Gate (&ge; 65%):</b> Rejects upper-wick dojis and weak breakouts<br>
-                  &bull; <b>Ultra-Tight Profit Ratchet (+0.80% Activation):</b> Dynamically locks 50% to 88% of peak gains early to prevent giveback<br>
-                  &bull; <b>5-Minute Scan Cadence:</b> Runs every 5 minutes natively via GitHub Actions to hunt high-ranking movers<br>
+                  &bull; <b>Solid 5M Body Gate (&ge; 65%):</b> Rejects weak candle structures<br>
+                  &bull; <b>Ultra-Tight Profit Ratchet (+0.80% Activation):</b> Dynamically locks 50% to 88% of peak gains early<br>
                   &bull; <b>Strict Altcoin Loss Cap (-1.50% ROE):</b> Hard-caps altcoin losses at max -$0.22<br>
                   &bull; <b>24/7 Native Orderbook Sync:</b> Posts resting trigger orders directly on Hyperliquid orderbook<br>
                   &bull; <b>BTC Directional Shield:</b> Aligns market direction with daily candle (GREEN = LONGs only)<br>
