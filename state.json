@@ -12,7 +12,8 @@
     "ZK": 1791788994.3433616,
     "BRETT": 1791795126.127315,
     "ZRO": 1791800885.41498,
-    "S": 1791808386.7883759
+    "S": 1791808386.7883759,
+    "MEGA": 1791810031.9638827
   },
   "last_traded_candle": {
     "FET": 1791664200000,
@@ -41,6 +42,17 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "MEGA",
+      "entry_price": 0.044405,
+      "exit_price": 0.04423,
+      "pnl_usd": -0.10323,
+      "roe_pct": -0.39409976354014536,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.39%)",
+      "timestamp": "2026-10-11 13:00:31",
+      "ts_sec": 1791723631.9638827
+    },
     {
       "coin": "S",
       "entry_price": 0.048906,
@@ -263,35 +275,17 @@
       "timestamp": "2026-10-10 22:00:28",
       "ts_sec": 1791669628.5847876,
       "fill_hash": "APEX_406589258706011"
-    },
-    {
-      "coin": "VVV",
-      "entry_price": 23.222,
-      "exit_price": 23.154,
-      "pnl_usd": -0.07344,
-      "roe_pct": -0.29282576866764876,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-10 21:58:09",
-      "ts_sec": 1791669489.7304785,
-      "fill_hash": "VVV_207563168949744"
     }
   ],
-  "active_position_cache": {
-    "MEGA": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.044428,
-      "side": "LONG"
-    }
-  },
+  "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-11 12:54:35",
-  "last_email_timestamp": 1791723248.4353685,
-  "last_scan_timestamp": 1791723248.4353685,
+  "last_run_timestamp": "2026-10-11 13:00:52",
+  "last_email_timestamp": 1791723631.9638827,
+  "last_scan_timestamp": 1791723631.9638827,
   "gemini_cache": {
-    "timestamp": 1791723248.4353685,
+    "timestamp": 1791723631.9638827,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Increased macroeconomic uncertainty, regulatory scrutiny, and significant leverage in the derivatives market suggest the potential for heightened volatility and sharp price corrections in the near term."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity cycles, all of which keep market sentiment fragile and prone to sharp, sudden corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
