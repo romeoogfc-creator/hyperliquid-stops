@@ -21,7 +21,8 @@
     "PUMP": 1791825707.6416981,
     "ZEC": 1791827129.7251124,
     "GRASS": 1791834925.8997676,
-    "CC": 1791835230.5704474
+    "CC": 1791835230.5704474,
+    "ENA": 1791836341.8394768
   },
   "last_traded_candle": {
     "FET": 1791664200000,
@@ -57,11 +58,24 @@
     "W": 1791739800000,
     "CC": 1791744900000,
     "ZEC": 1791740100000,
-    "ENA": 1791748800000
+    "ENA": 1791748800000,
+    "USELESS": 1791749700000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "ENA",
+      "entry_price": 0.24229,
+      "exit_price": 0.24002,
+      "pnl_usd": -0.23381,
+      "roe_pct": -0.9368938049444856,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-11 20:19:01",
+      "ts_sec": 1791749941.8394768,
+      "fill_hash": "ENA_715291766756171"
+    },
     {
       "coin": "CC",
       "entry_price": 0.12726,
@@ -285,40 +299,23 @@
       "timestamp": "2026-10-11 08:52:06",
       "ts_sec": 1791708726.127315,
       "fill_hash": "BRETT_843554268487076"
-    },
-    {
-      "coin": "BOME",
-      "entry_price": 0.001121,
-      "exit_price": 0.001125,
-      "pnl_usd": 0.088732,
-      "roe_pct": 0.3568242640499447,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.36%)",
-      "timestamp": "2026-10-11 08:52:06",
-      "ts_sec": 1791708726.127315
     }
   ],
   "active_position_cache": {
-    "ENA": {
-      "entry_px": 0.24229,
-      "current_px": 0.24163,
-      "szi": 103.0,
-      "margin": 24.88686,
-      "side": "LONG",
-      "peak_roe": 0.0004127285484336497,
-      "strategy": "5M_HOD_BREAKOUT"
+    "USELESS": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.199365,
+      "side": "LONG"
     }
   },
-  "previous_active_coins": [
-    "ENA"
-  ],
-  "last_run_timestamp": "2026-10-11 20:15:54",
-  "last_email_timestamp": 1791748830.5704474,
-  "last_scan_timestamp": 1791749723.9165053,
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-11 20:19:40",
+  "last_email_timestamp": 1791749941.8394768,
+  "last_scan_timestamp": 1791749941.8394768,
   "gemini_cache": {
-    "timestamp": 1791749723.9165053,
+    "timestamp": 1791749941.8394768,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market is currently characterized by heightened volatility driven by macroeconomic uncertainty, regulatory scrutiny, and significant leverage in the derivatives space, necessitating extreme caution for short-term participants."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic indicators, shifting regulatory landscapes, and high levels of leverage that leave assets vulnerable to sharp, sudden corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
