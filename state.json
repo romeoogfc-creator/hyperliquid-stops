@@ -293,9 +293,9 @@
   "active_position_cache": {
     "PUMP": {
       "entry_px": 0.005844,
-      "current_px": 0.005831,
+      "current_px": 0.005826,
       "szi": 4265.0,
-      "margin": 24.86495,
+      "margin": 24.843625,
       "side": "LONG",
       "peak_roe": -0.0022245037645448307,
       "strategy": "5M_HOD_BREAKOUT"
@@ -304,13 +304,13 @@
   "previous_active_coins": [
     "PUMP"
   ],
-  "last_run_timestamp": "2026-10-11 17:00:59",
+  "last_run_timestamp": "2026-10-11 17:06:53",
   "last_email_timestamp": 1791737789.642557,
-  "last_scan_timestamp": 1791738036.5578136,
+  "last_scan_timestamp": 1791738396.5922568,
   "gemini_cache": {
-    "timestamp": 1791738036.5578136,
-    "risk": "MODERATE",
-    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, the asset class continues to face elevated volatility and heightened sensitivity to macroeconomic data, requiring investors to navigate persistent uncertainty regarding regulatory landscapes and potential liquidity contractions."
+    "timestamp": 1791738396.5922568,
+    "risk": "HIGH",
+    "briefing": "Risk Level: **HIGH** \u2014 Continued macroeconomic uncertainty, regulatory scrutiny, and significant leverage in the derivatives market keep the crypto landscape prone to sudden, volatile liquidations."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
