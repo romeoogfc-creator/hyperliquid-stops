@@ -6,7 +6,8 @@
     "NEO": 1791758721.5781262,
     "NIL": 1791758927.2506123,
     "AZTEC": 1791759628.1382713,
-    "STRK": 1791770048.642008
+    "STRK": 1791770048.642008,
+    "EIGEN": 1791770428.4489343
   },
   "last_traded_candle": {
     "FET": 1791664200000,
@@ -30,6 +31,18 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "EIGEN",
+      "entry_price": 0.2477,
+      "exit_price": 0.2466,
+      "pnl_usd": -0.110649,
+      "roe_pct": -0.44408558740411375,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-11 02:00:28",
+      "ts_sec": 1791684028.4489343,
+      "fill_hash": "EIGEN_899883074927998"
+    },
     {
       "coin": "S",
       "entry_price": 0.04775,
@@ -220,27 +233,15 @@
       "fill_hash": "JTO_91715091410818"
     }
   ],
-  "active_position_cache": {
-    "EIGEN": {
-      "entry_px": 0.2477,
-      "current_px": 0.248,
-      "szi": 100.59,
-      "margin": 4.987252,
-      "side": "LONG",
-      "peak_roe": 0.0012111425111021184,
-      "strategy": "5M_HOD_BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "EIGEN"
-  ],
-  "last_run_timestamp": "2026-10-11 01:54:28",
-  "last_email_timestamp": 1791683648.642008,
-  "last_scan_timestamp": 1791683648.642008,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-11 02:00:50",
+  "last_email_timestamp": 1791684028.4489343,
+  "last_scan_timestamp": 1791684028.4489343,
   "gemini_cache": {
-    "timestamp": 1791683648.642008,
+    "timestamp": 1791684028.4489343,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating significant volatility driven by shifting macroeconomic expectations, ongoing regulatory uncertainty, and liquidity fluctuations that leave prices susceptible to sharp, sentiment-driven corrections."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts and regulatory uncertainty, leading to elevated volatility and the potential for sharp, sudden price swings."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492
