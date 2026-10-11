@@ -294,15 +294,37 @@
       "ts_sec": 1791702594.3433616
     }
   ],
-  "active_position_cache": {},
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-11 19:31:33",
+  "active_position_cache": {
+    "GRASS": {
+      "entry_px": 0.79079,
+      "current_px": 0.79081,
+      "szi": 31.7,
+      "margin": 8.356014,
+      "side": "LONG",
+      "peak_roe": 2.5291164531696155e-05,
+      "strategy": "5M_BREAKOUT"
+    },
+    "CC": {
+      "entry_px": 0.12726,
+      "current_px": 0.127235,
+      "szi": 197.0,
+      "margin": 8.355426,
+      "side": "LONG",
+      "peak_roe": -0.0001964482162503929,
+      "strategy": "5M_BREAKOUT"
+    }
+  },
+  "previous_active_coins": [
+    "CC",
+    "GRASS"
+  ],
+  "last_run_timestamp": "2026-10-11 19:45:53",
   "last_email_timestamp": 1791747074.4269888,
-  "last_scan_timestamp": 1791747074.4269888,
+  "last_scan_timestamp": 1791747933.5984309,
   "gemini_cache": {
-    "timestamp": 1791747074.4269888,
+    "timestamp": 1791747933.5984309,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to geopolitical instability, all of which contribute to an elevated potential for rapid price swings."
+    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to evolving macroeconomic policy, shifting regulatory landscapes, and sudden liquidity volatility, necessitating extreme caution for all participants."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
