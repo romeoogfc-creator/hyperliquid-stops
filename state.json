@@ -36,7 +36,7 @@
     "BRETT": 1791707700000,
     "MOODENG": 1791666000000,
     "BERA": 1791666900000,
-    "VVV": 1791667800000,
+    "VVV": 1791777000000,
     "APEX": 1791668400000,
     "CFX": 1791669900000,
     "NEO": 1791671700000,
@@ -69,7 +69,8 @@
     "ALGO": 1791751500000,
     "ICP": 1791763200000,
     "PNUT": 1791774900000,
-    "CAKE": 1791774900000
+    "CAKE": 1791774900000,
+    "CASHCAT": 1791777000000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
@@ -314,15 +315,26 @@
       "fill_hash": "APT_327628061343094"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "VVV": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 24.7885,
+      "side": "LONG"
+    },
+    "CASHCAT": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.119085,
+      "side": "LONG"
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-12 03:46:02",
-  "last_email_timestamp": 1791776727.1308298,
-  "last_scan_timestamp": 1791776727.1308298,
+  "last_run_timestamp": "2026-10-12 03:51:39",
+  "last_email_timestamp": 1791777069.6462748,
+  "last_scan_timestamp": 1791777069.6462748,
   "gemini_cache": {
-    "timestamp": 1791776727.1308298,
+    "timestamp": 1791777069.6462748,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, potential regulatory uncertainty, and liquidity volatility, resulting in a fragile environment prone to sharp price swings."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity fluctuations, necessitating a cautious approach."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
