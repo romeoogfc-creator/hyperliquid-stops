@@ -78,6 +78,29 @@
   "stagnation_tracker": {},
   "closed_trades_ledger": [
     {
+      "coin": "NEAR",
+      "entry_price": 5.8571,
+      "exit_price": 5.8768,
+      "pnl_usd": 0.08471,
+      "roe_pct": 0.3363439244677447,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-12 05:00:56",
+      "ts_sec": 1791781256.327252,
+      "fill_hash": "NEAR_414205813012487"
+    },
+    {
+      "coin": "FARTCOIN",
+      "entry_price": 0.17236,
+      "exit_price": 0.17277,
+      "pnl_usd": 0.05764,
+      "roe_pct": 0.23787421675562406,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.24%)",
+      "timestamp": "2026-10-12 05:00:56",
+      "ts_sec": 1791781256.327252
+    },
+    {
       "coin": "CASHCAT",
       "entry_price": 0.119,
       "exit_price": 0.119275,
@@ -289,76 +312,33 @@
       "timestamp": "2026-10-11 17:21:47",
       "ts_sec": 1791739307.6416981,
       "fill_hash": "PUMP_395482862096"
-    },
-    {
-      "coin": "MON",
-      "entry_price": 0.026924,
-      "exit_price": 0.026816,
-      "pnl_usd": -0.100116,
-      "roe_pct": -0.4011291041450024,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-11 16:28:07",
-      "ts_sec": 1791736087.9778652,
-      "fill_hash": "MON_270774624587648"
-    },
-    {
-      "coin": "NEAR",
-      "entry_price": 5.6607,
-      "exit_price": 5.74,
-      "pnl_usd": 0.34892,
-      "roe_pct": 1.4008868161181465,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-11 16:12:14",
-      "ts_sec": 1791735134.8540509,
-      "fill_hash": "NEAR_817511367584965"
     }
   ],
   "active_position_cache": {
-    "NEAR": {
-      "entry_px": 5.8571,
-      "current_px": 5.89195,
-      "szi": 4.3,
-      "margin": 25.33302,
-      "side": "LONG",
-      "peak_roe": 0.006889074798108298,
-      "strategy": "5M_HOD_BREAKOUT"
-    },
-    "FARTCOIN": {
-      "entry_px": 0.17236,
-      "current_px": 0.1728,
-      "szi": 144.1,
-      "margin": 2.49048,
-      "side": "LONG",
-      "peak_roe": 0.002552796472499396,
-      "strategy": "5M_HOD_BREAKOUT"
-    },
     "LIT": {
       "entry_px": 3.926,
-      "current_px": 3.9191,
+      "current_px": 3.93785,
       "szi": 7.0,
-      "margin": 5.48688,
+      "margin": 5.511515,
       "side": "LONG",
-      "peak_roe": -0.0017575140091697274,
+      "peak_roe": 0.003018339276617401,
       "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "NEAR",
-    "LIT",
-    "FARTCOIN"
+    "LIT"
   ],
-  "last_run_timestamp": "2026-10-12 04:45:35",
-  "last_email_timestamp": 1791780248.4864235,
-  "last_scan_timestamp": 1791780248.4864235,
+  "last_run_timestamp": "2026-10-12 05:01:24",
+  "last_email_timestamp": 1791781256.327252,
+  "last_scan_timestamp": 1791781256.327252,
   "gemini_cache": {
-    "timestamp": 1791780248.4864235,
+    "timestamp": 1791781256.327252,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe market is currently characterized by heightened volatility driven by macroeconomic uncertainty, regulatory scrutiny, and significant speculative leverage, creating a landscape prone to sharp, sudden corrections."
+    "briefing": "**Risk Level: HIGH** \n\nPersistent macroeconomic uncertainty, stringent regulatory headwinds, and fragile market liquidity continue to expose crypto assets to severe downside volatility and systemic contagion risks."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
-    "2026-10-11": 116.9789252
+    "2026-10-11": 116.9789252,
+    "2026-10-12": 117.0083782
   }
 }
