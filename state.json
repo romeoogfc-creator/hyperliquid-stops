@@ -38,7 +38,7 @@
     "JTO": 1791664200000,
     "BRETT": 1791707700000,
     "MOODENG": 1791666000000,
-    "BERA": 1791666900000,
+    "BERA": 1791792000000,
     "VVV": 1791789600000,
     "APEX": 1791668400000,
     "CFX": 1791669900000,
@@ -320,15 +320,21 @@
       "fill_hash": "GRASS_428836442678255"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "BERA": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.23504,
+      "side": "LONG"
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-12 07:45:37",
-  "last_email_timestamp": 1791791065.6945598,
-  "last_scan_timestamp": 1791791065.6945598,
+  "last_run_timestamp": "2026-10-12 08:01:03",
+  "last_email_timestamp": 1791792030.1091409,
+  "last_scan_timestamp": 1791792030.1091409,
   "gemini_cache": {
-    "timestamp": 1791791065.6945598,
-    "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant volatility driven by macroeconomic uncertainty, regulatory scrutiny, and a fragile technical landscape, necessitating extreme caution for investors."
+    "timestamp": 1791792030.1091409,
+    "risk": "MODERATE",
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, the outlook is currently tempered by significant macroeconomic uncertainty and heightened volatility surrounding near-term geopolitical and regulatory catalysts."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
