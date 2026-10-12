@@ -25,10 +25,42 @@
       "timestamp": "2026-10-12 14:21:18"
     }
   ],
-  "active_position_cache": {},
-  "previous_active_symbols": [],
-  "last_run_timestamp": "2026-10-12 14:53:00",
-  "last_email_timestamp": 1791816773.9040258,
+  "active_position_cache": {
+    "GOOGL": {
+      "entry_px": 354.63,
+      "current_px": 355.48,
+      "qty": 27.0,
+      "side": "long",
+      "peak_roe": 0.0023968643374785627,
+      "best_target_floor_roe": -0.0033863261910804365,
+      "best_stop_px": 353.4291071428571
+    },
+    "META": {
+      "entry_px": 743.973846,
+      "current_px": 749.35,
+      "qty": 13.0,
+      "side": "long",
+      "peak_roe": 0.007226267467472294,
+      "best_target_floor_roe": 0.005712818779566996,
+      "best_stop_px": 747.238
+    },
+    "MSFT": {
+      "entry_px": 540.203889,
+      "current_px": 542.14,
+      "qty": 18.0,
+      "side": "long",
+      "peak_roe": 0.0035840375077343853,
+      "best_target_floor_roe": 0.002553680805420721,
+      "best_stop_px": 541.0948214285714
+    }
+  },
+  "previous_active_symbols": [
+    "GOOGL",
+    "META",
+    "MSFT"
+  ],
+  "last_run_timestamp": "2026-10-12 15:19:02",
+  "last_email_timestamp": 1791818329.1426566,
   "daily_starting_equity": {
     "2026-10-12": 98480.9
   },
