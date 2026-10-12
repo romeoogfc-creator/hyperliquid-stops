@@ -321,24 +321,35 @@
   ],
   "active_position_cache": {
     "TAO": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 300.215,
-      "side": "LONG"
+      "entry_px": 299.97,
+      "current_px": 300.175,
+      "szi": 0.083,
+      "margin": 4.982656,
+      "side": "LONG",
+      "peak_roe": 0.0006834016735006303,
+      "strategy": "5M_HOD_BREAKOUT"
     },
     "VVV": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 25.3255,
-      "side": "LONG"
+      "entry_px": 25.308,
+      "current_px": 25.2215,
+      "szi": 0.98,
+      "margin": 24.71462,
+      "side": "LONG",
+      "peak_roe": -0.0034178915757863484,
+      "strategy": "5M_HOD_BREAKOUT"
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-12 07:22:54",
+  "previous_active_coins": [
+    "VVV",
+    "TAO"
+  ],
+  "last_run_timestamp": "2026-10-12 07:30:56",
   "last_email_timestamp": 1791789737.0606034,
-  "last_scan_timestamp": 1791789737.0606034,
+  "last_scan_timestamp": 1791790224.063265,
   "gemini_cache": {
-    "timestamp": 1791789737.0606034,
+    "timestamp": 1791790224.063265,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Increased market volatility driven by macroeconomic uncertainty, regulatory shifts, and aggressive leverage cycles creates a landscape where significant downside corrections remain as probable as sudden breakouts."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, potential regulatory uncertainty, and liquidity volatility, necessitating extreme caution despite recent price momentum."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
