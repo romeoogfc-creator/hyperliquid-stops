@@ -32,7 +32,8 @@
     "LIT": 1791868529.4716415,
     "IO": 1791874853.275973,
     "TAO": 1791877465.6945598,
-    "BERA": 1791879324.852031
+    "BERA": 1791879324.852031,
+    "SKY": 1791881125.2083867
   },
   "last_traded_candle": {
     "FET": 1791759600000,
@@ -84,6 +85,17 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "SKY",
+      "entry_price": 0.081287,
+      "exit_price": 0.08119,
+      "pnl_usd": -0.032025,
+      "roe_pct": -0.11933027421358873,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udea8 BTC Daily Bearish Flip Purge (BTC Daily is RED -0.20%)",
+      "timestamp": "2026-10-12 08:45:25",
+      "ts_sec": 1791794725.2083867
+    },
     {
       "coin": "BERA",
       "entry_price": 0.23504,
@@ -308,35 +320,17 @@
       "timestamp": "2026-10-11 20:19:01",
       "ts_sec": 1791749941.8394768,
       "fill_hash": "ENA_715291766756171"
-    },
-    {
-      "coin": "CC",
-      "entry_price": 0.12726,
-      "exit_price": 0.12703,
-      "pnl_usd": -0.04531,
-      "roe_pct": -0.180732358950187,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-11 20:00:30",
-      "ts_sec": 1791748830.5704474,
-      "fill_hash": "CC_883293312397448"
     }
   ],
-  "active_position_cache": {
-    "SKY": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.081282,
-      "side": "LONG"
-    }
-  },
+  "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-12 08:31:04",
-  "last_email_timestamp": 1791793828.082673,
-  "last_scan_timestamp": 1791793828.082673,
+  "last_run_timestamp": "2026-10-12 08:45:54",
+  "last_email_timestamp": 1791794725.2083867,
+  "last_scan_timestamp": 1791794725.2083867,
   "gemini_cache": {
-    "timestamp": 1791793828.082673,
+    "timestamp": 1791794725.2083867,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to geopolitical instability, all of which contribute to an elevated risk profile for investors."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and historical post-halving price consolidation patterns that heighten the potential for sudden liquidity-driven sell-offs."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
