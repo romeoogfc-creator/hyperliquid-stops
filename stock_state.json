@@ -1,6 +1,24 @@
 {
   "closed_trades_ledger": [
     {
+      "symbol": "META",
+      "entry_price": 743.973846,
+      "exit_price": 746.74,
+      "realized_pnl": 35.96000200000037,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-12 15:50:22",
+      "order_id": "d9322429-f058-43f8-a7e0-756686de317d"
+    },
+    {
+      "symbol": "GOOGL",
+      "entry_price": 354.63,
+      "exit_price": 353.469259,
+      "realized_pnl": -31.340006999999275,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-12 15:50:22",
+      "order_id": "72bfd243-f9d8-41b5-a009-7f17c63acb16"
+    },
+    {
       "symbol": "V",
       "entry_price": 388.6012,
       "exit_price": 388.87,
@@ -26,41 +44,31 @@
     }
   ],
   "active_position_cache": {
-    "GOOGL": {
-      "entry_px": 354.63,
-      "current_px": 355.48,
-      "qty": 27.0,
-      "side": "long",
-      "peak_roe": 0.0023968643374785627,
-      "best_target_floor_roe": -0.0033863261910804365,
-      "best_stop_px": 353.4291071428571
-    },
-    "META": {
-      "entry_px": 743.973846,
-      "current_px": 749.35,
-      "qty": 13.0,
-      "side": "long",
-      "peak_roe": 0.007226267467472294,
-      "best_target_floor_roe": 0.005712818779566996,
-      "best_stop_px": 747.238
-    },
     "MSFT": {
       "entry_px": 540.203889,
-      "current_px": 542.14,
+      "current_px": 542.115,
       "qty": 18.0,
       "side": "long",
       "peak_roe": 0.0035840375077343853,
       "best_target_floor_roe": 0.002553680805420721,
-      "best_stop_px": 541.0948214285714
+      "best_stop_px": 541.0738214285714
+    },
+    "XOM": {
+      "entry_px": 171.89193,
+      "current_px": 171.98,
+      "qty": 57.0,
+      "side": "long",
+      "peak_roe": 0.000512356804650385,
+      "best_target_floor_roe": -0.0032422780323161722,
+      "best_stop_px": 171.3346085714286
     }
   },
   "previous_active_symbols": [
-    "GOOGL",
-    "META",
+    "XOM",
     "MSFT"
   ],
-  "last_run_timestamp": "2026-10-12 15:19:02",
-  "last_email_timestamp": 1791818329.1426566,
+  "last_run_timestamp": "2026-10-12 15:50:41",
+  "last_email_timestamp": 1791820222.2586863,
   "daily_starting_equity": {
     "2026-10-12": 98480.9
   },
