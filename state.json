@@ -70,7 +70,9 @@
     "ICP": 1791763200000,
     "PNUT": 1791774900000,
     "CAKE": 1791774900000,
-    "CASHCAT": 1791777000000
+    "CASHCAT": 1791777000000,
+    "FARTCOIN": 1791780000000,
+    "LIT": 1791780000000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
@@ -315,19 +317,35 @@
   ],
   "active_position_cache": {
     "NEAR": {
+      "entry_px": 5.8571,
+      "current_px": 5.89745,
+      "szi": 4.3,
+      "margin": 25.368409,
+      "side": "LONG",
+      "peak_roe": 0.006889074798108298,
+      "strategy": "5M_HOD_BREAKOUT"
+    },
+    "FARTCOIN": {
       "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 5.8564,
+      "entry_px": 0.17262,
+      "side": "LONG"
+    },
+    "LIT": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 3.92985,
       "side": "LONG"
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-12 04:31:09",
-  "last_email_timestamp": 1791779434.78958,
-  "last_scan_timestamp": 1791779434.78958,
+  "previous_active_coins": [
+    "NEAR"
+  ],
+  "last_run_timestamp": "2026-10-12 04:44:43",
+  "last_email_timestamp": 1791780248.4864235,
+  "last_scan_timestamp": 1791780248.4864235,
   "gemini_cache": {
-    "timestamp": 1791779434.78958,
+    "timestamp": 1791780248.4864235,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market remains highly vulnerable to heightened volatility driven by uncertain macroeconomic policy, evolving regulatory scrutiny, and significant leverage in speculative derivatives markets."
+    "briefing": "**Risk Level: HIGH**\n\nThe market is currently characterized by heightened volatility driven by macroeconomic uncertainty, regulatory scrutiny, and significant speculative leverage, creating a landscape prone to sharp, sudden corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
