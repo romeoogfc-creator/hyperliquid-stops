@@ -31,7 +31,8 @@
     "PNUT": 1791863127.1308298,
     "LIT": 1791868529.4716415,
     "IO": 1791874853.275973,
-    "TAO": 1791877465.6945598
+    "TAO": 1791877465.6945598,
+    "BERA": 1791879324.852031
   },
   "last_traded_candle": {
     "FET": 1791759600000,
@@ -82,6 +83,18 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "BERA",
+      "entry_price": 0.23504,
+      "exit_price": 0.23363,
+      "pnl_usd": -0.148473,
+      "roe_pct": -0.5998978897208963,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-12 08:15:24",
+      "ts_sec": 1791792924.852031,
+      "fill_hash": "BERA_184742004755778"
+    },
     {
       "coin": "VVV",
       "entry_price": 25.308,
@@ -306,41 +319,17 @@
       "timestamp": "2026-10-11 20:00:30",
       "ts_sec": 1791748830.5704474,
       "fill_hash": "CC_883293312397448"
-    },
-    {
-      "coin": "GRASS",
-      "entry_price": 0.79079,
-      "exit_price": 0.78582,
-      "pnl_usd": -0.157549,
-      "roe_pct": -0.6284854386120248,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-11 19:55:25",
-      "ts_sec": 1791748525.8997676,
-      "fill_hash": "GRASS_428836442678255"
     }
   ],
-  "active_position_cache": {
-    "BERA": {
-      "entry_px": 0.23504,
-      "current_px": 0.2348,
-      "szi": 105.3,
-      "margin": 4.942571,
-      "side": "LONG",
-      "peak_roe": -0.0010211027910142537,
-      "strategy": "5M_HOD_BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "BERA"
-  ],
-  "last_run_timestamp": "2026-10-12 08:02:25",
-  "last_email_timestamp": 1791792030.1091409,
-  "last_scan_timestamp": 1791792030.1091409,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-12 08:16:00",
+  "last_email_timestamp": 1791792924.852031,
+  "last_scan_timestamp": 1791792924.852031,
   "gemini_cache": {
-    "timestamp": 1791792030.1091409,
-    "risk": "MODERATE",
-    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, the outlook is currently tempered by significant macroeconomic uncertainty and heightened volatility surrounding near-term geopolitical and regulatory catalysts."
+    "timestamp": 1791792924.852031,
+    "risk": "HIGH",
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, upcoming regulatory scrutiny, and significant volatility surrounding global liquidity trends, necessitating extreme caution for retail participants."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
