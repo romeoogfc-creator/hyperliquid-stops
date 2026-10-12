@@ -1,6 +1,23 @@
 {
   "closed_trades_ledger": [
     {
+      "symbol": "XOM",
+      "entry_price": 171.89193,
+      "exit_price": 171.89193,
+      "realized_pnl": 0.0,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-12 16:16:36",
+      "order_id": "f3fd7f42-5ebf-46bd-b8dc-43f22f71d4c5"
+    },
+    {
+      "symbol": "XOM",
+      "entry_price": 171.89193,
+      "exit_price": 171.995,
+      "exit_reason": "\ud83d\udcc9 1H Trend Invalidation (Close $172.00 < Upper Band $172.24)",
+      "realized_pnl": 5.874990000000139,
+      "timestamp": "2026-10-12 16:16:36"
+    },
+    {
       "symbol": "META",
       "entry_price": 743.973846,
       "exit_price": 746.74,
@@ -46,29 +63,19 @@
   "active_position_cache": {
     "MSFT": {
       "entry_px": 540.203889,
-      "current_px": 542.115,
+      "current_px": 541.75,
       "qty": 18.0,
       "side": "long",
       "peak_roe": 0.0035840375077343853,
       "best_target_floor_roe": 0.002553680805420721,
-      "best_stop_px": 541.0738214285714
-    },
-    "XOM": {
-      "entry_px": 171.89193,
-      "current_px": 171.98,
-      "qty": 57.0,
-      "side": "long",
-      "peak_roe": 0.000512356804650385,
-      "best_target_floor_roe": -0.0032422780323161722,
-      "best_stop_px": 171.3346085714286
+      "best_stop_px": 541.1576071428572
     }
   },
   "previous_active_symbols": [
-    "XOM",
     "MSFT"
   ],
-  "last_run_timestamp": "2026-10-12 15:50:41",
-  "last_email_timestamp": 1791820222.2586863,
+  "last_run_timestamp": "2026-10-12 16:16:51",
+  "last_email_timestamp": 1791821796.3031673,
   "daily_starting_equity": {
     "2026-10-12": 98480.9
   },
