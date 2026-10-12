@@ -319,24 +319,24 @@
   "active_position_cache": {
     "LINEA": {
       "entry_px": 0.00312,
-      "current_px": 0.003134,
+      "current_px": 0.003137,
       "szi": 7976.0,
-      "margin": 8.332261,
+      "margin": 8.342896,
       "side": "LONG",
-      "peak_roe": 0.004487179487179527,
+      "peak_roe": 0.005448717948717977,
       "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
     "LINEA"
   ],
-  "last_run_timestamp": "2026-10-12 06:01:00",
+  "last_run_timestamp": "2026-10-12 06:05:30",
   "last_email_timestamp": 1791784421.4361446,
-  "last_scan_timestamp": 1791784829.6093762,
+  "last_scan_timestamp": 1791785098.5954988,
   "gemini_cache": {
-    "timestamp": 1791784829.6093762,
+    "timestamp": 1791785098.5954988,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market remains in a state of heightened volatility driven by macroeconomic uncertainty, regulatory scrutiny, and the potential for rapid deleveraging, necessitating extreme caution for short-term participants."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts and regulatory uncertainty, leading to elevated volatility as prices struggle to maintain momentum following recent breakouts."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
