@@ -73,7 +73,8 @@
     "CAKE": 1791774900000,
     "CASHCAT": 1791777000000,
     "FARTCOIN": 1791780000000,
-    "LIT": 1791780000000
+    "LIT": 1791780000000,
+    "LINEA": 1791784200000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
@@ -315,15 +316,21 @@
       "ts_sec": 1791740729.7251124
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "LINEA": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.003115,
+      "side": "LONG"
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-12 05:45:58",
-  "last_email_timestamp": 1791783386.0737715,
-  "last_scan_timestamp": 1791783929.7309818,
+  "last_run_timestamp": "2026-10-12 05:54:20",
+  "last_email_timestamp": 1791784421.4361446,
+  "last_scan_timestamp": 1791784421.4361446,
   "gemini_cache": {
-    "timestamp": 1791783929.7309818,
+    "timestamp": 1791784421.4361446,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe market is currently characterized by heightened volatility driven by macroeconomic uncertainty, regulatory scrutiny, and significant leverage, warranting extreme caution for participants."
+    "briefing": "Risk Level: **HIGH** \u2014 Increased market volatility driven by macroeconomic uncertainty, regulatory scrutiny, and significant leverage in derivatives markets creates a landscape prone to sudden, sharp liquidations."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
