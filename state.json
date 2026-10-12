@@ -27,7 +27,8 @@
     "ALGO": 1791839587.6187005,
     "SYRUP": 1791839587.6187005,
     "FET": 1791846928.4952013,
-    "CAKE": 1791862238.8591301
+    "CAKE": 1791862238.8591301,
+    "PNUT": 1791863127.1308298
   },
   "last_traded_candle": {
     "FET": 1791759600000,
@@ -73,6 +74,18 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "PNUT",
+      "entry_price": 0.05206,
+      "exit_price": 0.05195,
+      "pnl_usd": -0.017633,
+      "roe_pct": -0.21129466000768146,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-12 03:45:27",
+      "ts_sec": 1791776727.1308298,
+      "fill_hash": "PNUT_195964899154742"
+    },
     {
       "coin": "CAKE",
       "entry_price": 2.37745,
@@ -299,41 +312,17 @@
       "timestamp": "2026-10-11 14:56:02",
       "ts_sec": 1791730562.3446121,
       "fill_hash": "APT_327628061343094"
-    },
-    {
-      "coin": "TIA",
-      "entry_price": 0.59252,
-      "exit_price": 0.58628,
-      "pnl_usd": -0.260208,
-      "roe_pct": -1.0531290083035212,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-11 14:45:27",
-      "ts_sec": 1791729927.504644,
-      "fill_hash": "TIA_230550149092637"
     }
   ],
-  "active_position_cache": {
-    "PNUT": {
-      "entry_px": 0.05206,
-      "current_px": 0.05208,
-      "szi": 476.5,
-      "margin": 8.268863,
-      "side": "LONG",
-      "peak_roe": 0.00038417210910486333,
-      "strategy": "5M_HOD_BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "PNUT"
-  ],
-  "last_run_timestamp": "2026-10-12 03:31:10",
-  "last_email_timestamp": 1791775838.8591301,
-  "last_scan_timestamp": 1791775838.8591301,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-12 03:46:02",
+  "last_email_timestamp": 1791776727.1308298,
+  "last_scan_timestamp": 1791776727.1308298,
   "gemini_cache": {
-    "timestamp": 1791775838.8591301,
+    "timestamp": 1791776727.1308298,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe market remains highly volatile as it reacts to shifting macroeconomic interest rate expectations, significant institutional capital flows, and ongoing regulatory uncertainty, which collectively create the potential for sharp, sudden price swings in both directions."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, potential regulatory uncertainty, and liquidity volatility, resulting in a fragile environment prone to sharp price swings."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
