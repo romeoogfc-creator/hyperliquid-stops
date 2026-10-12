@@ -28,7 +28,8 @@
     "SYRUP": 1791839587.6187005,
     "FET": 1791846928.4952013,
     "CAKE": 1791862238.8591301,
-    "PNUT": 1791863127.1308298
+    "PNUT": 1791863127.1308298,
+    "LIT": 1791868529.4716415
   },
   "last_traded_candle": {
     "FET": 1791759600000,
@@ -77,6 +78,18 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "LIT",
+      "entry_price": 3.926,
+      "exit_price": 3.9252,
+      "pnl_usd": -0.0056,
+      "roe_pct": -0.02037697401936719,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-12 05:15:29",
+      "ts_sec": 1791782129.4716415,
+      "fill_hash": "LIT_45476672846195"
+    },
     {
       "coin": "NEAR",
       "entry_price": 5.8571,
@@ -300,41 +313,17 @@
       "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.62%)",
       "timestamp": "2026-10-11 17:45:29",
       "ts_sec": 1791740729.7251124
-    },
-    {
-      "coin": "PUMP",
-      "entry_price": 0.005844,
-      "exit_price": 0.005825,
-      "pnl_usd": -0.081035,
-      "roe_pct": -0.32511978097193567,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-11 17:21:47",
-      "ts_sec": 1791739307.6416981,
-      "fill_hash": "PUMP_395482862096"
     }
   ],
-  "active_position_cache": {
-    "LIT": {
-      "entry_px": 3.926,
-      "current_px": 3.93785,
-      "szi": 7.0,
-      "margin": 5.511515,
-      "side": "LONG",
-      "peak_roe": 0.003018339276617401,
-      "strategy": "5M_HOD_BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "LIT"
-  ],
-  "last_run_timestamp": "2026-10-12 05:01:24",
-  "last_email_timestamp": 1791781256.327252,
-  "last_scan_timestamp": 1791781256.327252,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-12 05:15:59",
+  "last_email_timestamp": 1791782129.4716415,
+  "last_scan_timestamp": 1791782129.4716415,
   "gemini_cache": {
-    "timestamp": 1791781256.327252,
+    "timestamp": 1791782129.4716415,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nPersistent macroeconomic uncertainty, stringent regulatory headwinds, and fragile market liquidity continue to expose crypto assets to severe downside volatility and systemic contagion risks."
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and anticipated macroeconomic easing, the asset class remains highly sensitive to geopolitical instability and shifting interest rate expectations, keeping volatility elevated."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
