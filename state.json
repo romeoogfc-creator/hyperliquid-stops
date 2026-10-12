@@ -1,6 +1,6 @@
 {
   "cooldown_blocklist": {
-    "VVV": 1791755889.7304785,
+    "VVV": 1791877465.6945598,
     "APEX": 1791756028.5847876,
     "CFX": 1791757829.543547,
     "NEO": 1791758721.5781262,
@@ -30,7 +30,8 @@
     "CAKE": 1791862238.8591301,
     "PNUT": 1791863127.1308298,
     "LIT": 1791868529.4716415,
-    "IO": 1791874853.275973
+    "IO": 1791874853.275973,
+    "TAO": 1791877465.6945598
   },
   "last_traded_candle": {
     "FET": 1791759600000,
@@ -81,6 +82,30 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "VVV",
+      "entry_price": 25.308,
+      "exit_price": 25.201,
+      "pnl_usd": -0.10486,
+      "roe_pct": -0.4227912122648938,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-12 07:44:25",
+      "ts_sec": 1791791065.6945598,
+      "fill_hash": "VVV_448436185955106"
+    },
+    {
+      "coin": "TAO",
+      "entry_price": 299.97,
+      "exit_price": 299.29,
+      "pnl_usd": -0.05644,
+      "roe_pct": -0.22668933560022897,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-12 07:44:25",
+      "ts_sec": 1791791065.6945598,
+      "fill_hash": "TAO_33049882144729"
+    },
     {
       "coin": "IO",
       "entry_price": 0.19421,
@@ -293,63 +318,17 @@
       "timestamp": "2026-10-11 19:55:25",
       "ts_sec": 1791748525.8997676,
       "fill_hash": "GRASS_428836442678255"
-    },
-    {
-      "coin": "CC",
-      "entry_price": 0.12682,
-      "exit_price": 0.12694,
-      "pnl_usd": 0.02376,
-      "roe_pct": 0.09462229932188061,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-11 19:31:14",
-      "ts_sec": 1791747074.4269888,
-      "fill_hash": "CC_766176828765570"
-    },
-    {
-      "coin": "CC",
-      "entry_price": 0.12691,
-      "exit_price": 0.12706,
-      "pnl_usd": 0.02955,
-      "roe_pct": 0.11819399574502501,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-11 18:12:18",
-      "ts_sec": 1791742338.4290745,
-      "fill_hash": "CC_584145261630013"
     }
   ],
-  "active_position_cache": {
-    "TAO": {
-      "entry_px": 299.97,
-      "current_px": 300.175,
-      "szi": 0.083,
-      "margin": 4.982656,
-      "side": "LONG",
-      "peak_roe": 0.0006834016735006303,
-      "strategy": "5M_HOD_BREAKOUT"
-    },
-    "VVV": {
-      "entry_px": 25.308,
-      "current_px": 25.2215,
-      "szi": 0.98,
-      "margin": 24.71462,
-      "side": "LONG",
-      "peak_roe": -0.0034178915757863484,
-      "strategy": "5M_HOD_BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "VVV",
-    "TAO"
-  ],
-  "last_run_timestamp": "2026-10-12 07:30:56",
-  "last_email_timestamp": 1791789737.0606034,
-  "last_scan_timestamp": 1791790224.063265,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-12 07:44:57",
+  "last_email_timestamp": 1791791065.6945598,
+  "last_scan_timestamp": 1791791065.6945598,
   "gemini_cache": {
-    "timestamp": 1791790224.063265,
+    "timestamp": 1791791065.6945598,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, potential regulatory uncertainty, and liquidity volatility, necessitating extreme caution despite recent price momentum."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant volatility driven by macroeconomic uncertainty, regulatory scrutiny, and a fragile technical landscape, necessitating extreme caution for investors."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
