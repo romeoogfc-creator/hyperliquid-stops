@@ -324,13 +324,13 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-12 20:30:55",
-  "last_email_timestamp": 1791836126.7051888,
-  "last_scan_timestamp": 1791837025.5803194,
+  "last_run_timestamp": "2026-10-12 20:40:37",
+  "last_email_timestamp": 1791837626.7660108,
+  "last_scan_timestamp": 1791837626.7660108,
   "gemini_cache": {
-    "timestamp": 1791837025.5803194,
+    "timestamp": 1791837626.7660108,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting regulatory landscapes, and elevated volatility driven by speculative leverage, necessitating caution for all participants."
+    "briefing": "Risk Level: HIGH; market sentiment remains highly volatile due to ongoing macroeconomic uncertainty, shifting regulatory landscapes, and significant liquidity fluctuations that can trigger rapid, outsized price swings."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
