@@ -324,13 +324,13 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-12 16:15:43",
+  "last_run_timestamp": "2026-10-12 16:24:54",
   "last_email_timestamp": 1791821730.1523623,
-  "last_scan_timestamp": 1791821730.1523623,
+  "last_scan_timestamp": 1791822244.2621033,
   "gemini_cache": {
-    "timestamp": 1791821730.1523623,
-    "risk": "MODERATE",
-    "briefing": "**Risk Level: MODERATE**\n\nCrypto markets currently face a balanced tug-of-war between strong institutional ETF inflows and bullish macro liquidity trends on one side, offset by lingering regulatory uncertainty, elevated leverage, and persistent macroeconomic headwinds on the other."
+    "timestamp": 1791822244.2621033,
+    "risk": "HIGH",
+    "briefing": "**Risk Level: HIGH**\n\nThe market is currently experiencing significant volatility driven by macroeconomic uncertainty, regulatory scrutiny, and high levels of speculative leverage, making it highly susceptible to sudden liquidity swings and sharp corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
