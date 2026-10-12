@@ -311,13 +311,13 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-12 01:17:32",
-  "last_email_timestamp": 1791767720.805746,
-  "last_scan_timestamp": 1791767720.805746,
+  "last_run_timestamp": "2026-10-12 01:31:03",
+  "last_email_timestamp": 1791768623.0787497,
+  "last_scan_timestamp": 1791768623.0787497,
   "gemini_cache": {
-    "timestamp": 1791767720.805746,
+    "timestamp": 1791768623.0787497,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe market is currently experiencing heightened volatility driven by macroeconomic uncertainty, shifting regulatory signals, and significant leveraged positioning, leaving it susceptible to rapid liquidity swings."
+    "briefing": "Risk Level: **MODERATE** \u2014 While spot Bitcoin ETF inflows and anticipation surrounding the upcoming halving provide structural support, the market remains susceptible to significant volatility due to high leverage, regulatory uncertainty, and shifting expectations regarding macroeconomic interest rate policy."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
