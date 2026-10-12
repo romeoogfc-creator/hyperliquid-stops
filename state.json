@@ -318,28 +318,38 @@
   "active_position_cache": {
     "NEAR": {
       "entry_px": 5.8571,
-      "current_px": 5.89745,
+      "current_px": 5.89195,
       "szi": 4.3,
-      "margin": 25.368409,
+      "margin": 25.33302,
       "side": "LONG",
       "peak_roe": 0.006889074798108298,
       "strategy": "5M_HOD_BREAKOUT"
     },
     "FARTCOIN": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.17262,
-      "side": "LONG"
+      "entry_px": 0.17236,
+      "current_px": 0.1728,
+      "szi": 144.1,
+      "margin": 2.49048,
+      "side": "LONG",
+      "peak_roe": 0.002552796472499396,
+      "strategy": "5M_HOD_BREAKOUT"
     },
     "LIT": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 3.92985,
-      "side": "LONG"
+      "entry_px": 3.926,
+      "current_px": 3.9191,
+      "szi": 7.0,
+      "margin": 5.48688,
+      "side": "LONG",
+      "peak_roe": -0.0017575140091697274,
+      "strategy": "5M_HOD_BREAKOUT"
     }
   },
   "previous_active_coins": [
-    "NEAR"
+    "NEAR",
+    "LIT",
+    "FARTCOIN"
   ],
-  "last_run_timestamp": "2026-10-12 04:44:43",
+  "last_run_timestamp": "2026-10-12 04:45:35",
   "last_email_timestamp": 1791780248.4864235,
   "last_scan_timestamp": 1791780248.4864235,
   "gemini_cache": {
