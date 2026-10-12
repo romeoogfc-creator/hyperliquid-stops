@@ -5,7 +5,7 @@
     "CFX": 1791757829.543547,
     "NEO": 1791758721.5781262,
     "NIL": 1791758927.2506123,
-    "AZTEC": 1791759628.1382713,
+    "AZTEC": 1791862238.8591301,
     "STRK": 1791770048.642008,
     "EIGEN": 1791770428.4489343,
     "DYM": 1791788994.3433616,
@@ -26,7 +26,8 @@
     "USELESS": 1791838841.0562112,
     "ALGO": 1791839587.6187005,
     "SYRUP": 1791839587.6187005,
-    "FET": 1791846928.4952013
+    "FET": 1791846928.4952013,
+    "CAKE": 1791862238.8591301
   },
   "last_traded_candle": {
     "FET": 1791759600000,
@@ -72,6 +73,30 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "CAKE",
+      "entry_price": 2.37745,
+      "exit_price": 2.3724,
+      "pnl_usd": -0.0252,
+      "roe_pct": -0.2124124587267964,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-12 03:30:38",
+      "ts_sec": 1791775838.8591301,
+      "fill_hash": "CAKE_1011961962863747"
+    },
+    {
+      "coin": "AZTEC",
+      "entry_price": 0.020004,
+      "exit_price": 0.017321,
+      "pnl_usd": -0.040124,
+      "roe_pct": -13.412317536492708,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-12 03:30:38",
+      "ts_sec": 1791775838.8591301,
+      "fill_hash": "AZTEC_737168391384325"
+    },
     {
       "coin": "ICP",
       "entry_price": 3.4937,
@@ -286,56 +311,29 @@
       "timestamp": "2026-10-11 14:45:27",
       "ts_sec": 1791729927.504644,
       "fill_hash": "TIA_230550149092637"
-    },
-    {
-      "coin": "MANTA",
-      "entry_price": 0.07173,
-      "exit_price": 0.07117,
-      "pnl_usd": -0.093968,
-      "roe_pct": -0.7807054231144639,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-11 14:28:53",
-      "ts_sec": 1791728933.0653274,
-      "fill_hash": "MANTA_156354822367133"
-    },
-    {
-      "coin": "ETHFI",
-      "entry_price": 0.71783,
-      "exit_price": 0.71437,
-      "pnl_usd": -0.12282,
-      "roe_pct": -0.4820082749397516,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.48%)",
-      "timestamp": "2026-10-11 13:50:55",
-      "ts_sec": 1791726655.716594
     }
   ],
   "active_position_cache": {
-    "AZTEC": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.020004,
-      "side": "LONG"
-    },
     "PNUT": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.0521,
-      "side": "LONG"
-    },
-    "CAKE": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 2.37745,
-      "side": "LONG"
+      "entry_px": 0.05206,
+      "current_px": 0.05208,
+      "szi": 476.5,
+      "margin": 8.268863,
+      "side": "LONG",
+      "peak_roe": 0.00038417210910486333,
+      "strategy": "5M_HOD_BREAKOUT"
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-12 03:16:13",
-  "last_email_timestamp": 1791774929.83672,
-  "last_scan_timestamp": 1791774929.83672,
+  "previous_active_coins": [
+    "PNUT"
+  ],
+  "last_run_timestamp": "2026-10-12 03:31:10",
+  "last_email_timestamp": 1791775838.8591301,
+  "last_scan_timestamp": 1791775838.8591301,
   "gemini_cache": {
-    "timestamp": 1791774929.83672,
+    "timestamp": 1791775838.8591301,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Increased market volatility, regulatory uncertainty, and macro-economic headwinds suggest a significant potential for sharp price swings in the near term."
+    "briefing": "**Risk Level: HIGH**\n\nThe market remains highly volatile as it reacts to shifting macroeconomic interest rate expectations, significant institutional capital flows, and ongoing regulatory uncertainty, which collectively create the potential for sharp, sudden price swings in both directions."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
