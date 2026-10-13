@@ -1,6 +1,15 @@
 {
   "closed_trades_ledger": [
     {
+      "symbol": "IWM",
+      "entry_price": 277.26,
+      "exit_price": 277.0,
+      "realized_pnl": 9.099999999999682,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-13 18:21:52",
+      "order_id": "be834d07-1b64-487e-b189-8d6221bbb350"
+    },
+    {
       "symbol": "BA",
       "entry_price": 186.501153,
       "exit_price": 186.501153,
@@ -74,29 +83,12 @@
       "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
       "timestamp": "2026-10-12 16:16:36",
       "order_id": "f3fd7f42-5ebf-46bd-b8dc-43f22f71d4c5"
-    },
-    {
-      "symbol": "XOM",
-      "entry_price": 171.89193,
-      "exit_price": 171.995,
-      "exit_reason": "\ud83d\udcc9 1H Trend Invalidation (Close $172.00 < Upper Band $172.24)",
-      "realized_pnl": 5.874990000000139,
-      "timestamp": "2026-10-12 16:16:36"
     }
   ],
   "active_position_cache": {
-    "IWM": {
-      "entry_px": 277.26,
-      "current_px": 276.465,
-      "qty": 35.0,
-      "side": "short",
-      "peak_roe": 0.005337949938685776,
-      "best_target_floor_roe": 0.001,
-      "best_stop_px": 276.98274
-    },
     "QQQ": {
       "entry_px": 741.79,
-      "current_px": 742.1,
+      "current_px": 742.85,
       "qty": 13.0,
       "side": "short",
       "peak_roe": 0.0015961390690087075,
@@ -105,11 +97,10 @@
     }
   },
   "previous_active_symbols": [
-    "IWM",
     "QQQ"
   ],
-  "last_run_timestamp": "2026-10-13 12:48:12",
-  "last_email_timestamp": 1791913666.1823947,
+  "last_run_timestamp": "2026-10-13 13:22:21",
+  "last_email_timestamp": 1791915712.495935,
   "daily_starting_equity": {
     "2026-10-12": 98480.9,
     "2026-10-13": 98171.46
@@ -119,15 +110,15 @@
     "2026-10-13": 98171.46
   },
   "symbols_traded_today": [
-    "PLUG",
-    "AAPL",
+    "BTE",
     "CVX",
     "IWM",
-    "QQQ",
     "KGC",
-    "NKE",
+    "DIS",
     "BA",
-    "BTE",
-    "DIS"
+    "NKE",
+    "PLUG",
+    "AAPL",
+    "QQQ"
   ]
 }
