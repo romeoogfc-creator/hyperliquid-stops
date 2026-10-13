@@ -151,7 +151,7 @@ def cancel_alpaca_native_orders(symbol, open_orders):
 
 def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, audit_logs=None):
     """
-    HARDENED NATIVE STOP SYNC (V3.5 ATOMIC PROTECTED):
+    HARDENED NATIVE STOP SYNC (V3.7 ATOMIC PROTECTED):
     Prevents naked positions by placing new stop first, and immediately market-closes
     if stop placement is rejected by Alpaca API.
     """
@@ -271,7 +271,7 @@ def analyze_live_stock_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, 
 
 def calculate_smart_stock_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0):
     """
-    V3.5 ULTRA-TIGHT MICRO-PENNY TARGETS:
+    V3.7 DUAL-ENGINE ULTRA-TIGHT MICRO-PENNY TARGETS:
     - Hard Initial Downside Risk Floor: -0.12% ROE (~$12 loss on $10k position)
     - Break-Even Floor Trigger: +0.15% ROE (Locks +$2 profit as soon as trade moves +$15)
     """
@@ -314,7 +314,7 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Master Engine V3.5 Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Master Engine V3.7 Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing API Key credentials in environment variables.")
@@ -605,14 +605,22 @@ def execute_stock_engine():
     peak_giveback_lockout = (giveback_from_peak >= 500.0) or (daily_loss_usd >= 500.0)
     trades_executed = False
 
-    watchlist = [
+    # MERGED WATCHLIST: S&P 500 / NASDAQ MAJOR EQUITIES + ROSS $5-$20 SMALL-CAP RUNNERS
+    raw_watchlist = [
+        # --- S&P 500 / NASDAQ LARGE-CAP UNIVERSE ---
         "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "AVGO", "QCOM",
         "INTC", "MU", "ARM", "AMAT", "LRCX", "SMCI", "ORCL", "CRM", "NOW", "PANW", "FTNT", "PLTR",
         "COIN", "HOOD", "SQ", "PYPL", "NET", "SNOW", "SHOP", "MSTR", "UBER", "ABNB", "RBLX", "DKNG",
         "NFLX", "COST", "WMT", "HD", "DIS", "NKE", "SBUX", "BA", "CAT", "GE", "HON", "DE", "LMT",
         "JPM", "BAC", "GS", "MS", "V", "MA", "XOM", "CVX", "SLB", "LLY", "UNH", "JNJ", "PFE", "ABBV",
-        "TXN", "ADI", "KLAC", "MCHP", "DELL", "SPY", "QQQ", "IWM", "DIA", "SMH", "XLF", "XLE"
+        "TXN", "ADI", "KLAC", "MCHP", "DELL", "SPY", "QQQ", "IWM", "DIA", "SMH", "XLF", "XLE",
+        # --- ROSS $5 - $20 LOW-FLOAT MOMENTUM UNIVERSE ---
+        "SOFI", "MARA", "RIOT", "LCID", "RIVN", "NIO", "SOUN", "BBAI", "PLUG", "BB", "CLOV", 
+        "RUN", "STEM", "CHPT", "NKLA", "TLRY", "SNDL", "GPRO", "FUBO", "AAL", "CCL", "NCLH", 
+        "IQ", "SAVA", "GRAB", "OPEN", "BTE", "SKLZ", "BBD", "RIG", "SWN", "TEVA", "NOK", "PBR", "AUY", "KGC", "NGL"
     ]
+    # Deduplicate while preserving order
+    watchlist = list(dict.fromkeys(raw_watchlist))
 
     symbols_to_scan = [s for s in watchlist if s not in active_symbols]
     market_candidates = []
@@ -658,6 +666,12 @@ def execute_stock_engine():
             lows = [float(b["l"]) for b in bars]
             opens = [float(b["o"]) for b in bars]
 
+            live_close = closes[-1]
+            live_open = opens[-1]
+
+            # DUAL-TIER CLASSIFICATION
+            is_ross_small_cap = (5.00 <= live_close <= 20.00)
+
             ci = calculate_choppiness_index(highs, lows, closes)
             req_ci = 45.0 if (is_premarket_runner_window or is_news_catalyst_window) else 58.0
             if ci > req_ci:
@@ -681,32 +695,35 @@ def execute_stock_engine():
             live_vol_ratio = paced_live_vol / avg_vol if avg_vol > 0 else 1.0
             vol_ratio = max(comp_vol_ratio, live_vol_ratio)
 
-            if is_premarket_runner_window and vol_ratio < 2.50:
-                continue
-            elif is_opening_15m_window and vol_ratio < 1.80:
-                continue
-            elif is_news_catalyst_window and vol_ratio < 2.50:
-                continue
-            elif is_prime_morning_window and vol_ratio < 1.20:
-                continue
-            elif is_post_1030_ct and not is_opening_15m_window and not is_news_catalyst_window and not is_premarket_runner_window:
-                if vol_ratio < 1.40:
+            # DUAL VOLUME GATE IMPLEMENTATION
+            if is_ross_small_cap:
+                # STRICT ROSS VOLUME GATE FOR $5-$20 SMALL CAPS (PREVENTS FAKEOUTS)
+                if vol_ratio < 2.20:
                     continue
+                req_body_ratio = 0.65  # Requires solid 65%+ green body
+            else:
+                # STANDARD WORKING S&P 500 / NASDAQ VOLUME THRESHOLDS
+                if is_premarket_runner_window and vol_ratio < 2.50:
+                    continue
+                elif is_opening_15m_window and vol_ratio < 1.80:
+                    continue
+                elif is_news_catalyst_window and vol_ratio < 2.50:
+                    continue
+                elif is_prime_morning_window and vol_ratio < 1.20:
+                    continue
+                elif is_post_1030_ct and not is_opening_15m_window and not is_news_catalyst_window and not is_premarket_runner_window:
+                    if vol_ratio < 1.40:
+                        continue
+                req_body_ratio = 0.50
 
             upper, lower, filter_band = calculate_gaussian_channel(closes[:-1])
             comp_close = closes[-2]
             prev_close = closes[-3]
-            live_close = closes[-1]
-            live_open = opens[-1]
 
             c_range = max(highs[-1] - lows[-1], 1e-8)
             live_body_ratio = abs(live_close - live_open) / c_range
 
-            if is_premarket_runner_window and live_body_ratio < 0.70:
-                continue
-            elif is_opening_15m_window and live_body_ratio < 0.65:
-                continue
-            elif is_news_catalyst_window and live_body_ratio < 0.75:
+            if live_body_ratio < req_body_ratio:
                 continue
 
             is_candle_green = (live_close > live_open) and (live_close >= comp_close)
@@ -771,17 +788,8 @@ def execute_stock_engine():
             symbol = candidate["symbol"]
             px = candidate["close"]
             is_long = candidate["is_long"]
-            cand_ci = candidate.get("ci", 50.0)
 
-            if is_premarket_runner_window:
-                target_usd = max(1000.0, equity * 0.10)
-            elif is_prime_morning_window:
-                target_usd = 1000.0 if (cand_ci > 52.0 or spy_regime == "NEUTRAL") else max(1000.0, equity * 0.10)
-            elif is_news_catalyst_window:
-                target_usd = max(1000.0, equity * 0.10)
-            else:
-                target_usd = 1000.0
-
+            target_usd = max(1000.0, equity * 0.10)
             raw_qty = target_usd / px
             qty = max(1, int(raw_qty))
             order_side = "buy" if is_long else "sell"
@@ -902,7 +910,7 @@ def execute_stock_engine():
     </tr>
     """
 
-    text_fallback = f"TR-GC-Equities-LS-01 | 1H Master Engine V3.5\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
+    text_fallback = f"TR-GC-Equities-LS-01 | 1H Dual Engine V3.7\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
     positions_rows = "".join([
         f"<tr>"
@@ -978,8 +986,8 @@ def execute_stock_engine():
       <body>
         <div class="container">
           <div class="header">
-            <h2>TR-GC-Equities-LS-01 | 1H Master Engine V3.5</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: SMART EMAIL THROTTLING &amp; MICRO-PENNY STOP ACTIVE</p>
+            <h2>TR-GC-Equities-LS-01 | 1H Dual Engine V3.7</h2>
+            <p>Timestamp: {timestamp} &bull; Mode: DUAL-ENGINE (S&amp;P 500 + ROSS $5–$20 SWEET SPOT ACTIVE)</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -995,20 +1003,18 @@ def execute_stock_engine():
             {summary_card_html}
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Guardrails (Full Strategy Display)</div>
-              &bull; <b>Atomic Native Stop Sync (V3.5 Active):</b> Places new stop first and emergency flattens if stop placement is rejected<br>
-              &bull; <b>Anti-Chasing &amp; Top Wick Gate:</b> Rejects entries extended past +0.80% or with top wicks &gt;25%<br>
-              &bull; <b>Micro-Penny Stop (-0.12% ROE):</b> Hard-caps downside risk to ~$12 per $10k position<br>
+              <div class="rules-title">&#9989; Active Guardrails (Dual-Engine Strategy Display)</div>
+              &bull; <b>Dual-Engine Simultaneous Scanner:</b> Runs S&amp;P 500 / Nasdaq Large-Caps and Ross $5–$20 Runners together<br>
+              &bull; <b>Ross Small-Cap Gate (&ge;2.20x RVOL &amp; &ge;65% Body):</b> Strict high-volume surge filter prevents penny fakeouts<br>
+              &bull; <b>S&amp;P 500 / Nasdaq Equities Gate:</b> Preserves working breakout logic on large caps ($20.00+)<br>
+              &bull; <b>Anti-Chasing &amp; Top Wick Gate (&le;25%):</b> Blocks extended entries past +0.80% or upper dumping wicks<br>
+              &bull; <b>Atomic Micro-Penny Stop (-0.12% ROE):</b> Hard-caps downside risk to ~$12 per $10k position<br>
+              &bull; <b>Atomic Native Stop Sync (V3.7 Active):</b> Places new stop first and emergency flattens if rejected<br>
               &bull; <b>Smart Email Throttling:</b> Runs every 15m silently in background, sends emails hourly or on trade events<br>
-              &bull; <b>Strict 0.30% Max Giveback Clamp:</b> Guarantees winners never give back more than 0.30% from their peak<br>
-              &bull; <b>Native Alpaca Orderbook Trigger Stops:</b> Resting stop orders placed directly on Alpaca matching engine<br>
-              &bull; <b>1-Hour Timeframe &amp; Hard CI Gate (&le;58.0):</b> Eliminates noise &amp; rejects choppy stocks<br>
               &bull; <b>SPY Macro Regime Shield:</b> Enforces broad market direction alignment<br>
-              &bull; <b>Morning Power Window (8:30–11:30 AM CT):</b> Full 10% NAV (~$10k) sizing on clean completed trends<br>
-              &bull; <b>Afternoon Cutoff (1:45 PM CT+):</b> Strictly 0 new entries allowed to ensure &gt;=55m exit runway<br>
-              &bull; <b>EOD Square-Off (2:40 PM CT / 3:40 PM ET):</b> Liquidates 100% of open positions prior to market close<br>
-              &bull; <b>High-Water &amp; Drawdown Shield ($500 Cap):</b> Hard-blocks trading if drawdown or giveback hits $500<br>
-              &bull; <b>Daily Anti-Wipeout Shield (-2.5% Cap):</b> Emergency flattens account if daily loss hits -2.5%
+              &bull; <b>Afternoon Cutoff (1:45 PM CT+):</b> Strictly 0 new entries allowed to ensure exit runway<br>
+              &bull; <b>EOD Square-Off (2:40 PM CT):</b> Liquidates 100% of open positions prior to market close<br>
+              &bull; <b>High-Water &amp; Drawdown Shield ($500 Cap):</b> Hard-blocks trading if drawdown hits $500
             </div>
 
             <div class="section-title">Active Sniper Scalps</div>
@@ -1044,7 +1050,7 @@ def execute_stock_engine():
             {audit_section}
 
           </div>
-          <div class="footer">Alpaca Quantitative Sniper Engine &bull; Managed via GitHub Actions</div>
+          <div class="footer">Alpaca Quantitative Dual-Engine Scalper • Managed via GitHub Actions</div>
         </div>
       </body>
     </html>
