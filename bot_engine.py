@@ -1,7 +1,7 @@
 import os
 import json
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -9,6 +9,11 @@ from math import log10, floor
 import eth_account
 import pandas as pd
 import numpy as np
+
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    ZoneInfo = None
 
 from hyperliquid.info import Info
 from hyperliquid.exchange import Exchange
@@ -22,22 +27,30 @@ STATE_FILE = "state.json"
 VERBOSE_TEST_MODE = True
 
 def get_central_time():
-    utc_now = datetime.utcnow()
+    """Calculates Texas Central Time (CT) with ZoneInfo or dynamic pure-Python DST fallback."""
+    if ZoneInfo is not None:
+        try:
+            return datetime.now(ZoneInfo("America/Chicago")).replace(tzinfo=None)
+        except Exception:
+            pass
+            
+    utc_now = datetime.now(timezone.utc).replace(tzinfo=None)
     year = utc_now.year
-    dst_start = datetime(year, 3, 8)
+    dst_start = datetime(year, 3, 8, 7, 0, 0)
     dst_start += timedelta(days=(6 - dst_start.weekday()) % 7)
-    dst_end = datetime(year, 11, 1)
+    dst_end = datetime(year, 11, 1, 6, 0, 0)
     dst_end += timedelta(days=(6 - dst_end.weekday()) % 7)
+    
     is_dst = dst_start <= utc_now < dst_end
     offset = -5 if is_dst else -6
     return utc_now + timedelta(hours=offset)
 
 def load_state():
     default_state = {
-        "cooldown_blocklist": {},      # 24H Post-loss cooldown: {coin: expire_timestamp}
-        "last_traded_candle": {},      # Single-candle entry lock: {coin: candle_timestamp}
-        "hibernating_until": 0,        # Emergency 12H hibernation lock
-        "stagnation_tracker": {},      # Falling knife tracker: {coin: consecutive_negative_runs}
+        "cooldown_blocklist": {},
+        "last_traded_candle": {},
+        "hibernating_until": 0,
+        "stagnation_tracker": {},
         "closed_trades_ledger": [], 
         "active_position_cache": {},
         "previous_active_coins": [],
@@ -60,12 +73,12 @@ def load_state():
     return default_state
 
 def save_state(state):
-    state["last_run_timestamp"] = time.strftime('%Y-%m-%d %H:%M:%S')
+    ct_now = get_central_time()
+    state["last_run_timestamp"] = ct_now.strftime('%Y-%m-%d %H:%M:%S')
     with open(STATE_FILE, "w") as f:
         json.dump(state, f, indent=2)
 
 def api_retry(func, *args, retries=5, delay=4.0, **kwargs):
-    """Universal resilient API retry decorator for exchange and web queries."""
     for attempt in range(retries):
         try:
             return func(*args, **kwargs)
@@ -108,7 +121,6 @@ def round_sig_figs(val, sig_figs=5):
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
 def check_liquidity_and_spread(info, coin, max_spread=0.0040, min_depth_usd=3000.0):
-    """Micro-Cap Orderbook Gate: Optimized for low-float penny perps."""
     try:
         l2_book = api_retry(info.l2_snapshot, name=coin)
         levels = l2_book.get("levels", [[], []])
@@ -141,9 +153,6 @@ def check_liquidity_and_spread(info, coin, max_spread=0.0040, min_depth_usd=3000
     except Exception as e:
         return False, f"Liquidity Check Error: {e}"
 
-# ==============================================================================
-# NATIVE EXCHANGE TRIGGER ORDER MANAGERS (24/7 ON-CHAIN ORDERBOOK SHIELD)
-# ==============================================================================
 def cancel_native_trigger_orders(exchange, info, coin, account_address):
     try:
         open_orders = api_retry(info.frontend_open_orders, account_address)
@@ -157,7 +166,6 @@ def cancel_native_trigger_orders(exchange, info, coin, account_address):
         pass
 
 def sync_native_trigger_orders(exchange, info, coin, is_long, sz, stop_px, tp_px, account_address, audit_logs=None):
-    """Syncs resting Stop-Loss and resting Take-Profit orders directly on Hyperliquid orderbook."""
     try:
         clean_stop_px = float(round_sig_figs(stop_px, 5)) if stop_px else None
         clean_tp_px = float(round_sig_figs(tp_px, 5)) if tp_px else None
@@ -170,13 +178,11 @@ def sync_native_trigger_orders(exchange, info, coin, is_long, sz, stop_px, tp_px
             if o.get("coin") == coin:
                 o_type = o.get("orderType", {})
                 is_trig = o.get("isTrigger", False)
-                
                 if is_trig or (isinstance(o_type, dict) and "trigger" in o_type):
                     coin_trigger_orders.append(o)
                 elif isinstance(o_type, str) and "trigger" in o_type.lower():
                     coin_trigger_orders.append(o)
 
-        # 1. Sync Stop-Loss Order
         sl_orders = []
         for o in coin_trigger_orders:
             o_type = o.get("orderType", {})
@@ -202,9 +208,8 @@ def sync_native_trigger_orders(exchange, info, coin, is_long, sz, stop_px, tp_px
             order_type = {"trigger": {"isMarket": True, "triggerPx": clean_stop_px, "tpsl": "sl"}}
             res = exchange.order(coin, is_buy, sz, clean_stop_px, order_type, reduce_only=True)
             if audit_logs is not None:
-                audit_logs.append(f"🛡️ NATIVE ORDERBOOK SL SYNC [{coin}]: Placed Resting Trigger Stop @ ${clean_stop_px:.5f}")
+                audit_logs.append(f"🛡️ NATIVE ORDERBOOK SL SYNC [{coin}]: Placed Trigger Stop @ ${clean_stop_px:.5f}")
 
-        # 2. Sync Take-Profit Order
         tp_orders = []
         for o in coin_trigger_orders:
             o_type = o.get("orderType", {})
@@ -239,36 +244,13 @@ def sync_native_trigger_orders(exchange, info, coin, is_long, sz, stop_px, tp_px
                 order_type = {"trigger": {"isMarket": True, "triggerPx": clean_tp_px, "tpsl": "tp"}}
                 res = exchange.order(coin, is_buy, sz, clean_tp_px, order_type, reduce_only=True)
                 if audit_logs is not None:
-                    audit_logs.append(f"🎯 NATIVE ORDERBOOK TP SYNC [{coin}]: Placed Resting Take-Profit @ ${clean_tp_px:.5f}")
+                    audit_logs.append(f"🎯 NATIVE ORDERBOOK TP SYNC [{coin}]: Placed Take-Profit @ ${clean_tp_px:.5f}")
 
     except Exception as e:
         if audit_logs is not None:
             audit_logs.append(f"⚠️ Native TPSL sync warning on {coin}: {e}")
 
-# ==============================================================================
-# TECHNICAL INDICATORS (FAST 5M TIMEFRAME TUNED)
-# ==============================================================================
-def calculate_vwap(candles):
-    try:
-        pv_sum = sum(((float(c['h']) + float(c['l']) + float(c['c'])) / 3.0) * float(c.get('v', 1.0)) for c in candles)
-        v_sum = sum(float(c.get('v', 1.0)) for c in candles)
-        return pv_sum / v_sum if v_sum > 0 else float(candles[-1]['c'])
-    except Exception:
-        return float(candles[-1]['c'])
-
-def calculate_gaussian_channel(closes, poles=4, period=24, mult=1.20):
-    """Fast 5M period (24 periods = 2 hours of 5m bars)."""
-    s = pd.Series(closes)
-    alpha = (2.0 / (period + 1)) * (poles ** 0.5)
-    filtered = s.ewm(alpha=alpha, adjust=False).mean()
-    error = (s - filtered).abs()
-    deviation = error.ewm(alpha=alpha, adjust=False).mean() * mult
-    upper = filtered + deviation
-    lower = filtered - deviation
-    return upper.iloc[-1], lower.iloc[-1], filtered.iloc[-1]
-
 def calculate_choppiness_index(highs, lows, closes, period=14):
-    """Clamped Choppiness Index (0.0 to 100.0)."""
     try:
         if len(closes) < period + 1:
             return 50.0
@@ -285,36 +267,6 @@ def calculate_choppiness_index(highs, lows, closes, period=14):
     except Exception:
         return 50.0
 
-def calculate_rsi(closes, period=14):
-    try:
-        if len(closes) < period + 1:
-            return 50.0
-        deltas = np.diff(closes)
-        seed = deltas[:period]
-        up = seed[seed >= 0].sum() / period
-        down = -seed[seed < 0].sum() / period
-        rs = up / down if down != 0 else 0
-        rsi = np.zeros_like(closes)
-        rsi[:period] = 100. - 100. / (1. + rs)
-
-        for i in range(period, len(closes)):
-            delta = deltas[i - 1]
-            if delta > 0:
-                upval = delta
-                downval = 0.
-            else:
-                upval = 0.
-                downval = -delta
-
-            up = (up * (period - 1) + upval) / period
-            down = (down * (period - 1) + downval) / period
-            rs = up / down if down != 0 else 0
-            rsi[i] = 100. - 100. / (1. + rs)
-
-        return float(rsi[-1])
-    except Exception:
-        return 50.0
-
 def calculate_atr(highs, lows, closes, period=14):
     try:
         if len(highs) < period + 1:
@@ -324,11 +276,7 @@ def calculate_atr(highs, lows, closes, period=14):
     except Exception:
         return 1.0
 
-# ==============================================================================
-# FAST 5M ROSS SCALPER ENGINE (V3.9.5 ANTI-CHASING ROSS SCALPER)
-# ==============================================================================
 def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_long):
-    """Analyzes live 5m candle structure to prevent buying falling knives."""
     c_range = c_high - c_low if c_high > c_low else 1e-8
     body_sz = abs(curr_px - c_open)
     body_ratio = body_sz / c_range
@@ -358,8 +306,10 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
 
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0, coin="ETH"):
     """
-    V3.9.5 ULTRA-TIGHT FAST ROSS SCALPER:
-    Dynamically scales profit floors early (+0.80% activation) to capture fast micro-spikes with minimal giveback.
+    V3.9.6 REBALANCED ROSS SCALPER (BALANCED RISK/REWARD):
+    - Hard Altcoin Loss Cap: Capped at -0.65% ROE (~$0.15 USD max loss)
+    - Fee-Aware Break-Even Floor: +0.40% ROE (covers 0.07% taker fees + spread)
+    - Dynamic Retention: Gives breakouts room to run to +1.50% to +3.00%+
     """
     if is_long:
         roe = (current_px - entry_px) / entry_px
@@ -368,9 +318,8 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, ent
 
     is_major = coin.upper() in ["BTC", "ETH", "SOL"]
     
-    # 1. DOWNSIDE: Strict Hard Noise Shield (-1.50% ROE Cap for Alts)
-    atr_roe_buffer = (atr_val * 1.5) / entry_px if entry_px > 0 else 0.012
-    min_required_stop = -0.0150  # Hard Cap Altcoins at strictly -1.50% ROE max loss (~$0.22)
+    # 1. HARDENED LOSS CAP (-0.65% Max Loss for Altcoins)
+    min_required_stop = -0.0065
 
     if is_long:
         structure_stop = (entry_candle_low / entry_px) - 1.0 if entry_px > 0 else min_required_stop
@@ -379,33 +328,30 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, ent
         structure_stop = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else min_required_stop
         initial_floor_roe = max(min_required_stop, structure_stop) if not is_major else min(min_required_stop, structure_stop)
 
-    # 2. ULTRA-TIGHT ROSS SCALPER PROFIT RATCHET (+0.80% EARLY ACTIVATION)
-    activation_roe = 0.0080  # Early activation at +0.80% ROE (~+$0.12)
-    be_floor_roe = 0.0030    # +0.30% ROE base floor (covers taker fees)
+    # 2. REBALANCED PROFIT RATCHET (+0.80% ACTIVATION, +0.40% BE FLOOR)
+    activation_roe = 0.0080
+    be_floor_roe = 0.0040
 
     if peak_roe >= activation_roe:
-        if peak_roe < 0.0150:   # +0.80% to +1.50% ROE -> Lock 50% (min +0.30% BE floor)
+        if peak_roe < 0.0150:
             target_floor_roe = max(be_floor_roe, peak_roe * 0.50)
-            leash_status = f"⚡ 5M TIGHT LOCK (50%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-        elif peak_roe < 0.0300:  # +1.50% to +3.00% ROE -> Lock 65% of Gains
+            leash_status = f"⚡ 5M TIGHT LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+        elif peak_roe < 0.0300:
             target_floor_roe = peak_roe * 0.65
-            leash_status = f"⚡ 5M SCALP LOCK (65%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-        elif peak_roe < 0.0500:  # +3.00% to +5.00% ROE -> Lock 75% of Gains
-            target_floor_roe = peak_roe * 0.75
-            leash_status = f"🔥 5M SUPER LOCK (75%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-        else:                   # +5.00%+ ROE -> Lock 88% of Gains (Moonshot Squeeze)
-            target_floor_roe = peak_roe * 0.88
-            leash_status = f"🚀 5M MOONSHOT SQUEEZE (88%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+            leash_status = f"⚡ 5M SCALP LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+        else:
+            target_floor_roe = peak_roe * 0.80
+            leash_status = f"🚀 5M MOONSHOT LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
     else:
         target_floor_roe = initial_floor_roe
-        leash_status = f"🛡 STRUCTURAL STOP ({target_floor_roe*100:.2f}%)"
+        leash_status = f"🛡 HARD STOP ({target_floor_roe*100:.2f}%)"
 
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
     else:
         stop_px = entry_px * (1 - target_floor_roe)
 
-    tp_px = None  # Uncapped TP for infinite upside
+    tp_px = None
 
     return stop_px, tp_px, roe, target_floor_roe, leash_status
 
@@ -483,7 +429,7 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.9.5 Master Engine Started (5M Anti-Chasing Ross Scalper + Sunday Close Shield Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.9.6 Master Engine Started (Rebalanced Ross Scalper Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -499,7 +445,6 @@ def execute_engine():
         print(f"[{timestamp}] 🚨 BOT IN 12H EMERGENCY HIBERNATION ({remaining_hrs:.1f}h remaining). Execution halted.", flush=True)
         return
 
-    # HARDENED CIRCUIT BREAKER (Requires 3+ Losses AND Cumulative Rolling Loss <= -$1.00 USD)
     one_hour_ago = now_ts - 3600
     recent_losses = [
         t for t in state.get("closed_trades_ledger", [])
@@ -535,14 +480,11 @@ def execute_engine():
     btc_regime, btc_change_pct, btc_bounce_pct = get_btc_regime(info, now_ms)
     audit_logs.append(f"BTC Directional Shield: Daily Candle is {btc_regime} ({btc_change_pct:+.2f}%, Intraday Bounce: +{btc_bounce_pct:.2f}%).")
 
-    # ==============================================================================
-    # SUNDAY WEEKLY CLOSE LIQUIDITY SHIELD (2:00 PM - 7:30 PM Central Time)
-    # ==============================================================================
-    is_sunday = (ct_now.weekday() == 6)  # 6 = Sunday
+    is_sunday = (ct_now.weekday() == 6)
     is_sunday_pre_close = is_sunday and (14 <= ct_now.hour < 19 or (ct_now.hour == 19 and ct_now.minute < 30))
 
     if is_sunday_pre_close:
-        required_vol_ratio = 3.50  # Demands extreme 3.50x volume surge to bypass weekly close liquidity drain
+        required_vol_ratio = 3.50
         audit_logs.append(f"🛡️ SUNDAY WEEKLY CLOSE SHIELD ACTIVE (2:00PM-7:30PM CT): Requiring extreme RVOL >= {required_vol_ratio:.2f}x to enter.")
     else:
         required_vol_ratio = 2.50 if gemini_risk == "HIGH" else 2.20
@@ -629,7 +571,6 @@ def execute_engine():
         save_state(state)
         return
 
-    # Position Management & Dynamic Exits (5M Candles)
     if asset_positions:
         for pos_item in asset_positions:
             pos = pos_item.get("position", {})
@@ -654,16 +595,17 @@ def execute_engine():
             should_exit = False
             exit_reason = ""
             atr_val = 1.0
-            entry_candle_low = entry_px * 0.985
-            entry_candle_high = entry_px * 1.015
-            c_candles = []
+            
+            # RETRIEVE SAVED ENTRY CANDLE STRUCTURAL LOW
+            cache_info = current_active_cache.get(coin, {})
+            entry_candle_low = cache_info.get("entry_candle_low", entry_px * 0.9935)
+            entry_candle_high = cache_info.get("entry_candle_high", entry_px * 1.0065)
 
             if is_long and btc_regime == "RED":
                 should_exit = True
                 exit_reason = f"🚨 BTC Daily Bearish Flip Purge (BTC Daily is RED {btc_change_pct:+.2f}%)"
 
             try:
-                # FAST 5M CANDLE SNAPSHOT
                 c_candles = api_retry(info.candles_snapshot, name=coin, interval="5m", startTime=now_ms - 86400000, endTime=now_ms)
                 closes = [float(c["c"]) for c in c_candles]
                 highs = [float(c["h"]) for c in c_candles]
@@ -671,10 +613,6 @@ def execute_engine():
                 volumes = [float(c.get("v", 0)) for c in c_candles]
                 
                 atr_val = calculate_atr(highs, lows, closes)
-
-                if len(c_candles) >= 2:
-                    entry_candle_low = float(c_candles[-2]["l"])
-                    entry_candle_high = float(c_candles[-2]["h"])
 
                 c_open = float(c_candles[-1]["o"])
                 c_high = float(c_candles[-1]["h"])
@@ -692,19 +630,19 @@ def execute_engine():
 
             stag_map = state.get("stagnation_tracker", {})
             curr_stag = stag_map.get(coin, 0)
-            if current_roe < -0.0150:
+            if current_roe < -0.0065:
                 curr_stag += 1
                 if "stagnation_tracker" not in state:
                     state["stagnation_tracker"] = {}
                 state["stagnation_tracker"][coin] = curr_stag
-                if curr_stag >= 3:  # 3 consecutive 5m runs (~15 mins)
+                if curr_stag >= 3:
                     should_exit = True
                     exit_reason = f"🗡️ 5M Stagnation Cut ({current_roe*100:.2f}% after {curr_stag} 5m runs)"
             else:
                 if "stagnation_tracker" in state and coin in state["stagnation_tracker"]:
                     state["stagnation_tracker"][coin] = 0
 
-            prev_peak = current_active_cache.get(coin, {}).get("peak_roe", current_roe)
+            prev_peak = cache_info.get("peak_roe", current_roe)
             peak_roe = max(current_roe, prev_peak)
 
             stop_px_calc, tp_px_calc, current_roe, target_floor_roe, leash_status = calculate_smart_exchange_targets(
@@ -759,11 +697,12 @@ def execute_engine():
             new_active_cache[coin] = {
                 "entry_px": entry_px, "current_px": current_px, "szi": szi, 
                 "margin": margin_used, "side": "LONG" if is_long else "SHORT",
-                "peak_roe": peak_roe, "strategy": current_active_cache.get(coin, {}).get("strategy", "5M_BREAKOUT")
+                "peak_roe": peak_roe, "strategy": cache_info.get("strategy", "5M_BREAKOUT"),
+                "entry_candle_low": entry_candle_low, "entry_candle_high": entry_candle_high
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V3.9.5", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V3.9.6", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -773,7 +712,6 @@ def execute_engine():
                 "status": leash_status
             })
 
-    # DEDUPLICATED NATIVE EXCHANGE FILL RECONCILIATION
     prev_cache = state.get("active_position_cache", {})
     for coin, cache_data in list(prev_cache.items()):
         if coin in closed_coins_this_run:
@@ -837,7 +775,6 @@ def execute_engine():
 
         audit_logs.append(f"🌐 5M FAST ROSS SCANNER ACTIVE: Scanning Micro-Cap Penny Perps (#30-#200+)...")
 
-        # ZERO RATE-LIMIT BULK EXTRACTION
         scored_universe = []
         for idx, asset in enumerate(meta.get("universe", [])):
             coin = asset.get("name")
@@ -846,7 +783,6 @@ def execute_engine():
             if now_ts < float(state.get("cooldown_blocklist", {}).get(coin, 0)):
                 continue
 
-            # Focus strictly on low-float micro-caps (skips heavy BTC/ETH/SOL)
             if idx < 20:
                 continue
 
@@ -874,7 +810,6 @@ def execute_engine():
                     continue
                 
                 time.sleep(0.08)
-                # FAST 5M CANDLE SNAPSHOT
                 candles = api_retry(info.candles_snapshot, name=coin, interval="5m", startTime=now_ms - 86400000, endTime=now_ms)
                 if not candles or len(candles) < 30:
                     continue
@@ -895,21 +830,18 @@ def execute_engine():
                 coin_24h_change = ((closes[-1] - closes[-288]) / closes[-288]) * 100 if len(closes) >= 288 else 0.0
 
                 c_2_high = float(candles[-2]["h"])
-                c_2_close = float(candles[-2]["c"])
+                c_2_low = float(candles[-2]["l"])
                 c_1_open = float(candles[-1]["o"])
 
-                # 5M HIGH-OF-DAY (HOD) BREAKOUT STRUCTURE
                 c_high_live = float(candles[-1]["h"])
                 c_low_live = float(candles[-1]["l"])
                 c_range = max(c_high_live - c_low_live, 1e-8)
                 live_body_ratio = abs(curr_live_px - c_1_open) / c_range
                 upper_wick_ratio = (c_high_live - max(c_1_open, curr_live_px)) / c_range
 
-                # V3.9.5 ANTI-CHASING EXTENSION CAP: Max +0.80% above previous 5m high
                 max_extension_px = c_2_high * 1.0080
                 is_near_breakout = (curr_live_px > c_2_high) and (curr_live_px <= max_extension_px)
 
-                # V3.9.5 UPPER WICK REJECTION GATE: Max 25% upper wick allowed (rejects seller dump wicks)
                 is_clean_structure = (upper_wick_ratio <= 0.25) and (live_body_ratio >= 0.65)
 
                 is_5m_hod_breakout = is_near_breakout and (curr_live_px > c_1_open) and is_clean_structure
@@ -922,7 +854,6 @@ def execute_engine():
                 avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
                 vol_ratio = paced_volume / avg_vol if avg_vol > 0 else 1.0
 
-                # V3.9.5 PURE ROSS MOMENTUM FILTER: High RVOL (>=2.2x or >=3.50x during Sunday Close Shield), strong body (>=65%), and active 24h trend (>=5.0%)
                 if vol_ratio < required_vol_ratio or coin_24h_change < 5.0:
                     continue
 
@@ -930,14 +861,15 @@ def execute_engine():
 
                 if ci_5m <= 55.0:
                     if is_5m_hod_breakout and (effective_regime in ["GREEN", "NEUTRAL"]):
-                        # V3.9.5 EXTENSION-PENALIZED SCORE: Penalizes over-extended chasing entries
                         extension_pct = max(0.0, (curr_live_px - c_2_high) / c_2_high)
                         breakout_score = vol_ratio * (1.0 - extension_pct)
 
                         market_candidates.append({
                             "coin": coin, "close": curr_live_px, "is_long": True, 
                             "score": breakout_score, "candle_ts": current_candle_ts,
-                            "strategy": "5M_HOD_BREAKOUT"
+                            "strategy": "5M_HOD_BREAKOUT",
+                            "entry_candle_low": c_2_low,
+                            "entry_candle_high": c_2_high
                         })
                         audit_logs.append(f"🚀 5M HOD BREAKOUT (LONG): {coin} @ ${curr_live_px:.4f} (24h Gain: {coin_24h_change:+.1f}%, Vol: {vol_ratio:.2f}x, Ext: +{extension_pct*100:.2f}%)")
 
@@ -956,6 +888,8 @@ def execute_engine():
             is_long = candidate["is_long"]
             candle_ts = candidate["candle_ts"]
             strat_used = candidate["strategy"]
+            e_candle_low = candidate["entry_candle_low"]
+            e_candle_high = candidate["entry_candle_high"]
             
             base_alloc_pct = 0.25
             risk_multiplier = 0.85
@@ -1000,17 +934,18 @@ def execute_engine():
                     if "active_position_cache" not in state:
                         state["active_position_cache"] = {}
                     state["active_position_cache"][coin] = {
-                        "strategy": strat_used, "entry_px": px, "side": "LONG" if is_long else "SHORT"
+                        "strategy": strat_used, "entry_px": px, "side": "LONG" if is_long else "SHORT",
+                        "entry_candle_low": e_candle_low, "entry_candle_high": e_candle_high
                     }
 
-                    initial_stop_px = px * 0.9850 if is_long else px * 1.0150
+                    initial_stop_px = px * 0.9935 if is_long else px * 1.0065
                     initial_tp_px = None
 
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     alloc_label = "5M Fast Scalp (25% NAV)"
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V3.9.5", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V3.9.6", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -1064,7 +999,7 @@ def execute_engine():
         
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V3.9.5 | 5M Anti-Chasing Ross Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V3.9.6 | Rebalanced Ross Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         summary_card_html = f"""
         <div class="summary-card">
@@ -1188,7 +1123,7 @@ def execute_engine():
           <body>
             <div class="container">
               <div class="header">
-                <h2>TR-GC-Crypto-LS-23-V3.9.5 | 5M Anti-Chasing Ross Scalper</h2>
+                <h2>TR-GC-Crypto-LS-23-V3.9.6 | Rebalanced Ross Scalper</h2>
                 <p>Timestamp: {timestamp} (5M Candles &amp; 5M Scanning Active)</p>
               </div>
               <div class="content">
@@ -1205,7 +1140,10 @@ def execute_engine():
                 {summary_card_html}
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (V3.9.5 Sunday Close Shield Active)</div>
+                  <div class="rules-title">&#9989; Active Guardrails (V3.9.6 Structural Lock Active)</div>
+                  &bull; <b>Entry Candle Structural Lock:</b> Anchors structural stop to real breakout base instead of shifting bar-by-bar<br>
+                  &bull; <b>Rebalanced Hard Loss Cap (-0.65%):</b> Hard-caps altcoin losses at ~ -$0.15 to equalize win/loss ratio<br>
+                  &bull; <b>Fee-Aware Break-Even Floor (+0.40%):</b> Covers round-trip Hyperliquid taker fees and orderbook spread<br>
                   &bull; <b>Sunday Weekly Close Shield:</b> Demands extreme &ge; 3.50x RVOL between 2:00 PM &amp; 7:30 PM CT to bypass weekend liquidity drains<br>
                   &bull; <b>5M Anti-Chasing Cap (&le; +0.80%):</b> Rejects entries extended past previous 5m high<br>
                   &bull; <b>Upper Wick Rejection Gate (&le; 25%):</b> Blocks entries when top wicks indicate seller dumping<br>
@@ -1213,9 +1151,6 @@ def execute_engine():
                   &bull; <b>Zero Rate-Limit Bulk Extraction:</b> Fetches 150+ asset contexts in 1 single bulk call (`meta_and_asset_ctxs`)<br>
                   &bull; <b>Pure Ross Volume Gate (&ge; 2.2x - 2.5x):</b> Eliminates low-volume chop fakeouts early<br>
                   &bull; <b>24H Momentum Floor (&ge; +5.0%):</b> Trades exclusively in active daily uptrends<br>
-                  &bull; <b>Solid 5M Body Gate (&ge; 65%):</b> Rejects weak candle structures<br>
-                  &bull; <b>Ultra-Tight Profit Ratchet (+0.80% Activation):</b> Dynamically locks 50% to 88% of peak gains early<br>
-                  &bull; <b>Strict Altcoin Loss Cap (-1.50% ROE):</b> Hard-caps altcoin losses at max -$0.22<br>
                   &bull; <b>24/7 Native Orderbook Sync:</b> Posts resting trigger orders directly on Hyperliquid orderbook<br>
                   &bull; <b>BTC Directional Shield:</b> Aligns market direction with daily candle (GREEN = LONGs only)<br>
                   &bull; <b>24H Post-Loss Cooldown Blocklist:</b> Auto-bans any coin closed at a loss for 24 hours<br>
