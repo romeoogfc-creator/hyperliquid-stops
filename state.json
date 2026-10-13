@@ -325,13 +325,13 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-13 04:56:12",
+  "last_run_timestamp": "2026-10-13 05:00:45",
   "last_email_timestamp": 1791885339.6285172,
-  "last_scan_timestamp": 1791885339.6285172,
+  "last_scan_timestamp": 1791885633.1659882,
   "gemini_cache": {
-    "timestamp": 1791885339.6285172,
+    "timestamp": 1791885633.1659882,
     "risk": "HIGH",
-    "briefing": "Risk Level: HIGH; market sentiment remains precariously balanced between optimism surrounding institutional adoption and significant vulnerability to macroeconomic volatility, regulatory shifts, and high leverage in derivative markets."
+    "briefing": "Risk Level: **HIGH** \u2014 Ongoing macroeconomic uncertainty regarding interest rates, coupled with significant regulatory pressure and extreme price volatility, necessitates a high degree of caution for market participants."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
