@@ -1,6 +1,14 @@
 {
   "closed_trades_ledger": [
     {
+      "symbol": "KGC",
+      "entry_price": 23.15,
+      "exit_price": 23.215,
+      "exit_reason": "\ud83d\udcc8 1H Trend Invalidation (Close $23.21 > Lower Band $23.20)",
+      "realized_pnl": -11.375000000000224,
+      "timestamp": "2026-10-13 16:18:01"
+    },
+    {
       "symbol": "BTE",
       "entry_price": 4.99,
       "exit_price": 4.985,
@@ -75,20 +83,12 @@
       "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
       "timestamp": "2026-10-12 15:50:22",
       "order_id": "72bfd243-f9d8-41b5-a009-7f17c63acb16"
-    },
-    {
-      "symbol": "V",
-      "entry_price": 388.6012,
-      "exit_price": 388.87,
-      "exit_reason": "\ud83d\udcc9 1H Trend Invalidation (Close $388.87 < Upper Band $389.26)",
-      "realized_pnl": 6.71999999999997,
-      "timestamp": "2026-10-12 14:21:18"
     }
   ],
   "active_position_cache": {
     "BA": {
       "entry_px": 186.501153,
-      "current_px": 186.36,
+      "current_px": 186.575,
       "qty": 52.0,
       "side": "short",
       "peak_roe": 0.0023922264973878266,
@@ -97,7 +97,7 @@
     },
     "IWM": {
       "entry_px": 277.26,
-      "current_px": 275.78,
+      "current_px": 276.23,
       "qty": 35.0,
       "side": "short",
       "peak_roe": 0.005337949938685776,
@@ -106,7 +106,7 @@
     },
     "QQQ": {
       "entry_px": 741.79,
-      "current_px": 740.606,
+      "current_px": 742.74,
       "qty": 13.0,
       "side": "short",
       "peak_roe": 0.0015961390690087075,
@@ -115,12 +115,12 @@
     }
   },
   "previous_active_symbols": [
-    "BA",
     "IWM",
-    "QQQ"
+    "QQQ",
+    "BA"
   ],
-  "last_run_timestamp": "2026-10-13 10:50:57",
-  "last_email_timestamp": 1791906634.082809,
+  "last_run_timestamp": "2026-10-13 11:18:19",
+  "last_email_timestamp": 1791908281.6897671,
   "daily_starting_equity": {
     "2026-10-12": 98480.9,
     "2026-10-13": 98171.46
@@ -130,15 +130,15 @@
     "2026-10-13": 98171.46
   },
   "symbols_traded_today": [
-    "BTE",
-    "PLUG",
-    "DIS",
-    "BA",
-    "KGC",
-    "QQQ",
-    "NKE",
-    "IWM",
     "CVX",
-    "AAPL"
+    "DIS",
+    "KGC",
+    "NKE",
+    "PLUG",
+    "BA",
+    "AAPL",
+    "QQQ",
+    "BTE",
+    "IWM"
   ]
 }
