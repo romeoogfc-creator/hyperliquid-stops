@@ -325,13 +325,13 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-13 04:30:45",
-  "last_email_timestamp": 1791882930.186481,
-  "last_scan_timestamp": 1791883827.0267277,
+  "last_run_timestamp": "2026-10-13 04:38:04",
+  "last_email_timestamp": 1791884267.8049212,
+  "last_scan_timestamp": 1791884267.8049212,
   "gemini_cache": {
-    "timestamp": 1791883827.0267277,
+    "timestamp": 1791884267.8049212,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Increased market volatility and uncertainty regarding macroeconomic shifts, regulatory developments, and potential liquidity contractions create a fragile environment for short-term price stability."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts and regulatory uncertainty, leading to significant volatility that can trigger rapid liquidations in either direction."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
