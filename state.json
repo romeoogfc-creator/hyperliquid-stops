@@ -87,6 +87,18 @@
   "stagnation_tracker": {},
   "closed_trades_ledger": [
     {
+      "coin": "RSR",
+      "entry_price": 0.00199,
+      "exit_price": 0.001996,
+      "pnl_usd": 0.07443,
+      "roe_pct": 0.30150753768843863,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-13 02:22:50",
+      "ts_sec": 1791858170.356989,
+      "fill_hash": "RSR_298647699779268"
+    },
+    {
       "coin": "SKY",
       "entry_price": 0.081287,
       "exit_price": 0.08119,
@@ -309,41 +321,17 @@
       "timestamp": "2026-10-11 21:00:41",
       "ts_sec": 1791752441.0562112,
       "fill_hash": "USELESS_475868128703952"
-    },
-    {
-      "coin": "ENA",
-      "entry_price": 0.24229,
-      "exit_price": 0.24002,
-      "pnl_usd": -0.23381,
-      "roe_pct": -0.9368938049444856,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-11 20:19:01",
-      "ts_sec": 1791749941.8394768,
-      "fill_hash": "ENA_715291766756171"
     }
   ],
-  "active_position_cache": {
-    "RSR": {
-      "entry_px": 0.00199,
-      "current_px": 0.002006,
-      "szi": 12405.0,
-      "margin": 8.30308,
-      "side": "LONG",
-      "peak_roe": 0.008040201005025104,
-      "strategy": "5M_HOD_BREAKOUT"
-    }
-  },
-  "previous_active_coins": [
-    "RSR"
-  ],
-  "last_run_timestamp": "2026-10-13 02:15:31",
-  "last_email_timestamp": 1791856835.3144925,
-  "last_scan_timestamp": 1791857721.1132996,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-13 02:23:00",
+  "last_email_timestamp": 1791858170.356989,
+  "last_scan_timestamp": 1791858170.356989,
   "gemini_cache": {
-    "timestamp": 1791857721.1132996,
+    "timestamp": 1791858170.356989,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating significant macroeconomic uncertainty, intensified regulatory scrutiny, and heightened volatility as traders adjust to shifting monetary policy expectations."
+    "briefing": "Risk Level: **HIGH**\n\nThe crypto market currently faces heightened volatility driven by macroeconomic uncertainty, regulatory scrutiny, and significant leverage in the derivatives market, necessitating extreme caution for participants."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
