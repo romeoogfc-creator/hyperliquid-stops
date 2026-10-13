@@ -1,6 +1,22 @@
 {
   "closed_trades_ledger": [
     {
+      "symbol": "PLUG",
+      "entry_price": 1.55,
+      "exit_price": 1.565,
+      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.97%)",
+      "realized_pnl": -2.624999999999983,
+      "timestamp": "2026-10-13 15:19:04"
+    },
+    {
+      "symbol": "CVX",
+      "entry_price": 218.24,
+      "exit_price": 217.845,
+      "exit_reason": "\ud83d\udcc9 1H Trend Invalidation (Close $217.84 < Upper Band $218.41)",
+      "realized_pnl": -17.77500000000046,
+      "timestamp": "2026-10-13 15:19:04"
+    },
+    {
       "symbol": "NKE",
       "entry_price": 35.54,
       "exit_price": 35.365,
@@ -67,20 +83,12 @@
       "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-1.42%)",
       "realized_pnl": -140.0599319999995,
       "timestamp": "2026-10-12 14:21:18"
-    },
-    {
-      "symbol": "MS",
-      "entry_price": 191.190001,
-      "exit_price": 189.975,
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.64%)",
-      "realized_pnl": -61.965051000000045,
-      "timestamp": "2026-10-12 14:21:18"
     }
   ],
   "active_position_cache": {
     "BA": {
       "entry_px": 186.501153,
-      "current_px": 186.055,
+      "current_px": 186.625,
       "qty": 52.0,
       "side": "short",
       "peak_roe": 0.0023922264973878266,
@@ -89,20 +97,30 @@
     },
     "IWM": {
       "entry_px": 277.26,
-      "current_px": 276.29,
+      "current_px": 276.36,
       "qty": 35.0,
       "side": "short",
       "peak_roe": 0.0034985212435979605,
       "best_target_floor_roe": -0.0035,
       "best_stop_px": 278.23041
+    },
+    "QQQ": {
+      "entry_px": 741.79,
+      "current_px": 741.755,
+      "qty": 13.0,
+      "side": "short",
+      "peak_roe": 4.718316504666842e-05,
+      "best_target_floor_roe": -0.0035,
+      "best_stop_px": 744.386265
     }
   },
   "previous_active_symbols": [
-    "BA",
-    "IWM"
+    "QQQ",
+    "IWM",
+    "BA"
   ],
-  "last_run_timestamp": "2026-10-13 09:52:54",
-  "last_email_timestamp": 1791903158.7514527,
+  "last_run_timestamp": "2026-10-13 10:19:17",
+  "last_email_timestamp": 1791904744.0738637,
   "daily_starting_equity": {
     "2026-10-12": 98480.9,
     "2026-10-13": 98171.46
@@ -112,12 +130,14 @@
     "2026-10-13": 98171.46
   },
   "symbols_traded_today": [
-    "QQQ",
-    "NKE",
-    "BA",
-    "IWM",
-    "CVX",
+    "PLUG",
+    "AAPL",
     "DIS",
-    "PLUG"
+    "NKE",
+    "QQQ",
+    "IWM",
+    "BTE",
+    "CVX",
+    "BA"
   ]
 }
