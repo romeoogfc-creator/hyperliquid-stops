@@ -150,6 +150,11 @@ def cancel_alpaca_native_orders(symbol, open_orders):
                 pass
 
 def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, audit_logs=None):
+    """
+    HARDENED NATIVE STOP SYNC (V3.4 ATOMIC PROTECTED):
+    Prevents naked positions by placing new stop first, and immediately market-closes
+    if stop placement is rejected by Alpaca API.
+    """
     try:
         clean_stop_px = round(stop_px, 2)
         close_side = "sell" if is_long else "buy"
@@ -163,14 +168,10 @@ def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, 
         needs_update = True
         for o in existing_stop_orders:
             existing_stop_px = float(o.get("stop_price", 0.0) or 0.0)
-            if abs(existing_stop_px - clean_stop_px) < 0.01:
+            # Use $0.05 / 0.10% tolerance to avoid unnecessary cancel/replace loops on penny noise
+            if abs(existing_stop_px - clean_stop_px) < max(0.05, clean_stop_px * 0.0010):
                 needs_update = False
                 break
-            else:
-                try:
-                    api_retry(requests.delete, f"{BASE_URL}/v2/orders/{o.get('id')}", headers=HEADERS)
-                except Exception:
-                    pass
 
         if needs_update:
             stop_order_payload = {
@@ -182,8 +183,29 @@ def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, 
                 "time_in_force": "day"
             }
             res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=stop_order_payload, headers=HEADERS)
-            if res.status_code == 200 and audit_logs is not None:
-                audit_logs.append(f"🛡 NATIVE ALPACA STOP SYNC [{symbol}]: Placed Resting Trigger Stop @ ${clean_stop_px:.2f}")
+            
+            if res.status_code == 200:
+                # Cancel older stops ONLY AFTER new stop is confirmed placed
+                for o in existing_stop_orders:
+                    try:
+                        api_retry(requests.delete, f"{BASE_URL}/v2/orders/{o.get('id')}", headers=HEADERS)
+                    except Exception:
+                        pass
+                if audit_logs is not None:
+                    audit_logs.append(f"🛡 NATIVE ALPACA STOP SYNC [{symbol}]: Placed Resting Trigger Stop @ ${clean_stop_px:.2f}")
+            else:
+                # EMERGENCY FALLBACK: If stop placement fails (price crossed stop), IMMEDIATELY MARKET CLOSE!
+                if audit_logs is not None:
+                    audit_logs.append(f"🚨 STOP SYNC REJECTED [{symbol}]: Price crossed ${clean_stop_px:.2f}. Emergency market flattening!")
+                api_retry(requests.post, f"{BASE_URL}/v2/orders", json={
+                    "symbol": symbol, "qty": clean_qty, "side": close_side, "type": "market", "time_in_force": "day"
+                }, headers=HEADERS)
+                for o in existing_stop_orders:
+                    try:
+                        api_retry(requests.delete, f"{BASE_URL}/v2/orders/{o.get('id')}", headers=HEADERS)
+                    except Exception:
+                        pass
+
     except Exception as e:
         if audit_logs is not None:
             audit_logs.append(f"⚠️ Alpaca Native Stop Sync warning on {symbol}: {e}")
@@ -252,24 +274,18 @@ def analyze_live_stock_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, 
 
 def calculate_smart_stock_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0):
     """
-    Computes continuous dynamic stop-loss with Ultra-Tight Initial Risk (0.30%),
-    ATR Noise Shield (Wick Protection), and strict Max Giveback Clamp (0.40%).
+    V3.4 HARDENED TARGETS:
+    Hard-caps initial downside risk at strictly -0.30% max ROE.
     """
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
         roe = (entry_px - current_px) / entry_px
 
-    # 1. DOWNSIDE: Ultra-Tight Initial Risk Cap (0.30% Max Initial ROE Risk for Penny Losses)
+    # 1. DOWNSIDE: HARD-CAPPED INITIAL RISK (Strictly -0.30% Max ROE Cap)
     atr_roe_buffer = (atr_val * 0.5) / entry_px if entry_px > 0 else 0.0030
-    atr_roe_buffer = max(0.0020, min(0.0035, atr_roe_buffer))
-
-    if is_long:
-        structure_stop = (entry_candle_low / entry_px) - 1.0 if entry_px > 0 else -atr_roe_buffer
-        initial_floor_roe = max(-atr_roe_buffer, structure_stop)
-    else:
-        structure_stop = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else -atr_roe_buffer
-        initial_floor_roe = max(-atr_roe_buffer, structure_stop)
+    atr_roe_buffer = min(0.0030, max(0.0015, atr_roe_buffer)) # Hard cap at -0.30%
+    initial_floor_roe = -atr_roe_buffer
 
     # 2. UPSIDE: DYNAMIC RATCHET WITH STRICT 0.40% MAX GIVEBACK CLAMP
     MAX_ALLOWABLE_GIVEBACK = 0.0040  # Strictly 0.40% max giveback from peak
@@ -297,7 +313,7 @@ def calculate_smart_stock_targets(entry_px, is_long, current_px, atr_val, entry_
         target_floor_roe = initial_floor_roe
         leash_status = f"⚡ STRUCTURAL STOP ({target_floor_roe*100:.2f}%)"
 
-    # 3. ATR NOISE SHIELD (Prevents Wick-Outs while letting runners run)
+    # 3. ATR NOISE SHIELD
     peak_px = entry_px * (1 + peak_roe) if is_long else entry_px * (1 - peak_roe)
     min_atr_distance = atr_val * 0.30
 
@@ -325,7 +341,7 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Master Engine V3.3 Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Master Engine V3.4 Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing API Key credentials in environment variables.")
@@ -478,7 +494,7 @@ def execute_stock_engine():
                     volumes_1h = [float(b.get("v", 1)) for b in b_list]
                     
                     atr_val = calculate_atr(highs_1h, lows_1h, closes_1h)
-                    upper_band, lower_band, filter_line = calculate_gaussian_channel(closes_1h)
+                    upper_band, lower_band, filter_band = calculate_gaussian_channel(closes_1h)
 
                     if len(b_list) >= 2:
                         entry_candle_low = float(b_list[-2]["l"])
@@ -906,7 +922,7 @@ def execute_stock_engine():
     </tr>
     """
 
-    text_fallback = f"TR-GC-Equities-LS-01 | 1H Master Engine V3.3\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
+    text_fallback = f"TR-GC-Equities-LS-01 | 1H Master Engine V3.4\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
     positions_rows = "".join([
         f"<tr>"
@@ -982,7 +998,7 @@ def execute_stock_engine():
       <body>
         <div class="container">
           <div class="header">
-            <h2>TR-GC-Equities-LS-01 | 1H Master Engine V3.3</h2>
+            <h2>TR-GC-Equities-LS-01 | 1H Master Engine V3.4</h2>
             <p>Timestamp: {timestamp} &bull; Mode: SMART EMAIL THROTTLING &amp; 0.40% GIVEBACK CLAMP ACTIVE</p>
           </div>
           <div class="content">
@@ -1000,7 +1016,8 @@ def execute_stock_engine():
 
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Guardrails (Full Strategy Display)</div>
-              &bull; <b>Smart Email Throttling (V3.3 Active):</b> Runs every 15m silently in background, sends emails hourly or on trade events<br>
+              &bull; <b>Atomic Native Stop Sync (V3.4 Active):</b> Places new stop first and emergency flattens if stop placement is rejected<br>
+              &bull; <b>Smart Email Throttling:</b> Runs every 15m silently in background, sends emails hourly or on trade events<br>
               &bull; <b>Ultra-Tight Initial Risk (0.30% Max ROE):</b> Cuts unratched losers instantly for literal pennies<br>
               &bull; <b>Strict 0.40% Max Giveback Clamp:</b> Guarantees winners never give back more than 0.40% from their peak<br>
               &bull; <b>ATR Noise Shield:</b> Absorbs minor intraday wicks to let winning runners expand freely<br>
