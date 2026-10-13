@@ -325,13 +325,13 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-13 06:45:43",
-  "last_email_timestamp": 1791891682.4996881,
-  "last_scan_timestamp": 1791891927.3684418,
+  "last_run_timestamp": "2026-10-13 06:58:06",
+  "last_email_timestamp": 1791892673.014887,
+  "last_scan_timestamp": 1791892673.014887,
   "gemini_cache": {
-    "timestamp": 1791891927.3684418,
+    "timestamp": 1791892673.014887,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Persistent macroeconomic uncertainty, potential regulatory shifts, and elevated volatility surrounding major upcoming economic data releases create a precarious environment for leveraged positions."
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of looser monetary policy, crypto assets continue to face high volatility driven by macroeconomic uncertainty and significant fluctuations in regulatory and political landscapes."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
