@@ -1,6 +1,23 @@
 {
   "closed_trades_ledger": [
     {
+      "symbol": "QQQ",
+      "entry_price": 741.79,
+      "exit_price": 741.79,
+      "realized_pnl": 0.0,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-13 20:11:00",
+      "order_id": "2ecb7218-576d-4714-9501-8c48fea296e8"
+    },
+    {
+      "symbol": "QQQ",
+      "entry_price": 741.79,
+      "exit_price": 743.7242,
+      "exit_reason": "EOD Square-Off (100% Cash Flat)",
+      "realized_pnl": -25.144600000000423,
+      "timestamp": "2026-10-13 20:11:00"
+    },
+    {
       "symbol": "IWM",
       "entry_price": 277.26,
       "exit_price": 277.0,
@@ -65,42 +82,12 @@
       "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.49%)",
       "realized_pnl": -30.624999999999503,
       "timestamp": "2026-10-13 14:52:38"
-    },
-    {
-      "symbol": "MSFT",
-      "entry_price": 540.203889,
-      "exit_price": 541.147778,
-      "realized_pnl": 16.99000200000023,
-      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
-      "timestamp": "2026-10-12 16:48:11",
-      "order_id": "1d8b1c69-599e-4cab-b0ea-4ab92f32ec8d"
-    },
-    {
-      "symbol": "XOM",
-      "entry_price": 171.89193,
-      "exit_price": 171.89193,
-      "realized_pnl": 0.0,
-      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
-      "timestamp": "2026-10-12 16:16:36",
-      "order_id": "f3fd7f42-5ebf-46bd-b8dc-43f22f71d4c5"
     }
   ],
-  "active_position_cache": {
-    "QQQ": {
-      "entry_px": 741.79,
-      "current_px": 743.36,
-      "qty": 13.0,
-      "side": "short",
-      "peak_roe": 0.0015961390690087075,
-      "best_target_floor_roe": -0.0035,
-      "best_stop_px": 744.386265
-    }
-  },
-  "previous_active_symbols": [
-    "QQQ"
-  ],
-  "last_run_timestamp": "2026-10-13 14:32:47",
-  "last_email_timestamp": 1791919936.0112035,
+  "active_position_cache": {},
+  "previous_active_symbols": [],
+  "last_run_timestamp": "2026-10-13 15:11:16",
+  "last_email_timestamp": 1791922260.6927452,
   "daily_starting_equity": {
     "2026-10-12": 98480.9,
     "2026-10-13": 98171.46
@@ -110,15 +97,15 @@
     "2026-10-13": 98171.46
   },
   "symbols_traded_today": [
-    "BTE",
-    "PLUG",
-    "AAPL",
     "BA",
-    "DIS",
-    "IWM",
-    "NKE",
-    "CVX",
+    "BTE",
     "QQQ",
-    "KGC"
+    "PLUG",
+    "DIS",
+    "AAPL",
+    "IWM",
+    "KGC",
+    "NKE",
+    "CVX"
   ]
 }
