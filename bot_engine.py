@@ -305,7 +305,7 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
 
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0, coin="ETH"):
     """
-    V3.9.7 AIRTIGHT ROSS SCALPER (STRUCTURED TIERED EXITS):
+    V3.9.8 AIRTIGHT ROSS SCALPER:
     - Downside Protection: Initial stop hard-clamped strictly between -0.50% and -1.00% ROE.
     - Fee-Aware Activation (+0.80% ROE): Locks +0.40% floor to cover fees and spread.
     - Scalp Expansion: Tier 1 (65% gain lock at +1.50%), Tier 2 (80% gain lock at +3.00%+).
@@ -364,7 +364,7 @@ def check_gemini_macro_shield(state, now_ts, is_scan_window):
     try:
         from google import genai
         client = genai.Client(api_key=GEMINI_API_KEY)
-        model_cascade = ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.8-flash']
+        model_cascade = ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.6-flash']
         
         last_err_msg = ""
         for model_name in model_cascade:
@@ -426,7 +426,7 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.9.7 Master Engine Started (Airtight Scalper Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.9.8 Master Engine Started (Airtight Scalper Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -698,7 +698,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V3.9.7", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V3.9.8", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -846,7 +846,6 @@ def execute_engine():
                 elapsed_mins = (now_ms - candle_start_ms) / 60000.0
                 live_volume_raw = float(candles[-1].get("v", 0))
                 
-                # V3.9.7 1-MINUTE PACING BUFFER: Prevents early 10s candle volume projections
                 if elapsed_mins < 1.0:
                     paced_volume = live_volume_raw
                 else:
@@ -939,21 +938,22 @@ def execute_engine():
                         "entry_candle_low": e_candle_low, "entry_candle_high": e_candle_high
                     }
 
-                    initial_stop_px = px * 0.9935 if is_long else px * 1.0065
-                    initial_tp_px = None
+                    # V3.9.8 AIRTIGHT TURN-1 STOP ALIGNMENT
+                    initial_stop_px, initial_tp_px, _, _, initial_status = calculate_smart_exchange_targets(
+                        px, is_long, px, 0.0, e_candle_low, e_candle_high, peak_roe=0.0, coin=coin
+                    )
 
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
-                    alloc_label = "5M Fast Scalp (25% NAV)"
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V3.9.7", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V3.9.8", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
                         "pnl": 0.0, "roe": 0.0,
                         "stop": round_sig_figs(initial_stop_px, 5),
                         "tp_target": "UNCAPPED 🚀",
-                        "status": f"🛡️ {alloc_label}"
+                        "status": initial_status
                     })
 
                     audit_logs.append(f"⚡ 5M SCALP EXECUTION SUCCESS: Opened LONG on {coin} (Size: {sz} ~${(sz * px):.2f})")
@@ -1000,7 +1000,7 @@ def execute_engine():
         
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V3.9.7 | Airtight Ross Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V3.9.8 | Airtight Ross Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         summary_card_html = f"""
         <div class="summary-card">
@@ -1124,7 +1124,7 @@ def execute_engine():
           <body>
             <div class="container">
               <div class="header">
-                <h2>TR-GC-Crypto-LS-23-V3.9.7 | Airtight Ross Scalper</h2>
+                <h2>TR-GC-Crypto-LS-23-V3.9.8 | Airtight Ross Scalper</h2>
                 <p>Timestamp: {timestamp} (5M Candles &amp; 5M Scanning Active)</p>
               </div>
               <div class="content">
@@ -1141,7 +1141,8 @@ def execute_engine():
                 {summary_card_html}
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (V3.9.7 Structured Exits Active)</div>
+                  <div class="rules-title">&#9989; Active Guardrails (V3.9.8 Airtight Production Active)</div>
+                  &bull; <b>Turn-1 Stop Alignment:</b> Computes exact clamped structural stop at entry moment to prevent order updates<br>
                   &bull; <b>Air-Tight Downside Clamp (-0.50% to -1.00%):</b> Clamps initial stop below entry to prevent premature stop outs<br>
                   &bull; <b>1-Minute Pacing Buffer:</b> Prevents early 10s candle volume projection spikes<br>
                   &bull; <b>Fee-Aware Break-Even Floor (+0.40%):</b> Covers round-trip Hyperliquid taker fees and orderbook spread<br>
