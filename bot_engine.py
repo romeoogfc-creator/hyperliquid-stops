@@ -27,7 +27,6 @@ STATE_FILE = "state.json"
 VERBOSE_TEST_MODE = True
 
 def get_central_time():
-    """Calculates Texas Central Time (CT) with ZoneInfo or dynamic pure-Python DST fallback."""
     if ZoneInfo is not None:
         try:
             return datetime.now(ZoneInfo("America/Chicago")).replace(tzinfo=None)
@@ -306,10 +305,10 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
 
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0, coin="ETH"):
     """
-    V3.9.6 REBALANCED ROSS SCALPER (BALANCED RISK/REWARD):
-    - Hard Altcoin Loss Cap: Capped at -0.65% ROE (~$0.15 USD max loss)
-    - Fee-Aware Break-Even Floor: +0.40% ROE (covers 0.07% taker fees + spread)
-    - Dynamic Retention: Gives breakouts room to run to +1.50% to +3.00%+
+    V3.9.7 AIRTIGHT ROSS SCALPER (STRUCTURED TIERED EXITS):
+    - Downside Protection: Initial stop hard-clamped strictly between -0.50% and -1.00% ROE.
+    - Fee-Aware Activation (+0.80% ROE): Locks +0.40% floor to cover fees and spread.
+    - Scalp Expansion: Tier 1 (65% gain lock at +1.50%), Tier 2 (80% gain lock at +3.00%+).
     """
     if is_long:
         roe = (current_px - entry_px) / entry_px
@@ -318,30 +317,28 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, ent
 
     is_major = coin.upper() in ["BTC", "ETH", "SOL"]
     
-    # 1. HARDENED LOSS CAP (-0.65% Max Loss for Altcoins)
-    min_required_stop = -0.0065
-
+    # 1. AIRTIGHT INITIAL DOWNSIDE STOP (Clamped between -0.50% and -1.00% ROE)
     if is_long:
-        structure_stop = (entry_candle_low / entry_px) - 1.0 if entry_px > 0 else min_required_stop
-        initial_floor_roe = max(min_required_stop, structure_stop) if not is_major else min(min_required_stop, structure_stop)
+        raw_struct = (entry_candle_low / entry_px) - 1.0 if entry_px > 0 else -0.0065
+        initial_floor_roe = min(-0.0050, max(-0.0100, raw_struct)) if not is_major else -0.0150
     else:
-        structure_stop = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else min_required_stop
-        initial_floor_roe = max(min_required_stop, structure_stop) if not is_major else min(min_required_stop, structure_stop)
+        raw_struct = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else -0.0065
+        initial_floor_roe = min(-0.0050, max(-0.0100, raw_struct)) if not is_major else -0.0150
 
-    # 2. REBALANCED PROFIT RATCHET (+0.80% ACTIVATION, +0.40% BE FLOOR)
+    # 2. STRUCTURED TIERED PROFIT RATCHET (+0.80% ACTIVATION)
     activation_roe = 0.0080
     be_floor_roe = 0.0040
 
     if peak_roe >= activation_roe:
         if peak_roe < 0.0150:
             target_floor_roe = max(be_floor_roe, peak_roe * 0.50)
-            leash_status = f"⚡ 5M TIGHT LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+            leash_status = f"⚡ TIER 0 LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
         elif peak_roe < 0.0300:
             target_floor_roe = peak_roe * 0.65
-            leash_status = f"⚡ 5M SCALP LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+            leash_status = f"⚡ TIER 1 LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
         else:
             target_floor_roe = peak_roe * 0.80
-            leash_status = f"🚀 5M MOONSHOT LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+            leash_status = f"🚀 TIER 2 MOONSHOT [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
     else:
         target_floor_roe = initial_floor_roe
         leash_status = f"🛡 HARD STOP ({target_floor_roe*100:.2f}%)"
@@ -429,7 +426,7 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.9.6 Master Engine Started (Rebalanced Ross Scalper Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.9.7 Master Engine Started (Airtight Scalper Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -596,7 +593,6 @@ def execute_engine():
             exit_reason = ""
             atr_val = 1.0
             
-            # RETRIEVE SAVED ENTRY CANDLE STRUCTURAL LOW
             cache_info = current_active_cache.get(coin, {})
             entry_candle_low = cache_info.get("entry_candle_low", entry_px * 0.9935)
             entry_candle_high = cache_info.get("entry_candle_high", entry_px * 1.0065)
@@ -702,7 +698,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V3.9.6", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V3.9.7", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -847,9 +843,14 @@ def execute_engine():
                 is_5m_hod_breakout = is_near_breakout and (curr_live_px > c_1_open) and is_clean_structure
 
                 candle_start_ms = candles[-1]["t"]
-                elapsed_mins = max(0.5, (now_ms - candle_start_ms) / 60000.0)
+                elapsed_mins = (now_ms - candle_start_ms) / 60000.0
                 live_volume_raw = float(candles[-1].get("v", 0))
-                paced_volume = live_volume_raw * (5.0 / elapsed_mins)
+                
+                # V3.9.7 1-MINUTE PACING BUFFER: Prevents early 10s candle volume projections
+                if elapsed_mins < 1.0:
+                    paced_volume = live_volume_raw
+                else:
+                    paced_volume = live_volume_raw * (5.0 / max(1.0, elapsed_mins))
                 
                 avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
                 vol_ratio = paced_volume / avg_vol if avg_vol > 0 else 1.0
@@ -945,7 +946,7 @@ def execute_engine():
 
                     alloc_label = "5M Fast Scalp (25% NAV)"
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V3.9.6", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V3.9.7", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -999,7 +1000,7 @@ def execute_engine():
         
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V3.9.6 | Rebalanced Ross Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V3.9.7 | Airtight Ross Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         summary_card_html = f"""
         <div class="summary-card">
@@ -1123,7 +1124,7 @@ def execute_engine():
           <body>
             <div class="container">
               <div class="header">
-                <h2>TR-GC-Crypto-LS-23-V3.9.6 | Rebalanced Ross Scalper</h2>
+                <h2>TR-GC-Crypto-LS-23-V3.9.7 | Airtight Ross Scalper</h2>
                 <p>Timestamp: {timestamp} (5M Candles &amp; 5M Scanning Active)</p>
               </div>
               <div class="content">
@@ -1140,9 +1141,9 @@ def execute_engine():
                 {summary_card_html}
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (V3.9.6 Structural Lock Active)</div>
-                  &bull; <b>Entry Candle Structural Lock:</b> Anchors structural stop to real breakout base instead of shifting bar-by-bar<br>
-                  &bull; <b>Rebalanced Hard Loss Cap (-0.65%):</b> Hard-caps altcoin losses at ~ -$0.15 to equalize win/loss ratio<br>
+                  <div class="rules-title">&#9989; Active Guardrails (V3.9.7 Structured Exits Active)</div>
+                  &bull; <b>Air-Tight Downside Clamp (-0.50% to -1.00%):</b> Clamps initial stop below entry to prevent premature stop outs<br>
+                  &bull; <b>1-Minute Pacing Buffer:</b> Prevents early 10s candle volume projection spikes<br>
                   &bull; <b>Fee-Aware Break-Even Floor (+0.40%):</b> Covers round-trip Hyperliquid taker fees and orderbook spread<br>
                   &bull; <b>Sunday Weekly Close Shield:</b> Demands extreme &ge; 3.50x RVOL between 2:00 PM &amp; 7:30 PM CT to bypass weekend liquidity drains<br>
                   &bull; <b>5M Anti-Chasing Cap (&le; +0.80%):</b> Rejects entries extended past previous 5m high<br>
