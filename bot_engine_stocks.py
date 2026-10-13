@@ -66,6 +66,7 @@ def load_state():
         "closed_trades_ledger": [], 
         "active_position_cache": {},
         "previous_active_symbols": [],
+        "symbols_traded_today": [],
         "last_run_timestamp": "", 
         "last_email_timestamp": 0,
         "daily_starting_equity": {},
@@ -151,8 +152,8 @@ def cancel_alpaca_native_orders(symbol, open_orders):
 
 def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, audit_logs=None):
     """
-    HARDENED NATIVE STOP SYNC (V3.8 ATOMIC PROTECTED):
-    Prevents naked positions by placing new stop first, and immediately market-closes
+    HARDENED NATIVE STOP SYNC (V3.9 ATOMIC PROTECTED):
+    Prevents naked positions by placing new stop first, and immediately flattens
     if stop placement is rejected by Alpaca API.
     """
     try:
@@ -190,7 +191,7 @@ def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, 
                     except Exception:
                         pass
                 if audit_logs is not None:
-                    audit_logs.append(f"🛡 NATIVE ALPACA STOP SYNC [{symbol}]: Placed Resting Trigger Stop @ ${clean_stop_px:.2f}")
+                    audit_logs.append(f"🛡 NATIVE ALPACA STOP SYNC [{symbol}]: Placed Trigger Stop @ ${clean_stop_px:.2f}")
             else:
                 if audit_logs is not None:
                     audit_logs.append(f"🚨 STOP SYNC REJECTED [{symbol}]: Price crossed ${clean_stop_px:.2f}. Emergency market flattening!")
@@ -271,23 +272,21 @@ def analyze_live_stock_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, 
 
 def calculate_smart_stock_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0):
     """
-    V3.8 DUAL-ENGINE SMART TARGETS & BALANCED RISK/REWARD:
-    - Hard Initial Downside Risk Floor: -0.35% ROE (or min $0.20 buffer for orderbook acceptance)
-    - Profit Ratchet Trigger: +0.40% ROE (Locks +0.10% ROE minimum / ~$10 gain per $10k)
+    V3.9 DUAL-ENGINE EQUAL RISK TARGETS:
+    - Initial Stop Distance: -0.35% ROE (or minimum $0.20 buffer)
+    - Profit Ratchet Trigger: +0.40% ROE (Locks +0.10% ROE minimum)
     """
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
         roe = (entry_px - current_px) / entry_px
 
-    # 1. HARD PENNY STOP FLOOR (-0.35% Max ROE / ~$35 per $10,000 trade)
     HARD_MAX_RISK_ROE = 0.0035  
     initial_floor_roe = -HARD_MAX_RISK_ROE
 
-    # 2. RATCHET PROFIT LOCK AT +0.40% PEAK ($40 GAIN)
     if peak_roe >= 0.0040:
         if peak_roe < 0.0080:
-            target_floor_roe = 0.0010  # Locks +$10 minimum
+            target_floor_roe = 0.0010  # Locks +0.10% minimum gain
             leash_status = f"🛡 PENNY LOCK [Peak +{peak_roe*100:.2f}% -> Floor +0.10%]"
         else:
             retention = 0.75
@@ -297,7 +296,6 @@ def calculate_smart_stock_targets(entry_px, is_long, current_px, atr_val, entry_
         target_floor_roe = initial_floor_roe
         leash_status = f"⚡ HARD STOP ({target_floor_roe*100:.2f}%)"
 
-    # 3. CALCULATE EXACT STOP PRICE FOR ALPACA ORDERBOOK
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
     else:
@@ -312,7 +310,7 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Master Engine V3.8 Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Master Engine V3.9 Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing API Key credentials in environment variables.")
@@ -324,6 +322,10 @@ def execute_stock_engine():
     audit_logs.append(f"SPY Macro Regime Shield: {spy_regime_str}")
 
     state = load_state()
+
+    # Reset daily traded symbols ledger on new day
+    if state.get("last_run_timestamp", "")[:10] != today_str:
+        state["symbols_traded_today"] = []
 
     account_res = api_retry(requests.get, f"{BASE_URL}/v2/account", headers=HEADERS)
     if account_res.status_code != 200:
@@ -434,6 +436,7 @@ def execute_stock_engine():
     current_active_cache = state.get("active_position_cache", {})
     new_active_cache = {}
     trade_closed_this_run = False
+    symbols_traded_today = set(state.get("symbols_traded_today", []))
 
     for pos in positions_list:
         symbol = pos.get("symbol")
@@ -526,6 +529,7 @@ def execute_stock_engine():
                     "exit_reason": exit_reason, "realized_pnl": realized_pnl, "timestamp": timestamp
                 })
                 state["closed_trades_ledger"] = state["closed_trades_ledger"][:10]
+                symbols_traded_today.add(symbol)
                 active_count -= 1
                 trade_closed_this_run = True
                 continue
@@ -581,6 +585,7 @@ def execute_stock_engine():
                                 "timestamp": timestamp,
                                 "order_id": fill_id
                             })
+                            symbols_traded_today.add(sym)
                             trade_closed_this_run = True
                             audit_logs.append(f"🎯 RECONCILED NATIVE ALPACA FILL [{sym}]: Closed {fill_side.upper()} @ ${exit_px:.2f} (P&L: ${realized_pnl:+.2f})")
             except Exception as e:
@@ -589,6 +594,7 @@ def execute_stock_engine():
     state["closed_trades_ledger"] = state.get("closed_trades_ledger", [])[:10]
     state["active_position_cache"] = new_active_cache
     state["previous_active_symbols"] = list(active_symbols)
+    state["symbols_traded_today"] = list(symbols_traded_today)
 
     MAX_STOCK_SLOTS = 5
     
@@ -603,24 +609,21 @@ def execute_stock_engine():
     peak_giveback_lockout = (giveback_from_peak >= 500.0) or (daily_loss_usd >= 500.0)
     trades_executed = False
 
-    # MERGED WATCHLIST: S&P 500 / NASDAQ MAJOR EQUITIES + ROSS $5-$20 SMALL-CAP RUNNERS
     raw_watchlist = [
-        # --- S&P 500 / NASDAQ LARGE-CAP UNIVERSE ---
         "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "AVGO", "QCOM",
         "INTC", "MU", "ARM", "AMAT", "LRCX", "SMCI", "ORCL", "CRM", "NOW", "PANW", "FTNT", "PLTR",
         "COIN", "HOOD", "SQ", "PYPL", "NET", "SNOW", "SHOP", "MSTR", "UBER", "ABNB", "RBLX", "DKNG",
         "NFLX", "COST", "WMT", "HD", "DIS", "NKE", "SBUX", "BA", "CAT", "GE", "HON", "DE", "LMT",
         "JPM", "BAC", "GS", "MS", "V", "MA", "XOM", "CVX", "SLB", "LLY", "UNH", "JNJ", "PFE", "ABBV",
         "TXN", "ADI", "KLAC", "MCHP", "DELL", "SPY", "QQQ", "IWM", "DIA", "SMH", "XLF", "XLE",
-        # --- ROSS $5 - $20 LOW-FLOAT MOMENTUM UNIVERSE ---
         "SOFI", "MARA", "RIOT", "LCID", "RIVN", "NIO", "SOUN", "BBAI", "PLUG", "BB", "CLOV", 
         "RUN", "STEM", "CHPT", "NKLA", "TLRY", "SNDL", "GPRO", "FUBO", "AAL", "CCL", "NCLH", 
         "IQ", "SAVA", "GRAB", "OPEN", "BTE", "SKLZ", "BBD", "RIG", "SWN", "TEVA", "NOK", "PBR", "AUY", "KGC", "NGL"
     ]
-    # Deduplicate while preserving order
     watchlist = list(dict.fromkeys(raw_watchlist))
 
-    symbols_to_scan = [s for s in watchlist if s not in active_symbols]
+    # ENFORCE DAILY SYMBOL COOLDOWN: Exclude symbols already traded today or currently active
+    symbols_to_scan = [s for s in watchlist if s not in active_symbols and s not in symbols_traded_today]
     market_candidates = []
     scanned_count = 0
 
@@ -667,7 +670,6 @@ def execute_stock_engine():
             live_close = closes[-1]
             live_open = opens[-1]
 
-            # DUAL-TIER CLASSIFICATION
             is_ross_small_cap = (5.00 <= live_close <= 20.00)
 
             ci = calculate_choppiness_index(highs, lows, closes)
@@ -693,14 +695,11 @@ def execute_stock_engine():
             live_vol_ratio = paced_live_vol / avg_vol if avg_vol > 0 else 1.0
             vol_ratio = max(comp_vol_ratio, live_vol_ratio)
 
-            # DUAL VOLUME GATE IMPLEMENTATION
             if is_ross_small_cap:
-                # STRICT ROSS VOLUME GATE FOR $5-$20 SMALL CAPS (PREVENTS FAKEOUTS)
                 if vol_ratio < 2.20:
                     continue
-                req_body_ratio = 0.65  # Requires solid 65%+ green body
+                req_body_ratio = 0.65
             else:
-                # STANDARD WORKING S&P 500 / NASDAQ VOLUME THRESHOLDS
                 if is_premarket_runner_window and vol_ratio < 2.50:
                     continue
                 elif is_opening_15m_window and vol_ratio < 1.80:
@@ -727,11 +726,10 @@ def execute_stock_engine():
             is_candle_green = (live_close > live_open) and (live_close >= comp_close)
             is_candle_red = (live_close < live_open) and (live_close <= comp_close)
 
-            # ANTI-CHASING & TOP-WICK REJECTION GATES
             upper_wick_ratio = (highs[-1] - max(opens[-1], live_close)) / c_range
             lower_wick_ratio = (min(opens[-1], live_close) - lows[-1]) / c_range
 
-            max_ext_upper = upper * 1.0080 # Extended cap strictly +0.80%
+            max_ext_upper = upper * 1.0080
             max_ext_lower = lower * 0.9920
 
             if live_close > max_ext_upper or live_close < max_ext_lower:
@@ -741,14 +739,14 @@ def execute_stock_engine():
                 ((live_close > upper and comp_close <= upper * 1.005) or 
                  (comp_close > upper and prev_close <= upper * 1.005)) 
                 and is_candle_green
-                and upper_wick_ratio <= 0.25 # Reject seller dumping at top
+                and upper_wick_ratio <= 0.25
             )
 
             fresh_short_breakdown = (
                 ((live_close < lower and comp_close >= lower * 0.995) or 
                  (comp_close < lower and prev_close >= lower * 0.995)) 
                 and is_candle_red
-                and lower_wick_ratio <= 0.25 # Reject buyer dumping at bottom
+                and lower_wick_ratio <= 0.25
             )
 
             candidate_obj = None
@@ -787,10 +785,18 @@ def execute_stock_engine():
             px = candidate["close"]
             is_long = candidate["is_long"]
 
-            target_usd = max(1000.0, equity * 0.10)
-            raw_qty = target_usd / px
-            qty = max(1, int(raw_qty))
+            # EQUAL DOLLAR RISK POSITION SIZING: Caps max loss at ~$35 per trade
+            MAX_RISK_USD_PER_TRADE = 35.0
+            stop_distance_pct = 0.0035
+            stop_distance_usd = max(px * stop_distance_pct, 0.20)
+            
+            calc_qty = MAX_RISK_USD_PER_TRADE / stop_distance_usd
+            # Cap slot size at maximum 10% equity ($10,000)
+            max_shares_cap = (equity * 0.10) / px
+            qty = max(1, int(min(calc_qty, max_shares_cap)))
             order_side = "buy" if is_long else "sell"
+
+            clean_initial_stop = round(px - stop_distance_usd if is_long else px + stop_distance_usd, 2)
 
             if is_premarket_runner_window:
                 limit_px = round(px * (1.001 if is_long else 0.999), 2)
@@ -804,20 +810,12 @@ def execute_stock_engine():
                     if order_res.status_code == 200:
                         active_count += 1
                         active_symbols.add(symbol)
+                        symbols_traded_today.add(symbol)
                         trades_executed = True
                         audit_logs.append(f"🚀 PREMARKET ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} @ Limit ${limit_px:.2f}")
                 except Exception as e:
                     audit_logs.append(f"PREMARKET ORDER EXCEPTION on {symbol}: {e}")
             else:
-                # V3.8 ORDERBOOK DUAL BUFFER FIX: Enforces minimum 0.35% / $0.20 cent buffer below current bid
-                min_buffer_pct = 0.0035
-                calculated_stop_dist = max(px * min_buffer_pct, 0.20)
-
-                if is_long:
-                    clean_initial_stop = round(px - calculated_stop_dist, 2)
-                else:
-                    clean_initial_stop = round(px + calculated_stop_dist, 2)
-
                 order_payload = {
                     "symbol": symbol, "qty": format_qty(qty), "side": order_side,
                     "type": "market", "time_in_force": "day", "order_class": "oto",
@@ -828,19 +826,15 @@ def execute_stock_engine():
                     if order_res.status_code == 200:
                         active_count += 1
                         active_symbols.add(symbol)
+                        symbols_traded_today.add(symbol)
                         trades_executed = True
                         audit_logs.append(f"1H ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} [Native OTO Trigger Stop Active @ ${clean_initial_stop:.2f}]")
                     else:
-                        fallback_payload = {"symbol": symbol, "qty": format_qty(qty), "side": order_side, "type": "market", "time_in_force": "day"}
-                        fallback_res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=fallback_payload, headers=HEADERS)
-                        if fallback_res.status_code == 200:
-                            active_count += 1
-                            active_symbols.add(symbol)
-                            trades_executed = True
-                            audit_logs.append(f"1H ENTRY SUCCESS (Standard): Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol}")
+                        audit_logs.append(f"🚨 ENTRY REJECTED [{symbol}]: OTO Stop Payload declined by exchange matching engine. Aborting entry.")
                 except Exception as e:
                     audit_logs.append(f"ORDER EXCEPTION on {symbol}: {e}")
 
+    state["symbols_traded_today"] = list(symbols_traded_today)
     save_state(state)
 
     audit_section = ""
@@ -913,7 +907,7 @@ def execute_stock_engine():
     </tr>
     """
 
-    text_fallback = f"TR-GC-Equities-LS-01 | 1H Dual Engine V3.8\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
+    text_fallback = f"TR-GC-Equities-LS-01 | 1H Dual Engine V3.9\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
     positions_rows = "".join([
         f"<tr>"
@@ -989,8 +983,8 @@ def execute_stock_engine():
       <body>
         <div class="container">
           <div class="header">
-            <h2>TR-GC-Equities-LS-01 | 1H Dual Engine V3.8</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: DUAL-ENGINE (ORDERBOOK BUFFER &amp; PROFIT REBALANCE ACTIVE)</p>
+            <h2>TR-GC-Equities-LS-01 | 1H Dual Engine V3.9</h2>
+            <p>Timestamp: {timestamp} &bull; Mode: EQUAL RISK SIZING &amp; DAILY SYMBOL LOCKOUT ACTIVE</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -1007,13 +1001,13 @@ def execute_stock_engine():
 
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Guardrails (Dual-Engine Strategy Display)</div>
-              &bull; <b>Orderbook Dual Buffer Fix (V3.8):</b> Guarantees stops sit &ge;0.35% or $0.20 below bid to ensure 100% order acceptance<br>
-              &bull; <b>Rebalanced Profit Ratchet (+0.40% Peak):</b> Allows winning trades to run up to +$40 before locking break-even<br>
+              &bull; <b>Equal Risk Position Sizing (V3.9):</b> Hard-caps maximum risk at ~$35 USD per trade slot<br>
+              &bull; <b>Daily Symbol Cooldown:</b> Locks traded stocks for the remainder of the session to prevent churn<br>
+              &bull; <b>Mandatory OTO Enforcement:</b> Rejects entries if native exchange stops cannot be placed<br>
               &bull; <b>Dual-Engine Simultaneous Scanner:</b> Runs S&amp;P 500 / Nasdaq Large-Caps and Ross $5–$20 Runners together<br>
               &bull; <b>Ross Small-Cap Gate (&ge;2.20x RVOL &amp; &ge;65% Body):</b> Strict high-volume surge filter prevents penny fakeouts<br>
               &bull; <b>S&amp;P 500 / Nasdaq Equities Gate:</b> Preserves working breakout logic on large caps ($20.00+)<br>
               &bull; <b>Anti-Chasing &amp; Top Wick Gate (&le;25%):</b> Blocks extended entries past +0.80% or upper dumping wicks<br>
-              &bull; <b>Atomic Native Stop Sync (V3.8 Active):</b> Places new stop first and emergency flattens if rejected<br>
               &bull; <b>Smart Email Throttling:</b> Runs every 15m silently in background, sends emails hourly or on trade events<br>
               &bull; <b>SPY Macro Regime Shield:</b> Enforces broad market direction alignment<br>
               &bull; <b>Afternoon Cutoff (1:45 PM CT+):</b> Strictly 0 new entries allowed to ensure exit runway<br>
@@ -1060,7 +1054,6 @@ def execute_stock_engine():
     </html>
     """
 
-    # SMART EMAIL THROTTLING: Quiet 15m background runs, send on trade events or hourly (55+ mins)
     last_email_ts = float(state.get("last_email_timestamp", 0))
     elapsed_minutes = (now_ts - last_email_ts) / 60.0
     is_manual_run = os.getenv("GITHUB_EVENT_NAME", "").lower() == "workflow_dispatch"
