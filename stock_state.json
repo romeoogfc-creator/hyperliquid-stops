@@ -1,6 +1,23 @@
 {
   "closed_trades_ledger": [
     {
+      "symbol": "BA",
+      "entry_price": 186.501153,
+      "exit_price": 186.501153,
+      "realized_pnl": 0.0,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-13 16:50:34",
+      "order_id": "7e795e8c-c843-43af-bbe3-3b9b52c13ce0"
+    },
+    {
+      "symbol": "BA",
+      "entry_price": 186.501153,
+      "exit_price": 186.67,
+      "exit_reason": "\ud83d\udcc8 1H Trend Invalidation (Close $186.67 > Lower Band $186.59)",
+      "realized_pnl": -8.780043999999975,
+      "timestamp": "2026-10-13 16:50:34"
+    },
+    {
       "symbol": "KGC",
       "entry_price": 23.15,
       "exit_price": 23.215,
@@ -65,39 +82,12 @@
       "exit_reason": "\ud83d\udcc9 1H Trend Invalidation (Close $172.00 < Upper Band $172.24)",
       "realized_pnl": 5.874990000000139,
       "timestamp": "2026-10-12 16:16:36"
-    },
-    {
-      "symbol": "META",
-      "entry_price": 743.973846,
-      "exit_price": 746.74,
-      "realized_pnl": 35.96000200000037,
-      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
-      "timestamp": "2026-10-12 15:50:22",
-      "order_id": "d9322429-f058-43f8-a7e0-756686de317d"
-    },
-    {
-      "symbol": "GOOGL",
-      "entry_price": 354.63,
-      "exit_price": 353.469259,
-      "realized_pnl": -31.340006999999275,
-      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
-      "timestamp": "2026-10-12 15:50:22",
-      "order_id": "72bfd243-f9d8-41b5-a009-7f17c63acb16"
     }
   ],
   "active_position_cache": {
-    "BA": {
-      "entry_px": 186.501153,
-      "current_px": 186.575,
-      "qty": 52.0,
-      "side": "short",
-      "peak_roe": 0.0023922264973878266,
-      "best_target_floor_roe": -0.0035,
-      "best_stop_px": 187.1539070355
-    },
     "IWM": {
       "entry_px": 277.26,
-      "current_px": 276.23,
+      "current_px": 276.67,
       "qty": 35.0,
       "side": "short",
       "peak_roe": 0.005337949938685776,
@@ -106,7 +96,7 @@
     },
     "QQQ": {
       "entry_px": 741.79,
-      "current_px": 742.74,
+      "current_px": 743.12,
       "qty": 13.0,
       "side": "short",
       "peak_roe": 0.0015961390690087075,
@@ -116,11 +106,10 @@
   },
   "previous_active_symbols": [
     "IWM",
-    "QQQ",
-    "BA"
+    "QQQ"
   ],
-  "last_run_timestamp": "2026-10-13 11:18:19",
-  "last_email_timestamp": 1791908281.6897671,
+  "last_run_timestamp": "2026-10-13 11:50:50",
+  "last_email_timestamp": 1791910234.011769,
   "daily_starting_equity": {
     "2026-10-12": 98480.9,
     "2026-10-13": 98171.46
@@ -131,14 +120,14 @@
   },
   "symbols_traded_today": [
     "CVX",
-    "DIS",
-    "KGC",
-    "NKE",
     "PLUG",
-    "BA",
-    "AAPL",
     "QQQ",
+    "AAPL",
+    "DIS",
+    "BA",
+    "KGC",
     "BTE",
-    "IWM"
+    "IWM",
+    "NKE"
   ]
 }
