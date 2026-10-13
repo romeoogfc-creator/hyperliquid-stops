@@ -151,7 +151,7 @@ def cancel_alpaca_native_orders(symbol, open_orders):
 
 def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, audit_logs=None):
     """
-    HARDENED NATIVE STOP SYNC (V3.4 ATOMIC PROTECTED):
+    HARDENED NATIVE STOP SYNC (V3.5 ATOMIC PROTECTED):
     Prevents naked positions by placing new stop first, and immediately market-closes
     if stop placement is rejected by Alpaca API.
     """
@@ -168,7 +168,6 @@ def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, 
         needs_update = True
         for o in existing_stop_orders:
             existing_stop_px = float(o.get("stop_price", 0.0) or 0.0)
-            # Use $0.05 / 0.10% tolerance to avoid unnecessary cancel/replace loops on penny noise
             if abs(existing_stop_px - clean_stop_px) < max(0.05, clean_stop_px * 0.0010):
                 needs_update = False
                 break
@@ -185,7 +184,6 @@ def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, 
             res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=stop_order_payload, headers=HEADERS)
             
             if res.status_code == 200:
-                # Cancel older stops ONLY AFTER new stop is confirmed placed
                 for o in existing_stop_orders:
                     try:
                         api_retry(requests.delete, f"{BASE_URL}/v2/orders/{o.get('id')}", headers=HEADERS)
@@ -194,7 +192,6 @@ def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, 
                 if audit_logs is not None:
                     audit_logs.append(f"🛡 NATIVE ALPACA STOP SYNC [{symbol}]: Placed Resting Trigger Stop @ ${clean_stop_px:.2f}")
             else:
-                # EMERGENCY FALLBACK: If stop placement fails (price crossed stop), IMMEDIATELY MARKET CLOSE!
                 if audit_logs is not None:
                     audit_logs.append(f"🚨 STOP SYNC REJECTED [{symbol}]: Price crossed ${clean_stop_px:.2f}. Emergency market flattening!")
                 api_retry(requests.post, f"{BASE_URL}/v2/orders", json={
@@ -274,63 +271,39 @@ def analyze_live_stock_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, 
 
 def calculate_smart_stock_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0):
     """
-    V3.4 HARDENED TARGETS:
-    Hard-caps initial downside risk at strictly -0.30% max ROE.
+    V3.5 ULTRA-TIGHT MICRO-PENNY TARGETS:
+    - Hard Initial Downside Risk Floor: -0.12% ROE (~$12 loss on $10k position)
+    - Break-Even Floor Trigger: +0.15% ROE (Locks +$2 profit as soon as trade moves +$15)
     """
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
         roe = (entry_px - current_px) / entry_px
 
-    # 1. DOWNSIDE: HARD-CAPPED INITIAL RISK (Strictly -0.30% Max ROE Cap)
-    atr_roe_buffer = (atr_val * 0.5) / entry_px if entry_px > 0 else 0.0030
-    atr_roe_buffer = min(0.0030, max(0.0015, atr_roe_buffer)) # Hard cap at -0.30%
-    initial_floor_roe = -atr_roe_buffer
+    # 1. HARD PENNY STOP FLOOR (-0.12% Max ROE / ~$12 per $10,000 trade)
+    HARD_MAX_RISK_ROE = 0.0012  
+    initial_floor_roe = -HARD_MAX_RISK_ROE
 
-    # 2. UPSIDE: DYNAMIC RATCHET WITH STRICT 0.40% MAX GIVEBACK CLAMP
-    MAX_ALLOWABLE_GIVEBACK = 0.0040  # Strictly 0.40% max giveback from peak
-
-    if peak_roe >= 0.0025:  # Activates at +0.25% ROE
+    # 2. INSTANT BREAK-EVEN LOCK AT +0.15% PEAK ($15 GAIN)
+    if peak_roe >= 0.0015:
         if peak_roe < 0.0030:
-            target_floor_roe = 0.0010
-            leash_status = f"🛡 BREAK-EVEN SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +0.10%]"
+            target_floor_roe = 0.0002  # Locks +$2.00 micro-gain immediately
+            leash_status = f"🛡 PENNY LOCK [Peak +{peak_roe*100:.2f}% -> Floor +0.02%]"
         else:
-            if peak_roe < 0.0100:     # +0.30% to +1.00%: Retention scales 70% -> 85%
-                retention = 0.70 + ((peak_roe - 0.003) / 0.007) * 0.15
-            elif peak_roe < 0.0300:   # +1.00% to +3.00%: Retention scales 85% -> 92%
-                retention = 0.85 + ((peak_roe - 0.010) / 0.020) * 0.07
-            else:                     # +3.00%+: Continuous 95% Retention Cap
-                retention = 0.95
-
+            retention = 0.85
             ratchet_floor_roe = peak_roe * retention
-            
-            # GIVEBACK CLAMP: Floor can never drop more than 0.40% below the peak
-            max_giveback_floor = peak_roe - MAX_ALLOWABLE_GIVEBACK
+            max_giveback_floor = peak_roe - 0.0030  # Max 0.30% giveback clamp
             target_floor_roe = max(ratchet_floor_roe, max_giveback_floor)
-            
-            leash_status = f"🛡 DYNAMIC {retention*100:.1f}% LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+            leash_status = f"🛡 DYNAMIC LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
     else:
         target_floor_roe = initial_floor_roe
-        leash_status = f"⚡ STRUCTURAL STOP ({target_floor_roe*100:.2f}%)"
+        leash_status = f"⚡ PENNY STOP ({target_floor_roe*100:.2f}%)"
 
-    # 3. ATR NOISE SHIELD
-    peak_px = entry_px * (1 + peak_roe) if is_long else entry_px * (1 - peak_roe)
-    min_atr_distance = atr_val * 0.30
-
+    # 3. CALCULATE EXACT STOP PRICE FOR ALPACA ORDERBOOK
     if is_long:
-        calc_stop_px = entry_px * (1 + target_floor_roe)
-        max_safe_stop_px = peak_px - min_atr_distance
-        if peak_roe > 0.0030 and calc_stop_px > max_safe_stop_px:
-            stop_px = max(max_safe_stop_px, entry_px * 1.0010)
-        else:
-            stop_px = calc_stop_px
+        stop_px = entry_px * (1 + target_floor_roe)
     else:
-        calc_stop_px = entry_px * (1 - target_floor_roe)
-        max_safe_stop_px = peak_px + min_atr_distance
-        if peak_roe > 0.0030 and calc_stop_px < max_safe_stop_px:
-            stop_px = min(max_safe_stop_px, entry_px * 0.9990)
-        else:
-            stop_px = calc_stop_px
+        stop_px = entry_px * (1 - target_floor_roe)
 
     return stop_px, roe, target_floor_roe, leash_status
 
@@ -341,7 +314,7 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Master Engine V3.4 Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Master Engine V3.5 Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing API Key credentials in environment variables.")
@@ -494,7 +467,7 @@ def execute_stock_engine():
                     volumes_1h = [float(b.get("v", 1)) for b in b_list]
                     
                     atr_val = calculate_atr(highs_1h, lows_1h, closes_1h)
-                    upper_band, lower_band, filter_band = calculate_gaussian_channel(closes_1h)
+                    upper_band, lower_band, filter_line = calculate_gaussian_channel(closes_1h)
 
                     if len(b_list) >= 2:
                         entry_candle_low = float(b_list[-2]["l"])
@@ -739,21 +712,28 @@ def execute_stock_engine():
             is_candle_green = (live_close > live_open) and (live_close >= comp_close)
             is_candle_red = (live_close < live_open) and (live_close <= comp_close)
 
-            max_ext_upper = upper * 1.015
-            max_ext_lower = lower * 0.985
+            # ANTI-CHASING & TOP-WICK REJECTION GATES
+            upper_wick_ratio = (highs[-1] - max(opens[-1], live_close)) / c_range
+            lower_wick_ratio = (min(opens[-1], live_close) - lows[-1]) / c_range
+
+            max_ext_upper = upper * 1.0080 # Extended cap strictly +0.80%
+            max_ext_lower = lower * 0.9920
+
             if live_close > max_ext_upper or live_close < max_ext_lower:
                 continue
 
             fresh_long_breakout = (
-                ((live_close > upper and comp_close <= upper * 1.008) or 
-                 (comp_close > upper and prev_close <= upper * 1.008)) 
+                ((live_close > upper and comp_close <= upper * 1.005) or 
+                 (comp_close > upper and prev_close <= upper * 1.005)) 
                 and is_candle_green
+                and upper_wick_ratio <= 0.25 # Reject seller dumping at top
             )
 
             fresh_short_breakdown = (
-                ((live_close < lower and comp_close >= lower * 0.992) or 
-                 (comp_close < lower and prev_close >= lower * 0.992)) 
+                ((live_close < lower and comp_close >= lower * 0.995) or 
+                 (comp_close < lower and prev_close >= lower * 0.995)) 
                 and is_candle_red
+                and lower_wick_ratio <= 0.25 # Reject buyer dumping at bottom
             )
 
             candidate_obj = None
@@ -823,8 +803,8 @@ def execute_stock_engine():
                 except Exception as e:
                     audit_logs.append(f"PREMARKET ORDER EXCEPTION on {symbol}: {e}")
             else:
-                # 0.30% Ultra-Tight Initial Risk Stop (Penny Loss Protection)
-                initial_stop_px = px * 0.9970 if is_long else px * 1.0030
+                # 0.12% Micro-Penny Initial Risk Stop
+                initial_stop_px = px * 0.9988 if is_long else px * 1.0012
                 clean_initial_stop = round(initial_stop_px, 2)
 
                 order_payload = {
@@ -922,7 +902,7 @@ def execute_stock_engine():
     </tr>
     """
 
-    text_fallback = f"TR-GC-Equities-LS-01 | 1H Master Engine V3.4\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
+    text_fallback = f"TR-GC-Equities-LS-01 | 1H Master Engine V3.5\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
     positions_rows = "".join([
         f"<tr>"
@@ -998,8 +978,8 @@ def execute_stock_engine():
       <body>
         <div class="container">
           <div class="header">
-            <h2>TR-GC-Equities-LS-01 | 1H Master Engine V3.4</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: SMART EMAIL THROTTLING &amp; 0.40% GIVEBACK CLAMP ACTIVE</p>
+            <h2>TR-GC-Equities-LS-01 | 1H Master Engine V3.5</h2>
+            <p>Timestamp: {timestamp} &bull; Mode: SMART EMAIL THROTTLING &amp; MICRO-PENNY STOP ACTIVE</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -1016,11 +996,11 @@ def execute_stock_engine():
 
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Guardrails (Full Strategy Display)</div>
-              &bull; <b>Atomic Native Stop Sync (V3.4 Active):</b> Places new stop first and emergency flattens if stop placement is rejected<br>
+              &bull; <b>Atomic Native Stop Sync (V3.5 Active):</b> Places new stop first and emergency flattens if stop placement is rejected<br>
+              &bull; <b>Anti-Chasing &amp; Top Wick Gate:</b> Rejects entries extended past +0.80% or with top wicks &gt;25%<br>
+              &bull; <b>Micro-Penny Stop (-0.12% ROE):</b> Hard-caps downside risk to ~$12 per $10k position<br>
               &bull; <b>Smart Email Throttling:</b> Runs every 15m silently in background, sends emails hourly or on trade events<br>
-              &bull; <b>Ultra-Tight Initial Risk (0.30% Max ROE):</b> Cuts unratched losers instantly for literal pennies<br>
-              &bull; <b>Strict 0.40% Max Giveback Clamp:</b> Guarantees winners never give back more than 0.40% from their peak<br>
-              &bull; <b>ATR Noise Shield:</b> Absorbs minor intraday wicks to let winning runners expand freely<br>
+              &bull; <b>Strict 0.30% Max Giveback Clamp:</b> Guarantees winners never give back more than 0.30% from their peak<br>
               &bull; <b>Native Alpaca Orderbook Trigger Stops:</b> Resting stop orders placed directly on Alpaca matching engine<br>
               &bull; <b>1-Hour Timeframe &amp; Hard CI Gate (&le;58.0):</b> Eliminates noise &amp; rejects choppy stocks<br>
               &bull; <b>SPY Macro Regime Shield:</b> Enforces broad market direction alignment<br>
