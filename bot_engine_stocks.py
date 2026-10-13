@@ -151,7 +151,7 @@ def cancel_alpaca_native_orders(symbol, open_orders):
 
 def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, audit_logs=None):
     """
-    HARDENED NATIVE STOP SYNC (V3.7 ATOMIC PROTECTED):
+    HARDENED NATIVE STOP SYNC (V3.8 ATOMIC PROTECTED):
     Prevents naked positions by placing new stop first, and immediately market-closes
     if stop placement is rejected by Alpaca API.
     """
@@ -271,33 +271,31 @@ def analyze_live_stock_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, 
 
 def calculate_smart_stock_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0):
     """
-    V3.7 DUAL-ENGINE ULTRA-TIGHT MICRO-PENNY TARGETS:
-    - Hard Initial Downside Risk Floor: -0.12% ROE (~$12 loss on $10k position)
-    - Break-Even Floor Trigger: +0.15% ROE (Locks +$2 profit as soon as trade moves +$15)
+    V3.8 DUAL-ENGINE SMART TARGETS & BALANCED RISK/REWARD:
+    - Hard Initial Downside Risk Floor: -0.35% ROE (or min $0.20 buffer for orderbook acceptance)
+    - Profit Ratchet Trigger: +0.40% ROE (Locks +0.10% ROE minimum / ~$10 gain per $10k)
     """
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
         roe = (entry_px - current_px) / entry_px
 
-    # 1. HARD PENNY STOP FLOOR (-0.12% Max ROE / ~$12 per $10,000 trade)
-    HARD_MAX_RISK_ROE = 0.0012  
+    # 1. HARD PENNY STOP FLOOR (-0.35% Max ROE / ~$35 per $10,000 trade)
+    HARD_MAX_RISK_ROE = 0.0035  
     initial_floor_roe = -HARD_MAX_RISK_ROE
 
-    # 2. INSTANT BREAK-EVEN LOCK AT +0.15% PEAK ($15 GAIN)
-    if peak_roe >= 0.0015:
-        if peak_roe < 0.0030:
-            target_floor_roe = 0.0002  # Locks +$2.00 micro-gain immediately
-            leash_status = f"🛡 PENNY LOCK [Peak +{peak_roe*100:.2f}% -> Floor +0.02%]"
+    # 2. RATCHET PROFIT LOCK AT +0.40% PEAK ($40 GAIN)
+    if peak_roe >= 0.0040:
+        if peak_roe < 0.0080:
+            target_floor_roe = 0.0010  # Locks +$10 minimum
+            leash_status = f"🛡 PENNY LOCK [Peak +{peak_roe*100:.2f}% -> Floor +0.10%]"
         else:
-            retention = 0.85
-            ratchet_floor_roe = peak_roe * retention
-            max_giveback_floor = peak_roe - 0.0030  # Max 0.30% giveback clamp
-            target_floor_roe = max(ratchet_floor_roe, max_giveback_floor)
+            retention = 0.75
+            target_floor_roe = peak_roe * retention
             leash_status = f"🛡 DYNAMIC LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
     else:
         target_floor_roe = initial_floor_roe
-        leash_status = f"⚡ PENNY STOP ({target_floor_roe*100:.2f}%)"
+        leash_status = f"⚡ HARD STOP ({target_floor_roe*100:.2f}%)"
 
     # 3. CALCULATE EXACT STOP PRICE FOR ALPACA ORDERBOOK
     if is_long:
@@ -314,7 +312,7 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Master Engine V3.7 Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Master Engine V3.8 Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing API Key credentials in environment variables.")
@@ -811,9 +809,14 @@ def execute_stock_engine():
                 except Exception as e:
                     audit_logs.append(f"PREMARKET ORDER EXCEPTION on {symbol}: {e}")
             else:
-                # 0.12% Micro-Penny Initial Risk Stop
-                initial_stop_px = px * 0.9988 if is_long else px * 1.0012
-                clean_initial_stop = round(initial_stop_px, 2)
+                # V3.8 ORDERBOOK DUAL BUFFER FIX: Enforces minimum 0.35% / $0.20 cent buffer below current bid
+                min_buffer_pct = 0.0035
+                calculated_stop_dist = max(px * min_buffer_pct, 0.20)
+
+                if is_long:
+                    clean_initial_stop = round(px - calculated_stop_dist, 2)
+                else:
+                    clean_initial_stop = round(px + calculated_stop_dist, 2)
 
                 order_payload = {
                     "symbol": symbol, "qty": format_qty(qty), "side": order_side,
@@ -910,7 +913,7 @@ def execute_stock_engine():
     </tr>
     """
 
-    text_fallback = f"TR-GC-Equities-LS-01 | 1H Dual Engine V3.7\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
+    text_fallback = f"TR-GC-Equities-LS-01 | 1H Dual Engine V3.8\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
     positions_rows = "".join([
         f"<tr>"
@@ -986,8 +989,8 @@ def execute_stock_engine():
       <body>
         <div class="container">
           <div class="header">
-            <h2>TR-GC-Equities-LS-01 | 1H Dual Engine V3.7</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: DUAL-ENGINE (S&amp;P 500 + ROSS $5–$20 SWEET SPOT ACTIVE)</p>
+            <h2>TR-GC-Equities-LS-01 | 1H Dual Engine V3.8</h2>
+            <p>Timestamp: {timestamp} &bull; Mode: DUAL-ENGINE (ORDERBOOK BUFFER &amp; PROFIT REBALANCE ACTIVE)</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -1004,12 +1007,13 @@ def execute_stock_engine():
 
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Guardrails (Dual-Engine Strategy Display)</div>
+              &bull; <b>Orderbook Dual Buffer Fix (V3.8):</b> Guarantees stops sit &ge;0.35% or $0.20 below bid to ensure 100% order acceptance<br>
+              &bull; <b>Rebalanced Profit Ratchet (+0.40% Peak):</b> Allows winning trades to run up to +$40 before locking break-even<br>
               &bull; <b>Dual-Engine Simultaneous Scanner:</b> Runs S&amp;P 500 / Nasdaq Large-Caps and Ross $5–$20 Runners together<br>
               &bull; <b>Ross Small-Cap Gate (&ge;2.20x RVOL &amp; &ge;65% Body):</b> Strict high-volume surge filter prevents penny fakeouts<br>
               &bull; <b>S&amp;P 500 / Nasdaq Equities Gate:</b> Preserves working breakout logic on large caps ($20.00+)<br>
               &bull; <b>Anti-Chasing &amp; Top Wick Gate (&le;25%):</b> Blocks extended entries past +0.80% or upper dumping wicks<br>
-              &bull; <b>Atomic Micro-Penny Stop (-0.12% ROE):</b> Hard-caps downside risk to ~$12 per $10k position<br>
-              &bull; <b>Atomic Native Stop Sync (V3.7 Active):</b> Places new stop first and emergency flattens if rejected<br>
+              &bull; <b>Atomic Native Stop Sync (V3.8 Active):</b> Places new stop first and emergency flattens if rejected<br>
               &bull; <b>Smart Email Throttling:</b> Runs every 15m silently in background, sends emails hourly or on trade events<br>
               &bull; <b>SPY Macro Regime Shield:</b> Enforces broad market direction alignment<br>
               &bull; <b>Afternoon Cutoff (1:45 PM CT+):</b> Strictly 0 new entries allowed to ensure exit runway<br>
