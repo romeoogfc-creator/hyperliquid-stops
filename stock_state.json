@@ -1,6 +1,14 @@
 {
   "closed_trades_ledger": [
     {
+      "symbol": "NKE",
+      "entry_price": 35.54,
+      "exit_price": 35.365,
+      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.49%)",
+      "realized_pnl": -30.624999999999503,
+      "timestamp": "2026-10-13 14:52:38"
+    },
+    {
       "symbol": "MSFT",
       "entry_price": 540.203889,
       "exit_price": 541.147778,
@@ -72,19 +80,19 @@
   "active_position_cache": {
     "BA": {
       "entry_px": 186.501153,
-      "current_px": 186.865,
+      "current_px": 186.055,
       "qty": 52.0,
       "side": "short",
-      "peak_roe": -0.0019509101908877806,
+      "peak_roe": 0.0023922264973878266,
       "best_target_floor_roe": -0.0035,
       "best_stop_px": 187.1539070355
     },
     "IWM": {
       "entry_px": 277.26,
-      "current_px": 276.56,
+      "current_px": 276.29,
       "qty": 35.0,
       "side": "short",
-      "peak_roe": 0.002524706052081038,
+      "peak_roe": 0.0034985212435979605,
       "best_target_floor_roe": -0.0035,
       "best_stop_px": 278.23041
     }
@@ -93,8 +101,8 @@
     "BA",
     "IWM"
   ],
-  "last_run_timestamp": "2026-10-13 09:19:59",
-  "last_email_timestamp": 1791901183.5374954,
+  "last_run_timestamp": "2026-10-13 09:52:54",
+  "last_email_timestamp": 1791903158.7514527,
   "daily_starting_equity": {
     "2026-10-12": 98480.9,
     "2026-10-13": 98171.46
@@ -104,9 +112,12 @@
     "2026-10-13": 98171.46
   },
   "symbols_traded_today": [
+    "QQQ",
+    "NKE",
     "BA",
-    "DIS",
     "IWM",
-    "NKE"
+    "CVX",
+    "DIS",
+    "PLUG"
   ]
 }
