@@ -84,7 +84,9 @@
     "RSR": 1791856800000
   },
   "hibernating_until": 0,
-  "stagnation_tracker": {},
+  "stagnation_tracker": {
+    "CC": 1
+  },
   "closed_trades_ledger": [
     {
       "coin": "RSR",
@@ -326,9 +328,9 @@
   "active_position_cache": {
     "CC": {
       "entry_px": 0.1286,
-      "current_px": 0.12782,
+      "current_px": 0.127755,
       "szi": 193.0,
-      "margin": 8.221156,
+      "margin": 8.219226,
       "side": "LONG",
       "peak_roe": -0.0032270606531881706,
       "strategy": "5M_HOD_BREAKOUT",
@@ -339,7 +341,7 @@
   "previous_active_coins": [
     "CC"
   ],
-  "last_run_timestamp": "2026-10-13 16:15:50",
+  "last_run_timestamp": "2026-10-13 16:18:11",
   "last_email_timestamp": 1791926131.5370774,
   "last_scan_timestamp": 1791926131.5370774,
   "gemini_cache": {
