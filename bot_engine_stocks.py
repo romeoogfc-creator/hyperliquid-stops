@@ -10,6 +10,11 @@ import requests
 import pandas as pd
 import numpy as np
 
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    ZoneInfo = None
+
 API_KEY = os.getenv("APCA_API_KEY_ID") or os.getenv("ALPACA_API_KEY_ID") or os.getenv("APAL_API_KEY_ID")
 SECRET_KEY = os.getenv("APCA_API_SECRET_KEY") or os.getenv("ALPACA_SECRET_KEY") or os.getenv("APAL_SECRET_KEY")
 BASE_URL = os.getenv("APCA_API_BASE_URL") or os.getenv("ALPACA_BASE_URL") or os.getenv("APAL_BASE_URL", "https://paper-api.alpaca.markets")
@@ -49,12 +54,18 @@ def api_retry(func, *args, retries=3, delay=2.0, **kwargs):
                 raise e
 
 def get_central_time():
-    """Calculates Texas Central Time (CT) with dynamic Daylight Saving Time offset."""
+    """Calculates Texas Central Time (CT) with ZoneInfo or dynamic pure-Python DST fallback."""
+    if ZoneInfo is not None:
+        try:
+            return datetime.now(ZoneInfo("America/Chicago")).replace(tzinfo=None)
+        except Exception:
+            pass
+            
     utc_now = datetime.now(timezone.utc).replace(tzinfo=None)
     year = utc_now.year
-    dst_start = datetime(year, 3, 8)
+    dst_start = datetime(year, 3, 8, 7, 0, 0)
     dst_start += timedelta(days=(6 - dst_start.weekday()) % 7)
-    dst_end = datetime(year, 11, 1)
+    dst_end = datetime(year, 11, 1, 6, 0, 0)
     dst_end += timedelta(days=(6 - dst_end.weekday()) % 7)
     
     is_dst = dst_start <= utc_now < dst_end
@@ -85,7 +96,8 @@ def load_state():
     return default_state
 
 def save_state(state):
-    state["last_run_timestamp"] = time.strftime('%Y-%m-%d %H:%M:%S')
+    ct_now = get_central_time()
+    state["last_run_timestamp"] = ct_now.strftime('%Y-%m-%d %H:%M:%S')
     with open(STATE_FILE, "w") as f:
         json.dump(state, f, indent=2)
 
@@ -152,7 +164,7 @@ def cancel_alpaca_native_orders(symbol, open_orders):
 
 def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, audit_logs=None):
     """
-    HARDENED NATIVE STOP SYNC (V3.9 ATOMIC PROTECTED):
+    HARDENED NATIVE STOP SYNC (V3.9.2 ATOMIC PROTECTED):
     Prevents naked positions by placing new stop first, and immediately flattens
     if stop placement is rejected by Alpaca API.
     """
@@ -272,7 +284,7 @@ def analyze_live_stock_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, 
 
 def calculate_smart_stock_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0):
     """
-    V3.9 DUAL-ENGINE EQUAL RISK TARGETS:
+    V3.9.2 DUAL-ENGINE EQUAL RISK TARGETS:
     - Initial Stop Distance: -0.35% ROE (or minimum $0.20 buffer)
     - Profit Ratchet Trigger: +0.40% ROE (Locks +0.10% ROE minimum)
     """
@@ -310,7 +322,7 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Master Engine V3.9 Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Master Engine V3.9.2 Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing API Key credentials in environment variables.")
@@ -323,7 +335,7 @@ def execute_stock_engine():
 
     state = load_state()
 
-    # Reset daily traded symbols ledger on new day
+    # Reset daily traded symbols ledger strictly on Texas Central date change
     if state.get("last_run_timestamp", "")[:10] != today_str:
         state["symbols_traded_today"] = []
 
@@ -598,7 +610,8 @@ def execute_stock_engine():
 
     MAX_STOCK_SLOTS = 5
     
-    is_hard_night_lockout = (ct_now.hour < 8)
+    is_weekend = (ct_now.weekday() >= 5)  # Block Saturday (5) & Sunday (6)
+    is_hard_night_lockout = (ct_now.hour < 8 or ct_now.hour >= 15)
     is_premarket_runner_window = (ct_now.hour == 8 and ct_now.minute < 30)
     is_opening_15m_window = (ct_now.hour == 8 and 30 <= ct_now.minute < 45)
     is_prime_morning_window = (ct_now.hour == 8 and ct_now.minute >= 30) or (9 <= ct_now.hour < 11) or (ct_now.hour == 11 and ct_now.minute <= 30)
@@ -622,7 +635,6 @@ def execute_stock_engine():
     ]
     watchlist = list(dict.fromkeys(raw_watchlist))
 
-    # ENFORCE DAILY SYMBOL COOLDOWN: Exclude symbols already traded today or currently active
     symbols_to_scan = [s for s in watchlist if s not in active_symbols and s not in symbols_traded_today]
     market_candidates = []
     scanned_count = 0
@@ -770,13 +782,14 @@ def execute_stock_engine():
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
     audit_logs.append(f"1H Adaptive Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} validated triggers.")
 
-    if is_hard_night_lockout or is_afternoon_cutoff or is_eod_square_off or peak_giveback_lockout or is_daily_max_loss_triggered:
+    if is_weekend or is_hard_night_lockout or is_afternoon_cutoff or is_eod_square_off or peak_giveback_lockout or is_daily_max_loss_triggered:
         gate_reason = (
+            "Weekend Closed (Sat/Sun)" if is_weekend else (
             "Daily Max Loss Cap (-2.5%)" if is_daily_max_loss_triggered else (
             "Peak/Daily Giveback Shield ($500 Cap)" if peak_giveback_lockout else (
-            "Night Hard Lockout (Before 8:00 AM CT)" if is_hard_night_lockout else (
+            "Night Hard Lockout (Outside Market Hours)" if is_hard_night_lockout else (
             "Afternoon Cutoff (1:45 PM+ CT)" if is_afternoon_cutoff else "EOD Square-Off"
-            )))
+            ))))
         )
         audit_logs.append(f"Execution Gate BLOCKED: {gate_reason}. No new entries allowed.")
     elif active_count < MAX_STOCK_SLOTS and market_candidates:
@@ -785,13 +798,11 @@ def execute_stock_engine():
             px = candidate["close"]
             is_long = candidate["is_long"]
 
-            # EQUAL DOLLAR RISK POSITION SIZING: Caps max loss at ~$35 per trade
             MAX_RISK_USD_PER_TRADE = 35.0
             stop_distance_pct = 0.0035
             stop_distance_usd = max(px * stop_distance_pct, 0.20)
             
             calc_qty = MAX_RISK_USD_PER_TRADE / stop_distance_usd
-            # Cap slot size at maximum 10% equity ($10,000)
             max_shares_cap = (equity * 0.10) / px
             qty = max(1, int(min(calc_qty, max_shares_cap)))
             order_side = "buy" if is_long else "sell"
@@ -907,7 +918,7 @@ def execute_stock_engine():
     </tr>
     """
 
-    text_fallback = f"TR-GC-Equities-LS-01 | 1H Dual Engine V3.9\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
+    text_fallback = f"TR-GC-Equities-LS-01 | 1H Dual Engine V3.9.2\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
     positions_rows = "".join([
         f"<tr>"
@@ -983,8 +994,8 @@ def execute_stock_engine():
       <body>
         <div class="container">
           <div class="header">
-            <h2>TR-GC-Equities-LS-01 | 1H Dual Engine V3.9</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: EQUAL RISK SIZING &amp; DAILY SYMBOL LOCKOUT ACTIVE</p>
+            <h2>TR-GC-Equities-LS-01 | 1H Dual Engine V3.9.2</h2>
+            <p>Timestamp: {timestamp} &bull; Mode: EQUAL RISK SIZING &amp; WEEKEND/TX-CT GATE ACTIVE</p>
           </div>
           <div class="content">
             <div class="net-worth-card">
@@ -1001,7 +1012,8 @@ def execute_stock_engine():
 
             <div class="rules-card">
               <div class="rules-title">&#9989; Active Guardrails (Dual-Engine Strategy Display)</div>
-              &bull; <b>Equal Risk Position Sizing (V3.9):</b> Hard-caps maximum risk at ~$35 USD per trade slot<br>
+              &bull; <b>Equal Risk Position Sizing (V3.9.2):</b> Hard-caps maximum risk at ~$35 USD per trade slot<br>
+              &bull; <b>Weekend &amp; Texas CT Gate:</b> Uses ZoneInfo("America/Chicago") &amp; blocks Sat/Sun order executions<br>
               &bull; <b>Daily Symbol Cooldown:</b> Locks traded stocks for the remainder of the session to prevent churn<br>
               &bull; <b>Mandatory OTO Enforcement:</b> Rejects entries if native exchange stops cannot be placed<br>
               &bull; <b>Dual-Engine Simultaneous Scanner:</b> Runs S&amp;P 500 / Nasdaq Large-Caps and Ross $5–$20 Runners together<br>
