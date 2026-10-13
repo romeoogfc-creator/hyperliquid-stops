@@ -325,13 +325,13 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-13 05:00:45",
+  "last_run_timestamp": "2026-10-13 05:08:42",
   "last_email_timestamp": 1791885339.6285172,
-  "last_scan_timestamp": 1791885633.1659882,
+  "last_scan_timestamp": 1791886106.700241,
   "gemini_cache": {
-    "timestamp": 1791885633.1659882,
+    "timestamp": 1791886106.700241,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Ongoing macroeconomic uncertainty regarding interest rates, coupled with significant regulatory pressure and extreme price volatility, necessitates a high degree of caution for market participants."
+    "briefing": "Risk Level: HIGH; current market conditions remain highly sensitive to macroeconomic shifts, regulatory volatility, and significant liquidity swings, resulting in elevated uncertainty for short-term price stability."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
