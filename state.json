@@ -40,7 +40,7 @@
     "JTO": 1791664200000,
     "BRETT": 1791707700000,
     "MOODENG": 1791666000000,
-    "BERA": 1791792000000,
+    "BERA": 1791979500000,
     "VVV": 1791789600000,
     "APEX": 1791668400000,
     "CFX": 1791669900000,
@@ -323,15 +323,23 @@
       "fill_hash": "SYRUP_1025153335923497"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "BERA": {
+      "strategy": "5M_HOD_BREAKOUT",
+      "entry_px": 0.23974,
+      "side": "LONG",
+      "entry_candle_low": 0.23636,
+      "entry_candle_high": 0.23806
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-14 07:00:37",
-  "last_email_timestamp": 1791978333.9050963,
-  "last_scan_timestamp": 1791979230.7899086,
+  "last_run_timestamp": "2026-10-14 07:08:37",
+  "last_email_timestamp": 1791979707.8529818,
+  "last_scan_timestamp": 1791979707.8529818,
   "gemini_cache": {
-    "timestamp": 1791979230.7899086,
+    "timestamp": 1791979707.8529818,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to geopolitical instability, all of which contribute to an environment of unpredictable price swings and elevated downside risk."
+    "briefing": "Risk Level: **HIGH** \u2014 Increased macroeconomic uncertainty, regulatory scrutiny, and high volatility driven by speculative leverage suggest a precarious environment for short-term market participants."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
