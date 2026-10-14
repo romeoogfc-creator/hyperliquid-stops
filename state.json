@@ -325,13 +325,13 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-14 03:30:31",
-  "last_email_timestamp": 1791965732.7755737,
-  "last_scan_timestamp": 1791966626.2764666,
+  "last_run_timestamp": "2026-10-14 03:41:13",
+  "last_email_timestamp": 1791967268.6970305,
+  "last_scan_timestamp": 1791967268.6970305,
   "gemini_cache": {
-    "timestamp": 1791966626.2764666,
+    "timestamp": 1791967268.6970305,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH**\n\nCurrent market volatility is driven by extreme sensitivity to macroeconomic policy shifts, ongoing regulatory uncertainty, and a high concentration of speculative leverage, all of which leave prices susceptible to sharp, unpredictable liquidations."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, potential regulatory actions, and extreme volatility fueled by speculative leverage."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
