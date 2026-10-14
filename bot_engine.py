@@ -121,8 +121,9 @@ def round_sig_figs(val, sig_figs=5):
 
 def check_liquidity_and_spread(info, coin, max_spread=0.0035, min_depth_usd=7500.0):
     """
-    V3.9.9 LIQUIDITY GATE: Enforces $7,500 orderbook depth and 0.35% max spread
-    to eliminate thin-book slippage on market stop executions.
+    V3.9.9 LIQUIDITY GATE (FIX 3 - TIGHT TOP-OF-BOOK DEPTH):
+    Enforces $7,500 orderbook depth within a tight 0.15% price band to eliminate
+    thin-book stop trigger slippage.
     """
     try:
         l2_book = api_retry(info.l2_snapshot, name=coin)
@@ -145,8 +146,9 @@ def check_liquidity_and_spread(info, coin, max_spread=0.0035, min_depth_usd=7500
         if spread_pct > max_spread:
             return False, f"Wide Spread ({spread_pct*100:.2f}% > {max_spread*100:.2f}%)"
 
-        bid_depth = sum(float(b["px"]) * float(b["sz"]) for b in bids if float(b["px"]) >= mid_px * 0.995)
-        ask_depth = sum(float(a["px"]) * float(a["sz"]) for a in asks if float(a["px"]) <= mid_px * 1.005)
+        # TIGHT TOP-OF-BOOK DEPTH CHECK (0.15% Band)
+        bid_depth = sum(float(b["px"]) * float(b["sz"]) for b in bids if float(b["px"]) >= mid_px * 0.9985)
+        ask_depth = sum(float(a["px"]) * float(a["sz"]) for a in asks if float(a["px"]) <= mid_px * 1.0015)
         total_depth = min(bid_depth, ask_depth)
 
         if total_depth < min_depth_usd:
@@ -309,10 +311,14 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
 
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0, coin="ETH"):
     """
-    V3.9.9 AIRTIGHT ROSS SCALPER (HARDENED LOSS CLAMP):
-    - Downside Risk Capped: Initial stop hard-clamped strictly between -0.40% and -0.65% ROE (Max -$0.14 loss).
+    V3.9.9 AIRTIGHT ROSS SCALPER (FIX 4 - WICK-RESISTANT STOP & 80%-97% PROFIT RATCHET):
+    - Wick-Resistant Stop: Initial stop anchored strictly between -0.80% and -1.25% ROE (~$0.20-$0.28 risk).
     - Fee-Aware Activation (+0.80% ROE): Locks +0.40% floor to cover fees and spread.
-    - Scalp Expansion: Tier 1 (65% gain lock at +1.50%), Tier 2 (80% gain lock at +3.00%+).
+    - Expanded 80%-97% Ratchet Ladder:
+      * +1.50% to +3.00% Peak -> 70% lock
+      * +3.00% to +5.00% Peak -> 85% lock
+      * +5.00% to +10.00% Peak -> 92% lock
+      * +10.00%+ Peak -> 97% lock (Moonshot)
     """
     if is_long:
         roe = (current_px - entry_px) / entry_px
@@ -321,31 +327,37 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, ent
 
     is_major = coin.upper() in ["BTC", "ETH", "SOL"]
     
-    # 1. HARDENED DOWNSIDE STOP CLAMP (-0.40% to -0.65% ROE)
+    # 1. WICK-RESISTANT DOWNSIDE STOP (-0.80% to -1.25% ROE)
     if is_long:
-        raw_struct = (entry_candle_low / entry_px) - 1.0 if entry_px > 0 else -0.0050
-        initial_floor_roe = min(-0.0040, max(-0.0065, raw_struct)) if not is_major else -0.0150
+        raw_struct = (entry_candle_low / entry_px) - 1.0 if entry_px > 0 else -0.0080
+        initial_floor_roe = min(-0.0080, max(-0.0125, raw_struct)) if not is_major else -0.0150
     else:
-        raw_struct = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else -0.0050
-        initial_floor_roe = min(-0.0040, max(-0.0065, raw_struct)) if not is_major else -0.0150
+        raw_struct = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else -0.0080
+        initial_floor_roe = min(-0.0080, max(-0.0125, raw_struct)) if not is_major else -0.0150
 
-    # 2. STRUCTURED TIERED PROFIT RATCHET (+0.80% ACTIVATION)
-    activation_roe = 0.0080
-    be_floor_roe = 0.0040
+    # 2. EXPANDED 80% - 97% PROFIT RATCHET
+    activation_roe = 0.0080  # +0.80% ROE threshold
+    be_floor_roe = 0.0040    # +0.40% ROE fee floor
 
     if peak_roe >= activation_roe:
-        if peak_roe < 0.0150:
+        if peak_roe < 0.0150:      # +0.80% to +1.50% Peak -> Fee Floor +0.40%
             target_floor_roe = max(be_floor_roe, peak_roe * 0.50)
-            leash_status = f"⚡ TIER 0 LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-        elif peak_roe < 0.0300:
-            target_floor_roe = peak_roe * 0.65
-            leash_status = f"⚡ TIER 1 LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-        else:
-            target_floor_roe = peak_roe * 0.80
-            leash_status = f"🚀 TIER 2 MOONSHOT [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+            leash_status = f"⚡ FEE SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+        elif peak_roe < 0.0300:    # +1.50% to +3.00% Peak -> Lock 70%
+            target_floor_roe = peak_roe * 0.70
+            leash_status = f"⚡ TIER 1 LOCK (70%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+        elif peak_roe < 0.0500:    # +3.00% to +5.00% Peak -> Lock 85%
+            target_floor_roe = peak_roe * 0.85
+            leash_status = f"🚀 TIER 2 LOCK (85%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+        elif peak_roe < 0.1000:    # +5.00% to +10.00% Peak -> Lock 92%
+            target_floor_roe = peak_roe * 0.92
+            leash_status = f"🔥 TIER 3 RUNNER (92%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+        else:                      # +10.00%+ Peak -> Lock 97% (Moonshot)
+            target_floor_roe = peak_roe * 0.97
+            leash_status = f"🏆 MOONSHOT LOCK (97%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
     else:
         target_floor_roe = initial_floor_roe
-        leash_status = f"🛡 HARD STOP ({target_floor_roe*100:.2f}%)"
+        leash_status = f"🛡 STRUCTURAL STOP ({target_floor_roe*100:.2f}%)"
 
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
@@ -598,8 +610,8 @@ def execute_engine():
             atr_val = 1.0
             
             cache_info = current_active_cache.get(coin, {})
-            entry_candle_low = cache_info.get("entry_candle_low", entry_px * 0.9950)
-            entry_candle_high = cache_info.get("entry_candle_high", entry_px * 1.0050)
+            entry_candle_low = cache_info.get("entry_candle_low", entry_px * 0.9920)
+            entry_candle_high = cache_info.get("entry_candle_high", entry_px * 1.0080)
 
             if is_long and btc_regime == "RED":
                 should_exit = True
@@ -630,7 +642,7 @@ def execute_engine():
 
             stag_map = state.get("stagnation_tracker", {})
             curr_stag = stag_map.get(coin, 0)
-            if current_roe < -0.0050:
+            if current_roe < -0.0080:
                 curr_stag += 1
                 if "stagnation_tracker" not in state:
                     state["stagnation_tracker"] = {}
@@ -793,7 +805,7 @@ def execute_engine():
                 
                 if prev_px > 0 and mark_px > 0:
                     change_24h = ((mark_px - prev_px) / prev_px) * 100
-                    if change_24h >= 8.0:  # V3.9.9 MOMENTUM ELEVATION (Requires >= +8.0% 24h gain)
+                    if change_24h >= 8.0:
                         scored_universe.append((coin, change_24h, idx))
             except Exception:
                 continue
@@ -818,7 +830,7 @@ def execute_engine():
                 if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
                     continue
 
-                # V3.9.9 LIQUIDITY GATE: Requires $7,500 orderbook depth & 0.35% max spread
+                # V3.9.9 LIQUIDITY GATE (FIX 3): Requires $7,500 depth in 0.15% top-of-book band
                 is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0035, min_depth_usd=7500.0)
                 if not is_liquid:
                     continue
@@ -840,9 +852,12 @@ def execute_engine():
                 live_body_ratio = abs(curr_live_px - c_1_open) / c_range
                 upper_wick_ratio = (c_high_live - max(c_1_open, curr_live_px)) / c_range
 
-                max_extension_px = c_2_high * 1.0080
-                is_near_breakout = (curr_live_px > c_2_high) and (curr_live_px <= max_extension_px)
+                # FIX 1: TRUE 24H HIGH-OF-DAY (HOD) BREAKOUT CHECK
+                all_highs_24h = [float(c["h"]) for c in candles[:-1]]
+                true_24h_hod = max(all_highs_24h) if all_highs_24h else c_2_high
 
+                max_extension_px = true_24h_hod * 1.0080
+                is_near_breakout = (curr_live_px >= true_24h_hod * 0.9970) and (curr_live_px <= max_extension_px)
                 is_clean_structure = (upper_wick_ratio <= 0.25) and (live_body_ratio >= 0.65)
 
                 is_5m_hod_breakout = is_near_breakout and (curr_live_px > c_1_open) and is_clean_structure
@@ -851,8 +866,9 @@ def execute_engine():
                 elapsed_mins = (now_ms - candle_start_ms) / 60000.0
                 live_volume_raw = float(candles[-1].get("v", 0))
                 
-                if elapsed_mins < 1.0:
-                    paced_volume = live_volume_raw
+                # FIX 2: PACING BUFFER GUARD (Requires at least 2.5m before full pacing extrapolation)
+                if elapsed_mins < 2.5:
+                    paced_volume = live_volume_raw * (5.0 / 2.5)
                 else:
                     paced_volume = live_volume_raw * (5.0 / max(1.0, elapsed_mins))
                 
@@ -866,7 +882,7 @@ def execute_engine():
 
                 if ci_5m <= 55.0:
                     if is_5m_hod_breakout and (effective_regime in ["GREEN", "NEUTRAL"]):
-                        extension_pct = max(0.0, (curr_live_px - c_2_high) / c_2_high)
+                        extension_pct = max(0.0, (curr_live_px - true_24h_hod) / true_24h_hod)
                         breakout_score = vol_ratio * (1.0 - extension_pct)
 
                         market_candidates.append({
@@ -874,9 +890,9 @@ def execute_engine():
                             "score": breakout_score, "candle_ts": current_candle_ts,
                             "strategy": "5M_HOD_BREAKOUT",
                             "entry_candle_low": c_2_low,
-                            "entry_candle_high": c_2_high
+                            "entry_candle_high": true_24h_hod
                         })
-                        audit_logs.append(f"🚀 5M HOD BREAKOUT (LONG): {coin} @ ${curr_live_px:.4f} (24h Gain: {coin_24h_change:+.1f}%, Vol: {vol_ratio:.2f}x, Ext: +{extension_pct*100:.2f}%)")
+                        audit_logs.append(f"🚀 TRUE 24H HOD BREAKOUT (LONG): {coin} @ ${curr_live_px:.4f} (24h Gain: {coin_24h_change:+.1f}%, Vol: {vol_ratio:.2f}x, Ext: +{extension_pct*100:.2f}%)")
 
             except Exception:
                 continue
@@ -1146,14 +1162,11 @@ def execute_engine():
 
                 <div class="rules-card">
                   <div class="rules-title">&#9989; Active Guardrails (V3.9.9 Hardened Risk Active)</div>
-                  &bull; <b>Capped Loss Clamp (-0.40% to -0.65%):</b> Restricts max loss to -$0.14 per trade<br>
-                  &bull; <b>Elevated Momentum Floor (&ge; +8.0%):</b> Eliminates weak daily movers that pop and collapse<br>
-                  &bull; <b>Orderbook Depth Gate (&ge; $7,500):</b> Eliminates thin-book stop trigger slippage<br>
-                  &bull; <b>Turn-1 Stop Alignment:</b> Computes exact clamped structural stop at entry moment<br>
-                  &bull; <b>Fee-Aware Break-Even Floor (+0.40%):</b> Covers round-trip Hyperliquid taker fees and orderbook spread<br>
-                  &bull; <b>Sunday Weekly Close Shield:</b> Demands extreme &ge; 3.50x RVOL between 2:00 PM &amp; 7:30 PM CT<br>
-                  &bull; <b>5M Anti-Chasing Cap (&le; +0.80%):</b> Rejects entries extended past previous 5m high<br>
-                  &bull; <b>Upper Wick Rejection Gate (&le; 25%):</b> Blocks entries when top wicks indicate seller dumping<br>
+                  &bull; <b>Wick-Resistant Stop Clamp (-0.80% to -1.25%):</b> Gives room to survive 5m noise while capping risk at pennies<br>
+                  &bull; <b>True 24H High-of-Day (HOD) Filter:</b> Requires genuine 24h peak breakouts across all 288 historical candles<br>
+                  &bull; <b>Top-of-Book Depth Gate (&ge; $7,500 in 0.15% Band):</b> Eliminates thin orderbook stop trigger slippage<br>
+                  &bull; <b>Pacing Buffer Guard:</b> Requires &ge; 2.5m elapsed before full volume extrapolation to prevent fake spikes<br>
+                  &bull; <b>Expanded 80%–97% Profit Ratchet:</b> Locks up to 97% of peak gains on strong runners<br>
                   &bull; <b>Micro-Cap Penny Perp Scope (#20-#200+):</b> Focuses on low-float micro-caps while skipping heavy mega-caps<br>
                   &bull; <b>24/7 Native Orderbook Sync:</b> Posts resting trigger orders directly on Hyperliquid orderbook<br>
                   &bull; <b>BTC Directional Shield:</b> Aligns market direction with daily candle (GREEN = LONGs only)<br>
