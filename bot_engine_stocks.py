@@ -751,7 +751,7 @@ def execute_stock_engine():
                     continue
                 elif is_news_catalyst_window and vol_ratio < 2.50:
                     continue
-                elif is_prime_morning_window and vol_ratio < 1.50:  # Elevated RVOL for equities
+                elif is_prime_morning_window and vol_ratio < 1.50:
                     continue
                 elif is_post_1030_ct and not is_opening_15m_window and not is_news_catalyst_window:
                     if vol_ratio < 1.60:
@@ -818,15 +818,21 @@ def execute_stock_engine():
     audit_logs.append(f"1H Adaptive Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} validated triggers.")
 
     if is_weekend or is_hard_night_lockout or is_afternoon_cutoff or is_eod_square_off or peak_giveback_lockout or is_daily_max_loss_triggered or spy_regime == "NEUTRAL":
-        gate_reason = (
-            "Weekend Closed (Sat/Sun)" if is_weekend else (
-            "Daily Max Loss Cap (-2.5%)" if is_daily_max_loss_triggered else (
-            "Peak/Daily Giveback Shield ($500 Cap)" if peak_giveback_lockout else (
-            "SPY Macro Regime NEUTRAL Mode" if spy_regime == "NEUTRAL" else (
-            "Night Hard Lockout (Outside Market Hours)" if is_hard_night_lockout else (
-            "Afternoon Cutoff (1:45 PM+ CT)" if is_afternoon_cutoff else "EOD Square-Off"
-            ))))))
-        )
+        if is_weekend:
+            gate_reason = "Weekend Closed (Sat/Sun)"
+        elif is_daily_max_loss_triggered:
+            gate_reason = "Daily Max Loss Cap (-2.5%)"
+        elif peak_giveback_lockout:
+            gate_reason = "Peak/Daily Giveback Shield ($500 Cap)"
+        elif spy_regime == "NEUTRAL":
+            gate_reason = "SPY Macro Regime NEUTRAL Mode"
+        elif is_hard_night_lockout:
+            gate_reason = "Night Hard Lockout (Outside Market Hours)"
+        elif is_afternoon_cutoff:
+            gate_reason = "Afternoon Cutoff (1:45 PM+ CT)"
+        else:
+            gate_reason = "EOD Square-Off"
+            
         audit_logs.append(f"Execution Gate BLOCKED: {gate_reason}. No new entries allowed.")
     elif active_count < MAX_STOCK_SLOTS and market_candidates:
         for candidate in market_candidates[: (MAX_STOCK_SLOTS - active_count)]:
