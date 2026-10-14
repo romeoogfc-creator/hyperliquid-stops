@@ -9,7 +9,7 @@
     "STRK": 1791770048.642008,
     "EIGEN": 1791770428.4489343,
     "DYM": 1791788994.3433616,
-    "ZK": 1791788994.3433616,
+    "ZK": 1792030060.8112464,
     "BRETT": 1791795126.127315,
     "ZRO": 1791800885.41498,
     "S": 1791808386.7883759,
@@ -86,6 +86,18 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "ZK",
+      "entry_price": 0.016288,
+      "exit_price": 0.016173,
+      "pnl_usd": -0.19682,
+      "roe_pct": -0.7060412573673902,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-14 02:07:40",
+      "ts_sec": 1791943660.8112464,
+      "fill_hash": "ZK_1116584616416042"
+    },
     {
       "coin": "CC",
       "entry_price": 0.1286,
@@ -309,37 +321,17 @@
       "timestamp": "2026-10-11 21:13:07",
       "ts_sec": 1791753187.6187005,
       "fill_hash": "SYRUP_1025153335923497"
-    },
-    {
-      "coin": "ALGO",
-      "entry_price": 0.12594,
-      "exit_price": 0.12561,
-      "pnl_usd": -0.06567,
-      "roe_pct": -0.26202953787517624,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-11 21:13:07",
-      "ts_sec": 1791753187.6187005,
-      "fill_hash": "ALGO_540791835759570"
     }
   ],
-  "active_position_cache": {
-    "ZK": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.016288,
-      "side": "LONG",
-      "entry_candle_low": 0.016235,
-      "entry_candle_high": 0.016279
-    }
-  },
+  "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-13 21:00:57",
-  "last_email_timestamp": 1791943228.1385846,
-  "last_scan_timestamp": 1791943228.1385846,
+  "last_run_timestamp": "2026-10-13 21:08:18",
+  "last_email_timestamp": 1791943660.8112464,
+  "last_scan_timestamp": 1791943660.8112464,
   "gemini_cache": {
-    "timestamp": 1791943228.1385846,
+    "timestamp": 1791943660.8112464,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts and regulatory uncertainty, leading to significant volatility that can trigger rapid liquidations in either direction."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and excessive leverage, creating a high probability of sharp, unpredictable price swings."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
