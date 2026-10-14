@@ -2,6 +2,15 @@
   "closed_trades_ledger": [
     {
       "symbol": "QQQ",
+      "entry_price": 738.38,
+      "exit_price": 738.38,
+      "realized_pnl": 0.0,
+      "exit_reason": "\ud83c\udfaf Native Orderbook Stop Fill",
+      "timestamp": "2026-10-14 13:33:58",
+      "order_id": "6336fd0f-b68f-498c-ba30-4770a4c1c9fe"
+    },
+    {
+      "symbol": "QQQ",
       "entry_price": 741.79,
       "exit_price": 741.79,
       "realized_pnl": 0.0,
@@ -74,40 +83,23 @@
       "exit_reason": "\ud83d\udcc9 1H Trend Invalidation (Close $217.84 < Upper Band $218.41)",
       "realized_pnl": -17.77500000000046,
       "timestamp": "2026-10-13 15:19:04"
-    },
-    {
-      "symbol": "NKE",
-      "entry_price": 35.54,
-      "exit_price": 35.365,
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (-0.49%)",
-      "realized_pnl": -30.624999999999503,
-      "timestamp": "2026-10-13 14:52:38"
     }
   ],
   "active_position_cache": {},
-  "previous_active_symbols": [
-    "QQQ"
-  ],
-  "last_run_timestamp": "2026-10-13 22:37:58",
-  "last_email_timestamp": 1791949065.8878884,
+  "previous_active_symbols": [],
+  "last_run_timestamp": "2026-10-14 08:34:21",
+  "last_email_timestamp": 1791984838.2051387,
   "daily_starting_equity": {
     "2026-10-12": 98480.9,
-    "2026-10-13": 98171.46
+    "2026-10-13": 98171.46,
+    "2026-10-14": 98075.47
   },
   "daily_peak_equity": {
     "2026-10-12": 98480.9,
-    "2026-10-13": 98171.46
+    "2026-10-13": 98171.46,
+    "2026-10-14": 98075.47
   },
   "symbols_traded_today": [
-    "DIS",
-    "NKE",
-    "AAPL",
-    "IWM",
-    "BTE",
-    "KGC",
-    "CVX",
-    "PLUG",
-    "BA",
     "QQQ"
   ],
   "cooldown_blocklist": {
