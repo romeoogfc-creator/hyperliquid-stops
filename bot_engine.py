@@ -119,7 +119,11 @@ def round_sig_figs(val, sig_figs=5):
         return 0
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
-def check_liquidity_and_spread(info, coin, max_spread=0.0040, min_depth_usd=3000.0):
+def check_liquidity_and_spread(info, coin, max_spread=0.0035, min_depth_usd=7500.0):
+    """
+    V3.9.9 LIQUIDITY GATE: Enforces $7,500 orderbook depth and 0.35% max spread
+    to eliminate thin-book slippage on market stop executions.
+    """
     try:
         l2_book = api_retry(info.l2_snapshot, name=coin)
         levels = l2_book.get("levels", [[], []])
@@ -305,8 +309,8 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
 
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0, coin="ETH"):
     """
-    V3.9.8 AIRTIGHT ROSS SCALPER:
-    - Downside Protection: Initial stop hard-clamped strictly between -0.50% and -1.00% ROE.
+    V3.9.9 AIRTIGHT ROSS SCALPER (HARDENED LOSS CLAMP):
+    - Downside Risk Capped: Initial stop hard-clamped strictly between -0.40% and -0.65% ROE (Max -$0.14 loss).
     - Fee-Aware Activation (+0.80% ROE): Locks +0.40% floor to cover fees and spread.
     - Scalp Expansion: Tier 1 (65% gain lock at +1.50%), Tier 2 (80% gain lock at +3.00%+).
     """
@@ -317,13 +321,13 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, ent
 
     is_major = coin.upper() in ["BTC", "ETH", "SOL"]
     
-    # 1. AIRTIGHT INITIAL DOWNSIDE STOP (Clamped between -0.50% and -1.00% ROE)
+    # 1. HARDENED DOWNSIDE STOP CLAMP (-0.40% to -0.65% ROE)
     if is_long:
-        raw_struct = (entry_candle_low / entry_px) - 1.0 if entry_px > 0 else -0.0065
-        initial_floor_roe = min(-0.0050, max(-0.0100, raw_struct)) if not is_major else -0.0150
+        raw_struct = (entry_candle_low / entry_px) - 1.0 if entry_px > 0 else -0.0050
+        initial_floor_roe = min(-0.0040, max(-0.0065, raw_struct)) if not is_major else -0.0150
     else:
-        raw_struct = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else -0.0065
-        initial_floor_roe = min(-0.0050, max(-0.0100, raw_struct)) if not is_major else -0.0150
+        raw_struct = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else -0.0050
+        initial_floor_roe = min(-0.0040, max(-0.0065, raw_struct)) if not is_major else -0.0150
 
     # 2. STRUCTURED TIERED PROFIT RATCHET (+0.80% ACTIVATION)
     activation_roe = 0.0080
@@ -426,7 +430,7 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.9.8 Master Engine Started (Airtight Scalper Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V3.9.9 Master Engine Started (Airtight Scalper Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -484,7 +488,7 @@ def execute_engine():
         required_vol_ratio = 3.50
         audit_logs.append(f"🛡️ SUNDAY WEEKLY CLOSE SHIELD ACTIVE (2:00PM-7:30PM CT): Requiring extreme RVOL >= {required_vol_ratio:.2f}x to enter.")
     else:
-        required_vol_ratio = 2.50 if gemini_risk == "HIGH" else 2.20
+        required_vol_ratio = 2.80 if gemini_risk == "HIGH" else (2.40 if gemini_risk == "MODERATE" else 2.20)
         audit_logs.append(f"⚡ 5M Fast Scalper Active: Target RVOL >= {required_vol_ratio:.2f}x | Sizing: 0.85x")
 
     effective_regime = btc_regime
@@ -594,8 +598,8 @@ def execute_engine():
             atr_val = 1.0
             
             cache_info = current_active_cache.get(coin, {})
-            entry_candle_low = cache_info.get("entry_candle_low", entry_px * 0.9935)
-            entry_candle_high = cache_info.get("entry_candle_high", entry_px * 1.0065)
+            entry_candle_low = cache_info.get("entry_candle_low", entry_px * 0.9950)
+            entry_candle_high = cache_info.get("entry_candle_high", entry_px * 1.0050)
 
             if is_long and btc_regime == "RED":
                 should_exit = True
@@ -626,7 +630,7 @@ def execute_engine():
 
             stag_map = state.get("stagnation_tracker", {})
             curr_stag = stag_map.get(coin, 0)
-            if current_roe < -0.0065:
+            if current_roe < -0.0050:
                 curr_stag += 1
                 if "stagnation_tracker" not in state:
                     state["stagnation_tracker"] = {}
@@ -698,7 +702,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V3.9.8", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V3.9.9", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -789,7 +793,7 @@ def execute_engine():
                 
                 if prev_px > 0 and mark_px > 0:
                     change_24h = ((mark_px - prev_px) / prev_px) * 100
-                    if change_24h > 0.0:
+                    if change_24h >= 8.0:  # V3.9.9 MOMENTUM ELEVATION (Requires >= +8.0% 24h gain)
                         scored_universe.append((coin, change_24h, idx))
             except Exception:
                 continue
@@ -814,7 +818,8 @@ def execute_engine():
                 if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
                     continue
 
-                is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0040, min_depth_usd=3000.0)
+                # V3.9.9 LIQUIDITY GATE: Requires $7,500 orderbook depth & 0.35% max spread
+                is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0035, min_depth_usd=7500.0)
                 if not is_liquid:
                     continue
 
@@ -854,7 +859,7 @@ def execute_engine():
                 avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
                 vol_ratio = paced_volume / avg_vol if avg_vol > 0 else 1.0
 
-                if vol_ratio < required_vol_ratio or coin_24h_change < 5.0:
+                if vol_ratio < required_vol_ratio or coin_24h_change < 8.0:
                     continue
 
                 ci_5m = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
@@ -938,7 +943,6 @@ def execute_engine():
                         "entry_candle_low": e_candle_low, "entry_candle_high": e_candle_high
                     }
 
-                    # V3.9.8 AIRTIGHT TURN-1 STOP ALIGNMENT
                     initial_stop_px, initial_tp_px, _, _, initial_status = calculate_smart_exchange_targets(
                         px, is_long, px, 0.0, e_candle_low, e_candle_high, peak_roe=0.0, coin=coin
                     )
@@ -946,7 +950,7 @@ def execute_engine():
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V3.9.8", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V3.9.9", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -1000,7 +1004,7 @@ def execute_engine():
         
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V3.9.8 | Airtight Ross Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V3.9.9 | Airtight Ross Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         summary_card_html = f"""
         <div class="summary-card">
@@ -1124,7 +1128,7 @@ def execute_engine():
           <body>
             <div class="container">
               <div class="header">
-                <h2>TR-GC-Crypto-LS-23-V3.9.8 | Airtight Ross Scalper</h2>
+                <h2>TR-GC-Crypto-LS-23-V3.9.9 | Airtight Ross Scalper</h2>
                 <p>Timestamp: {timestamp} (5M Candles &amp; 5M Scanning Active)</p>
               </div>
               <div class="content">
@@ -1141,18 +1145,16 @@ def execute_engine():
                 {summary_card_html}
 
                 <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (V3.9.8 Airtight Production Active)</div>
-                  &bull; <b>Turn-1 Stop Alignment:</b> Computes exact clamped structural stop at entry moment to prevent order updates<br>
-                  &bull; <b>Air-Tight Downside Clamp (-0.50% to -1.00%):</b> Clamps initial stop below entry to prevent premature stop outs<br>
-                  &bull; <b>1-Minute Pacing Buffer:</b> Prevents early 10s candle volume projection spikes<br>
+                  <div class="rules-title">&#9989; Active Guardrails (V3.9.9 Hardened Risk Active)</div>
+                  &bull; <b>Capped Loss Clamp (-0.40% to -0.65%):</b> Restricts max loss to -$0.14 per trade<br>
+                  &bull; <b>Elevated Momentum Floor (&ge; +8.0%):</b> Eliminates weak daily movers that pop and collapse<br>
+                  &bull; <b>Orderbook Depth Gate (&ge; $7,500):</b> Eliminates thin-book stop trigger slippage<br>
+                  &bull; <b>Turn-1 Stop Alignment:</b> Computes exact clamped structural stop at entry moment<br>
                   &bull; <b>Fee-Aware Break-Even Floor (+0.40%):</b> Covers round-trip Hyperliquid taker fees and orderbook spread<br>
-                  &bull; <b>Sunday Weekly Close Shield:</b> Demands extreme &ge; 3.50x RVOL between 2:00 PM &amp; 7:30 PM CT to bypass weekend liquidity drains<br>
+                  &bull; <b>Sunday Weekly Close Shield:</b> Demands extreme &ge; 3.50x RVOL between 2:00 PM &amp; 7:30 PM CT<br>
                   &bull; <b>5M Anti-Chasing Cap (&le; +0.80%):</b> Rejects entries extended past previous 5m high<br>
                   &bull; <b>Upper Wick Rejection Gate (&le; 25%):</b> Blocks entries when top wicks indicate seller dumping<br>
                   &bull; <b>Micro-Cap Penny Perp Scope (#20-#200+):</b> Focuses on low-float micro-caps while skipping heavy mega-caps<br>
-                  &bull; <b>Zero Rate-Limit Bulk Extraction:</b> Fetches 150+ asset contexts in 1 single bulk call (`meta_and_asset_ctxs`)<br>
-                  &bull; <b>Pure Ross Volume Gate (&ge; 2.2x - 2.5x):</b> Eliminates low-volume chop fakeouts early<br>
-                  &bull; <b>24H Momentum Floor (&ge; +5.0%):</b> Trades exclusively in active daily uptrends<br>
                   &bull; <b>24/7 Native Orderbook Sync:</b> Posts resting trigger orders directly on Hyperliquid orderbook<br>
                   &bull; <b>BTC Directional Shield:</b> Aligns market direction with daily candle (GREEN = LONGs only)<br>
                   &bull; <b>24H Post-Loss Cooldown Blocklist:</b> Auto-bans any coin closed at a loss for 24 hours<br>
