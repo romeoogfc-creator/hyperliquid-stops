@@ -325,13 +325,13 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-14 11:00:35",
-  "last_email_timestamp": 1791992729.711329,
-  "last_scan_timestamp": 1791993627.6869245,
+  "last_run_timestamp": "2026-10-14 11:15:35",
+  "last_email_timestamp": 1791994530.4683378,
+  "last_scan_timestamp": 1791994530.4683378,
   "gemini_cache": {
-    "timestamp": 1791993627.6869245,
-    "risk": "MODERATE",
-    "briefing": "**Risk Level: MODERATE** \u2014 While ongoing institutional adoption and favorable macro liquidity provide a strong structural floor, crypto markets remain vulnerable to sudden regulatory shifts, overextended leverage, and persistent macroeconomic uncertainty."
+    "timestamp": 1791994530.4683378,
+    "risk": "HIGH",
+    "briefing": "**Risk Level: HIGH** \n\nDriven by persistent macroeconomic tightening, ongoing regulatory scrutiny, and elevated market leverage, current cryptocurrency markets face severe vulnerability to sudden liquidity shocks and sharp downside volatility."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
