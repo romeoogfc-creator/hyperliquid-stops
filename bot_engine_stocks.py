@@ -418,6 +418,7 @@ def execute_stock_engine():
         df_1m = pd.DataFrame()
         vwap_px = current_px
         ci_pos = 50.0
+        vol_ratio = 1.0
 
         try:
             bar_res = requests.get(f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=1Min&limit=30&feed=iex&start={start_date}", headers=HEADERS)
@@ -429,7 +430,10 @@ def execute_stock_engine():
                     highs_pos = [float(b["h"]) for b in b_list]
                     lows_pos = [float(b["l"]) for b in b_list]
                     closes_pos = [float(b["c"]) for b in b_list]
+                    volumes_pos = [float(b["v"]) for b in b_list]
                     ci_pos = calculate_choppiness_index(highs_pos, lows_pos, closes_pos)
+                    avg_v = np.mean(volumes_pos[:-1]) if len(volumes_pos) > 1 else 1.0
+                    vol_ratio = volumes_pos[-1] / avg_v if avg_v > 0 else 1.0
         except Exception:
             pass
 
@@ -483,17 +487,25 @@ def execute_stock_engine():
             "entry_px": entry_px, "current_px": current_px, "qty": qty, "peak_roe": peak_roe
         }
 
-        stop_threshold = -0.010 
+        # MICRO-RATCHET TRAILING ENGINE (80%-97% PROFIT LOCK)
+        stop_threshold = -0.010  # Initial fast stop (-1.0% ROE)
         status_label = "Active Crossing Scalp"
 
-        if peak_roe >= 0.030:
-            stop_threshold = +0.020
-            status_label = f"Tier 2 Lock (+2.0% Floor) [Peak: {peak_roe*100:+.1f}%]"
-        elif peak_roe >= 0.015:
-            stop_threshold = +0.010
+        if peak_roe >= 0.050:  # Ballistic 5%+ Runner
+            if vol_ratio >= 1.5:
+                stop_threshold = peak_roe - 0.010  # Give 1.0% room for volume runner
+                status_label = f"Ballistic Vol Runner Trail (+{stop_threshold*100:.1f}% Floor) [{vol_ratio:.1f}x Vol]"
+            else: # Volume stall -> lock 95% immediately
+                stop_threshold = peak_roe - 0.003
+                status_label = f"Volume Stall Lock (+{stop_threshold*100:.1f}% Floor) [{vol_ratio:.1f}x Vol]"
+        elif peak_roe >= 0.030: # Tier 2 Lock (+3.0% Peak)
+            stop_threshold = +0.022 # Lock +2.2% Floor (80%+ locked)
+            status_label = f"Tier 2 Lock (+2.2% Floor) [Peak: {peak_roe*100:+.1f}%]"
+        elif peak_roe >= 0.015: # Tier 1 Lock (+1.5% Peak)
+            stop_threshold = +0.010 # Lock +1.0% Floor
             status_label = f"Tier 1 Lock (+1.0% Floor) [Peak: {peak_roe*100:+.1f}%]"
-        elif peak_roe >= 0.008:
-            stop_threshold = 0.000 
+        elif peak_roe >= 0.008: # Breakeven Floor (+0.8% Peak)
+            stop_threshold = 0.000  # Lock Breakeven (0.0% Floor)
             status_label = f"Breakeven Floor (0.0% Floor) [Peak: {peak_roe*100:+.1f}%]"
 
         should_exit = current_roe <= stop_threshold
@@ -545,17 +557,39 @@ def execute_stock_engine():
     MAX_STOCK_SLOTS = 5
     is_trading_window = (7 <= ct_now.hour < 10) or (ct_now.hour == 10 and ct_now.minute == 0)
 
-    momentum_watchlist = [
-        "PLTR", "SOUN", "BBAI", "MARA", "RIOT", "CLSK", "BITF", "HUT", "IREN", "CORZ",
-        "COIN", "HOOD", "MSTR", "UPST", "AFRM", "CVNA", "RBLX", "DKNG", "LAZR", "QS",
-        "RIVN", "LCID", "NKLA", "CHPT", "BLNK", "RUN", "SPWR", "PLUG", "FCEL", "ROKU"
+    # =========================================================================
+    # DYNAMIC ALPACA SCREENER + FULL 75+ MACRO/TECH WATCHLIST
+    # =========================================================================
+    dynamic_gainers = []
+    try:
+        # Use Alpaca's top market movers screener
+        mover_url = f"https://data.alpaca.markets/v1beta1/screener/stocks/movers?top=20"
+        mover_res = requests.get(mover_url, headers=HEADERS)
+        if mover_res.status_code == 200:
+            movers = mover_res.json().get("gainers", [])
+            for item in movers:
+                sym = item.get("symbol")
+                if sym:
+                    dynamic_gainers.append(sym)
+    except Exception as e:
+        audit_logs.append(f"Dynamic Screener Notice: Fallback to full watchlist ({e}).")
+
+    base_watchlist = [
+        "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "AVGO", "QCOM",
+        "INTC", "MU", "ARM", "AMAT", "LRCX", "SMCI", "ORCL", "CRM", "NOW", "PANW", "FTNT", "PLTR",
+        "COIN", "HOOD", "SQ", "PYPL", "NET", "SNOW", "SHOP", "MSTR", "UBER", "ABNB", "RBLX", "DKNG",
+        "NFLX", "COST", "WMT", "HD", "DIS", "NKE", "SBUX", "BA", "CAT", "GE", "HON", "DE", "LMT",
+        "JPM", "BAC", "GS", "MS", "V", "MA", "XOM", "CVX", "SLB", "LLY", "UNH", "JNJ", "PFE", "ABBV",
+        "TXN", "ADI", "KLAC", "MCHP", "DELL", "SPY", "QQQ", "IWM", "DIA", "SMH", "XLF", "XLE",
+        "SOUN", "BBAI", "MARA", "RIOT", "CLSK", "BITF", "HUT", "IREN", "CORZ", "UPST", "AFRM", "CVNA"
     ]
 
-    symbols_to_scan = [s for s in momentum_watchlist if s not in active_symbols]
+    combined_scan_list = list(dict.fromkeys(dynamic_gainers + base_watchlist))
+    symbols_to_scan = [s for s in combined_scan_list if s not in active_symbols]
     market_candidates = []
     scanned_count = 0
 
-    chunk_size = 15
+    chunk_size = 20
     for i in range(0, len(symbols_to_scan), chunk_size):
         chunk = symbols_to_scan[i:i + chunk_size]
         symbols_param = ",".join(chunk)
@@ -573,10 +607,11 @@ def execute_stock_engine():
 
         for symbol in chunk:
             b_list = all_bars_data.get(symbol, [])
-            if not b_list or len(b_list) < 15:
+            scanned_count += 1
+            
+            if not b_list or len(b_list) < 5:
                 continue
 
-            scanned_count += 1
             df_1m = pd.DataFrame(b_list)
             closes = [float(b["c"]) for b in b_list]
             volumes = [float(b["v"]) for b in b_list]
