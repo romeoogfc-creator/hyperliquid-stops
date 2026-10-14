@@ -165,9 +165,9 @@ def cancel_alpaca_native_orders(symbol, open_orders):
 
 def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, audit_logs=None):
     """
-    HARDENED NATIVE STOP SYNC (V3.9.3 ATOMIC PROTECTED):
-    Prevents naked positions by placing new stop first, and immediately flattens
-    if stop placement is rejected by Alpaca API.
+    HARDENED NATIVE STOP SYNC (V3.9.4 ATOMIC CANCEL-BEFORE-PLACE):
+    Prevents duplicate position stop rejections by explicitly canceling all active stop/OTO
+    orders for the symbol before placing the updated native stop.
     """
     try:
         clean_stop_px = round(stop_px, 2)
@@ -187,6 +187,15 @@ def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, 
                 break
 
         if needs_update:
+            # Atomic cancellation of prior stops to avoid Alpaca position leg collision
+            for o in existing_stop_orders:
+                try:
+                    api_retry(requests.delete, f"{BASE_URL}/v2/orders/{o.get('id')}", headers=HEADERS)
+                except Exception:
+                    pass
+
+            time.sleep(0.1)
+
             stop_order_payload = {
                 "symbol": symbol,
                 "qty": clean_qty,
@@ -198,11 +207,6 @@ def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, 
             res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=stop_order_payload, headers=HEADERS)
             
             if res.status_code == 200:
-                for o in existing_stop_orders:
-                    try:
-                        api_retry(requests.delete, f"{BASE_URL}/v2/orders/{o.get('id')}", headers=HEADERS)
-                    except Exception:
-                        pass
                 if audit_logs is not None:
                     audit_logs.append(f"🛡 NATIVE ALPACA STOP SYNC [{symbol}]: Placed Trigger Stop @ ${clean_stop_px:.2f}")
             else:
@@ -211,11 +215,6 @@ def sync_alpaca_native_trigger_stop(symbol, is_long, qty, stop_px, open_orders, 
                 api_retry(requests.post, f"{BASE_URL}/v2/orders", json={
                     "symbol": symbol, "qty": clean_qty, "side": close_side, "type": "market", "time_in_force": "day"
                 }, headers=HEADERS)
-                for o in existing_stop_orders:
-                    try:
-                        api_retry(requests.delete, f"{BASE_URL}/v2/orders/{o.get('id')}", headers=HEADERS)
-                    except Exception:
-                        pass
 
     except Exception as e:
         if audit_logs is not None:
@@ -285,26 +284,48 @@ def analyze_live_stock_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, 
 
 def calculate_smart_stock_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0):
     """
-    V3.9.3 DUAL-ENGINE HARDENED TARGETS:
-    - Initial Hard Risk: -0.35% ROE hard stop
-    - Tiered Ratchet: Activates at +0.40% ROE (Locks +0.10% ROE floor) scaling to 75% peak retention above +0.80%
+    V3.9.4 DUAL-ENGINE HARDENED TARGETS:
+    - Wick-Resistant Stop: Initial stop anchored strictly between -0.80% and -1.25% ROE.
+    - Fee/BE Shield (+0.80% ROE): Locks +0.30% soft breakeven floor to avoid $0.00 churn.
+    - Expanded 70%-95% Ratchet Ladder:
+      * +1.50% to +3.00% Peak -> 70% lock
+      * +3.00% to +5.00% Peak -> 85% lock
+      * +5.00% to +10.00% Peak -> 92% lock
+      * +10.00%+ Peak -> 95% lock (Moonshot)
     """
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
         roe = (entry_px - current_px) / entry_px
 
-    HARD_MAX_RISK_ROE = 0.0035  
-    initial_floor_roe = -HARD_MAX_RISK_ROE
+    # 1. WICK-RESISTANT INITIAL DOWNSIDE STOP (-0.80% to -1.25% ROE)
+    if is_long:
+        raw_struct = (entry_candle_low / entry_px) - 1.0 if entry_px > 0 else -0.0080
+        initial_floor_roe = min(-0.0080, max(-0.0125, raw_struct))
+    else:
+        raw_struct = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else -0.0080
+        initial_floor_roe = min(-0.0080, max(-0.0125, raw_struct))
 
-    if peak_roe >= 0.0040:
-        if peak_roe < 0.0080:
-            target_floor_roe = 0.0010  # Locks +0.10% minimum gain
-            leash_status = f"🛡 PENNY LOCK [Peak +{peak_roe*100:.2f}% -> Floor +0.10%]"
-        else:
-            retention = 0.75
-            target_floor_roe = peak_roe * retention
-            leash_status = f"🛡 DYNAMIC LOCK [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+    # 2. EXPANDED 70% - 95% PROFIT RATCHET
+    activation_roe = 0.0080  # +0.80% ROE threshold
+    be_floor_roe = 0.0030    # +0.30% ROE soft breakeven floor
+
+    if peak_roe >= activation_roe:
+        if peak_roe < 0.0150:      # +0.80% to +1.50% Peak -> Soft BE Floor
+            target_floor_roe = max(be_floor_roe, peak_roe * 0.40)
+            leash_status = f"🛡 FEE SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+        elif peak_roe < 0.0300:    # +1.50% to +3.00% Peak -> Lock 70%
+            target_floor_roe = peak_roe * 0.70
+            leash_status = f"⚡ TIER 1 LOCK (70%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+        elif peak_roe < 0.0500:    # +3.00% to +5.00% Peak -> Lock 85%
+            target_floor_roe = peak_roe * 0.85
+            leash_status = f"🚀 TIER 2 LOCK (85%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+        elif peak_roe < 0.1000:    # +5.00% to +10.00% Peak -> Lock 92%
+            target_floor_roe = peak_roe * 0.92
+            leash_status = f"🔥 TIER 3 RUNNER (92%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+        else:                      # +10.00%+ Peak -> Lock 95% (Moonshot)
+            target_floor_roe = peak_roe * 0.95
+            leash_status = f"🏆 MOONSHOT LOCK (95%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
     else:
         target_floor_roe = initial_floor_roe
         leash_status = f"⚡ HARD STOP ({target_floor_roe*100:.2f}%)"
@@ -323,7 +344,7 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Master Engine V3.9.3 Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Master Engine V3.9.4 Started (Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing API Key credentials in environment variables.")
@@ -336,7 +357,6 @@ def execute_stock_engine():
 
     state = load_state()
 
-    # Reset daily traded symbols ledger strictly on Texas Central date change
     if state.get("last_run_timestamp", "")[:10] != today_str:
         state["symbols_traded_today"] = []
 
@@ -449,7 +469,6 @@ def execute_stock_engine():
     active_count = len(positions_list)
     positions_data = []
     
-    # SINGLE-SYMBOL LOCKOUT: Combine active positions AND pending open order symbols
     active_symbols = set([p.get("symbol") for p in positions_list if p.get("symbol")])
     pending_order_symbols = set([o.get("symbol") for o in open_orders if o.get("symbol")])
     active_symbols.update(pending_order_symbols)
@@ -493,9 +512,10 @@ def execute_stock_engine():
                     atr_val = calculate_atr(highs_1h, lows_1h, closes_1h)
                     upper_band, lower_band, filter_line = calculate_gaussian_channel(closes_1h)
 
-                    # ENTRY STRUCTURAL LOCK: Store initial breakout level at entry to prevent floating invalidation drift
+                    # ENTRY STRUCTURAL LOCK: Evaluated against Gaussian Center/Filter Line
                     entry_gc_upper = cache_info.get("entry_gc_upper", upper_band)
                     entry_gc_lower = cache_info.get("entry_gc_lower", lower_band)
+                    entry_filter_line = cache_info.get("entry_filter_line", filter_line)
 
                     if len(b_list) >= 2:
                         entry_candle_low = float(b_list[-2]["l"])
@@ -513,13 +533,13 @@ def execute_stock_engine():
                         should_exit = True
                         exit_reason = knife_reason
 
-                    # STRUCTURAL TREND INVALIDATION: Evaluated against saved entry_gc_upper/lower
-                    if is_long and current_px < entry_gc_upper * 0.998:
+                    # STRUCTURAL TREND INVALIDATION: Evaluated against Center Filter Line
+                    if is_long and current_px < entry_filter_line * 0.998:
                         should_exit = True
-                        exit_reason = f"📉 1H Structural Invalidation (Close ${current_px:.2f} < Saved Entry Upper ${entry_gc_upper:.2f})"
-                    elif (not is_long) and current_px > entry_gc_lower * 1.002:
+                        exit_reason = f"📉 1H Structural Invalidation (Close ${current_px:.2f} < Center Filter Line ${entry_filter_line:.2f})"
+                    elif (not is_long) and current_px > entry_filter_line * 1.002:
                         should_exit = True
-                        exit_reason = f"📈 1H Structural Invalidation (Close ${current_px:.2f} > Saved Entry Lower ${entry_gc_lower:.2f})"
+                        exit_reason = f"📈 1H Structural Invalidation (Close ${current_px:.2f} > Center Filter Line ${entry_filter_line:.2f})"
         except Exception as e:
             audit_logs.append(f"Position analytics warning on {symbol}: {e}")
 
@@ -577,7 +597,8 @@ def execute_stock_engine():
             "entry_px": entry_px, "current_px": current_px, "qty": qty, "side": side,
             "peak_roe": peak_roe, "best_target_floor_roe": target_floor_roe, "best_stop_px": stop_px_calc,
             "entry_gc_upper": cache_info.get("entry_gc_upper", entry_px),
-            "entry_gc_lower": cache_info.get("entry_gc_lower", entry_px)
+            "entry_gc_lower": cache_info.get("entry_gc_lower", entry_px),
+            "entry_filter_line": cache_info.get("entry_filter_line", entry_px)
         }
 
         positions_data.append({
@@ -639,9 +660,8 @@ def execute_stock_engine():
 
     MAX_STOCK_SLOTS = 5
     
-    is_weekend = (ct_now.weekday() >= 5)  # Block Saturday (5) & Sunday (6)
-    is_hard_night_lockout = (ct_now.hour < 8 or (ct_now.hour == 8 and ct_now.minute < 30) or ct_now.hour >= 15) # Market opens 8:30 AM CT
-    is_premarket_runner_window = False
+    is_weekend = (ct_now.weekday() >= 5)
+    is_hard_night_lockout = (ct_now.hour < 8 or (ct_now.hour == 8 and ct_now.minute < 30) or ct_now.hour >= 15)
     is_opening_15m_window = (ct_now.hour == 8 and 30 <= ct_now.minute < 45)
     is_prime_morning_window = (ct_now.hour == 8 and ct_now.minute >= 30) or (9 <= ct_now.hour < 11) or (ct_now.hour == 11 and ct_now.minute <= 30)
     is_news_catalyst_window = (ct_now.hour == 11 and ct_now.minute > 30) or (ct_now.hour == 12) or (ct_now.hour == 13 and ct_now.minute < 45)
@@ -664,7 +684,6 @@ def execute_stock_engine():
     ]
     watchlist = list(dict.fromkeys(raw_watchlist))
 
-    # SINGLE-SYMBOL & COOLDOWN FILTER: Exclude active, traded today, or 24h cooldown symbols
     symbols_to_scan = [
         s for s in watchlist 
         if s not in active_symbols 
@@ -796,19 +815,20 @@ def execute_stock_engine():
 
             candidate_obj = None
             
-            # SPY STRICT DIRECTIONAL REGIME: Only LONGs when SPY is GREEN; Only SHORTs when SPY is RED.
             if spy_regime == "GREEN" and fresh_long_breakout:
                 candidate_obj = {
                     "symbol": symbol, "close": live_close, "is_long": True,
                     "score": (live_close - upper) / upper, "ci": ci,
-                    "entry_gc_upper": upper, "entry_gc_lower": lower
+                    "entry_gc_upper": upper, "entry_gc_lower": lower,
+                    "entry_filter_line": filter_band
                 }
 
             if spy_regime == "RED" and fresh_short_breakdown:
                 candidate_obj = {
                     "symbol": symbol, "close": live_close, "is_long": False,
                     "score": (lower - live_close) / lower, "ci": ci,
-                    "entry_gc_upper": upper, "entry_gc_lower": lower
+                    "entry_gc_upper": upper, "entry_gc_lower": lower,
+                    "entry_filter_line": filter_band
                 }
 
             if candidate_obj:
@@ -844,7 +864,7 @@ def execute_stock_engine():
                 continue
 
             MAX_RISK_USD_PER_TRADE = 35.0
-            stop_distance_pct = 0.0035
+            stop_distance_pct = 0.0080
             stop_distance_usd = max(px * stop_distance_pct, 0.20)
             
             calc_qty = MAX_RISK_USD_PER_TRADE / stop_distance_usd
@@ -872,7 +892,8 @@ def execute_stock_engine():
                     state["active_position_cache"][symbol] = {
                         "entry_px": px, "side": "long" if is_long else "short", "qty": qty,
                         "entry_gc_upper": candidate.get("entry_gc_upper", px),
-                        "entry_gc_lower": candidate.get("entry_gc_lower", px)
+                        "entry_gc_lower": candidate.get("entry_gc_lower", px),
+                        "entry_filter_line": candidate.get("entry_filter_line", px)
                     }
 
                     audit_logs.append(f"1H ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} [Native OTO Trigger Stop Active @ ${clean_initial_stop:.2f}]")
@@ -954,7 +975,7 @@ def execute_stock_engine():
     </tr>
     """
 
-    text_fallback = f"TR-GC-Equities-LS-01 | 1H Dual Engine V3.9.3\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
+    text_fallback = f"TR-GC-Equities-LS-01 | 1H Dual Engine V3.9.4\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
     positions_rows = "".join([
         f"<tr>"
@@ -1030,7 +1051,7 @@ def execute_stock_engine():
       <body>
         <div class="container">
           <div class="header">
-            <h2>TR-GC-Equities-LS-01 | 1H Dual Engine V3.9.3</h2>
+            <h2>TR-GC-Equities-LS-01 | 1H Dual Engine V3.9.4</h2>
             <p>Timestamp: {timestamp} &bull; Mode: HARDENED SPY REGIME &amp; STRUCTURAL LOCK ACTIVE</p>
           </div>
           <div class="content">
@@ -1047,12 +1068,13 @@ def execute_stock_engine():
             {summary_card_html}
 
             <div class="rules-card">
-              <div class="rules-title">&#9989; Active Guardrails (V3.9.3 Production Hardened)</div>
-              &bull; <b>Entry Structural Lock:</b> Anchors breakout level to state to prevent dynamic band exit drift<br>
+              <div class="rules-title">&#9989; Active Guardrails (V3.9.4 Production Hardened)</div>
+              &bull; <b>Entry Structural Lock:</b> Anchors Gaussian Channel center filter line to prevent dynamic band exit drift<br>
+              &bull; <b>Wick-Resistant Stop Clamp (-0.80% to -1.25%):</b> Gives room for normal stock equity noise while capping risk at ~$35 per trade<br>
+              &bull; <b>Expanded 70%–95% Profit Ratchet:</b> Locks up to 95% of peak gains on strong runners while preventing premature breakeven churn<br>
+              &bull; <b>Atomic Order Replacement:</b> Explicitly cancels prior stops before posting updated trigger legs to avoid position collision rejections<br>
               &bull; <b>Strict SPY Regime Shield:</b> Takes LONGs on GREEN SPY and SHORTs on RED SPY; sits out on NEUTRAL<br>
               &bull; <b>Single-Symbol &amp; Cooldown Lockout:</b> Restricts tickers to max 1 position slot and enforces 24H post-loss cooldown<br>
-              &bull; <b>Equal Risk Position Sizing:</b> Hard-caps maximum risk at ~$35 USD per trade slot<br>
-              &bull; <b>Mandatory OTO Enforcement:</b> Rejects entries if native exchange stops cannot be placed<br>
               &bull; <b>Ross Small-Cap Gate (&ge;2.20x RVOL &amp; &ge;65% Body):</b> Strict high-volume surge filter prevents penny fakeouts<br>
               &bull; <b>Afternoon Cutoff (1:45 PM CT+):</b> Strictly 0 new entries allowed to ensure exit runway<br>
               &bull; <b>EOD Square-Off (2:40 PM CT):</b> Liquidates 100% of open positions prior to market close<br>
