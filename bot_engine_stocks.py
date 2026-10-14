@@ -122,17 +122,7 @@ def calculate_choppiness_index(highs, lows, closes, period=14):
     except Exception:
         return 50.0
 
-def calculate_atr(highs, lows, closes, period=14):
-    try:
-        if len(highs) < period + 1:
-            return highs[-1] - lows[-1] if len(highs) > 0 else 1.0
-        trs = [max(highs[i] - lows[i], abs(highs[i] - closes[i-1]), abs(lows[i] - closes[i-1])) for i in range(1, len(closes))]
-        return np.mean(trs[-period:]) if len(trs) >= period else np.mean(trs)
-    except Exception:
-        return 1.0
-
 def check_market_macro_regime():
-    """SPY Macro Regime Shield: Requires SPY Daily GREEN or >= 20 EMA to open LONGs."""
     try:
         start_date = (datetime.now() - timedelta(days=40)).strftime('%Y-%m-%d')
         url = f"https://data.alpaca.markets/v2/stocks/bars?symbols=SPY&timeframe=1Day&limit=30&feed=iex&start={start_date}"
@@ -153,7 +143,6 @@ def check_market_macro_regime():
     return True, 0.0, 0.0
 
 def check_daily_200_sma_ceiling(symbol):
-    """Daily 200 SMA Ceiling Guard: Rejects entries if price is sitting within 5% underneath Daily 200 SMA."""
     try:
         start_date = (datetime.now() - timedelta(days=350)).strftime('%Y-%m-%d')
         url = f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=1Day&limit=210&feed=iex&start={start_date}"
@@ -171,14 +160,6 @@ def check_daily_200_sma_ceiling(symbol):
     return True, "200_SMA_OK"
 
 def evaluate_5_pillars(price, float_shares, pct_gain, rvol, has_news, exchange, market_cap, is_recent_reverse_split, market_regime="HOT"):
-    """
-    Ross Cameron 5 Pillars of Stock Selection Gate (Videos #1-#13 Masterclass):
-    1. Price: $2.00 to $20.00
-    2. Float: < 20M shares
-    3. Gain: >= +10.0%
-    4. RVOL: >= 5.0x
-    5. Fresh News Catalyst (or Matching Micro-Float Sector Profile)
-    """
     pillar_count = 0
     details = []
 
@@ -216,11 +197,6 @@ def evaluate_5_pillars(price, float_shares, pct_gain, rvol, has_news, exchange, 
     return True, f"APPROVED_5_PILLARS ({pillar_count}/5) | Exchange: {exchange} | Shield: {shield_label}"
 
 def validate_crossing_candle_entry(df_1m, current_price):
-    """
-    Crossing Candle Entry Mechanics (Video #12 Masterclass):
-    Requires current 1M candle high to break above the high of the preceding pullback candle.
-    Anchors the defined initial stop strictly to the LOW of the pullback candle.
-    """
     if len(df_1m) < 3:
         return False, None, "REJECT: Insufficient 1M candle history."
 
@@ -248,11 +224,6 @@ def validate_crossing_candle_entry(df_1m, current_price):
     return False, None, "REJECT: No crossing candle structure formed."
 
 def check_micro_exit_triggers(symbol, current_price, vwap_price, df_1m, state):
-    """
-    Orderbook Tape Reading & Micro-Exit Guards (Videos #10-#13 Masterclass):
-    1. Topping Tail Guard (>40% upper wick)
-    2. Two-Strike VWAP Rejection Tracker
-    """
     if len(df_1m) >= 2:
         latest = df_1m.iloc[-1]
         c_open = float(latest['o'])
@@ -283,9 +254,6 @@ def check_micro_exit_triggers(symbol, current_price, vwap_price, df_1m, state):
     return False, "HOLD_OK"
 
 def enforce_drawdown_and_giveback_controls(state, current_nav, current_realized_pnl, current_unrealized_pnl, daily_max_loss=200.0):
-    """
-    50% Peak Giveback Shield & Drawdown Step-Down Sizing Clamp (Video #12 Masterclass).
-    """
     total_pnl = current_realized_pnl + current_unrealized_pnl
     peak_pnl = max(state.get("peak_intraday_pnl", 0.0), total_pnl)
     peak_nav = max(state.get("peak_nav", current_nav), current_nav)
@@ -611,12 +579,9 @@ def execute_stock_engine():
             scanned_count += 1
             df_1m = pd.DataFrame(b_list)
             closes = [float(b["c"]) for b in b_list]
-            highs = [float(b["h"]) for b in b_list]
-            lows = [float(b["l"]) for b in b_list]
             volumes = [float(b["v"]) for b in b_list]
 
             current_close = closes[-1]
-            prev_close = closes[-2]
             vwap_val = calculate_vwap(df_1m)
 
             pct_gain = (current_close - closes[0]) / closes[0] if closes[0] > 0 else 0.0
@@ -692,41 +657,45 @@ def execute_stock_engine():
 
     audit_section = ""
     if VERBOSE_TEST_MODE:
-        audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
+        audit_rows = "".join([
+            f"<tr><td style='padding: 6px 8px; border-bottom: 1px solid #fde68a; font-family: Courier, monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-all;'>{log}</td></tr>" 
+            for log in audit_logs
+        ])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Ross Cameron V4.0 Engine)</div>
-        <div class="table-responsive" style="overflow-x: hidden;">
-          <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
+        <div style="font-size: 12px; text-transform: uppercase; color: #d97706; margin: 18px 0 6px 0; font-weight: 700;">Live Test Telemetry & Audit Log (Ross Cameron V4.0 Engine)</div>
+        <div style="width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 15px;">
+          <table style="background-color: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; font-size: 11px; border-collapse: collapse;">
             <tbody>{audit_rows}</tbody>
           </table>
         </div>
         """
 
     closed_ledger = state.get("closed_trades_ledger", [])
+    # SHOW LAST 10 CLOSED TRADES
     closed_rows = "".join([
         f"<tr>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['symbol']}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(t.get('entry_price', 0), 5)}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(t.get('exit_price', 0), 5)}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: #b45309;'>{t['exit_reason']}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if t.get('realized_pnl', 0) >= 0 else '#c62828'}; font-weight: bold;'>${t.get('realized_pnl', 0):+.2f}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 10px;'>{t['timestamp']}</td>"
+        f"<td style='padding: 8px 6px; border-bottom: 1px solid #eeeeee; font-weight: bold; color: #0f172a;'>{t['symbol']}</td>"
+        f"<td style='padding: 8px 6px; border-bottom: 1px solid #eeeeee; font-family: Courier, monospace;'>${round_sig_figs(t.get('entry_price', 0), 5)}</td>"
+        f"<td style='padding: 8px 6px; border-bottom: 1px solid #eeeeee; font-family: Courier, monospace;'>${round_sig_figs(t.get('exit_price', 0), 5)}</td>"
+        f"<td style='padding: 8px 6px; border-bottom: 1px solid #eeeeee; color: #b45309;'>{t['exit_reason']}</td>"
+        f"<td style='padding: 8px 6px; border-bottom: 1px solid #eeeeee; color: {'#2e7d32' if t.get('realized_pnl', 0) >= 0 else '#c62828'}; font-weight: bold;'>${t.get('realized_pnl', 0):+.2f}</td>"
+        f"<td style='padding: 8px 6px; border-bottom: 1px solid #eeeeee; font-family: Courier, monospace; font-size: 10px; color: #64748b;'>{t['timestamp']}</td>"
         f"</tr>"
-        for t in closed_ledger[:5]
-    ]) if closed_ledger else "<tr><td colspan='6' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
+        for t in closed_ledger[:10]
+    ]) if closed_ledger else "<tr><td colspan='6' style='padding: 12px; text-align: center; color: #666666;'>No recent exits recorded yet.</td></tr>"
 
     text_fallback = f"TR-GC-Equities-LS-01 V4.0 Super Bot\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Total Gain: USD ${today_realized_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
     positions_rows = "".join([
         f"<tr>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['symbol']}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['market_value']:.2f}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #334155;'>${round_sig_figs(p['entry'], 5)}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #b45309;'>${p['stop']}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td>"
+        f"<td style='padding: 8px 6px; border-bottom: 1px solid #eeeeee; color: #334155;'>{p['bot_title']}</td>"
+        f"<td style='padding: 8px 6px; border-bottom: 1px solid #eeeeee; font-weight: bold; color: #0f172a;'>{p['symbol']}</td>"
+        f"<td style='padding: 8px 6px; border-bottom: 1px solid #eeeeee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td>"
+        f"<td style='padding: 8px 6px; border-bottom: 1px solid #eeeeee; font-family: Courier, monospace;'>${p['market_value']:.2f}</td>"
+        f"<td style='padding: 8px 6px; border-bottom: 1px solid #eeeeee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td>"
+        f"<td style='padding: 8px 6px; border-bottom: 1px solid #eeeeee; font-family: Courier, monospace; font-weight: bold; color: #334155;'>${round_sig_figs(p['entry'], 5)}</td>"
+        f"<td style='padding: 8px 6px; border-bottom: 1px solid #eeeeee; font-family: Courier, monospace; font-weight: bold; color: #b45309;'>${p['stop']}</td>"
+        f"<td style='padding: 8px 6px; border-bottom: 1px solid #eeeeee; color: #2e7d32; font-weight: 600;'>{p['status']}</td>"
         f"</tr>"
         for p in positions_data
     ])
@@ -737,91 +706,99 @@ def execute_stock_engine():
         total_cost_basis = total_market_value_sum - total_pnl_sum
         total_roe_avg = (total_pnl_sum / total_cost_basis * 100) if total_cost_basis > 0 else 0.0
         positions_rows += f"""
-        <tr style="background: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
-            <td colspan="3" style="padding: 9px 10px; text-align: right;">TOTAL:</td>
-            <td style="padding: 9px 10px;">${total_market_value_sum:.2f}</td>
-            <td style="padding: 9px 10px; color: {'#2e7d32' if total_pnl_sum >= 0 else '#c62828'};">${total_pnl_sum:+.2f} ({total_roe_avg:+.2f}%)</td>
+        <tr style="background-color: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
+            <td colspan="3" style="padding: 8px 6px; text-align: right; color: #0f172a;">TOTAL:</td>
+            <td style="padding: 8px 6px; font-family: Courier, monospace;">${total_market_value_sum:.2f}</td>
+            <td style="padding: 8px 6px; color: {'#2e7d32' if total_pnl_sum >= 0 else '#c62828'};">${total_pnl_sum:+.2f} ({total_roe_avg:+.2f}%)</td>
             <td colspan="3"></td>
         </tr>
         """
     else:
-        positions_rows = "<tr><td colspan='8' style='padding: 15px; text-align: center; color: #666;'>No active positions (100% Cash Flat).</td></tr>"
+        positions_rows = "<tr><td colspan='8' style='padding: 12px; text-align: center; color: #666666;'>No active positions (100% Cash Flat).</td></tr>"
 
-    html_content = f"""
-    <html>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-          body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 10px; color: #333; }}
-          .container {{ max-width: 100%; width: 100%; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); box-sizing: border-box; }}
-          .header {{ background: #0f172a; color: #ffffff; padding: 15px 20px; }}
-          .header h2 {{ margin: 0; font-size: 16px; font-weight: 600; }}
-          .header p {{ margin: 5px 0 0; font-size: 11px; color: #94a3b8; }}
-          .content {{ padding: 15px; }}
-          .net-worth-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin-bottom: 20px; }}
-          .net-worth-title {{ font-size: 12px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 6px; }}
-          .net-worth-value {{ font-size: 24px; font-weight: 700; color: #0f172a; }}
-          .net-worth-subtitle {{ font-size: 11px; color: #64748b; margin-top: 4px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }}
-          
-          .pnl-badge {{ background: {'#e6f4ea' if today_realized_gain >= 0 else '#fce8e6'}; color: {'#137333' if today_realized_gain >= 0 else '#c5221f'}; padding: 4px 8px; border-radius: 4px; font-weight: bold; }}
-          .lifetime-badge {{ background: #f1f5f9; color: #0f172a; padding: 4px 8px; border-radius: 4px; font-weight: bold; }}
+    html_content = f"""<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  </head>
+  <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 10px; color: #333333; -webkit-text-size-adjust: 100%;">
+    <div style="max-width: 600px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); box-sizing: border-box;">
+      
+      <div style="background-color: #0f172a; color: #ffffff; padding: 16px;">
+        <div style="font-size: 16px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Equities-LS-01 V4.0 | Ross Cameron Super Bot</div>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 4px;">Timestamp: {timestamp} &bull; Mode: ROSS CAMERON MASTERCLASS</div>
+      </div>
 
-          .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; font-size: 11px; color: #334155; line-height: 1.6; }}
-          .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 12px; color: #0f172a; }}
-          .section-title {{ font-size: 13px; text-transform: uppercase; color: #475569; margin: 20px 0 8px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; font-weight: 600; }}
-          .table-responsive {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 15px; }}
-          table {{ width: 100%; border-collapse: collapse; font-size: 11px; white-space: nowrap; }}
-          th {{ background: #f1f5f9; color: #475569; text-align: left; padding: 8px 8px; font-weight: 600; border-bottom: 2px solid #cbd5e1; }}
-          td {{ padding: 8px 8px; }}
-          .footer {{ text-align: center; font-size: 10px; color: #94a3b8; padding: 12px; background: #f8fafc; border-top: 1px solid #e2e8f0; }}
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h2>TR-GC-Equities-LS-01 V4.0 | Ross Cameron Super Bot</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: ROSS CAMERON MASTERCLASS</p>
+      <div style="padding: 14px;">
+        
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 14px; margin-bottom: 16px;">
+          <div style="font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 4px;">Total Account Equity</div>
+          <div style="font-size: 24px; font-weight: 700; color: #0f172a;">USD ${equity:,.2f}</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 8px; border-top: 1px solid #e2e8f0; padding-top: 8px;">
+            <div style="margin-bottom: 4px;">Margin Utilization: <b style="color: #0f172a;">{margin_util_pct:.1f}%</b></div>
+            <div style="margin-bottom: 4px;">Today's Gain: <span style="background-color: {'#e6f4ea' if today_realized_gain >= 0 else '#fce8e6'}; color: {'#137333' if today_realized_gain >= 0 else '#c5221f'}; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${today_realized_gain:+,.2f}</span></div>
+            <div>Lifetime P&L: <span style="background-color: #f1f5f9; color: #0f172a; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${lifetime_cumulative_pnl:+,.2f}</span></div>
           </div>
-          <div class="content">
-            <div class="net-worth-card">
-              <div class="net-worth-title">Total Account Equity</div>
-              <div class="net-worth-value">USD ${equity:.2f}</div>
-              <div class="net-worth-subtitle">
-                <span>Margin Utilization: <b>{margin_util_pct:.1f}%</b></span>
-                <span>Today's Gain: <span class="pnl-badge">${today_realized_gain:+,.2f}</span></span>
-                <span>Lifetime P&L: <span class="lifetime-badge">${lifetime_cumulative_pnl:+,.2f}</span></span>
-              </div>
-            </div>
-
-            <div class="rules-card">
-              <div class="rules-title">&#9989; Active V4.0 Guardrails (Ross Cameron Masterclass)</div>
-              &bull; <b>Ross Cameron 5 Pillars Gate:</b> Price $2-$20, Float <20M, RVOL >=5.0x, Gain >=10%, Catalyst/Sector<br>
-              &bull; <b>Sub-$5M Market Cap Shield:</b> Protects against immediate secondary dilution on micro-floats<br>
-              &bull; <b>Exchange Safety Filter:</b> Rejects NYSE/AMEX "Flying Blind" hidden halt quotes<br>
-              &bull; <b>Crossing Candle Entry Mechanics:</b> Triggers on pullback high breakout; anchors stop to pullback low<br>
-              &bull; <b>Daily 200 SMA Ceiling Guard:</b> Blocks entries within 5% underneath Daily 200 SMA<br>
-              &bull; <b>50% Peak Giveback Shield:</b> Automatically shuts down session if peak intraday profit drops 50%<br>
-              &bull; <b>Two-Strike VWAP & Topping Tail Guards:</b> Enforces micro-exits on VWAP reclaim failures or >40% upper wicks<br>
-              &bull; <b>Post-Drawdown Step-Down Sizing Clamp:</b> Clamps sizing to 50% until 50% drawdown is recovered
-            </div>
-
-            <div class="section-title">Active Sniper Scalps</div>
-            <div class="table-responsive">
-              <table><thead><tr><th>Bot Title</th><th>Symbol</th><th>Side</th><th>Market Value USD</th><th>Unrealized P&L USD</th><th>Buy Price</th><th>Stop Price</th><th>Status</th></tr></thead><tbody>{positions_rows}</tbody></table>
-            </div>
-
-            <div class="section-title">Recently Closed Trades & Exit Telemetry</div>
-            <div class="table-responsive">
-              <table><thead><tr><th>Symbol</th><th>Entry Price</th><th>Exit Price</th><th>Exit Reason / Catalyst</th><th>Realized P&L</th><th>Timestamp</th></tr></thead><tbody>{closed_rows}</tbody></table>
-            </div>
-
-            {audit_section}
-
-          </div>
-          <div class="footer">Alpaca Ross Cameron V4.0 Super Bot Engine &bull; Managed via GitHub Actions</div>
         </div>
-      </body>
-    </html>
+
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; margin-bottom: 16px; font-size: 11px; color: #334155; line-height: 1.5;">
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 11px; color: #0f172a;">&amp;#9989; Active V4.0 Guardrails (Ross Cameron Masterclass)</div>
+          <div style="margin-bottom: 4px;">&bull; <b>Ross Cameron 5 Pillars Gate:</b> Price $2-$20, Float &lt;20M, RVOL &gt;=5.0x, Gain &gt;=10%, Catalyst/Sector</div>
+          <div style="margin-bottom: 4px;">&bull; <b>Sub-$5M Market Cap Shield:</b> Protects against immediate secondary dilution on micro-floats</div>
+          <div style="margin-bottom: 4px;">&bull; <b>Exchange Safety Filter:</b> Rejects NYSE/AMEX "Flying Blind" hidden halt quotes</div>
+          <div style="margin-bottom: 4px;">&bull; <b>Crossing Candle Entry Mechanics:</b> Triggers on pullback high breakout; anchors stop to pullback low</div>
+          <div style="margin-bottom: 4px;">&bull; <b>Daily 200 SMA Ceiling Guard:</b> Blocks entries within 5% underneath Daily 200 SMA</div>
+          <div style="margin-bottom: 4px;">&bull; <b>50% Peak Giveback Shield:</b> Automatically shuts down session if peak intraday profit drops 50%</div>
+          <div style="margin-bottom: 4px;">&bull; <b>Two-Strike VWAP &amp; Topping Tail Guards:</b> Enforces micro-exits on VWAP reclaim failures or &gt;40% upper wicks</div>
+          <div>&bull; <b>Post-Drawdown Step-Down Sizing Clamp:</b> Clamps sizing to 50% until 50% drawdown is recovered</div>
+        </div>
+
+        <div style="font-size: 12px; text-transform: uppercase; color: #475569; margin: 16px 0 6px 0; font-weight: 700;">Active Sniper Scalps</div>
+        <div style="width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 16px;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 11px; white-space: nowrap; min-width: 500px;">
+            <thead>
+              <tr style="background-color: #f1f5f9; color: #475569; text-align: left;">
+                <th style="padding: 8px 6px; border-bottom: 2px solid #cbd5e1;">Bot Title</th>
+                <th style="padding: 8px 6px; border-bottom: 2px solid #cbd5e1;">Symbol</th>
+                <th style="padding: 8px 6px; border-bottom: 2px solid #cbd5e1;">Side</th>
+                <th style="padding: 8px 6px; border-bottom: 2px solid #cbd5e1;">Market Value</th>
+                <th style="padding: 8px 6px; border-bottom: 2px solid #cbd5e1;">Unrealized P&amp;L</th>
+                <th style="padding: 8px 6px; border-bottom: 2px solid #cbd5e1;">Buy Price</th>
+                <th style="padding: 8px 6px; border-bottom: 2px solid #cbd5e1;">Stop Price</th>
+                <th style="padding: 8px 6px; border-bottom: 2px solid #cbd5e1;">Status</th>
+              </tr>
+            </thead>
+            <tbody>{positions_rows}</tbody>
+          </table>
+        </div>
+
+        <div style="font-size: 12px; text-transform: uppercase; color: #475569; margin: 16px 0 6px 0; font-weight: 700;">Recently Closed Trades &amp; Exit Telemetry (Last 10 Trades)</div>
+        <div style="width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 16px;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 11px; white-space: nowrap; min-width: 500px;">
+            <thead>
+              <tr style="background-color: #f1f5f9; color: #475569; text-align: left;">
+                <th style="padding: 8px 6px; border-bottom: 2px solid #cbd5e1;">Symbol</th>
+                <th style="padding: 8px 6px; border-bottom: 2px solid #cbd5e1;">Entry Price</th>
+                <th style="padding: 8px 6px; border-bottom: 2px solid #cbd5e1;">Exit Price</th>
+                <th style="padding: 8px 6px; border-bottom: 2px solid #cbd5e1;">Exit Reason / Catalyst</th>
+                <th style="padding: 8px 6px; border-bottom: 2px solid #cbd5e1;">Realized P&amp;L</th>
+                <th style="padding: 8px 6px; border-bottom: 2px solid #cbd5e1;">Timestamp</th>
+              </tr>
+            </thead>
+            <tbody>{closed_rows}</tbody>
+          </table>
+        </div>
+
+        {audit_section}
+
+      </div>
+      <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 12px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
+        Alpaca Ross Cameron V4.0 Super Bot Engine &bull; Managed via GitHub Actions
+      </div>
+    </div>
+  </body>
+</html>
     """
 
     send_html_dashboard_email(f"Alpaca V4.0 Report — USD ${equity:.2f}", html_content, text_fallback)
