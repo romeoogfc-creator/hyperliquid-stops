@@ -325,21 +325,27 @@
   ],
   "active_position_cache": {
     "BERA": {
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_px": 0.23974,
+      "entry_px": 0.23976,
+      "current_px": 0.23984,
+      "szi": 102.7,
+      "margin": 4.925492,
       "side": "LONG",
+      "peak_roe": 0.0003336670003336534,
+      "strategy": "5M_HOD_BREAKOUT",
       "entry_candle_low": 0.23636,
       "entry_candle_high": 0.23806
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-14 07:08:37",
+  "previous_active_coins": [
+    "BERA"
+  ],
+  "last_run_timestamp": "2026-10-14 07:15:35",
   "last_email_timestamp": 1791979707.8529818,
-  "last_scan_timestamp": 1791979707.8529818,
+  "last_scan_timestamp": 1791980127.6759143,
   "gemini_cache": {
-    "timestamp": 1791979707.8529818,
+    "timestamp": 1791980127.6759143,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Increased macroeconomic uncertainty, regulatory scrutiny, and high volatility driven by speculative leverage suggest a precarious environment for short-term market participants."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting regulatory headwinds, and significant volatility surrounding global liquidity trends, necessitating extreme caution for participants."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
