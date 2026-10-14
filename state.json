@@ -32,7 +32,7 @@
     "LIT": 1791868529.4716415,
     "IO": 1791874853.275973,
     "TAO": 1791877465.6945598,
-    "BERA": 1791879324.852031,
+    "BERA": 1792067431.7473655,
     "SKY": 1791881125.2083867
   },
   "last_traded_candle": {
@@ -86,6 +86,18 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "BERA",
+      "entry_price": 0.23976,
+      "exit_price": 0.23794,
+      "pnl_usd": -0.186914,
+      "roe_pct": -0.7590924257590875,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-14 12:30:31",
+      "ts_sec": 1791981031.7473655,
+      "fill_hash": "BERA_295382700193795"
+    },
     {
       "coin": "ZK",
       "entry_price": 0.016288,
@@ -309,43 +321,17 @@
       "timestamp": "2026-10-11 23:15:28",
       "ts_sec": 1791760528.4952013,
       "fill_hash": "FET_942327599735334"
-    },
-    {
-      "coin": "SYRUP",
-      "entry_price": 0.24684,
-      "exit_price": 0.24538,
-      "pnl_usd": -0.14892,
-      "roe_pct": -0.5914762599254646,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-11 21:13:07",
-      "ts_sec": 1791753187.6187005,
-      "fill_hash": "SYRUP_1025153335923497"
     }
   ],
-  "active_position_cache": {
-    "BERA": {
-      "entry_px": 0.23976,
-      "current_px": 0.23984,
-      "szi": 102.7,
-      "margin": 4.925492,
-      "side": "LONG",
-      "peak_roe": 0.0003336670003336534,
-      "strategy": "5M_HOD_BREAKOUT",
-      "entry_candle_low": 0.23636,
-      "entry_candle_high": 0.23806
-    }
-  },
-  "previous_active_coins": [
-    "BERA"
-  ],
-  "last_run_timestamp": "2026-10-14 07:15:35",
-  "last_email_timestamp": 1791979707.8529818,
-  "last_scan_timestamp": 1791980127.6759143,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-14 07:30:38",
+  "last_email_timestamp": 1791981031.7473655,
+  "last_scan_timestamp": 1791981031.7473655,
   "gemini_cache": {
-    "timestamp": 1791980127.6759143,
+    "timestamp": 1791981031.7473655,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting regulatory headwinds, and significant volatility surrounding global liquidity trends, necessitating extreme caution for participants."
+    "briefing": "Risk Level: HIGH; despite recent inflows, the market remains characterized by extreme volatility, heightened regulatory uncertainty, and sensitivity to macroeconomic shifts in interest rate policies."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
