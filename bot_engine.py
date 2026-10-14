@@ -120,11 +120,6 @@ def round_sig_figs(val, sig_figs=5):
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
 def check_liquidity_and_spread(info, coin, max_spread=0.0035, min_depth_usd=7500.0):
-    """
-    V3.9.9 LIQUIDITY GATE (FIX 3 - TIGHT TOP-OF-BOOK DEPTH):
-    Enforces $7,500 orderbook depth within a tight 0.15% price band to eliminate
-    thin-book stop trigger slippage.
-    """
     try:
         l2_book = api_retry(info.l2_snapshot, name=coin)
         levels = l2_book.get("levels", [[], []])
@@ -146,7 +141,6 @@ def check_liquidity_and_spread(info, coin, max_spread=0.0035, min_depth_usd=7500
         if spread_pct > max_spread:
             return False, f"Wide Spread ({spread_pct*100:.2f}% > {max_spread*100:.2f}%)"
 
-        # TIGHT TOP-OF-BOOK DEPTH CHECK (0.15% Band)
         bid_depth = sum(float(b["px"]) * float(b["sz"]) for b in bids if float(b["px"]) >= mid_px * 0.9985)
         ask_depth = sum(float(a["px"]) * float(a["sz"]) for a in asks if float(a["px"]) <= mid_px * 1.0015)
         total_depth = min(bid_depth, ask_depth)
@@ -211,9 +205,9 @@ def sync_native_trigger_orders(exchange, info, coin, is_long, sz, stop_px, tp_px
 
         if needs_sl_update and clean_stop_px:
             order_type = {"trigger": {"isMarket": True, "triggerPx": clean_stop_px, "tpsl": "sl"}}
-            res = exchange.order(coin, is_buy, sz, clean_stop_px, order_type, reduce_only=True)
+            exchange.order(coin, is_buy, sz, clean_stop_px, order_type, reduce_only=True)
             if audit_logs is not None:
-                audit_logs.append(f"🛡️ NATIVE ORDERBOOK SL SYNC [{coin}]: Placed Trigger Stop @ ${clean_stop_px:.5f}")
+                audit_logs.append(f"🛡️ NATIVE SL SYNC [{coin}]: Stop @ ${clean_stop_px:.5f}")
 
         tp_orders = []
         for o in coin_trigger_orders:
@@ -229,8 +223,6 @@ def sync_native_trigger_orders(exchange, info, coin, is_long, sz, stop_px, tp_px
             for o in tp_orders:
                 try:
                     exchange.cancel(coin, int(o["oid"]))
-                    if audit_logs is not None:
-                        audit_logs.append(f"🚀 MOONSHOT UNCAP [{coin}]: Removed fixed TP target on Hyperliquid for infinite upside")
                 except Exception:
                     pass
         else:
@@ -247,13 +239,10 @@ def sync_native_trigger_orders(exchange, info, coin, is_long, sz, stop_px, tp_px
 
             if needs_tp_update:
                 order_type = {"trigger": {"isMarket": True, "triggerPx": clean_tp_px, "tpsl": "tp"}}
-                res = exchange.order(coin, is_buy, sz, clean_tp_px, order_type, reduce_only=True)
-                if audit_logs is not None:
-                    audit_logs.append(f"🎯 NATIVE ORDERBOOK TP SYNC [{coin}]: Placed Take-Profit @ ${clean_tp_px:.5f}")
-
+                exchange.order(coin, is_buy, sz, clean_tp_px, order_type, reduce_only=True)
     except Exception as e:
         if audit_logs is not None:
-            audit_logs.append(f"⚠️ Native TPSL sync warning on {coin}: {e}")
+            audit_logs.append(f"⚠️ TPSL sync warning on {coin}: {e}")
 
 def calculate_choppiness_index(highs, lows, closes, period=14):
     try:
@@ -310,16 +299,6 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
     return False, "Normal Price Action"
 
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, entry_candle_low, entry_candle_high, peak_roe=0.0, coin="ETH"):
-    """
-    V3.9.9 AIRTIGHT ROSS SCALPER (FIX 4 - WICK-RESISTANT STOP & 80%-97% PROFIT RATCHET):
-    - Wick-Resistant Stop: Initial stop anchored strictly between -0.80% and -1.25% ROE (~$0.20-$0.28 risk).
-    - Fee-Aware Activation (+0.80% ROE): Locks +0.40% floor to cover fees and spread.
-    - Expanded 80%-97% Ratchet Ladder:
-      * +1.50% to +3.00% Peak -> 70% lock
-      * +3.00% to +5.00% Peak -> 85% lock
-      * +5.00% to +10.00% Peak -> 92% lock
-      * +10.00%+ Peak -> 97% lock (Moonshot)
-    """
     if is_long:
         roe = (current_px - entry_px) / entry_px
     else:
@@ -327,7 +306,6 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, ent
 
     is_major = coin.upper() in ["BTC", "ETH", "SOL"]
     
-    # 1. WICK-RESISTANT DOWNSIDE STOP (-0.80% to -1.25% ROE)
     if is_long:
         raw_struct = (entry_candle_low / entry_px) - 1.0 if entry_px > 0 else -0.0080
         initial_floor_roe = min(-0.0080, max(-0.0125, raw_struct)) if not is_major else -0.0150
@@ -335,24 +313,23 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, ent
         raw_struct = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else -0.0080
         initial_floor_roe = min(-0.0080, max(-0.0125, raw_struct)) if not is_major else -0.0150
 
-    # 2. EXPANDED 80% - 97% PROFIT RATCHET
-    activation_roe = 0.0080  # +0.80% ROE threshold
-    be_floor_roe = 0.0040    # +0.40% ROE fee floor
+    activation_roe = 0.0080 
+    be_floor_roe = 0.0040    
 
     if peak_roe >= activation_roe:
-        if peak_roe < 0.0150:      # +0.80% to +1.50% Peak -> Fee Floor +0.40%
+        if peak_roe < 0.0150:      
             target_floor_roe = max(be_floor_roe, peak_roe * 0.50)
             leash_status = f"⚡ FEE SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-        elif peak_roe < 0.0300:    # +1.50% to +3.00% Peak -> Lock 70%
+        elif peak_roe < 0.0300:    
             target_floor_roe = peak_roe * 0.70
             leash_status = f"⚡ TIER 1 LOCK (70%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-        elif peak_roe < 0.0500:    # +3.00% to +5.00% Peak -> Lock 85%
+        elif peak_roe < 0.0500:    
             target_floor_roe = peak_roe * 0.85
             leash_status = f"🚀 TIER 2 LOCK (85%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-        elif peak_roe < 0.1000:    # +5.00% to +10.00% Peak -> Lock 92%
+        elif peak_roe < 0.1000:    
             target_floor_roe = peak_roe * 0.92
             leash_status = f"🔥 TIER 3 RUNNER (92%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-        else:                      # +10.00%+ Peak -> Lock 97% (Moonshot)
+        else:                      
             target_floor_roe = peak_roe * 0.97
             leash_status = f"🏆 MOONSHOT LOCK (97%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
     else:
@@ -365,7 +342,6 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, atr_val, ent
         stop_px = entry_px * (1 - target_floor_roe)
 
     tp_px = None
-
     return stop_px, tp_px, roe, target_floor_roe, leash_status
 
 def check_gemini_macro_shield(state, now_ts, is_scan_window):
@@ -382,7 +358,6 @@ def check_gemini_macro_shield(state, now_ts, is_scan_window):
         client = genai.Client(api_key=GEMINI_API_KEY)
         model_cascade = ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.6-flash']
         
-        last_err_msg = ""
         for model_name in model_cascade:
             try:
                 response = client.models.generate_content(
@@ -398,20 +373,15 @@ def check_gemini_macro_shield(state, now_ts, is_scan_window):
                     "briefing": text.strip()
                 }
                 return risk_level, text.strip()
-            except Exception as m_err:
-                last_err_msg = str(m_err)
-                err_str = str(m_err).upper()
-                if any(code in err_str for code in ["404", "503", "429", "UNAVAILABLE", "NOT_FOUND", "RESOURCE_EXHAUSTED"]):
-                    continue
-                raise m_err
+            except Exception:
+                continue
 
         if "risk" in gemini_cache:
-            return gemini_cache["risk"], f"{gemini_cache['briefing']} (Cached fallback during API demand spike)"
-        
-        return "LOW", f"Gemini Shield active — default PASS ({last_err_msg})"
+            return gemini_cache["risk"], f"{gemini_cache['briefing']} (Cached fallback)"
+        return "LOW", "Gemini Shield active — default PASS"
     except Exception as e:
         if "risk" in gemini_cache:
-            return gemini_cache["risk"], f"{gemini_cache['briefing']} (Cached fallback during API error)"
+            return gemini_cache["risk"], f"{gemini_cache['briefing']} (Cached fallback)"
         return "LOW", f"Gemini Shield active — default PASS ({e})"
 
 def get_btc_regime(info, now_ms):
@@ -540,8 +510,13 @@ def execute_engine():
 
     daily_starting_dict = state.get("daily_starting_equity", {})
     if today_str not in daily_starting_dict:
-        daily_starting_dict[today_str] = account_value
-    state["daily_starting_equity"] = daily_starting_dict
+        prev_days = [d for d in daily_starting_dict.keys() if d < today_str]
+        if prev_days:
+            daily_starting_dict[today_str] = daily_starting_dict[max(prev_days)]
+        else:
+            daily_starting_dict[today_str] = account_value
+        state["daily_starting_equity"] = daily_starting_dict
+
     today_start_eq = daily_starting_dict[today_str]
     today_total_gain = account_value - today_start_eq
 
@@ -589,14 +564,10 @@ def execute_engine():
             pos = pos_item.get("position", {})
             coin = pos.get("coin")
             szi = float(pos.get("szi", 0))
-            if not coin or szi == 0:
-                continue
-
-            if coin in closed_coins_this_run:
+            if not coin or szi == 0 or coin in closed_coins_this_run:
                 continue
 
             is_long = szi > 0
-            is_altcoin = coin.upper() not in ["BTC", "ETH", "SOL"]
             entry_px = float(pos.get("entryPx", 0))
             current_px = float(all_mids.get(coin, entry_px))
             margin_used = float(pos.get("marginUsed", 0))
@@ -625,13 +596,11 @@ def execute_engine():
                 volumes = [float(c.get("v", 0)) for c in c_candles]
                 
                 atr_val = calculate_atr(highs, lows, closes)
-
                 c_open = float(c_candles[-1]["o"])
                 c_high = float(c_candles[-1]["h"])
                 c_low = float(c_candles[-1]["l"])
                 avg_v = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
-                curr_v = volumes[-1]
-                v_ratio = curr_v / avg_v if avg_v > 0 else 1.0
+                v_ratio = volumes[-1] / avg_v if avg_v > 0 else 1.0
 
                 is_knife, knife_reason = analyze_live_falling_knife(current_px, c_open, c_high, c_low, v_ratio, is_long)
                 if is_knife:
@@ -668,7 +637,6 @@ def execute_engine():
             if should_exit:
                 try:
                     audit_logs.append(f"🎯 EXIT TRIGGERED: Closing {coin} LONG @ ${current_px:.5f} ({exit_reason}).")
-                    
                     cancel_native_trigger_orders(exchange, info, coin, ACCOUNT_ADDRESS)
                     time.sleep(0.15)
 
@@ -676,7 +644,6 @@ def execute_engine():
                     live_positions = {p.get("position", {}).get("coin"): float(p.get("position", {}).get("szi", 0)) for p in live_user_state.get("assetPositions", [])}
 
                     if live_positions.get(coin, 0.0) == 0.0:
-                        audit_logs.append(f"ℹ️ Position on {coin} already flattened on-chain. Skipping duplicate cut.")
                         closed_coins_this_run.add(coin)
                         continue
 
@@ -688,7 +655,6 @@ def execute_engine():
 
                     if unrealized_pnl < 0 or current_roe < 0:
                         state["cooldown_blocklist"][coin] = now_ts + 86400
-                        audit_logs.append(f"⛔ Added {coin} to 24H Cooldown Blocklist (Closed at Loss)")
 
                     state["closed_trades_ledger"].insert(0, {
                         "coin": coin, "entry_price": entry_px, "exit_price": current_px,
@@ -720,71 +686,52 @@ def execute_engine():
                 "collateral": margin_used, "position_usd": pos_equity,
                 "pnl": unrealized_pnl, "roe": current_roe * 100,
                 "stop": round_sig_figs(stop_px_calc, 5),
-                "tp_target": round_sig_figs(tp_px_calc, 5) if tp_px_calc else "UNCAPPED 🚀",
+                "tp_target": "UNCAPPED 🚀",
                 "status": leash_status
             })
 
     prev_cache = state.get("active_position_cache", {})
     for coin, cache_data in list(prev_cache.items()):
-        if coin in closed_coins_this_run:
+        if coin in closed_coins_this_run or coin in active_coins:
             continue
+        try:
+            user_fills = api_retry(info.user_fills, ACCOUNT_ADDRESS)
+            coin_fills = [f for f in user_fills if f.get("coin") == coin]
+            if coin_fills:
+                latest_fill = coin_fills[0]
+                fill_hash = f"{coin}_{latest_fill.get('tid', latest_fill.get('time', 0))}"
+                existing_hashes = [t.get("fill_hash") for t in state.get("closed_trades_ledger", []) if "fill_hash" in t]
+                if fill_hash in existing_hashes:
+                    continue
 
-        if coin not in active_coins:
-            try:
-                user_fills = api_retry(info.user_fills, ACCOUNT_ADDRESS)
-                coin_fills = [f for f in user_fills if f.get("coin") == coin]
-                
-                if coin_fills:
-                    latest_fill = coin_fills[0]
-                    fill_hash = f"{coin}_{latest_fill.get('tid', latest_fill.get('time', 0))}"
-                    
-                    existing_hashes = [t.get("fill_hash") for t in state.get("closed_trades_ledger", []) if "fill_hash" in t]
-                    if fill_hash in existing_hashes:
-                        continue
+                exit_px = float(latest_fill.get("px", 0.0))
+                entry_px = cache_data.get("entry_px", exit_px)
+                side = cache_data.get("side", "LONG")
+                is_long = (side == "LONG")
+                pnl_usd = float(latest_fill.get("closedPnl", 0.0))
+                roe_pct = ((exit_px - entry_px) / entry_px * 100) if is_long else ((entry_px - exit_px) / entry_px * 100)
 
-                    exit_px = float(latest_fill.get("px", 0.0))
-                    entry_px = cache_data.get("entry_px", exit_px)
-                    side = cache_data.get("side", "LONG")
-                    is_long = (side == "LONG")
-                    
-                    pnl_usd = float(latest_fill.get("closedPnl", 0.0))
-                    roe_pct = ((exit_px - entry_px) / entry_px * 100) if is_long else ((entry_px - exit_px) / entry_px * 100)
-                    
-                    if "closed_trades_ledger" not in state:
-                        state["closed_trades_ledger"] = []
-                        
-                    state["closed_trades_ledger"].insert(0, {
-                        "coin": coin, "entry_price": entry_px, "exit_price": exit_px,
-                        "pnl_usd": pnl_usd, "roe_pct": roe_pct, "side": side,
-                        "exit_reason": "🎯 Native Orderbook TPSL Fill", "timestamp": timestamp, "ts_sec": now_ts,
-                        "fill_hash": fill_hash
-                    })
-
-                    if "stagnation_tracker" in state:
-                        state["stagnation_tracker"].pop(coin, None)
-                    
-                    if pnl_usd < 0:
-                        state["cooldown_blocklist"][coin] = now_ts + 86400
-                        audit_logs.append(f"⛔ Added {coin} to 24H Cooldown Blocklist (Native Fill at Loss)")
-                    
-                    audit_logs.append(f"🎯 RECONCILED NATIVE FILL [{coin}]: Closed {side} @ ${exit_px:.5f} (P&L: ${pnl_usd:+.2f}, ROE: {roe_pct:+.2f}%)")
-                    trade_closed_this_run = True
-            except Exception as e:
-                audit_logs.append(f"Reconciliation warning on {coin}: {e}")
+                state["closed_trades_ledger"].insert(0, {
+                    "coin": coin, "entry_price": entry_px, "exit_price": exit_px,
+                    "pnl_usd": pnl_usd, "roe_pct": roe_pct, "side": side,
+                    "exit_reason": "🎯 Native Orderbook TPSL Fill", "timestamp": timestamp, "ts_sec": now_ts,
+                    "fill_hash": fill_hash
+                })
+                trade_closed_this_run = True
+        except Exception:
+            pass
 
     state["closed_trades_ledger"] = sorted(state.get("closed_trades_ledger", []), key=lambda x: x.get("timestamp", ""), reverse=True)[:20]
     state["active_position_cache"] = new_active_cache
     state["previous_active_coins"] = list(active_coins)
 
     market_candidates = []
-
     MAX_CRYPTO_SLOTS = 3
     available_slots = MAX_CRYPTO_SLOTS - active_count
     min_notional_usd = 10.50
 
     if is_5m_scan_window and available_slots > 0:
         state["last_scan_timestamp"] = now_ts
-
         audit_logs.append(f"🌐 5M FAST ROSS SCANNER ACTIVE: Scanning Micro-Cap Penny Perps (#30-#200+)...")
 
         scored_universe = []
@@ -792,17 +739,13 @@ def execute_engine():
             coin = asset.get("name")
             if not coin or coin in active_coins or coin in ["USDC", "USDT"]:
                 continue
-            if now_ts < float(state.get("cooldown_blocklist", {}).get(coin, 0)):
-                continue
-
-            if idx < 20:
+            if now_ts < float(state.get("cooldown_blocklist", {}).get(coin, 0)) or idx < 20:
                 continue
 
             try:
                 ctx = asset_ctxs[idx] if idx < len(asset_ctxs) else {}
                 prev_px = float(ctx.get("prevDayPx", 0.0))
                 mark_px = float(ctx.get("markPx", 0.0))
-                
                 if prev_px > 0 and mark_px > 0:
                     change_24h = ((mark_px - prev_px) / prev_px) * 100
                     if change_24h >= 8.0:
@@ -812,8 +755,6 @@ def execute_engine():
 
         scored_universe = sorted(scored_universe, key=lambda x: x[1], reverse=True)
         prioritized_universe = [item[0] for item in scored_universe[:30]]
-
-        audit_logs.append(f"📊 Top Penny Gainers Ranked: {', '.join([f'{c} (+{g:.1f}%)' for c, g, i in scored_universe[:8]])}")
 
         for coin in prioritized_universe:
             try:
@@ -830,8 +771,7 @@ def execute_engine():
                 if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
                     continue
 
-                # V3.9.9 LIQUIDITY GATE (FIX 3): Requires $7,500 depth in 0.15% top-of-book band
-                is_liquid, liq_reason = check_liquidity_and_spread(info, coin, max_spread=0.0035, min_depth_usd=7500.0)
+                is_liquid, _ = check_liquidity_and_spread(info, coin, max_spread=0.0035, min_depth_usd=7500.0)
                 if not is_liquid:
                     continue
 
@@ -841,32 +781,27 @@ def execute_engine():
                 volumes = [float(c.get("v", 0)) for c in candles]
 
                 coin_24h_change = ((closes[-1] - closes[-288]) / closes[-288]) * 100 if len(closes) >= 288 else 0.0
-
                 c_2_high = float(candles[-2]["h"])
                 c_2_low = float(candles[-2]["l"])
                 c_1_open = float(candles[-1]["o"])
-
                 c_high_live = float(candles[-1]["h"])
                 c_low_live = float(candles[-1]["l"])
                 c_range = max(c_high_live - c_low_live, 1e-8)
                 live_body_ratio = abs(curr_live_px - c_1_open) / c_range
                 upper_wick_ratio = (c_high_live - max(c_1_open, curr_live_px)) / c_range
 
-                # FIX 1: TRUE 24H HIGH-OF-DAY (HOD) BREAKOUT CHECK
                 all_highs_24h = [float(c["h"]) for c in candles[:-1]]
                 true_24h_hod = max(all_highs_24h) if all_highs_24h else c_2_high
 
                 max_extension_px = true_24h_hod * 1.0080
                 is_near_breakout = (curr_live_px >= true_24h_hod * 0.9970) and (curr_live_px <= max_extension_px)
                 is_clean_structure = (upper_wick_ratio <= 0.25) and (live_body_ratio >= 0.65)
-
                 is_5m_hod_breakout = is_near_breakout and (curr_live_px > c_1_open) and is_clean_structure
 
                 candle_start_ms = candles[-1]["t"]
                 elapsed_mins = (now_ms - candle_start_ms) / 60000.0
                 live_volume_raw = float(candles[-1].get("v", 0))
                 
-                # FIX 2: PACING BUFFER GUARD (Requires at least 2.5m before full pacing extrapolation)
                 if elapsed_mins < 2.5:
                     paced_volume = live_volume_raw * (5.0 / 2.5)
                 else:
@@ -879,7 +814,6 @@ def execute_engine():
                     continue
 
                 ci_5m = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
-
                 if ci_5m <= 55.0:
                     if is_5m_hod_breakout and (effective_regime in ["GREEN", "NEUTRAL"]):
                         extension_pct = max(0.0, (curr_live_px - true_24h_hod) / true_24h_hod)
@@ -892,16 +826,12 @@ def execute_engine():
                             "entry_candle_low": c_2_low,
                             "entry_candle_high": true_24h_hod
                         })
-                        audit_logs.append(f"🚀 TRUE 24H HOD BREAKOUT (LONG): {coin} @ ${curr_live_px:.4f} (24h Gain: {coin_24h_change:+.1f}%, Vol: {vol_ratio:.2f}x, Ext: +{extension_pct*100:.2f}%)")
-
             except Exception:
                 continue
 
-        audit_logs.append(f"🌐 5M Scan complete: {len(market_candidates)} qualified candidate(s).")
-
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
-
     trades_executed = False
+
     if available_slots > 0 and market_candidates:
         for candidate in market_candidates[:available_slots]:
             coin = candidate["coin"]
@@ -912,11 +842,7 @@ def execute_engine():
             e_candle_low = candidate["entry_candle_low"]
             e_candle_high = candidate["entry_candle_high"]
             
-            base_alloc_pct = 0.25
-            risk_multiplier = 0.85
-            slot_alloc_pct = base_alloc_pct * risk_multiplier
-            target_notional_usd = max(min_notional_usd, account_value * slot_alloc_pct)
-
+            target_notional_usd = max(min_notional_usd, account_value * 0.25 * 0.85)
             decimals = sz_decimals_map.get(coin, 4)
             raw_sz = target_notional_usd / px
 
@@ -927,10 +853,7 @@ def execute_engine():
 
             if (sz * px) < min_notional_usd:
                 needed_sz = min_notional_usd / px
-                if decimals == 0:
-                    sz = int(np.ceil(needed_sz))
-                else:
-                    sz = round(np.ceil(needed_sz * (10 ** decimals)) / (10 ** decimals), decimals)
+                sz = int(np.ceil(needed_sz)) if decimals == 0 else round(np.ceil(needed_sz * (10 ** decimals)) / (10 ** decimals), decimals)
 
             if sz <= 0:
                 continue
@@ -942,7 +865,6 @@ def execute_engine():
                     pass
 
                 res = exchange.market_open(coin, is_long, sz, px, slippage=0.01)
-
                 if res.get("status") == "ok":
                     active_count += 1
                     active_coins.add(coin)
@@ -962,7 +884,6 @@ def execute_engine():
                     initial_stop_px, initial_tp_px, _, _, initial_status = calculate_smart_exchange_targets(
                         px, is_long, px, 0.0, e_candle_low, e_candle_high, peak_roe=0.0, coin=coin
                     )
-
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
@@ -975,9 +896,6 @@ def execute_engine():
                         "tp_target": "UNCAPPED 🚀",
                         "status": initial_status
                     })
-
-                    audit_logs.append(f"⚡ 5M SCALP EXECUTION SUCCESS: Opened LONG on {coin} (Size: {sz} ~${(sz * px):.2f})")
-
             except Exception as e:
                 audit_logs.append(f"EXECUTION FAILED on {coin}: {e}")
 
@@ -990,20 +908,14 @@ def execute_engine():
 
     last_email_ts = float(state.get("last_email_timestamp", 0))
     elapsed_minutes = (now_ts - last_email_ts) / 60.0
-    
     is_manual_run = os.getenv("GITHUB_EVENT_NAME", "").lower() == "workflow_dispatch"
-    is_time_for_periodic_email = (elapsed_minutes >= 15.0)
-    should_send_email = is_manual_run or is_time_for_periodic_email or trades_executed or trade_closed_this_run
+    should_send_email = is_manual_run or (elapsed_minutes >= 15.0) or trades_executed or trade_closed_this_run
 
     if should_send_email:
         state["last_email_timestamp"] = now_ts
         save_state(state)
 
-        trades_today = [
-            t for t in state.get("closed_trades_ledger", [])
-            if today_str in str(t.get("timestamp", ""))
-        ]
-
+        trades_today = [t for t in state.get("closed_trades_ledger", []) if today_str in str(t.get("timestamp", ""))]
         total_today = len(trades_today)
         wins_today = [t for t in trades_today if float(t.get("pnl_usd", 0)) > 0]
         losses_today = [t for t in trades_today if float(t.get("pnl_usd", 0)) <= 0]
@@ -1011,219 +923,159 @@ def execute_engine():
         win_count = len(wins_today)
         loss_count = len(losses_today)
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
-        
-        avg_win_roe = (sum(float(t.get("roe_pct", 0)) for t in wins_today) / win_count) if win_count > 0 else 0.0
-        avg_win_usd = (sum(float(t.get("pnl_usd", 0)) for t in wins_today) / win_count) if win_count > 0 else 0.0
-        
-        avg_loss_roe = (sum(float(t.get("roe_pct", 0)) for t in losses_today) / loss_count) if loss_count > 0 else 0.0
-        avg_loss_usd = (sum(float(t.get("pnl_usd", 0)) for t in losses_today) / loss_count) if loss_count > 0 else 0.0
-        
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
         text_fallback = f"TR-GC-Crypto-LS-23-V3.9.9 | Airtight Ross Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
-        summary_card_html = f"""
-        <div class="summary-card">
-          <div class="summary-title">📊 Today's Realized Performance Summary ({today_str})</div>
-          <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px;">
-            <tr>
-              <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase;">Total Trades Today: <b style="color: #0f172a;">{total_today}</b></td>
-              <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase; text-align: right;">Win Ratio: <b style="color: #0f172a;">{win_count}W / {loss_count}L ({win_rate_today:.1f}%)</b></td>
-            </tr>
-            <tr>
-              <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase;">Avg Win: <b style="color: #15803d;">+{avg_win_roe:.2f}% (${avg_win_usd:+.2f})</b></td>
-              <td style="padding: 4px; font-size: 10px; color: #166534; font-weight: 600; text-transform: uppercase; text-align: right;">Avg Loss: <b style="color: #b91c1c;">{avg_loss_roe:.2f}% (${avg_loss_usd:+.2f})</b></td>
-            </tr>
-          </table>
-          <div class="summary-net">
-            Today's Realized P&L: <span class="{'win-color' if net_today_usd >= 0 else 'loss-color'}">${net_today_usd:+.2f}</span>
-          </div>
-        </div>
-        """
+        # MOBILE-FIRST CARDS FOR ACTIVE POSITIONS
+        positions_cards = ""
+        if positions_data:
+            for p in positions_data:
+                pnl_color = '#2e7d32' if p['pnl'] >= 0 else '#c62828'
+                side_color = '#2e7d32' if p['side'] == 'LONG' else '#c62828'
+                positions_cards += f"""
+                <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 8px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <div>
+                      <span style="font-weight: 700; font-size: 13px; color: #0f172a;">{p['coin']}</span>
+                      <span style="font-size: 10px; color: {side_color}; font-weight: 700; margin-left: 6px;">{p['side']} ({p['leverage']}x)</span>
+                    </div>
+                    <span style="font-weight: 700; font-size: 13px; color: {pnl_color};">${p['pnl']:+.2f} ({p['roe']:+.2f}%)</span>
+                  </div>
+                  <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">
+                    <b>Val:</b> ${p['position_usd']:.2f} &bull; <b>Cost:</b> ${p['collateral']:.2f} &bull; <b>Stop:</b> ${p['stop']}
+                  </div>
+                  <div style="font-size: 10px; color: #2e7d32; font-weight: 600;">
+                    <b>Status:</b> {p['status']}
+                  </div>
+                </div>
+                """
+        else:
+            positions_cards = '<div style="padding: 12px; text-align: center; color: #666666; font-size: 11px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px;">No active positions.</div>'
+
+        # MOBILE-FIRST CARDS FOR RECENTLY CLOSED TRADES
+        closed_cards = ""
+        closed_ledger = sorted(state.get("closed_trades_ledger", []), key=lambda x: x.get("timestamp", ""), reverse=True)
+        total_realized_pnl = 0.0
+
+        if closed_ledger:
+            for t in closed_ledger[:10]:
+                pnl_val = float(t.get('pnl_usd', 0.0))
+                roe_val = float(t.get('roe_pct', 0.0))
+                total_realized_pnl += pnl_val
+                pnl_color = '#2e7d32' if pnl_val >= 0 else '#c62828'
+                side_color = '#2e7d32' if t.get('side') == 'LONG' else '#c62828'
+                closed_cards += f"""
+                <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 8px;">
+                  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                    <div>
+                      <span style="font-weight: 700; font-size: 13px; color: #0f172a;">{t['coin']}</span>
+                      <span style="font-size: 10px; color: {side_color}; font-weight: 700; margin-left: 6px;">{t.get('side', 'LONG')}</span>
+                    </div>
+                    <span style="font-weight: 700; font-size: 13px; color: {pnl_color};">${pnl_val:+.2f} ({roe_val:+.2f}%)</span>
+                  </div>
+                  <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">
+                    <b>Entry:</b> ${round_sig_figs(t.get('entry_price', 0), 5)} &bull; <b>Exit:</b> ${round_sig_figs(t.get('exit_price', 0), 5)}
+                  </div>
+                  <div style="font-size: 10px; color: #b45309; margin-bottom: 2px;">
+                    <b>Reason:</b> {t.get('exit_reason', 'N/A')}
+                  </div>
+                  <div style="font-size: 10px; color: #94a3b8; font-family: monospace;">
+                    {t.get('timestamp', '')}
+                  </div>
+                </div>
+                """
+        else:
+            closed_cards = '<div style="padding: 12px; text-align: center; color: #666666; font-size: 11px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px;">No recent exits recorded yet.</div>'
+
+        total_pnl_color = '#2e7d32' if total_realized_pnl >= 0 else '#c62828'
 
         audit_section = ""
         if VERBOSE_TEST_MODE:
-            audit_rows = "".join([f"<tr><td style='padding: 6px 8px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 10px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
+            audit_rows = "".join([f"<tr><td style='padding: 6px 8px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 10px; color: #475569; white-space: pre-wrap; word-break: break-all;'>{log}</td></tr>" for log in audit_logs])
             audit_section = f"""
-            <div class="section-title" style="color: #d97706;">Live Telemetry & Audit Log</div>
-            <div class="table-responsive">
-              <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%;">
+            <div style="font-size: 12px; text-transform: uppercase; color: #d97706; margin: 18px 0 6px 0; font-weight: 700;">Live Telemetry & Audit Log</div>
+            <div style="width: 100%; border: 1px solid #fde68a; border-radius: 6px; background-color: #fffbeb; margin-bottom: 15px;">
+              <table style="width: 100%; font-size: 11px; border-collapse: collapse;">
                 <tbody>{audit_rows}</tbody>
               </table>
             </div>
             """
 
-        closed_ledger = sorted(state.get("closed_trades_ledger", []), key=lambda x: x.get("timestamp", ""), reverse=True)
-        parsed_closed_rows = []
-        total_realized_pnl = 0.0
+        html_content = f"""<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  </head>
+  <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 8px; color: #333333; -webkit-text-size-adjust: 100%;">
+    <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); box-sizing: border-box;">
+      
+      <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Crypto-LS-23 | Airtight Ross Scalper</div>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; 5M Candles &amp; Scanning Active</div>
+      </div>
 
-        for t in closed_ledger[:10]:
-            entry_p = float(t.get("entry_price", 0.0))
-            exit_p = float(t.get("exit_price", 0.0))
-            side = t.get("side", "LONG")
-            
-            pnl_val = float(t.get("pnl_usd", 0.0))
-            roe_val = float(t.get("roe_pct", 0.0))
-            total_realized_pnl += pnl_val
+      <div style="padding: 12px;">
+        
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; margin-bottom: 14px;">
+          <div style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 2px;">Total Net Worth</div>
+          <div style="font-size: 22px; font-weight: 700; color: #0f172a;">USD ${account_value:,.2f}</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 6px; border-top: 1px solid #e2e8f0; padding-top: 6px;">
+            <div style="margin-bottom: 3px;">Reserve: <b style="color: #0f172a;">${static_usdc:.2f}</b> &bull; Margin: <b style="color: #0f172a;">{margin_util_pct:.1f}%</b></div>
+            <div>Today's Gain: <span style="background-color: {'#e6f4ea' if today_total_gain >= 0 else '#fce8e6'}; color: {'#137333' if today_total_gain >= 0 else '#c5221f'}; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${today_total_gain:+,.2f}</span></div>
+          </div>
+        </div>
 
-            parsed_closed_rows.append(
-                f"<tr>"
-                f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['coin']}<br><span style='font-size: 10px; color: {'#2e7d32' if side == 'LONG' else '#c62828'}; font-weight: 600;'>({side})</span></td>"
-                f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 10px;'>${round_sig_figs(entry_p, 5)}<br>&rarr; ${round_sig_figs(exit_p, 5)}</td>"
-                f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: {'#2e7d32' if pnl_val >= 0 else '#c62828'}; font-weight: bold;'>${pnl_val:+.2f}<br><span style='font-size: 10px;'>({roe_val:+.2f}%)</span></td>"
-                f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 10px;'><span style='color: #b45309; font-weight: 600;'>{t['exit_reason']}</span><br><span style='color: #94a3b8; font-size: 9px; font-family: monospace;'>{t.get('timestamp', '')}</span></td>"
-                f"</tr>"
-            )
+        <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px; margin-bottom: 14px;">
+          <div style="font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase; margin-bottom: 4px;">📊 Today's Realized Performance ({today_str})</div>
+          <div style="font-size: 11px; color: #166534; margin-bottom: 3px;">Trades: <b>{total_today}</b> &bull; Win Rate: <b>{win_count}W / {loss_count}L ({win_rate_today:.1f}%)</b></div>
+          <div style="font-size: 11px; font-weight: 700; color: #166534; border-top: 1px dashed #bbf7d0; padding-top: 4px; margin-top: 4px;">
+            Realized P&amp;L: <span style="color: {'#15803d' if net_today_usd >= 0 else '#b91c1c'};">${net_today_usd:+.2f}</span>
+          </div>
+        </div>
 
-        total_pnl_color = '#2e7d32' if total_realized_pnl >= 0 else '#c62828'
-        closed_rows = "".join(parsed_closed_rows) if parsed_closed_rows else "<tr><td colspan='4' style='padding: 12px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
-        closed_rows += f"""
-        <tr style="background: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
-            <td colspan="2" style="padding: 8px; text-align: right;">TOTAL RECENT REALIZED P&L:</td>
-            <td colspan="2" style="padding: 8px; color: {total_pnl_color};">${total_realized_pnl:+.2f}</td>
-        </tr>
-        """
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Guardrails (V3.9.9 Hardened)</div>
+          <div>&bull; <b>Wick-Resistant Stop (-0.80% to -1.25%):</b> Absorbs 5m crypto volatility noise</div>
+          <div>&bull; <b>True 24H HOD Filter:</b> Requires genuine 24h peak breakouts across all candles</div>
+          <div>&bull; <b>Top-of-Book Depth Gate (&ge;$7,500):</b> Stops thin orderbook slippage</div>
+          <div>&bull; <b>Expanded 80%-97% Ratchet:</b> Locks up to 97% of peak gains on runners</div>
+          <div>&bull; <b>BTC Directional Shield &amp; Gemini AI:</b> Blocks longs in macro bear regimes</div>
+        </div>
 
-        positions_rows = "".join([
-            f"<tr>"
-            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['coin']}<br><span style='font-size: 10px; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']} ({p['leverage']}x)</span></td>"
-            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 11px; font-weight: 600;'>${p['position_usd']:.2f}<br><span style='font-size: 9px; color: #64748b; font-weight: normal;'>Cost: ${p['collateral']:.2f}</span></td>"
-            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f}<br><span style='font-size: 10px;'>({p['roe']:+.2f}%)</span></td>"
-            f"<td style='padding: 6px 8px; border-bottom: 1px solid #eee; font-size: 10px;'><span style='color: #b45309; font-weight: bold; font-family: monospace;'>SL: ${p['stop']}<br>TP: ${p['tp_target']}</span><br><span style='color: #2e7d32; font-weight: 600;'>{p['status']}</span></td>"
-            f"</tr>"
-            for p in positions_data
-        ])
+        <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
+        {positions_cards}
 
-        if not positions_data:
-            positions_rows = "<tr><td colspan='4' style='padding: 12px; text-align: center; color: #666;'>No active positions found.</td></tr>"
+        <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 14px 0 6px 0; font-weight: 700;">Recently Closed Trades (Last 10 Trades)</div>
+        {closed_cards}
+        
+        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; margin-top: 8px; text-align: right; font-weight: bold; font-size: 11px;">
+          TOTAL RECENT REALIZED P&L: <span style="color: {total_pnl_color};">${total_realized_pnl:+.2f}</span>
+        </div>
 
-        html_content = f"""
-        <html>
-          <head>
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <style>
-              body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 8px; color: #333; }}
-              .container {{ max-width: 600px; width: 100%; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); box-sizing: border-box; }}
-              .header {{ background: #0f172a; color: #ffffff; padding: 14px 16px; }}
-              .header h2 {{ margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.5px; }}
-              .header p {{ margin: 3px 0 0; font-size: 11px; color: #94a3b8; }}
-              .content {{ padding: 12px; }}
-              .net-worth-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 14px; margin-bottom: 12px; }}
-              .net-worth-title {{ font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 2px; letter-spacing: 0.5px; }}
-              .net-worth-value {{ font-size: 22px; font-weight: 700; color: #0f172a; }}
-              .net-worth-subtitle {{ font-size: 10px; color: #64748b; margin-top: 4px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 4px; }}
-              
-              .summary-card {{ background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 12px; margin-bottom: 12px; }}
-              .summary-title {{ font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase; margin-bottom: 8px; letter-spacing: 0.5px; }}
-              .summary-net {{ font-size: 11px; font-weight: 700; color: #166534; border-top: 1px dashed #bbf7d0; padding-top: 6px; margin-top: 2px; }}
-              
-              .win-color {{ color: #15803d !important; }}
-              .loss-color {{ color: #b91c1c !important; }}
+        {audit_section}
 
-              .pnl-badge {{ background: {'#e6f4ea' if today_total_gain >= 0 else '#fce8e6'}; color: {'#137333' if today_total_gain >= 0 else '#c5221f'}; padding: 2px 6px; border-radius: 4px; font-weight: bold; }}
-
-              .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px 12px; margin-bottom: 12px; font-size: 10px; color: #334155; line-height: 1.4; }}
-              .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a; letter-spacing: 0.5px; }}
-              .section-title {{ font-size: 11px; text-transform: uppercase; color: #475569; margin: 14px 0 6px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; font-weight: 600; letter-spacing: 0.5px; }}
-              .table-responsive {{ width: 100%; overflow-x: auto; margin-bottom: 12px; }}
-              table {{ width: 100%; border-collapse: collapse; font-size: 11px; }}
-              th {{ background: #f1f5f9; color: #475569; text-align: left; padding: 6px 8px; font-weight: 600; border-bottom: 2px solid #cbd5e1; font-size: 10px; }}
-              td {{ padding: 6px 8px; border-bottom: 1px solid #f1f5f9; }}
-              .footer {{ text-align: center; font-size: 9px; color: #94a3b8; padding: 10px; background: #f8fafc; border-top: 1px solid #e2e8f0; }}
-
-              @media only screen and (max-width: 600px) {{
-                body {{ padding: 2px !important; }}
-                .content {{ padding: 8px !important; }}
-                .header {{ padding: 10px !important; }}
-                .net-worth-value {{ font-size: 18px !important; }}
-                table {{ font-size: 10px !important; }}
-                th, td {{ padding: 5px 4px !important; }}
-              }}
-            </style>
-          </head>
-          <body>
-            <div class="container">
-              <div class="header">
-                <h2>TR-GC-Crypto-LS-23-V3.9.9 | Airtight Ross Scalper</h2>
-                <p>Timestamp: {timestamp} (5M Candles &amp; 5M Scanning Active)</p>
-              </div>
-              <div class="content">
-                <div class="net-worth-card">
-                  <div class="net-worth-title">Total Net Worth</div>
-                  <div class="net-worth-value">USD ${account_value:.2f}</div>
-                  <div class="net-worth-subtitle">
-                    <span>Reserve: <b>${static_usdc:.2f}</b></span>
-                    <span>Margin: <b>{margin_util_pct:.1f}%</b></span>
-                    <span>Today's Gain: <span class="pnl-badge">${today_total_gain:+,.2f}</span></span>
-                  </div>
-                </div>
-
-                {summary_card_html}
-
-                <div class="rules-card">
-                  <div class="rules-title">&#9989; Active Guardrails (V3.9.9 Hardened Risk Active)</div>
-                  &bull; <b>Wick-Resistant Stop Clamp (-0.80% to -1.25%):</b> Gives room to survive 5m noise while capping risk at pennies<br>
-                  &bull; <b>True 24H High-of-Day (HOD) Filter:</b> Requires genuine 24h peak breakouts across all 288 historical candles<br>
-                  &bull; <b>Top-of-Book Depth Gate (&ge; $7,500 in 0.15% Band):</b> Eliminates thin orderbook stop trigger slippage<br>
-                  &bull; <b>Pacing Buffer Guard:</b> Requires &ge; 2.5m elapsed before full volume extrapolation to prevent fake spikes<br>
-                  &bull; <b>Expanded 80%–97% Profit Ratchet:</b> Locks up to 97% of peak gains on strong runners<br>
-                  &bull; <b>Micro-Cap Penny Perp Scope (#20-#200+):</b> Focuses on low-float micro-caps while skipping heavy mega-caps<br>
-                  &bull; <b>24/7 Native Orderbook Sync:</b> Posts resting trigger orders directly on Hyperliquid orderbook<br>
-                  &bull; <b>BTC Directional Shield:</b> Aligns market direction with daily candle (GREEN = LONGs only)<br>
-                  &bull; <b>24H Post-Loss Cooldown Blocklist:</b> Auto-bans any coin closed at a loss for 24 hours<br>
-                  &bull; <b>Hardened Circuit Breaker:</b> Hibernates 12H strictly if 3+ losses totaling &le; -$1.00 occur within rolling 60m
-                </div>
-
-                <div class="section-title">Active Positions (USD)</div>
-                <div class="table-responsive">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th style="width: 25%;">Asset</th>
-                        <th style="width: 20%;">Val ($)</th>
-                        <th style="width: 25%;">P&amp;L (ROE)</th>
-                        <th style="width: 30%;">Stop / Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>{positions_rows}</tbody>
-                  </table>
-                </div>
-
-                <div class="section-title">Recently Closed Trades &amp; Exit Telemetry</div>
-                <div class="table-responsive">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th style="width: 22%;">Asset</th>
-                        <th style="width: 28%;">Entry &rarr; Exit</th>
-                        <th style="width: 22%;">Realized</th>
-                        <th style="width: 28%;">Reason</th>
-                      </tr>
-                    </thead>
-                    <tbody>{closed_rows}</tbody>
-                  </table>
-                </div>
-
-                {audit_section}
-
-              </div>
-              <div class="footer">Hyperliquid 5M Fast Scalper Autonomous Engine &bull; Managed via GitHub Actions</div>
-            </div>
-          </body>
-        </html>
+      </div>
+      <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
+        Hyperliquid 5M Fast Scalper Autonomous Engine &bull; Managed via GitHub Actions
+      </div>
+    </div>
+  </body>
+</html>
         """
 
         send_html_dashboard_email(f"Hyperliquid Report — USD ${account_value:.2f}", html_content, text_fallback)
     else:
         save_state(state)
-        print(f"[{timestamp}] Execution cycle complete ({elapsed_minutes:.1f}m since last report). Skipping email dispatch.", flush=True)
+        print(f"[{timestamp}] Execution cycle complete. Skipping email dispatch.", flush=True)
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     print(f"[{timestamp}] Executing 5M Fast Ross Scalper cycle...", flush=True)
     try:
         execute_engine()
-        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 5M cycle execution completed successfully.", flush=True)
+        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 5M cycle completed successfully.", flush=True)
     except Exception as e:
         err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Engine execution error: {e}"
         print(err_msg, flush=True)
