@@ -325,13 +325,13 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-15 13:38:06",
+  "last_run_timestamp": "2026-10-15 13:45:49",
   "last_email_timestamp": 1792089467.8612797,
-  "last_scan_timestamp": 1792089467.8612797,
+  "last_scan_timestamp": 1792089935.234039,
   "gemini_cache": {
-    "timestamp": 1792089467.8612797,
+    "timestamp": 1792089935.234039,
     "risk": "HIGH",
-    "briefing": "Risk Level: HIGH; while institutional inflows provide a foundational floor, the market remains extremely sensitive to macroeconomic shifts, regulatory uncertainty, and excessive leverage, which consistently trigger sharp bouts of volatility."
+    "briefing": "**Risk Level: HIGH** \n\nDriven by heightened macroeconomic uncertainty, persistent regulatory pressures, and extreme price volatility, current market conditions expose investors to severe downside risk and sudden liquidity crunches."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
