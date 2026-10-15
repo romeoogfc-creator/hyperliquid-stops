@@ -325,13 +325,13 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-15 16:15:40",
+  "last_run_timestamp": "2026-10-15 16:27:33",
   "last_email_timestamp": 1792098931.1503975,
-  "last_scan_timestamp": 1792098931.1503975,
+  "last_scan_timestamp": 1792099645.100917,
   "gemini_cache": {
-    "timestamp": 1792098931.1503975,
-    "risk": "MODERATE",
-    "briefing": "Risk Level: **MODERATE** \u2014 While recent institutional inflows and macroeconomic easing provide a positive foundation, the market remains susceptible to significant volatility stemming from upcoming regulatory shifts and precarious liquidity conditions."
+    "timestamp": 1792099645.100917,
+    "risk": "HIGH",
+    "briefing": "Risk Level: **HIGH** \u2014 Market volatility remains elevated due to uncertainty surrounding global macroeconomic policy, shifting regulatory landscapes, and speculative fervor following recent institutional ETF inflows."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
