@@ -101,7 +101,7 @@ def send_html_dashboard_email(subject, html_content, text_fallback):
         print(f"Failed to send email: {e}")
 
 def round_sig_figs(val, sig_figs=5):
-    if val == 0:
+    if val == 0 or val is None:
         return 0
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
@@ -631,139 +631,152 @@ def execute_stock_engine():
 
     save_state(state)
 
+    # --- MOBILE-FRIENDLY HTML DASHBOARD RENDERER ---
+    
+    positions_cards = ""
+    if positions_data:
+        for p in positions_data:
+            pnl_color = '#2e7d32' if p['pnl'] >= 0 else '#c62828'
+            side_color = '#2e7d32' if p['side'] == 'LONG' else '#c62828'
+            entry_px_formatted = round_sig_figs(p['entry'], 5)
+            positions_cards += f"""
+            <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 8px; box-sizing: border-box;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <div>
+                  <span style="font-weight: 700; font-size: 13px; color: #0f172a;">{p['symbol']}</span>
+                  <span style="font-size: 10px; color: {side_color}; font-weight: 700; margin-left: 6px;">{p['side']}</span>
+                </div>
+                <span style="font-weight: 700; font-size: 13px; color: {pnl_color};">${p['pnl']:+.2f} ({p['roe']:+.2f}%)</span>
+              </div>
+              <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">
+                <b>Val:</b> ${p['market_value']:.2f} &bull; <b>Buy:</b> ${entry_px_formatted} &bull; <b>Stop:</b> ${p['stop']}
+              </div>
+              <div style="font-size: 10px; color: #2e7d32; font-weight: 600;">
+                <b>Status:</b> {p['status']}
+              </div>
+            </div>
+            """
+    else:
+        positions_cards = '<div style="padding: 12px; text-align: center; color: #666666; font-size: 11px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px;">No active positions (100% Cash Flat).</div>'
+
+    closed_cards = ""
+    closed_ledger = state.get("closed_trades_ledger", [])
+    total_realized_pnl = 0.0
+
+    if closed_ledger:
+        for t in closed_ledger[:10]:
+            pnl_val = float(t.get('realized_pnl', t.get('pnl_usd', 0.0)))
+            total_realized_pnl += pnl_val
+            pnl_color = '#2e7d32' if pnl_val >= 0 else '#c62828'
+            symbol = t.get('symbol', 'N/A')
+            entry_px_formatted = round_sig_figs(t.get('entry_price', 0), 5)
+            exit_px_formatted = round_sig_figs(t.get('exit_price', 0), 5)
+            reason = t.get('exit_reason', 'N/A')
+            ts_str = t.get('timestamp', '')
+
+            closed_cards += f"""
+            <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 8px; box-sizing: border-box;">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                <div>
+                  <span style="font-weight: 700; font-size: 13px; color: #0f172a;">{symbol}</span>
+                </div>
+                <span style="font-weight: 700; font-size: 13px; color: {pnl_color};">${pnl_val:+.2f}</span>
+              </div>
+              <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">
+                <b>Entry:</b> ${entry_px_formatted} &bull; <b>Exit:</b> ${exit_px_formatted}
+              </div>
+              <div style="font-size: 10px; color: #b45309; margin-bottom: 2px; word-break: break-word;">
+                <b>Reason:</b> {reason}
+              </div>
+              <div style="font-size: 10px; color: #94a3b8; font-family: monospace;">
+                {ts_str}
+              </div>
+            </div>
+            """
+    else:
+        closed_cards = '<div style="padding: 12px; text-align: center; color: #666666; font-size: 11px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px;">No recent exits recorded yet.</div>'
+
+    total_pnl_color = '#2e7d32' if total_realized_pnl >= 0 else '#c62828'
+
     audit_section = ""
     if VERBOSE_TEST_MODE:
-        audit_rows = "".join([f"<tr><td style='padding: 6px 10px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 11px; color: #475569; white-space: pre-wrap; word-break: break-word;'>{log}</td></tr>" for log in audit_logs])
+        audit_rows = "".join([f"<tr><td style='padding: 6px 8px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 10px; color: #475569; white-space: pre-wrap; word-break: break-all;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div class="section-title" style="color: #d97706;">Live Test Telemetry & Audit Log (Pure Quantitative Sniper Engine)</div>
-        <div class="table-responsive" style="overflow-x: hidden;">
-          <table style="background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; width: 100%; table-layout: fixed;">
+        <div style="font-size: 11px; text-transform: uppercase; color: #d97706; margin: 14px 0 6px 0; font-weight: 700;">Live Test Telemetry & Audit Log</div>
+        <div style="width: 100%; border: 1px solid #fde68a; border-radius: 6px; background-color: #fffbeb; margin-bottom: 15px; box-sizing: border-box;">
+          <table style="width: 100%; font-size: 11px; border-collapse: collapse;">
             <tbody>{audit_rows}</tbody>
           </table>
         </div>
         """
 
-    closed_ledger = state.get("closed_trades_ledger", [])
-    closed_rows = "".join([
-        f"<tr>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{t['symbol']}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(t.get('entry_price', 0), 5)}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace;'>${round_sig_figs(t.get('exit_price', 0), 5)}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: #b45309;'>{t['exit_reason']}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if t.get('realized_pnl', 0) >= 0 else '#c62828'}; font-weight: bold;'>${t.get('realized_pnl', 0):+.2f}</td>"
-        f"<td style='padding: 8px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-size: 10px;'>{t['timestamp']}</td>"
-        f"</tr>"
-        for t in closed_ledger[:5]
-    ]) if closed_ledger else "<tr><td colspan='6' style='padding: 10px; text-align: center; color: #666;'>No recent exits recorded yet.</td></tr>"
-
     text_fallback = f"TR-GC-Equities-LS-01 | Pure Quantitative Sniper\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Total Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
-    positions_rows = "".join([
-        f"<tr>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>{p['bot_title']}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-weight: bold;'>{p['symbol']}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['side'] == 'LONG' else '#c62828'}; font-weight: 600;'>{p['side']}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee;'>${p['market_value']:.2f}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: {'#2e7d32' if p['pnl'] >= 0 else '#c62828'}; font-weight: bold;'>${p['pnl']:+.2f} ({p['roe']:+.2f}%)</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #334155;'>${round_sig_figs(p['entry'], 5)}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; font-family: monospace; font-weight: bold; color: #b45309;'>${p['stop']}</td>"
-        f"<td style='padding: 9px 10px; border-bottom: 1px solid #eee; color: #2e7d32; font-weight: 600;'>{p['status']}</td>"
-        f"</tr>"
-        for p in positions_data
-    ])
+    html_content = f"""<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  </head>
+  <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 8px; color: #333333; -webkit-text-size-adjust: 100%;">
+    <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); box-sizing: border-box;">
+      
+      <!-- Header Banner -->
+      <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Equities-LS-01 | Pure Quantitative Sniper</div>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Pure Quantitative Adaptive</div>
+      </div>
 
-    if positions_data:
-        total_market_value_sum = sum(p['market_value'] for p in positions_data)
-        total_pnl_sum = sum(p['pnl'] for p in positions_data)
-        total_cost_basis = total_market_value_sum - total_pnl_sum
-        total_roe_avg = (total_pnl_sum / total_cost_basis * 100) if total_cost_basis > 0 else 0.0
-        positions_rows += f"""
-        <tr style="background: #f8fafc; font-weight: bold; border-top: 2px solid #cbd5e1;">
-            <td colspan="3" style="padding: 9px 10px; text-align: right;">TOTAL:</td>
-            <td style="padding: 9px 10px;">${total_market_value_sum:.2f}</td>
-            <td style="padding: 9px 10px; color: {'#2e7d32' if total_pnl_sum >= 0 else '#c62828'};">${total_pnl_sum:+.2f} ({total_roe_avg:+.2f}%)</td>
-            <td colspan="3"></td>
-        </tr>
-        """
-    else:
-        positions_rows = "<tr><td colspan='8' style='padding: 15px; text-align: center; color: #666;'>No active positions (100% Cash Flat).</td></tr>"
-
-    html_content = f"""
-    <html>
-      <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <style>
-          body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 10px; color: #333; }}
-          .container {{ max-width: 100%; width: 100%; margin: 0 auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.05); box-sizing: border-box; }}
-          .header {{ background: #0f172a; color: #ffffff; padding: 15px 20px; }}
-          .header h2 {{ margin: 0; font-size: 16px; font-weight: 600; }}
-          .header p {{ margin: 5px 0 0; font-size: 11px; color: #94a3b8; }}
-          .content {{ padding: 15px; }}
-          .net-worth-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 15px; margin-bottom: 20px; }}
-          .net-worth-title {{ font-size: 12px; text-transform: uppercase; color: #64748b; font-weight: 600; margin-bottom: 6px; }}
-          .net-worth-value {{ font-size: 24px; font-weight: 700; color: #0f172a; }}
-          .net-worth-subtitle {{ font-size: 11px; color: #64748b; margin-top: 4px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }}
-          
-          .pnl-badge {{ background: {'#e6f4ea' if today_total_gain >= 0 else '#fce8e6'}; color: {'#137333' if today_total_gain >= 0 else '#c5221f'}; padding: 4px 8px; border-radius: 4px; font-weight: bold; }}
-          .lifetime-badge {{ background: #f1f5f9; color: #0f172a; padding: 4px 8px; border-radius: 4px; font-weight: bold; }}
-
-          .rules-card {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px 15px; margin-bottom: 20px; font-size: 11px; color: #334155; line-height: 1.6; }}
-          .rules-title {{ font-weight: 700; text-transform: uppercase; margin-bottom: 6px; font-size: 12px; color: #0f172a; }}
-          .section-title {{ font-size: 13px; text-transform: uppercase; color: #475569; margin: 20px 0 8px 0; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px; font-weight: 600; }}
-          .table-responsive {{ width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; margin-bottom: 15px; }}
-          table {{ width: 100%; border-collapse: collapse; font-size: 11px; white-space: nowrap; }}
-          th {{ background: #f1f5f9; color: #475569; text-align: left; padding: 8px 8px; font-weight: 600; border-bottom: 2px solid #cbd5e1; }}
-          td {{ padding: 8px 8px; }}
-          .footer {{ text-align: center; font-size: 10px; color: #94a3b8; padding: 12px; background: #f8fafc; border-top: 1px solid #e2e8f0; }}
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h2>TR-GC-Equities-LS-01 | Pure Quantitative Sniper</h2>
-            <p>Timestamp: {timestamp} &bull; Mode: PURE QUANTITATIVE ADAPTIVE</p>
+      <div style="padding: 12px; box-sizing: border-box;">
+        
+        <!-- Total Account Equity Card -->
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; margin-bottom: 14px; box-sizing: border-box;">
+          <div style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 2px;">Total Account Equity</div>
+          <div style="font-size: 22px; font-weight: 700; color: #0f172a;">USD ${equity:,.2f}</div>
+          <div style="font-size: 11px; color: #64748b; margin-top: 6px; border-top: 1px solid #e2e8f0; padding-top: 6px; line-height: 1.6;">
+            <div>Margin Utilization: <b style="color: #0f172a;">{margin_util_pct:.1f}%</b></div>
+            <div>Today's Gain: <span style="background-color: {'#e6f4ea' if today_total_gain >= 0 else '#fce8e6'}; color: {'#137333' if today_total_gain >= 0 else '#c5221f'}; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${today_total_gain:+,.2f}</span></div>
+            <div>Lifetime P&amp;L: <b style="color: #0f172a;">${lifetime_cumulative_pnl:+,.2f}</b></div>
           </div>
-          <div class="content">
-            <div class="net-worth-card">
-              <div class="net-worth-title">Total Account Equity</div>
-              <div class="net-worth-value">USD ${equity:.2f}</div>
-              <div class="net-worth-subtitle">
-                <span>Margin Utilization: <b>{margin_util_pct:.1f}%</b></span>
-                <span>Today's Gain: <span class="pnl-badge">${today_total_gain:+,.2f}</span></span>
-                <span>Lifetime P&L: <span class="lifetime-badge">${lifetime_cumulative_pnl:+,.2f}</span></span>
-              </div>
-            </div>
-
-            <div class="rules-card">
-              <div class="rules-title">&#9989; Active Guardrails (Pure Quantitative Engine)</div>
-              &bull; <b>SPY Regime Adaptability:</b> Automatically longs green markets and shorts red market breakdowns<br>
-              &bull; <b>Regime Mismatch Guard:</b> Instantly closes positions if SPY trend flips against open exposure<br>
-              &bull; <b>Portfolio Drawdown Circuit Breaker:</b> Instantly flattens 100% to cash if total open loss hits -3.5%<br>
-              &bull; <b>Active Chop Purge:</b> Automatically closes positions if market Choppiness Index (CI > 60.0) turns dead<br>
-              &bull; <b>Smart Runner Volume-Adaptation:</b> Heavy volume (>=1.5x) widens trail; stalling volume (<0.8x) locks profit<br>
-              &bull; <b>Pre-Close EOD Square-Off:</b> Automatic 100% cash liquidation at 2:40 PM CT daily<br>
-              &bull; <b>Scaled Position Sizing:</b> 13% NAV allocation per slot with 5x safe limits<br>
-              &bull; <b>Asset Universe:</b> S&P 500 & Nasdaq Momentum Equities
-            </div>
-
-            <div class="section-title">Active Sniper Scalps</div>
-            <div class="table-responsive">
-              <table><thead><tr><th>Bot Title</th><th>Symbol</th><th>Side</th><th>Market Value USD</th><th>Unrealized P&L USD</th><th>Buy Price</th><th>Stop Price</th><th>Status</th></tr></thead><tbody>{positions_rows}</tbody></table>
-            </div>
-
-            <div class="section-title">Recently Closed Trades & Exit Telemetry</div>
-            <div class="table-responsive">
-              <table><thead><tr><th>Symbol</th><th>Entry Price</th><th>Exit Price</th><th>Exit Reason / Catalyst</th><th>Realized P&L</th><th>Timestamp</th></tr></thead><tbody>{closed_rows}</tbody></table>
-            </div>
-
-            {audit_section}
-
-          </div>
-          <div class="footer">Alpaca Pure Quantitative Sniper Engine &bull; Managed via GitHub Actions</div>
         </div>
-      </body>
-    </html>
-    """
+
+        <!-- Guardrails Card -->
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4; box-sizing: border-box;">
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Guardrails (Pure Quantitative Engine)</div>
+          <div>&bull; <b>SPY Regime Adaptability:</b> Automatically longs green markets and shorts red market breakdowns</div>
+          <div>&bull; <b>Regime Mismatch Guard:</b> Instantly closes positions if SPY trend flips against open exposure</div>
+          <div>&bull; <b>Portfolio Drawdown Circuit Breaker:</b> Instantly flattens 100% to cash if total open loss hits -3.5%</div>
+          <div>&bull; <b>Active Chop Purge:</b> Automatically closes positions if market Choppiness Index (CI &gt; 60.0) turns dead</div>
+          <div>&bull; <b>Smart Runner Volume-Adaptation:</b> Heavy volume (&gt;=1.5x) widens trail; stalling volume (&lt;0.8x) locks profit</div>
+          <div>&bull; <b>Pre-Close EOD Square-Off:</b> Automatic 100% cash liquidation at 2:40 PM CT daily</div>
+          <div>&bull; <b>Scaled Position Sizing:</b> 13% NAV allocation per slot with 5x safe limits</div>
+          <div>&bull; <b>Asset Universe:</b> S&amp;P 500 &amp; Nasdaq Momentum Equities</div>
+        </div>
+
+        <!-- Active Positions Section -->
+        <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Sniper Scalps</div>
+        {positions_cards}
+
+        <!-- Recently Closed Trades Section -->
+        <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 14px 0 6px 0; font-weight: 700;">Recently Closed Trades &amp; Exit Telemetry</div>
+        {closed_cards}
+        
+        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; margin-top: 8px; text-align: right; font-weight: bold; font-size: 11px;">
+          TOTAL RECENT REALIZED P&amp;L: <span style="color: {total_pnl_color};">${total_realized_pnl:+.2f}</span>
+        </div>
+
+        <!-- Live Test Telemetry -->
+        {audit_section}
+
+      </div>
+
+      <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
+        Alpaca Pure Quantitative Sniper Engine &bull; Managed via GitHub Actions
+      </div>
+    </div>
+  </body>
+</html>
+"""
 
     send_html_dashboard_email(f"Alpaca Quantitative Report — USD ${equity:.2f}", html_content, text_fallback)
     print(f"[{timestamp}] Pure Quantitative Sniper telemetry report complete.")
