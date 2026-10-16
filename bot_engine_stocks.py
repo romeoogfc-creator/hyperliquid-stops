@@ -94,7 +94,8 @@ def send_html_dashboard_email(subject, html_content, text_fallback):
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(sender_email, server.sendmail(sender_email, receiver_email, msg.as_string()))
+            server.login(sender_email, sender_password)
+            server.sendmail(sender_email, receiver_email, msg.as_string())
     except Exception as e:
         print(f"Failed to send email: {e}")
 
@@ -139,7 +140,7 @@ def execute_stock_engine():
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
 
-    start_date = (datetime.now() - timedelta(days=5)).strftime('%Y-%m-%d')
+    start_date = (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%d')
 
     spy_green, spy_open_px, spy_close_px = check_market_macro_regime()
     spy_regime_str = f"GREEN (Open: ${spy_open_px:.2f}, Close: ${spy_close_px:.2f}) -> LONGs Allowed" if spy_green else f"RED (Open: ${spy_open_px:.2f}, Close: ${spy_close_px:.2f}) -> SHORTs Allowed"
@@ -272,7 +273,7 @@ def execute_stock_engine():
         entry_candle_low = cache_info.get("entry_candle_low", entry_px * 0.9920)
 
         try:
-            bar_res = requests.get(f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=5Min&limit=30&feed=iex&start={start_date}", headers=HEADERS)
+            bar_res = requests.get(f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=5Min&limit=50&feed=iex&start={start_date}", headers=HEADERS)
             if bar_res.status_code == 200:
                 b_list = bar_res.json().get("bars", {}).get(symbol, [])
                 if len(b_list) >= 20:
@@ -368,7 +369,7 @@ def execute_stock_engine():
         page_token = None
 
         while True:
-            url = f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbols_param}&timeframe=5Min&limit=50&feed=iex&start={start_date}"
+            url = f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbols_param}&timeframe=5Min&limit=10000&feed=iex&start={start_date}"
             if page_token:
                 url += f"&page_token={page_token}"
 
