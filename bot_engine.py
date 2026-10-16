@@ -330,7 +330,6 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle
         roe = (entry_px - current_px) / entry_px
 
     if is_long:
-        # Technical Pivot Stop Anchored directly to entry_candle_low
         raw_struct = (entry_candle_low / entry_px) - 1.0 if entry_px > 0 else -0.0080
         initial_floor_roe = min(-0.0060, max(-0.0125, raw_struct))
     else:
@@ -419,16 +418,15 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.3 Engine Started (Limit-Clamp & Pivot-Stop Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.3.1 Engine Started (Forced Scan Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
 
     state = load_state()
 
-    last_scan_ts = float(state.get("last_scan_timestamp", 0))
-    minutes_since_last_scan = (now_ts - last_scan_ts) / 60.0
-    is_5m_scan_window = (minutes_since_last_scan >= 3.5)
+    # ALWAYS force market scan on active runs
+    is_5m_scan_window = True
 
     if now_ts < float(state.get("hibernating_until", 0)):
         remaining_hrs = (float(state["hibernating_until"]) - now_ts) / 3600.0
@@ -680,7 +678,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.3", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.3.1", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -730,7 +728,7 @@ def execute_engine():
     available_slots = MAX_CRYPTO_SLOTS - active_count
     min_notional_usd = 10.50
 
-    if is_5m_scan_window and available_slots > 0:
+    if available_slots > 0:
         state["last_scan_timestamp"] = now_ts
         audit_logs.append(f"🌐 PURE ROSS 5M SCANNER ACTIVE: Scanning Top Gappers (#20-#300+)...")
 
@@ -782,7 +780,6 @@ def execute_engine():
                 if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
                     continue
 
-                # TIGHT SPREAD CEILING: Max 0.12% spread cap (filters friction)
                 is_liquid, spread_msg = check_liquidity_and_spread(info, coin, max_spread=0.0012, min_depth_usd=12000.0)
                 if not is_liquid:
                     continue
@@ -814,10 +811,7 @@ def execute_engine():
                 prev_high = highs[-2]
                 prev_low = lows[-2]
                 
-                # LIMIT CLAMP RULE: Live price must be breaking prev_high, but <= +0.20% extended past it
                 is_trigger_break = (curr_live_px > prev_high) and (curr_live_px <= prev_high * 1.0020)
-
-                # PULLBACK REQUIREMENT: Previous candle (-2) must be a RED or Light Volume candle
                 is_prev_pullback = (closes[-2] < float(candles[-2]["o"])) or (volumes[-2] <= avg_vol * 0.85)
 
                 recent_green_vols = [volumes[i] for i in range(-6, -1) if closes[i] > float(candles[i]["o"])]
@@ -893,7 +887,6 @@ def execute_engine():
                 except Exception:
                     pass
 
-                # Strict Limit-Clamp Fill to Eliminate Chasing Slippage
                 res = exchange.market_open(coin, is_long, sz, px, slippage=0.002)
                 if res.get("status") == "ok":
                     active_count += 1
@@ -917,7 +910,7 @@ def execute_engine():
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V4.3", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V4.3.1", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -958,7 +951,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.3 | Pure Ross Cameron 5M Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.3.1 | Pure Ross Cameron 5M Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -1043,8 +1036,8 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); box-sizing: border-box;">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Crypto-LS-23 | Pure Ross Cameron 5M Scalper (V4.3)</div>
-        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Limit-Clamp &amp; Pivot-Stop Active</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Crypto-LS-23 | Pure Ross Cameron 5M Scalper (V4.3.1)</div>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Forced Scan Active</div>
       </div>
 
       <div style="padding: 12px;">
@@ -1067,7 +1060,7 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Ross Cameron V4.3 Execution Rules</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Ross Cameron V4.3.1 Execution Rules</div>
           <div>&bull; <b>Limit-Clamp Entry (0.20% Max):</b> Prevents buying extended candle spikes</div>
           <div>&bull; <b>Pivot Low Stop Anchor:</b> Stops anchored to candle structure; avoids artificial noise stops</div>
           <div>&bull; <b>Required Closed Pullback:</b> Forces 1 light-red pullback candle before entering</div>
@@ -1088,7 +1081,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 5M Fast Scalper Autonomous Engine &bull; V4.3 Active
+        Hyperliquid 5M Fast Scalper Autonomous Engine &bull; V4.3.1 Forced Scan Active
       </div>
     </div>
   </body>
