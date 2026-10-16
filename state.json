@@ -34,7 +34,8 @@
     "TAO": 1791877465.6945598,
     "BERA": 1792067431.7473655,
     "SKY": 1791881125.2083867,
-    "PONS": 1792202433.111476
+    "PONS": 1792202433.111476,
+    "PENDLE": 1792220432.1087716
   },
   "last_traded_candle": {
     "FET": 1791759600000,
@@ -89,6 +90,17 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "PENDLE",
+      "entry_price": 2.1289,
+      "exit_price": 2.11495,
+      "pnl_usd": -0.1764,
+      "roe_pct": -0.6552679787683737,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udea8 Ross Exit Signal (Price < 9 EMA or MACD Hist < 0)",
+      "timestamp": "2026-10-16 07:00:32",
+      "ts_sec": 1792134032.1087716
+    },
     {
       "coin": "TAO",
       "entry_price": 285.4,
@@ -311,43 +323,17 @@
       "timestamp": "2026-10-12 03:45:27",
       "ts_sec": 1791776727.1308298,
       "fill_hash": "PNUT_195964899154742"
-    },
-    {
-      "coin": "CAKE",
-      "entry_price": 2.37745,
-      "exit_price": 2.3724,
-      "pnl_usd": -0.0252,
-      "roe_pct": -0.2124124587267964,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-12 03:30:38",
-      "ts_sec": 1791775838.8591301,
-      "fill_hash": "CAKE_1011961962863747"
     }
   ],
-  "active_position_cache": {
-    "PENDLE": {
-      "entry_px": 2.1289,
-      "current_px": 2.1268,
-      "szi": 12.0,
-      "margin": 5.1036,
-      "side": "LONG",
-      "peak_roe": -0.0009864249142749735,
-      "strategy": "5M_ROSS_PULLBACK",
-      "entry_candle_low": 2.1166,
-      "entry_candle_high": 2.1265
-    }
-  },
-  "previous_active_coins": [
-    "PENDLE"
-  ],
-  "last_run_timestamp": "2026-10-16 01:55:41",
-  "last_email_timestamp": 1792133425.8422933,
-  "last_scan_timestamp": 1792133726.2682173,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-16 02:00:50",
+  "last_email_timestamp": 1792134032.1087716,
+  "last_scan_timestamp": 1792134032.1087716,
   "gemini_cache": {
-    "timestamp": 1792133726.2682173,
+    "timestamp": 1792134032.1087716,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Increased macroeconomic uncertainty and geopolitical tensions, combined with significant volatility surrounding upcoming U.S. regulatory developments and liquidity shifts, suggest a precarious market environment."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity cycles, all of which keep market sentiment fragile."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
