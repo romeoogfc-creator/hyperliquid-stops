@@ -327,13 +327,13 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-16 06:20:43",
+  "last_run_timestamp": "2026-10-16 06:25:50",
   "last_email_timestamp": 1792149622.953143,
-  "last_scan_timestamp": 1792149622.953143,
+  "last_scan_timestamp": 1792149924.7465746,
   "gemini_cache": {
-    "timestamp": 1792149622.953143,
+    "timestamp": 1792149924.7465746,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Persistent macroeconomic uncertainty, regulatory scrutiny, and significant leverage in the derivatives market suggest the potential for sharp, sudden volatility in the near term."
+    "briefing": "**Risk Level: HIGH** \n\nPersistent macroeconomic tightening, ongoing regulatory crackdowns, and fragile market liquidity create an elevated vulnerability to sudden downward price shocks and systemic contagion."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
