@@ -91,6 +91,18 @@
   "stagnation_tracker": {},
   "closed_trades_ledger": [
     {
+      "coin": "NEAR",
+      "entry_price": 5.32876,
+      "exit_price": 5.261,
+      "pnl_usd": -0.311696,
+      "roe_pct": -1.271590388758357,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-16 10:30:20",
+      "ts_sec": 1792146620.6850553,
+      "fill_hash": "NEAR_708729898397277"
+    },
+    {
       "coin": "PENDLE",
       "entry_price": 2.1289,
       "exit_price": 2.11495,
@@ -311,43 +323,17 @@
       "exit_reason": "\ud83d\udea8 BTC Daily Bearish Flip Purge (BTC Daily is RED -0.20%)",
       "timestamp": "2026-10-12 04:00:27",
       "ts_sec": 1791777627.796179
-    },
-    {
-      "coin": "PNUT",
-      "entry_price": 0.05206,
-      "exit_price": 0.05195,
-      "pnl_usd": -0.017633,
-      "roe_pct": -0.21129466000768146,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-12 03:45:27",
-      "ts_sec": 1791776727.1308298,
-      "fill_hash": "PNUT_195964899154742"
     }
   ],
-  "active_position_cache": {
-    "NEAR": {
-      "entry_px": 5.32876,
-      "current_px": 5.2932,
-      "szi": 4.6,
-      "margin": 24.33768,
-      "side": "LONG",
-      "peak_roe": -0.006673222288112105,
-      "strategy": "5M_ROSS_PULLBACK",
-      "entry_candle_low": 5.2518,
-      "entry_candle_high": 5.3061
-    }
-  },
-  "previous_active_coins": [
-    "NEAR"
-  ],
-  "last_run_timestamp": "2026-10-16 05:25:51",
-  "last_email_timestamp": 1792146029.1710396,
-  "last_scan_timestamp": 1792146331.7513723,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-16 05:30:33",
+  "last_email_timestamp": 1792146620.6850553,
+  "last_scan_timestamp": 1792146620.6850553,
   "gemini_cache": {
-    "timestamp": 1792146331.7513723,
-    "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nDriven by persistent macroeconomic uncertainty, stringent regulatory headwinds, and elevated vulnerability to sudden macroeconomic liquidity shocks, current crypto markets remain highly volatile and susceptible to sharp downside corrections."
+    "timestamp": 1792146620.6850553,
+    "risk": "MODERATE",
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, the asset class continues to face heightened volatility and sensitivity to sudden shifts in macroeconomic data and regulatory developments."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
