@@ -44,6 +44,23 @@ def get_central_time():
     offset = -5 if is_dst else -6
     return utc_now + timedelta(hours=offset)
 
+def get_central_midnight_timestamp():
+    ct_now = get_central_time()
+    ct_midnight = datetime(ct_now.year, ct_now.month, ct_now.day, 0, 0, 0)
+    
+    utc_now = datetime.now(timezone.utc).replace(tzinfo=None)
+    year = utc_now.year
+    dst_start = datetime(year, 3, 8, 7, 0, 0)
+    dst_start += timedelta(days=(6 - dst_start.weekday()) % 7)
+    dst_end = datetime(year, 11, 1, 6, 0, 0)
+    dst_end += timedelta(days=(6 - dst_end.weekday()) % 7)
+    
+    is_dst = dst_start <= utc_now < dst_end
+    offset_hours = 5 if is_dst else 6
+    
+    utc_midnight = ct_midnight + timedelta(hours=offset_hours)
+    return utc_midnight.replace(tzinfo=timezone.utc).timestamp()
+
 def load_state():
     default_state = {
         "cooldown_blocklist": {},
@@ -398,9 +415,10 @@ def execute_engine():
     now_ts = time.time()
     ct_now = get_central_time()
     today_str = ct_now.strftime('%Y-%m-%d')
+    ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.1 Engine Started (Anti-Bleed Patch Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.2 Engine Started (Timezone Sync Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -661,7 +679,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.1", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.2", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -715,7 +733,6 @@ def execute_engine():
         state["last_scan_timestamp"] = now_ts
         audit_logs.append(f"🌐 PURE ROSS 5M SCANNER ACTIVE: Scanning Top Gappers (#20-#300+)...")
 
-        # 1. ROSS GAINS FILTER: Require 24H Gain >= +8.0% AND Price <= $20.00
         scored_universe = []
         for idx, asset in enumerate(meta.get("universe", [])):
             coin = asset.get("name")
@@ -729,13 +746,11 @@ def execute_engine():
                 prev_px = float(ctx.get("prevDayPx", 0.0))
                 mark_px = float(ctx.get("markPx", 0.0))
                 
-                # Exclude institutional high-price heavyweights (> $20.00)
                 if mark_px > 20.0:
                     continue
 
                 if prev_px > 0 and mark_px > 0:
                     change_24h = ((mark_px - prev_px) / prev_px) * 100
-                    # STRICT GAIN FLOOR: Must be a true daily runner (+8.0%+)
                     if change_24h >= 8.0:
                         scored_universe.append({"coin": coin, "change_24h": change_24h, "rank": idx, "mark_px": mark_px})
             except Exception:
@@ -766,7 +781,6 @@ def execute_engine():
                 if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
                     continue
 
-                # TIGHTENED SPREAD FILTER: Max 0.15% spread cap (was 0.35%)
                 is_liquid, spread_msg = check_liquidity_and_spread(info, coin, max_spread=0.0015, min_depth_usd=10000.0)
                 if not is_liquid:
                     continue
@@ -798,7 +812,6 @@ def execute_engine():
                 prev_high = highs[-2]
                 prev_low = lows[-2]
                 
-                # ANTI-CHASING EXTENSION CAP: Live price must break prev_high, but not be >0.40% extended past it
                 is_trigger_break = (curr_live_px > prev_high) and (curr_live_px <= prev_high * 1.004)
 
                 recent_green_vols = [volumes[i] for i in range(-6, -1) if closes[i] > float(candles[i]["o"])]
@@ -897,7 +910,7 @@ def execute_engine():
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V4.1", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V4.2", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -925,7 +938,11 @@ def execute_engine():
         state["last_email_timestamp"] = now_ts
         save_state(state)
 
-        trades_today = [t for t in state.get("closed_trades_ledger", []) if today_str in str(t.get("timestamp", ""))]
+        # FIXED DAY FILTER: Uses Central Time midnight epoch boundary
+        trades_today = [
+            t for t in state.get("closed_trades_ledger", []) 
+            if float(t.get("ts_sec", 0)) >= ct_midnight_ts
+        ]
         total_today = len(trades_today)
         wins_today = [t for t in trades_today if float(t.get("pnl_usd", 0)) > 0]
         losses_today = [t for t in trades_today if float(t.get("pnl_usd", 0)) <= 0]
@@ -935,7 +952,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.1 | Pure Ross Cameron 5M Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.2 | Pure Ross Cameron 5M Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -1020,8 +1037,8 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); box-sizing: border-box;">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Crypto-LS-23 | Pure Ross Cameron 5M Scalper (V4.1)</div>
-        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Anti-Bleed Patch Active</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Crypto-LS-23 | Pure Ross Cameron 5M Scalper (V4.2)</div>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Timezone Sync Active</div>
       </div>
 
       <div style="padding: 12px;">
@@ -1044,11 +1061,11 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Ross Cameron Anti-Bleed Rules (V4.1)</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Ross Cameron Anti-Bleed Rules (V4.2)</div>
           <div>&bull; <b>Strict 24H Gain Floor (+8.0%+):</b> Scans top gappers; blocks slow movers</div>
           <div>&bull; <b>Max Unit Price ($20.00):</b> Rejects heavy institutional coins like TAO</div>
           <div>&bull; <b>Tight Spread Cap (0.15%):</b> Blocks wide orderbooks to eliminate friction drag</div>
-          <div>&bull; <b>Extension Cap (0.40%):</b> Rejects chasing extended candle tops</div>
+          <div>&bull; <b>Timezone Sync:</b> Accurately tracks daily trade counts and realized P&L</div>
         </div>
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
@@ -1065,7 +1082,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 5M Fast Scalper Autonomous Engine &bull; Anti-Bleed V4.1 Active
+        Hyperliquid 5M Fast Scalper Autonomous Engine &bull; V4.2 Timezone Sync Active
       </div>
     </div>
   </body>
