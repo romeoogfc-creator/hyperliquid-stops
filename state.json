@@ -49,7 +49,7 @@
     "NIL": 1791671700000,
     "AZTEC": 1791774900000,
     "SYRUP": 1791751500000,
-    "PENDLE": 1791672900000,
+    "PENDLE": 1792133400000,
     "WLD": 1791676500000,
     "S": 1791720600000,
     "EIGEN": 1791682800000,
@@ -325,15 +325,23 @@
       "fill_hash": "CAKE_1011961962863747"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "PENDLE": {
+      "strategy": "5M_ROSS_PULLBACK",
+      "entry_px": 2.1289,
+      "side": "LONG",
+      "entry_candle_low": 2.1166,
+      "entry_candle_high": 2.1265
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-16 01:45:39",
-  "last_email_timestamp": 1792132826.8213346,
-  "last_scan_timestamp": 1792133125.3883753,
+  "last_run_timestamp": "2026-10-16 01:50:45",
+  "last_email_timestamp": 1792133425.8422933,
+  "last_scan_timestamp": 1792133425.8422933,
   "gemini_cache": {
-    "timestamp": 1792133125.3883753,
+    "timestamp": 1792133425.8422933,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic shifts, regulatory uncertainty, and liquidity volatility, warranting extreme caution despite recent price momentum."
+    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic uncertainty, shifting interest rate expectations, and intensified regulatory scrutiny, all of which continue to drive significant short-term volatility."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
