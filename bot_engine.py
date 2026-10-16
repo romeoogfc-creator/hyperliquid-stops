@@ -398,7 +398,7 @@ def get_btc_regime(info, now_ms):
         
         if pct_change >= 0.15:
             return "GREEN", pct_change, intraday_bounce_pct
-        elif pct_change <= -1.50:  # RELAXED: Only triggers RED on severe daily crash (<= -1.50%)
+        elif pct_change <= -1.50:  # RELAXED CRASH SHIELD: Only RED on severe daily crash (<= -1.50%)
             return "RED", pct_change, intraday_bounce_pct
         return "NEUTRAL", pct_change, intraday_bounce_pct
     except Exception as e:
@@ -470,7 +470,7 @@ def execute_engine():
         required_vol_ratio = 2.80
         audit_logs.append(f"🛡️ SUNDAY WEEKLY CLOSE SHIELD ACTIVE (2:00PM-7:30PM CT): Requiring RVOL >= {required_vol_ratio:.2f}x to enter.")
     else:
-        # RELAXED RVOL THRESHOLDS (1.80x to 2.20x)
+        # CALIBRATED RVOL THRESHOLDS (1.80x to 2.20x)
         required_vol_ratio = 2.20 if gemini_risk == "HIGH" else (2.00 if gemini_risk == "MODERATE" else 1.80)
         audit_logs.append(f"⚡ 5M Fast Scalper Active: Target RVOL >= {required_vol_ratio:.2f}x | Sizing: 0.85x")
 
@@ -733,13 +733,14 @@ def execute_engine():
 
     if is_5m_scan_window and available_slots > 0:
         state["last_scan_timestamp"] = now_ts
-        audit_logs.append(f"🌐 5M FAST ROSS SCANNER ACTIVE: Scanning Micro-Cap Penny Perps (#30-#200+)...")
+        audit_logs.append(f"🌐 5M FAST ROSS SCANNER ACTIVE: Scanning Micro-Cap Penny Perps (#20-#300+)...")
 
         scored_universe = []
         for idx, asset in enumerate(meta.get("universe", [])):
             coin = asset.get("name")
             if not coin or coin in active_coins or coin in ["USDC", "USDT"]:
                 continue
+            # EXPLICIT SCOPE: Ignore Top 20 mega-caps to target low-float penny perps
             if now_ts < float(state.get("cooldown_blocklist", {}).get(coin, 0)) or idx < 20:
                 continue
 
@@ -749,7 +750,7 @@ def execute_engine():
                 mark_px = float(ctx.get("markPx", 0.0))
                 if prev_px > 0 and mark_px > 0:
                     change_24h = ((mark_px - prev_px) / prev_px) * 100
-                    # LOWERED 24H GAIN HURDLE: From +8.0% down to +4.0%
+                    # CALIBRATED HURDLE: +4.0% minimum gain threshold
                     if change_24h >= 4.0:
                         scored_universe.append((coin, change_24h, idx))
             except Exception:
@@ -798,7 +799,7 @@ def execute_engine():
                 max_extension_px = true_24h_hod * 1.0080
                 is_near_breakout = (curr_live_px >= true_24h_hod * 0.9970) and (curr_live_px <= max_extension_px)
                 
-                # RELAXED WICK STRUCTURE: Allow upper wicks up to 35% and body ratios from 55%
+                # CALIBRATED WICK TOLERANCE: Upper wick <= 35%, Body ratio >= 55%
                 is_clean_structure = (upper_wick_ratio <= 0.35) and (live_body_ratio >= 0.55)
                 is_5m_hod_breakout = is_near_breakout and (curr_live_px > c_1_open) and is_clean_structure
 
@@ -814,7 +815,6 @@ def execute_engine():
                 avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
                 vol_ratio = paced_volume / avg_vol if avg_vol > 0 else 1.0
 
-                # FILTER UPDATE: Required RVOL and 24h change threshold (+4.0%)
                 if vol_ratio < required_vol_ratio or coin_24h_change < 4.0:
                     continue
 
