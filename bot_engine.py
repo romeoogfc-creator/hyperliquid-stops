@@ -119,7 +119,7 @@ def round_sig_figs(val, sig_figs=5):
         return 0
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
-def check_liquidity_and_spread(info, coin, max_spread=0.0035, min_depth_usd=7500.0):
+def check_liquidity_and_spread(info, coin, max_spread=0.0015, min_depth_usd=10000.0):
     try:
         l2_book = api_retry(info.l2_snapshot, name=coin)
         levels = l2_book.get("levels", [[], []])
@@ -255,18 +255,15 @@ def calculate_5m_ross_indicators(candles):
     if len(closes) < 30:
         return None
 
-    # 1. 9 EMA
     df_c = pd.Series(closes)
     ema9 = df_c.ewm(span=9, adjust=False).mean().iloc[-1]
 
-    # 2. VWAP (Intraday Volume Weighted Average Price)
     typical_prices = (highs + lows + closes) / 3.0
     tp_v = typical_prices * vols
     cum_tp_v = np.sum(tp_v[-288:])
     cum_v = np.sum(vols[-288:])
     vwap = (cum_tp_v / cum_v) if cum_v > 0 else closes[-1]
 
-    # 3. MACD (12, 26, 9)
     ema12 = df_c.ewm(span=12, adjust=False).mean()
     ema26 = df_c.ewm(span=26, adjust=False).mean()
     macd_line = ema12 - ema26
@@ -403,7 +400,7 @@ def execute_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.0 Master Engine Started (Pure Ross Cameron 5M Scalper Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.1 Engine Started (Anti-Bleed Patch Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -664,7 +661,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.0", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.1", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -716,9 +713,9 @@ def execute_engine():
 
     if is_5m_scan_window and available_slots > 0:
         state["last_scan_timestamp"] = now_ts
-        audit_logs.append(f"🌐 PURE ROSS 5M SCANNER ACTIVE: Scanning Micro-Cap Penny Perps (#20-#300+)...")
+        audit_logs.append(f"🌐 PURE ROSS 5M SCANNER ACTIVE: Scanning Top Gappers (#20-#300+)...")
 
-        # 1. Gather all micro-cap perps (#20-#300+) and sort by 24H gain
+        # 1. ROSS GAINS FILTER: Require 24H Gain >= +8.0% AND Price <= $20.00
         scored_universe = []
         for idx, asset in enumerate(meta.get("universe", [])):
             coin = asset.get("name")
@@ -731,29 +728,33 @@ def execute_engine():
                 ctx = asset_ctxs[idx] if idx < len(asset_ctxs) else {}
                 prev_px = float(ctx.get("prevDayPx", 0.0))
                 mark_px = float(ctx.get("markPx", 0.0))
+                
+                # Exclude institutional high-price heavyweights (> $20.00)
+                if mark_px > 20.0:
+                    continue
+
                 if prev_px > 0 and mark_px > 0:
                     change_24h = ((mark_px - prev_px) / prev_px) * 100
-                    scored_universe.append({"coin": coin, "change_24h": change_24h, "rank": idx})
+                    # STRICT GAIN FLOOR: Must be a true daily runner (+8.0%+)
+                    if change_24h >= 8.0:
+                        scored_universe.append({"coin": coin, "change_24h": change_24h, "rank": idx, "mark_px": mark_px})
             except Exception:
                 continue
 
-        # Sort universe by 24H gain descending (Ross Cameron Leaderboard)
         scored_universe = sorted(scored_universe, key=lambda x: x["change_24h"], reverse=True)
 
-        # Log Top 5 Gainers Leaderboard in Telemetry
-        top_runners_str = ", ".join([f"{item['coin']} ({item['change_24h']:+.2f}%)" for item in scored_universe[:5]])
+        top_runners_str = ", ".join([f"{item['coin']} (+{item['change_24h']:.2f}%)" for item in scored_universe[:5]])
         if top_runners_str:
-            audit_logs.append(f"📊 TOP RUNNERS LEADERBOARD (#20-#300+): {top_runners_str}")
+            audit_logs.append(f"📊 TOP EXPLOSIVE GAPPERS (+8%+): {top_runners_str}")
         else:
-            audit_logs.append("📊 TOP RUNNERS LEADERBOARD: No coins found in rank #20-#300+")
+            audit_logs.append("📊 TOP GAPPERS: No coins currently meet the +8.0% daily gain threshold.")
 
-        # 2. Scan top runners against Ross Cameron 5M Technical Indicators
-        for item in scored_universe[:25]:
+        for item in scored_universe[:20]:
             coin = item["coin"]
             chg_24h = item["change_24h"]
             try:
                 curr_live_px = float(all_mids.get(coin, 0))
-                if curr_live_px <= 0:
+                if curr_live_px <= 0 or curr_live_px > 20.0:
                     continue
                 
                 time.sleep(0.08)
@@ -765,7 +766,8 @@ def execute_engine():
                 if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
                     continue
 
-                is_liquid, _ = check_liquidity_and_spread(info, coin, max_spread=0.0035, min_depth_usd=7500.0)
+                # TIGHTENED SPREAD FILTER: Max 0.15% spread cap (was 0.35%)
+                is_liquid, spread_msg = check_liquidity_and_spread(info, coin, max_spread=0.0015, min_depth_usd=10000.0)
                 if not is_liquid:
                     continue
 
@@ -795,7 +797,9 @@ def execute_engine():
 
                 prev_high = highs[-2]
                 prev_low = lows[-2]
-                is_trigger_break = curr_live_px > prev_high
+                
+                # ANTI-CHASING EXTENSION CAP: Live price must break prev_high, but not be >0.40% extended past it
+                is_trigger_break = (curr_live_px > prev_high) and (curr_live_px <= prev_high * 1.004)
 
                 recent_green_vols = [volumes[i] for i in range(-6, -1) if closes[i] > float(candles[i]["o"])]
                 recent_red_vols = [volumes[i] for i in range(-3, -1) if closes[i] < float(candles[i]["o"])]
@@ -808,9 +812,8 @@ def execute_engine():
 
                 c_range = max(highs[-1] - lows[-1], 1e-8)
                 upper_wick_ratio = (highs[-1] - max(float(candles[-1]["o"]), curr_live_px)) / c_range
-                is_clean_structure = (upper_wick_ratio <= 0.35)
+                is_clean_structure = (upper_wick_ratio <= 0.30)
 
-                # Log detailed Telemetry for Top 3 evaluated runners
                 if item in scored_universe[:3]:
                     status_ema = "PASS" if is_above_ema9 else "FAIL"
                     status_vwap = "PASS" if is_above_vwap else "FAIL"
@@ -894,7 +897,7 @@ def execute_engine():
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V4.0", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V4.1", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -932,7 +935,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.0 | Pure Ross Cameron 5M Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.1 | Pure Ross Cameron 5M Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -1017,8 +1020,8 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); box-sizing: border-box;">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Crypto-LS-23 | Pure Ross Cameron 5M Scalper</div>
-        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; 5M Candles &amp; Ross Indicators Active</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Crypto-LS-23 | Pure Ross Cameron 5M Scalper (V4.1)</div>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Anti-Bleed Patch Active</div>
       </div>
 
       <div style="padding: 12px;">
@@ -1041,12 +1044,11 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Ross Cameron Guardrails (V4.0)</div>
-          <div>&bull; <b>Price > 9 EMA &amp; VWAP:</b> Structural intraday support</div>
-          <div>&bull; <b>MACD Histogram > 0:</b> Front-side momentum verification</div>
-          <div>&bull; <b>Micro-Pullback Trigger:</b> Breaks prev 5M high after light red vol</div>
-          <div>&bull; <b>Fatigue Rule:</b> Max 2 pullbacks allowed per momentum wave</div>
-          <div>&bull; <b>2:1 R:R Native Targets:</b> Auto TP target at 2x initial stop risk</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Ross Cameron Anti-Bleed Rules (V4.1)</div>
+          <div>&bull; <b>Strict 24H Gain Floor (+8.0%+):</b> Scans top gappers; blocks slow movers</div>
+          <div>&bull; <b>Max Unit Price ($20.00):</b> Rejects heavy institutional coins like TAO</div>
+          <div>&bull; <b>Tight Spread Cap (0.15%):</b> Blocks wide orderbooks to eliminate friction drag</div>
+          <div>&bull; <b>Extension Cap (0.40%):</b> Rejects chasing extended candle tops</div>
         </div>
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
@@ -1063,7 +1065,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 5M Fast Scalper Autonomous Engine &bull; Managed via GitHub Actions
+        Hyperliquid 5M Fast Scalper Autonomous Engine &bull; Anti-Bleed V4.1 Active
       </div>
     </div>
   </body>
