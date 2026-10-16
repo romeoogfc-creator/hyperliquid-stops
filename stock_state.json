@@ -94,18 +94,18 @@
     }
   ],
   "active_position_cache": {
-    "PYPL": {
-      "entry_px": 57.58,
-      "current_px": 56.785,
-      "qty": 221.0,
-      "peak_roe": -0.0010420284821117604,
-      "vol_ratio": 0.915985151032172
+    "XOM": {
+      "entry_px": 178.03,
+      "current_px": 178.0,
+      "qty": 71.0,
+      "peak_roe": -0.00016851092512498532,
+      "entry_candle_low": 176.60576
     }
   },
   "previous_active_symbols": [
-    "PYPL"
+    "XOM"
   ],
-  "last_run_timestamp": "2026-10-16 18:29:27",
+  "last_run_timestamp": "2026-10-16 18:32:58",
   "last_email_timestamp": 1792002358.6398044,
   "daily_starting_equity": {
     "2026-10-12": 98480.9,
