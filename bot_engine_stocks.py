@@ -33,8 +33,7 @@ def get_central_time():
     
     is_dst = dst_start <= utc_now < dst_end
     offset = -5 if is_dst else -6
-    central_time = utc_now + timedelta(hours=offset)
-    return central_time
+    return utc_now + timedelta(hours=offset)
 
 def load_state():
     default_state = {
@@ -95,8 +94,7 @@ def send_html_dashboard_email(subject, html_content, text_fallback):
 
     try:
         with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
-            server.login(sender_email, sender_password)
-            server.sendmail(sender_email, receiver_email, msg.as_string())
+            server.login(sender_email, server.sendmail(sender_email, receiver_email, msg.as_string()))
     except Exception as e:
         print(f"Failed to send email: {e}")
 
@@ -105,86 +103,30 @@ def round_sig_figs(val, sig_figs=5):
         return 0
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
-def calculate_gaussian_channel(closes, poles=4, period=50, mult=1.414):
-    s = pd.Series(closes)
-    effective_period = min(period, max(5, len(closes) - 1))
-    alpha = (2.0 / (effective_period + 1)) * (poles ** 0.5)
-    filtered = s.ewm(alpha=alpha, adjust=False).mean()
-    error = (s - filtered).abs()
-    deviation = error.ewm(alpha=alpha, adjust=False).mean() * mult
-    upper = filtered + deviation
-    lower = filtered - deviation
-    return upper.iloc[-1], lower.iloc[-1], filtered.iloc[-1]
+def calculate_5m_ross_indicators(closes, highs, lows, vols):
+    if len(closes) < 20:
+        return None
 
-def calculate_choppiness_index(highs, lows, closes, period=14):
-    try:
-        if len(closes) < period + 1:
-            return 50.0
-        tr_sum = sum([max(highs[i] - lows[i], abs(highs[i] - closes[i-1]), abs(lows[i] - closes[i-1])) for i in range(1, period + 1)])
-        max_high = max(highs[-period:])
-        min_low = min(lows[-period:])
-        range_diff = max_high - min_low
-        if range_diff <= 0 or tr_sum <= 0:
-            return 50.0
-        ci = 100 * (log10(tr_sum / range_diff) / log10(period))
-        return ci
-    except Exception:
-        return 50.0
+    df_c = pd.Series(closes)
+    ema9 = df_c.ewm(span=9, adjust=False).mean().iloc[-1]
 
-def calculate_atr(highs, lows, closes, period=14):
-    try:
-        if len(highs) < period + 1:
-            return highs[-1] - lows[-1] if len(highs) > 0 else 1.0
-        trs = [max(highs[i] - lows[i], abs(highs[i] - closes[i-1]), abs(lows[i] - closes[i-1])) for i in range(1, len(closes))]
-        return np.mean(trs[-period:]) if len(trs) >= period else np.mean(trs)
-    except Exception:
-        return 1.0
+    typical_prices = (np.array(highs) + np.array(lows) + np.array(closes)) / 3.0
+    tp_v = typical_prices * np.array(vols)
+    cum_tp_v = np.sum(tp_v)
+    cum_v = np.sum(vols)
+    vwap = (cum_tp_v / cum_v) if cum_v > 0 else closes[-1]
 
-def verify_5m_stock_micro_structure(symbol, is_long):
-    """Instant 5-Minute Micro-Confirmation Filter for Equities"""
-    try:
-        start_date = (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%d')
-        url = f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=5Min&limit=50&feed=iex&start={start_date}"
-        res = requests.get(url, headers=HEADERS)
-        if res.status_code != 200:
-            return True
-        bars_data = res.json().get("bars", {}).get(symbol, [])
-        if not bars_data or len(bars_data) < 6:
-            return True
-        m_closes = [float(b["c"]) for b in bars_data]
-        m_opens = [float(b["o"]) for b in bars_data]
-        m_highs = [float(b["h"]) for b in bars_data]
-        m_lows = [float(b["l"]) for b in bars_data]
-        
-        recent_closes = m_closes[-5:]
-        recent_opens = m_opens[-5:]
-        
-        if is_long:
-            net_progress = recent_closes[-1] > recent_closes[0]
-            green_count = sum(1 for o, c in zip(recent_opens, recent_closes) if c >= o)
-            latest_high = m_highs[-1]
-            latest_low = m_lows[-1]
-            latest_close = recent_closes[-1]
-            candle_range = latest_high - latest_low
-            if candle_range > 0:
-                upper_wick_ratio = (latest_high - max(recent_opens[-1], latest_close)) / candle_range
-                if upper_wick_ratio > 0.6:
-                    return False
-            return net_progress and (green_count >= 2)
-        else:
-            net_progress = recent_closes[-1] < recent_closes[0]
-            red_count = sum(1 for o, c in zip(recent_opens, recent_closes) if c <= o)
-            latest_high = m_highs[-1]
-            latest_low = m_lows[-1]
-            latest_close = recent_closes[-1]
-            candle_range = latest_high - latest_low
-            if candle_range > 0:
-                lower_wick_ratio = (min(recent_opens[-1], latest_close) - latest_low) / candle_range
-                if lower_wick_ratio > 0.6:
-                    return False
-            return net_progress and (red_count >= 2)
-    except Exception:
-        return True
+    ema12 = df_c.ewm(span=12, adjust=False).mean()
+    ema26 = df_c.ewm(span=26, adjust=False).mean()
+    macd_line = ema12 - ema26
+    signal_line = macd_line.ewm(span=9, adjust=False).mean()
+    macd_hist = (macd_line - signal_line).iloc[-1]
+
+    return {
+        "ema9": ema9,
+        "vwap": vwap,
+        "macd_hist": macd_hist
+    }
 
 def execute_stock_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
@@ -192,14 +134,13 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] Trailing Peak Sniper Engine Started (Pure Quantitative Mode, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Engine Started (Pure Ross Cameron 5M Scalper, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
 
-    start_date = (datetime.now() - timedelta(days=14)).strftime('%Y-%m-%d')
+    start_date = (datetime.now() - timedelta(days=5)).strftime('%Y-%m-%d')
 
-    # --- SPY MACRO TREND REGIME SHIELD ---
     spy_green, spy_open_px, spy_close_px = check_market_macro_regime()
     spy_regime_str = f"GREEN (Open: ${spy_open_px:.2f}, Close: ${spy_close_px:.2f}) -> LONGs Allowed" if spy_green else f"RED (Open: ${spy_open_px:.2f}, Close: ${spy_close_px:.2f}) -> SHORTs Allowed"
     audit_logs.append(f"SPY Macro Regime Shield: {spy_regime_str}")
@@ -215,7 +156,6 @@ def execute_stock_engine():
     cash = float(account_data.get("cash", 100000.0))
     margin_util_pct = ((equity - cash) / equity * 100) if equity > 0 else 0.0
 
-    # Fixed Daily Starting Equity Rollover
     daily_starting_dict = state.get("daily_starting_equity", {})
     if today_str not in daily_starting_dict:
         prev_days = [d for d in daily_starting_dict.keys() if d < today_str]
@@ -325,102 +265,36 @@ def execute_stock_engine():
         active_symbols.add(symbol)
         current_roe = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
 
+        should_exit = False
+        exit_reason = ""
+
+        cache_info = current_active_cache.get(symbol, {})
+        entry_candle_low = cache_info.get("entry_candle_low", entry_px * 0.9920)
+
         try:
-            bar_res = requests.get(f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=30Min&limit=15&feed=iex&start={start_date}", headers=HEADERS)
+            bar_res = requests.get(f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=5Min&limit=30&feed=iex&start={start_date}", headers=HEADERS)
             if bar_res.status_code == 200:
                 b_list = bar_res.json().get("bars", {}).get(symbol, [])
-                if len(b_list) >= 14:
+                if len(b_list) >= 20:
+                    closes_pos = [float(b["c"]) for b in b_list]
                     highs_pos = [float(b["h"]) for b in b_list]
                     lows_pos = [float(b["l"]) for b in b_list]
-                    closes_pos = [float(b["c"]) for b in b_list]
-                    volumes_pos = [float(b["v"]) for b in b_list]
-                    ci_pos = calculate_choppiness_index(highs_pos, lows_pos, closes_pos)
-                    vol_ratio = volumes_pos[-1] / np.mean(volumes_pos[:-1]) if np.mean(volumes_pos[:-1]) > 0 else 1.0
-                else:
-                    ci_pos = 50.0
-                    vol_ratio = 1.0
-            else:
-                ci_pos = 50.0
-                vol_ratio = 1.0
-        except Exception:
-            ci_pos = 50.0
-            vol_ratio = 1.0
+                    vols_pos = [float(b["v"]) for b in b_list]
 
-        # --- REGIME MISMATCH GUARD (Blood-Bath / Trend Flip Defense) ---
-        regime_mismatch = (is_long and not spy_green) or (not is_long and spy_green)
-        if regime_mismatch:
-            audit_logs.append(f"🚨 REGIME DEFENSE: Forcing immediate market close on {symbol} due to SPY regime flip!")
-            close_side = "sell" if is_long else "buy"
-            close_payload = {
-                "symbol": symbol, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"
-            }
-            try:
-                requests.post(f"{BASE_URL}/v2/orders", json=close_payload, headers=HEADERS)
-                state["closed_trades_ledger"].insert(0, {
-                    "symbol": symbol, "entry_price": entry_px, "exit_price": current_px,
-                    "exit_reason": "🚨 Macro Regime Force Exit", "realized_pnl": unrealized_pnl, "timestamp": timestamp
-                })
-                continue
-            except Exception as e:
-                audit_logs.append(f"Failed to force close {symbol}: {e}")
+                    ross_ind = calculate_5m_ross_indicators(closes_pos, highs_pos, lows_pos, vols_pos)
+                    if ross_ind:
+                        if is_long and (current_px < ross_ind["ema9"] or ross_ind["macd_hist"] < 0):
+                            should_exit = True
+                            exit_reason = f"🚨 Ross Exit Signal (Price < 9 EMA or MACD Hist < 0)"
+        except Exception as e:
+            audit_logs.append(f"Indicator calculation warning on {symbol}: {e}")
 
-        # --- ACTIVE POSITION CHOP PURGE (CI > 60.0 and Flat/Negative) ---
-        if ci_pos > 60.0 and current_roe < 0.005:
-            audit_logs.append(f"🚨 CHOP PURGE: Closing {symbol} immediately due to dead chop (CI: {ci_pos:.1f}, ROE: {current_roe*100:+.2f}%)")
-            close_side = "sell" if is_long else "buy"
-            try:
-                requests.post(f"{BASE_URL}/v2/orders", json={
-                    "symbol": symbol, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"
-                }, headers=HEADERS)
-                state["closed_trades_ledger"].insert(0, {
-                    "symbol": symbol, "entry_price": entry_px, "exit_price": current_px,
-                    "exit_reason": f"🚨 High Choppiness Chop Purge (CI: {ci_pos:.1f})", "realized_pnl": unrealized_pnl, "timestamp": timestamp
-                })
-                continue
-            except Exception as e:
-                audit_logs.append(f"Chop purge failed on {symbol}: {e}")
-
-        prev_peak = current_active_cache.get(symbol, {}).get("peak_roe", current_roe)
-        peak_roe = max(current_roe, prev_peak)
-
-        if vol_ratio >= 1.5:
-            vol_multiplier = 1.6 
-            runner_tag = "🚀 Smart Runner (High Vol)"
-        elif vol_ratio < 0.8:
-            vol_multiplier = 0.7 
-            runner_tag = "⚠️ Volume Stall Lock"
-        else:
-            vol_multiplier = 1.0
-            runner_tag = "Active Scalp"
-
-        new_active_cache[symbol] = {
-            "entry_px": entry_px, "current_px": current_px, "qty": qty, "peak_roe": peak_roe, "vol_ratio": vol_ratio
-        }
-
-        stop_threshold = -0.012 
-        status_label = runner_tag
-
-        if peak_roe >= 0.03:
-            base_buffer = 0.0025
-            adjusted_buffer = base_buffer * vol_multiplier
-            stop_threshold = peak_roe - adjusted_buffer
-            status_label = f"Ballistic Peak Lock [{vol_ratio:.1f}x Vol] ({stop_threshold*100:+.1f}%)"
-        elif peak_roe >= 0.015:
-            base_buffer = 0.0040
-            adjusted_buffer = base_buffer * vol_multiplier
-            stop_threshold = peak_roe - adjusted_buffer
-            status_label = f"Mid Trailing Floor [{vol_ratio:.1f}x Vol] ({stop_threshold*100:+.1f}%)"
-        elif peak_roe >= 0.005:
-            base_buffer = 0.0060
-            adjusted_buffer = base_buffer * vol_multiplier
-            stop_threshold = peak_roe - adjusted_buffer
-            status_label = f"Early Breathing Floor [{vol_ratio:.1f}x Vol] ({stop_threshold*100:+.1f}%)"
-
-        should_exit = current_roe <= stop_threshold
+        if current_px <= entry_candle_low and is_long:
+            should_exit = True
+            exit_reason = f"🎯 Pivot Low Stop Triggered (${entry_candle_low:.2f})"
 
         if should_exit:
-            reason = "Smart Runner Profit Lock" if current_roe > 0 else "Dynamic Stop Loss"
-            audit_logs.append(f"EXIT TRIGGERED on {symbol} at {current_roe*100:+.2f}% ROE (Peak: {peak_roe*100:+.2f}%, VolRatio: {vol_ratio:.2f}). {reason} - securing bag!")
+            audit_logs.append(f"EXIT TRIGGERED on {symbol} at {current_roe*100:+.2f}% ROE. Reason: {exit_reason}")
             close_side = "sell" if is_long else "buy"
             realized_pnl = (current_px - entry_px) * qty if is_long else (entry_px - current_px) * qty
 
@@ -436,7 +310,7 @@ def execute_stock_engine():
                 if symbol not in existing_symbols_today:
                     state["closed_trades_ledger"].insert(0, {
                         "symbol": symbol, "entry_price": entry_px, "exit_price": current_px,
-                        "exit_reason": reason, "realized_pnl": realized_pnl, "timestamp": timestamp
+                        "exit_reason": exit_reason, "realized_pnl": realized_pnl, "timestamp": timestamp
                     })
                 state["closed_trades_ledger"] = state["closed_trades_ledger"][:20]
                 active_count -= 1
@@ -444,7 +318,14 @@ def execute_stock_engine():
             except Exception as e:
                 audit_logs.append(f"Execution Failed on {symbol}: {e}")
 
-        stop_px_calc = entry_px * (1 + stop_threshold) if is_long else entry_px * (1 - stop_threshold)
+        prev_peak = cache_info.get("peak_roe", current_roe)
+        peak_roe = max(current_roe, prev_peak)
+
+        new_active_cache[symbol] = {
+            "entry_px": entry_px, "current_px": current_px, "qty": qty, "peak_roe": peak_roe,
+            "entry_candle_low": entry_candle_low
+        }
+
         positions_data.append({
             "bot_title": "TR-GC-Equities-LS-01",
             "symbol": symbol,
@@ -455,34 +336,15 @@ def execute_stock_engine():
             "market_value": market_value,
             "pnl": unrealized_pnl,
             "roe": current_roe * 100,
-            "stop": round_sig_figs(stop_px_calc, 5),
-            "floor": stop_threshold * 100,
-            "status": status_label
+            "stop": round_sig_figs(entry_candle_low, 5),
+            "status": "Active 5M Ross Scalp"
         })
-
-    closed_symbols = set(current_active_cache.keys()) - active_symbols
-    for closed_sym in closed_symbols:
-        old_data = current_active_cache.get(closed_sym, {})
-        entry_px = old_data.get("entry_px", 0.0)
-        exit_px = float(old_data.get("current_px", entry_px))
-        qty = old_data.get("qty", 0.0)
-        realized_pnl = (exit_px - entry_px) * qty
-        
-        existing_symbols_today = [t['symbol'] for t in state.get("closed_trades_ledger", []) if today_str in t.get("timestamp", "")]
-        if closed_sym not in existing_symbols_today:
-            if "closed_trades_ledger" not in state:
-                state["closed_trades_ledger"] = []
-            state["closed_trades_ledger"].insert(0, {
-                "symbol": closed_sym, "entry_price": entry_px, "exit_price": exit_px,
-                "exit_reason": "Smart Runner Profit Lock", "realized_pnl": realized_pnl, "timestamp": timestamp
-            })
-            state["closed_trades_ledger"] = state["closed_trades_ledger"][:20]
 
     state["active_position_cache"] = new_active_cache
     state["previous_active_symbols"] = list(active_symbols)
 
-    MAX_STOCK_SLOTS = 6
-    is_trading_window = (8 <= ct_now.hour < 15) or (ct_now.hour == 15 and ct_now.minute <= 30)
+    MAX_STOCK_SLOTS = 3
+    is_trading_window = (8 <= ct_now.hour < 14) or (ct_now.hour == 14 and ct_now.minute < 35)
 
     watchlist = [
         "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "AVGO", "QCOM",
@@ -490,8 +352,7 @@ def execute_stock_engine():
         "COIN", "HOOD", "SQ", "PYPL", "NET", "SNOW", "SHOP", "MSTR", "UBER", "ABNB", "RBLX", "DKNG",
         "NFLX", "COST", "WMT", "HD", "DIS", "NKE", "SBUX", "BA", "CAT", "GE", "HON", "DE", "LMT",
         "JPM", "BAC", "GS", "MS", "V", "MA", "XOM", "CVX", "SLB", "LLY", "UNH", "JNJ", "PFE", "ABBV",
-        "TXN", "ADI", "KLAC", "MCHP", "DELL",
-        "SPY", "QQQ", "IWM", "DIA", "SMH", "XLF", "XLE"
+        "TXN", "ADI", "KLAC", "MCHP", "DELL"
     ]
 
     symbols_to_scan = [s for s in watchlist if s not in active_symbols]
@@ -507,7 +368,7 @@ def execute_stock_engine():
         page_token = None
 
         while True:
-            url = f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbols_param}&timeframe=30Min&limit=10000&feed=iex&start={start_date}"
+            url = f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbols_param}&timeframe=5Min&limit=50&feed=iex&start={start_date}"
             if page_token:
                 url += f"&page_token={page_token}"
 
@@ -529,7 +390,7 @@ def execute_stock_engine():
 
         for symbol in chunk:
             bars = all_bars_data.get(symbol, [])
-            if not bars or len(bars) < 15:
+            if not bars or len(bars) < 20:
                 continue
 
             scanned_count += 1
@@ -537,63 +398,42 @@ def execute_stock_engine():
             opens = [float(b["o"]) for b in bars]
             highs = [float(b["h"]) for b in bars]
             lows = [float(b["l"]) for b in bars]
-            volumes = [float(b["v"]) for b in bars]
+            vols = [float(b["v"]) for b in bars]
 
-            upper, lower, filter_band = calculate_gaussian_channel(closes)
-            current_close = closes[-1]
-            current_open = opens[-1]
+            curr_px = closes[-1]
             prev_close = closes[-2]
+            prev_high = highs[-2]
+            prev_low = lows[-2]
 
-            ci = calculate_choppiness_index(highs, lows, closes)
-            if ci > 62.0:
+            ross_ind = calculate_5m_ross_indicators(closes, highs, lows, vols)
+            if not ross_ind:
                 continue
 
-            avg_vol = np.mean(volumes[-10:]) if len(volumes) >= 10 else volumes[-1]
-            current_vol = volumes[-1]
-            vol_ratio = current_vol / avg_vol if avg_vol > 0 else 1.0
-            atr = calculate_atr(highs, lows, closes)
+            ema9 = ross_ind["ema9"]
+            vwap = ross_ind["vwap"]
+            macd_hist = ross_ind["macd_hist"]
 
-            if spy_green:
-                extension_score = max(0.0, (current_close - upper) / upper)
-                atr_score = atr / current_close if current_close > 0 else 0.0
-                momentum_score = extension_score + atr_score
+            avg_vol = np.mean(vols[-12:-2]) if len(vols) >= 12 else np.mean(vols[:-1])
+            vol_ratio = vols[-1] / avg_vol if avg_vol > 0 else 1.0
 
-                candidate_obj = {
-                    "symbol": symbol, "close": current_close, "is_long": True,
-                    "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
-                }
+            required_vol_ratio = 2.00
+            is_above_ema9 = curr_px > ema9
+            is_above_vwap = curr_px > vwap
+            is_macd_frontside = macd_hist > 0.0
 
-                is_green_candle = current_close > current_open
-                has_upward_continuation = current_close > prev_close
+            is_trigger_break = (curr_px > prev_high) and (curr_px <= prev_high * 1.0020)
+            is_prev_pullback = (closes[-2] < opens[-2]) or (vols[-2] <= avg_vol * 0.85)
 
-                if current_close > upper and current_close <= upper * 1.02 and vol_ratio >= 0.8 and is_green_candle and has_upward_continuation:
-                    if verify_5m_stock_micro_structure(symbol, is_long=True):
-                        market_candidates.append(candidate_obj)
-                        audit_logs.append(f"TRAILING SNIPER BREAKOUT MATCH (Confirmed Long + 5m Micro-Verified): {symbol} @ ${current_close:.2f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
-                    else:
-                        audit_logs.append(f"EQUITY 5M WICK FILTER BLOCKED: {symbol} failed micro-structure validation.")
-            else:
-                extension_score = max(0.0, (lower - current_close) / lower)
-                atr_score = atr / current_close if current_close > 0 else 0.0
-                momentum_score = extension_score + atr_score
-
-                candidate_obj = {
-                    "symbol": symbol, "close": current_close, "is_long": False,
-                    "score": momentum_score, "ci": ci, "vol_ratio": vol_ratio
-                }
-
-                is_red_candle = current_close < current_open
-                has_downward_continuation = current_close < prev_close
-
-                if current_close < lower and current_close >= lower * 0.98 and vol_ratio >= 0.8 and is_red_candle and has_downward_continuation:
-                    if verify_5m_stock_micro_structure(symbol, is_long=False):
-                        market_candidates.append(candidate_obj)
-                        audit_logs.append(f"TRAILING SNIPER BREAKOUT MATCH (Confirmed Short + 5m Micro-Verified): {symbol} @ ${current_close:.2f} (VolRatio: {vol_ratio:.2f}, CI: {ci:.1f})")
-                    else:
-                        audit_logs.append(f"EQUITY 5M WICK FILTER BLOCKED: {symbol} failed micro-structure validation.")
+            if spy_green and vol_ratio >= required_vol_ratio and is_above_ema9 and is_above_vwap and is_macd_frontside and is_trigger_break and is_prev_pullback:
+                score = vol_ratio * (1.0 + (macd_hist / max(curr_px, 1e-8)))
+                market_candidates.append({
+                    "symbol": symbol, "close": curr_px, "is_long": True,
+                    "score": score, "entry_candle_low": prev_low
+                })
+                audit_logs.append(f"🔥 ROSS 5M BREAKOUT TRIGGER: {symbol} @ ${curr_px:.2f} (RVOL: {vol_ratio:.2f}x, 9EMA: PASS, VWAP: PASS)")
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
-    audit_logs.append(f"Trailing Sniper Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} validated triggers.")
+    audit_logs.append(f"Pure Ross 5M Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} validated Ross triggers.")
 
     if not is_trading_window or is_eod_square_off:
         audit_logs.append("Execution Gate: Outside active trading hours or square-off window active.")
@@ -602,9 +442,9 @@ def execute_stock_engine():
             symbol = candidate["symbol"]
             px = candidate["close"]
             is_long = candidate["is_long"]
+            e_candle_low = candidate["entry_candle_low"]
 
             target_usd = max(50.0, equity * 0.13)
-            # Enforce integer whole shares for 100% Alpaca shorting compliance
             raw_qty = target_usd / px
             qty = max(1, int(raw_qty))
             order_side = "buy" if is_long else "sell"
@@ -621,7 +461,10 @@ def execute_stock_engine():
                 if order_res.status_code == 200:
                     active_count += 1
                     active_symbols.add(symbol)
-                    audit_logs.append(f"TRAILING SNIPER ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} (~${(qty * px):.2f})")
+                    state["active_position_cache"][symbol] = {
+                        "entry_px": px, "entry_candle_low": e_candle_low, "qty": qty
+                    }
+                    audit_logs.append(f"ROSS 5M ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} (~${(qty * px):.2f})")
                 else:
                     audit_logs.append(f"ORDER REJECTED BY ALPACA [{order_res.status_code}] on {symbol}: {order_res.text}")
             except Exception as e:
@@ -632,7 +475,6 @@ def execute_stock_engine():
     save_state(state)
 
     # --- MOBILE-FRIENDLY HTML DASHBOARD RENDERER ---
-    
     positions_cards = ""
     if positions_data:
         for p in positions_data:
@@ -710,7 +552,7 @@ def execute_stock_engine():
         </div>
         """
 
-    text_fallback = f"TR-GC-Equities-LS-01 | Pure Quantitative Sniper\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Total Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
+    text_fallback = f"TR-GC-Equities-LS-01 | Pure Ross Cameron 5M Scalper\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Total Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
     html_content = f"""<!DOCTYPE html>
 <html>
@@ -723,8 +565,8 @@ def execute_stock_engine():
       
       <!-- Header Banner -->
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Equities-LS-01 | Pure Quantitative Sniper</div>
-        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Pure Quantitative Adaptive</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Equities-LS-01 | Pure Ross Cameron 5M Scalper</div>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Pure Ross Cameron 5M Active</div>
       </div>
 
       <div style="padding: 12px; box-sizing: border-box;">
@@ -742,15 +584,13 @@ def execute_stock_engine():
 
         <!-- Guardrails Card -->
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4; box-sizing: border-box;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Guardrails (Pure Quantitative Engine)</div>
-          <div>&bull; <b>SPY Regime Adaptability:</b> Automatically longs green markets and shorts red market breakdowns</div>
-          <div>&bull; <b>Regime Mismatch Guard:</b> Instantly closes positions if SPY trend flips against open exposure</div>
-          <div>&bull; <b>Portfolio Drawdown Circuit Breaker:</b> Instantly flattens 100% to cash if total open loss hits -3.5%</div>
-          <div>&bull; <b>Active Chop Purge:</b> Automatically closes positions if market Choppiness Index (CI &gt; 60.0) turns dead</div>
-          <div>&bull; <b>Smart Runner Volume-Adaptation:</b> Heavy volume (&gt;=1.5x) widens trail; stalling volume (&lt;0.8x) locks profit</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Guardrails (Pure Ross Cameron 5M Engine)</div>
+          <div>&bull; <b>Limit-Clamp Entry (0.20% Max):</b> Prevents buying extended candle spikes</div>
+          <div>&bull; <b>Pivot Low Stop Anchor:</b> Stops anchored to candle structure; avoids artificial noise stops</div>
+          <div>&bull; <b>Required Closed Pullback:</b> Forces 1 light-red pullback candle before entering</div>
+          <div>&bull; <b>Ross Exit Signal:</b> Immediate exit if price &lt; 9 EMA or MACD Hist &lt; 0</div>
           <div>&bull; <b>Pre-Close EOD Square-Off:</b> Automatic 100% cash liquidation at 2:40 PM CT daily</div>
-          <div>&bull; <b>Scaled Position Sizing:</b> 13% NAV allocation per slot with 5x safe limits</div>
-          <div>&bull; <b>Asset Universe:</b> S&amp;P 500 &amp; Nasdaq Momentum Equities</div>
+          <div>&bull; <b>Portfolio Drawdown Circuit Breaker:</b> Instantly flattens 100% to cash if open loss hits -3.5%</div>
         </div>
 
         <!-- Active Positions Section -->
@@ -771,7 +611,7 @@ def execute_stock_engine():
       </div>
 
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Alpaca Pure Quantitative Sniper Engine &bull; Managed via GitHub Actions
+        Alpaca Pure Ross Cameron 5M Engine &bull; Managed via GitHub Actions
       </div>
     </div>
   </body>
@@ -779,13 +619,13 @@ def execute_stock_engine():
 """
 
     send_html_dashboard_email(f"Alpaca Quantitative Report — USD ${equity:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] Pure Quantitative Sniper telemetry report complete.")
+    print(f"[{timestamp}] Pure Ross Cameron 5M stock telemetry report complete.")
 
 if __name__ == "__main__":
     try:
         execute_stock_engine()
     except Exception as e:
-        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Pure Quantitative Stock Engine execution error: {e}"
+        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Pure Ross Cameron Stock Engine execution error: {e}"
         print(err_msg)
         send_html_dashboard_email("Alpaca Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
         raise e
