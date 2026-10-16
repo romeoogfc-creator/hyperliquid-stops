@@ -136,7 +136,7 @@ def round_sig_figs(val, sig_figs=5):
         return 0
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
-def check_liquidity_and_spread(info, coin, max_spread=0.0015, min_depth_usd=10000.0):
+def check_liquidity_and_spread(info, coin, max_spread=0.0012, min_depth_usd=12000.0):
     try:
         l2_book = api_retry(info.l2_snapshot, name=coin)
         levels = l2_book.get("levels", [[], []])
@@ -330,11 +330,12 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle
         roe = (entry_px - current_px) / entry_px
 
     if is_long:
+        # Technical Pivot Stop Anchored directly to entry_candle_low
         raw_struct = (entry_candle_low / entry_px) - 1.0 if entry_px > 0 else -0.0080
-        initial_floor_roe = min(-0.0080, max(-0.0125, raw_struct))
+        initial_floor_roe = min(-0.0060, max(-0.0125, raw_struct))
     else:
         raw_struct = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else -0.0080
-        initial_floor_roe = min(-0.0080, max(-0.0125, raw_struct))
+        initial_floor_roe = min(-0.0060, max(-0.0125, raw_struct))
 
     activation_roe = 0.0080 
     be_floor_roe = 0.0040    
@@ -418,7 +419,7 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.2 Engine Started (Timezone Sync Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.3 Engine Started (Limit-Clamp & Pivot-Stop Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -473,7 +474,7 @@ def execute_engine():
         required_vol_ratio = 2.80
         audit_logs.append(f"🛡️ SUNDAY WEEKLY CLOSE SHIELD ACTIVE (2:00PM-7:30PM CT): Requiring RVOL >= {required_vol_ratio:.2f}x to enter.")
     else:
-        required_vol_ratio = 2.20 if gemini_risk == "HIGH" else (2.00 if gemini_risk == "MODERATE" else 1.80)
+        required_vol_ratio = 2.40 if gemini_risk == "HIGH" else (2.10 if gemini_risk == "MODERATE" else 1.80)
         audit_logs.append(f"⚡ Pure Ross 5M Scalper Active: Target RVOL >= {required_vol_ratio:.2f}x | 9 EMA + VWAP + MACD Active")
 
     sz_decimals_map = {}
@@ -679,7 +680,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.2", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.3", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -781,7 +782,8 @@ def execute_engine():
                 if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
                     continue
 
-                is_liquid, spread_msg = check_liquidity_and_spread(info, coin, max_spread=0.0015, min_depth_usd=10000.0)
+                # TIGHT SPREAD CEILING: Max 0.12% spread cap (filters friction)
+                is_liquid, spread_msg = check_liquidity_and_spread(info, coin, max_spread=0.0012, min_depth_usd=12000.0)
                 if not is_liquid:
                     continue
 
@@ -812,7 +814,11 @@ def execute_engine():
                 prev_high = highs[-2]
                 prev_low = lows[-2]
                 
-                is_trigger_break = (curr_live_px > prev_high) and (curr_live_px <= prev_high * 1.004)
+                # LIMIT CLAMP RULE: Live price must be breaking prev_high, but <= +0.20% extended past it
+                is_trigger_break = (curr_live_px > prev_high) and (curr_live_px <= prev_high * 1.0020)
+
+                # PULLBACK REQUIREMENT: Previous candle (-2) must be a RED or Light Volume candle
+                is_prev_pullback = (closes[-2] < float(candles[-2]["o"])) or (volumes[-2] <= avg_vol * 0.85)
 
                 recent_green_vols = [volumes[i] for i in range(-6, -1) if closes[i] > float(candles[i]["o"])]
                 recent_red_vols = [volumes[i] for i in range(-3, -1) if closes[i] < float(candles[i]["o"])]
@@ -825,7 +831,7 @@ def execute_engine():
 
                 c_range = max(highs[-1] - lows[-1], 1e-8)
                 upper_wick_ratio = (highs[-1] - max(float(candles[-1]["o"]), curr_live_px)) / c_range
-                is_clean_structure = (upper_wick_ratio <= 0.30)
+                is_clean_structure = (upper_wick_ratio <= 0.25)
 
                 if item in scored_universe[:3]:
                     status_ema = "PASS" if is_above_ema9 else "FAIL"
@@ -834,7 +840,7 @@ def execute_engine():
                     status_rvol = "PASS" if vol_ratio >= required_vol_ratio else "FAIL"
                     audit_logs.append(f"🔍 [{coin}] Px:${curr_live_px:.4f} | 9EMA:{status_ema} | VWAP:{status_vwap} | MACD:{status_macd} | RVOL:{vol_ratio:.2f}x ({status_rvol})")
 
-                if vol_ratio >= required_vol_ratio and is_above_ema9 and is_above_vwap and is_macd_frontside and is_trigger_break and is_light_red_vol and is_valid_pullback_count and is_clean_structure:
+                if vol_ratio >= required_vol_ratio and is_above_ema9 and is_above_vwap and is_macd_frontside and is_trigger_break and is_prev_pullback and is_light_red_vol and is_valid_pullback_count and is_clean_structure:
                     score = vol_ratio * (1.0 + (macd_hist / max(curr_live_px, 1e-8)))
 
                     market_candidates.append({
@@ -887,7 +893,8 @@ def execute_engine():
                 except Exception:
                     pass
 
-                res = exchange.market_open(coin, is_long, sz, px, slippage=0.01)
+                # Strict Limit-Clamp Fill to Eliminate Chasing Slippage
+                res = exchange.market_open(coin, is_long, sz, px, slippage=0.002)
                 if res.get("status") == "ok":
                     active_count += 1
                     active_coins.add(coin)
@@ -910,7 +917,7 @@ def execute_engine():
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V4.2", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V4.3", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -938,7 +945,6 @@ def execute_engine():
         state["last_email_timestamp"] = now_ts
         save_state(state)
 
-        # FIXED DAY FILTER: Uses Central Time midnight epoch boundary
         trades_today = [
             t for t in state.get("closed_trades_ledger", []) 
             if float(t.get("ts_sec", 0)) >= ct_midnight_ts
@@ -952,7 +958,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.2 | Pure Ross Cameron 5M Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.3 | Pure Ross Cameron 5M Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -1037,8 +1043,8 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); box-sizing: border-box;">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Crypto-LS-23 | Pure Ross Cameron 5M Scalper (V4.2)</div>
-        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Timezone Sync Active</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Crypto-LS-23 | Pure Ross Cameron 5M Scalper (V4.3)</div>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Limit-Clamp &amp; Pivot-Stop Active</div>
       </div>
 
       <div style="padding: 12px;">
@@ -1061,11 +1067,11 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Ross Cameron Anti-Bleed Rules (V4.2)</div>
-          <div>&bull; <b>Strict 24H Gain Floor (+8.0%+):</b> Scans top gappers; blocks slow movers</div>
-          <div>&bull; <b>Max Unit Price ($20.00):</b> Rejects heavy institutional coins like TAO</div>
-          <div>&bull; <b>Tight Spread Cap (0.15%):</b> Blocks wide orderbooks to eliminate friction drag</div>
-          <div>&bull; <b>Timezone Sync:</b> Accurately tracks daily trade counts and realized P&L</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Ross Cameron V4.3 Execution Rules</div>
+          <div>&bull; <b>Limit-Clamp Entry (0.20% Max):</b> Prevents buying extended candle spikes</div>
+          <div>&bull; <b>Pivot Low Stop Anchor:</b> Stops anchored to candle structure; avoids artificial noise stops</div>
+          <div>&bull; <b>Required Closed Pullback:</b> Forces 1 light-red pullback candle before entering</div>
+          <div>&bull; <b>Spread Floor (0.12% Cap):</b> Rejects orderbooks that incur high friction</div>
         </div>
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
@@ -1082,7 +1088,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 5M Fast Scalper Autonomous Engine &bull; V4.2 Timezone Sync Active
+        Hyperliquid 5M Fast Scalper Autonomous Engine &bull; V4.3 Active
       </div>
     </div>
   </body>
