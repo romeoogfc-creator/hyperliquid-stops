@@ -1,6 +1,14 @@
 {
   "closed_trades_ledger": [
     {
+      "symbol": "JPM",
+      "entry_price": 338.43,
+      "exit_price": 338.88,
+      "exit_reason": "EOD Square-Off (100% Cash Flat)",
+      "realized_pnl": 16.64999999999958,
+      "timestamp": "2026-10-16 19:54:59"
+    },
+    {
       "symbol": "XOM",
       "entry_price": 178.03,
       "exit_price": 178.16,
@@ -101,19 +109,9 @@
       "timestamp": "2026-10-13 15:19:04"
     }
   ],
-  "active_position_cache": {
-    "JPM": {
-      "entry_px": 338.43,
-      "current_px": 338.87,
-      "qty": 37.0,
-      "peak_roe": 0.0013001211476523881,
-      "entry_candle_low": 337.97
-    }
-  },
-  "previous_active_symbols": [
-    "JPM"
-  ],
-  "last_run_timestamp": "2026-10-16 19:30:45",
+  "active_position_cache": {},
+  "previous_active_symbols": [],
+  "last_run_timestamp": "2026-10-16 19:55:12",
   "last_email_timestamp": 1792002358.6398044,
   "daily_starting_equity": {
     "2026-10-12": 98480.9,
