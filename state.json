@@ -327,13 +327,13 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-16 02:05:42",
+  "last_run_timestamp": "2026-10-16 02:10:37",
   "last_email_timestamp": 1792134032.1087716,
-  "last_scan_timestamp": 1792134327.4935565,
+  "last_scan_timestamp": 1792134623.5800927,
   "gemini_cache": {
-    "timestamp": 1792134327.4935565,
+    "timestamp": 1792134623.5800927,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity fluctuations, necessitating a cautious approach."
+    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic uncertainty, shifting regulatory headwinds, and significant volatility surrounding potential interest rate pivots."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
