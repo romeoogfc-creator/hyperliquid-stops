@@ -398,7 +398,7 @@ def get_btc_regime(info, now_ms):
         
         if pct_change >= 0.15:
             return "GREEN", pct_change, intraday_bounce_pct
-        elif pct_change <= -0.15:
+        elif pct_change <= -1.50:  # RELAXED: Only triggers RED on severe daily crash (<= -1.50%)
             return "RED", pct_change, intraday_bounce_pct
         return "NEUTRAL", pct_change, intraday_bounce_pct
     except Exception as e:
@@ -467,10 +467,11 @@ def execute_engine():
     is_sunday_pre_close = is_sunday and (14 <= ct_now.hour < 19 or (ct_now.hour == 19 and ct_now.minute < 30))
 
     if is_sunday_pre_close:
-        required_vol_ratio = 3.50
-        audit_logs.append(f"🛡️ SUNDAY WEEKLY CLOSE SHIELD ACTIVE (2:00PM-7:30PM CT): Requiring extreme RVOL >= {required_vol_ratio:.2f}x to enter.")
+        required_vol_ratio = 2.80
+        audit_logs.append(f"🛡️ SUNDAY WEEKLY CLOSE SHIELD ACTIVE (2:00PM-7:30PM CT): Requiring RVOL >= {required_vol_ratio:.2f}x to enter.")
     else:
-        required_vol_ratio = 2.80 if gemini_risk == "HIGH" else (2.40 if gemini_risk == "MODERATE" else 2.20)
+        # RELAXED RVOL THRESHOLDS (1.80x to 2.20x)
+        required_vol_ratio = 2.20 if gemini_risk == "HIGH" else (2.00 if gemini_risk == "MODERATE" else 1.80)
         audit_logs.append(f"⚡ 5M Fast Scalper Active: Target RVOL >= {required_vol_ratio:.2f}x | Sizing: 0.85x")
 
     effective_regime = btc_regime
@@ -586,7 +587,7 @@ def execute_engine():
 
             if is_long and btc_regime == "RED":
                 should_exit = True
-                exit_reason = f"🚨 BTC Daily Bearish Flip Purge (BTC Daily is RED {btc_change_pct:+.2f}%)"
+                exit_reason = f"🚨 BTC Daily Crash Purge (BTC Daily is RED {btc_change_pct:+.2f}%)"
 
             try:
                 c_candles = api_retry(info.candles_snapshot, name=coin, interval="5m", startTime=now_ms - 86400000, endTime=now_ms)
@@ -748,7 +749,8 @@ def execute_engine():
                 mark_px = float(ctx.get("markPx", 0.0))
                 if prev_px > 0 and mark_px > 0:
                     change_24h = ((mark_px - prev_px) / prev_px) * 100
-                    if change_24h >= 8.0:
+                    # LOWERED 24H GAIN HURDLE: From +8.0% down to +4.0%
+                    if change_24h >= 4.0:
                         scored_universe.append((coin, change_24h, idx))
             except Exception:
                 continue
@@ -795,7 +797,9 @@ def execute_engine():
 
                 max_extension_px = true_24h_hod * 1.0080
                 is_near_breakout = (curr_live_px >= true_24h_hod * 0.9970) and (curr_live_px <= max_extension_px)
-                is_clean_structure = (upper_wick_ratio <= 0.25) and (live_body_ratio >= 0.65)
+                
+                # RELAXED WICK STRUCTURE: Allow upper wicks up to 35% and body ratios from 55%
+                is_clean_structure = (upper_wick_ratio <= 0.35) and (live_body_ratio >= 0.55)
                 is_5m_hod_breakout = is_near_breakout and (curr_live_px > c_1_open) and is_clean_structure
 
                 candle_start_ms = candles[-1]["t"]
@@ -810,7 +814,8 @@ def execute_engine():
                 avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
                 vol_ratio = paced_volume / avg_vol if avg_vol > 0 else 1.0
 
-                if vol_ratio < required_vol_ratio or coin_24h_change < 8.0:
+                # FILTER UPDATE: Required RVOL and 24h change threshold (+4.0%)
+                if vol_ratio < required_vol_ratio or coin_24h_change < 4.0:
                     continue
 
                 ci_5m = calculate_choppiness_index(highs[:-1], lows[:-1], closes[:-1])
@@ -927,7 +932,6 @@ def execute_engine():
 
         text_fallback = f"TR-GC-Crypto-LS-23-V3.9.9 | Airtight Ross Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
-        # MOBILE-FIRST CARDS FOR ACTIVE POSITIONS
         positions_cards = ""
         if positions_data:
             for p in positions_data:
@@ -953,7 +957,6 @@ def execute_engine():
         else:
             positions_cards = '<div style="padding: 12px; text-align: center; color: #666666; font-size: 11px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px;">No active positions.</div>'
 
-        # MOBILE-FIRST CARDS FOR RECENTLY CLOSED TRADES
         closed_cards = ""
         closed_ledger = sorted(state.get("closed_trades_ledger", []), key=lambda x: x.get("timestamp", ""), reverse=True)
         total_realized_pnl = 0.0
@@ -1036,12 +1039,12 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Guardrails (V3.9.9 Hardened)</div>
-          <div>&bull; <b>Wick-Resistant Stop (-0.80% to -1.25%):</b> Absorbs 5m crypto volatility noise</div>
-          <div>&bull; <b>True 24H HOD Filter:</b> Requires genuine 24h peak breakouts across all candles</div>
-          <div>&bull; <b>Top-of-Book Depth Gate (&ge;$7,500):</b> Stops thin orderbook slippage</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Guardrails (V3.9.9 Calibrated)</div>
+          <div>&bull; <b>Wick-Resistant Stop (-0.80% to -1.25%):</b> Absorbs 5m noise</div>
+          <div>&bull; <b>True 24H HOD Filter (+4.0%+):</b> Catches early breakout runners</div>
+          <div>&bull; <b>Target RVOL (1.80x-2.20x):</b> Takes active momentum setups</div>
+          <div>&bull; <b>BTC Crash Shield (-1.50%):</b> Blocks longs only on severe daily crashes</div>
           <div>&bull; <b>Expanded 80%-97% Ratchet:</b> Locks up to 97% of peak gains on runners</div>
-          <div>&bull; <b>BTC Directional Shield &amp; Gemini AI:</b> Blocks longs in macro bear regimes</div>
         </div>
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
