@@ -83,7 +83,8 @@
     "TAO": 1791789600000,
     "SKY": 1791793800000,
     "RSR": 1791856800000,
-    "PONS": 1792115100000
+    "PONS": 1792115100000,
+    "FIL": 1792120800000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
@@ -324,15 +325,23 @@
       "fill_hash": "ICP_576866405938488"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "FIL": {
+      "strategy": "5M_ROSS_PULLBACK",
+      "entry_px": 1.16905,
+      "side": "LONG",
+      "entry_candle_low": 1.157,
+      "entry_candle_high": 1.1672
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-15 22:15:42",
-  "last_email_timestamp": 1792120528.0416768,
-  "last_scan_timestamp": 1792120528.0416768,
+  "last_run_timestamp": "2026-10-15 22:20:48",
+  "last_email_timestamp": 1792120830.2915704,
+  "last_scan_timestamp": 1792120830.2915704,
   "gemini_cache": {
-    "timestamp": 1792120528.0416768,
+    "timestamp": 1792120830.2915704,
     "risk": "HIGH",
-    "briefing": "Risk Level: HIGH; while institutional interest via spot ETFs provides a structural floor, the market remains highly susceptible to sudden volatility driven by shifting macroeconomic interest rate expectations and ongoing regulatory uncertainty."
+    "briefing": "Risk Level: HIGH; while institutional inflows provide a foundational floor, the market remains highly susceptible to extreme volatility driven by shifting macroeconomic interest rate expectations, geopolitical instability, and regulatory uncertainty."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
