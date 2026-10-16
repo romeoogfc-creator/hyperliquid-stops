@@ -326,13 +326,13 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-15 22:10:42",
-  "last_email_timestamp": 1792119343.991341,
-  "last_scan_timestamp": 1792120227.446954,
+  "last_run_timestamp": "2026-10-15 22:15:42",
+  "last_email_timestamp": 1792120528.0416768,
+  "last_scan_timestamp": 1792120528.0416768,
   "gemini_cache": {
-    "timestamp": 1792120227.446954,
+    "timestamp": 1792120528.0416768,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting regulatory landscapes, and extreme volatility fueled by speculative leverage."
+    "briefing": "Risk Level: HIGH; while institutional interest via spot ETFs provides a structural floor, the market remains highly susceptible to sudden volatility driven by shifting macroeconomic interest rate expectations and ongoing regulatory uncertainty."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
