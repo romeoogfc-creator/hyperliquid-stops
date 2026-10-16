@@ -315,7 +315,6 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle
     else:
         roe = (entry_px - current_px) / entry_px
 
-    # Ross Cameron Structural Stop: Low of the pullback candle
     if is_long:
         raw_struct = (entry_candle_low / entry_px) - 1.0 if entry_px > 0 else -0.0080
         initial_floor_roe = min(-0.0080, max(-0.0125, raw_struct))
@@ -348,7 +347,6 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle
 
     if is_long:
         stop_px = entry_px * (1 + target_floor_roe)
-        # Ross Cameron 2:1 Reward-to-Risk Take Profit Target
         risk_dist = abs(entry_px - stop_px)
         tp_px = entry_px + (2.0 * risk_dist)
     else:
@@ -582,7 +580,6 @@ def execute_engine():
                 avg_v = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
                 v_ratio = volumes[-1] / avg_v if avg_v > 0 else 1.0
 
-                # 5M Ross Indicator Exit Check: Breakdown below 9 EMA or MACD Crossover
                 ross_ind = calculate_5m_ross_indicators(c_candles)
                 if ross_ind:
                     if is_long and (current_px < ross_ind["ema9"] or ross_ind["macd_hist"] < 0):
@@ -721,17 +718,39 @@ def execute_engine():
         state["last_scan_timestamp"] = now_ts
         audit_logs.append(f"🌐 PURE ROSS 5M SCANNER ACTIVE: Scanning Micro-Cap Penny Perps (#20-#300+)...")
 
-        # SCOPE: Rank #20 to #300+ Micro-Cap Penny Perps
-        scan_universe = []
+        # 1. Gather all micro-cap perps (#20-#300+) and sort by 24H gain
+        scored_universe = []
         for idx, asset in enumerate(meta.get("universe", [])):
             coin = asset.get("name")
             if not coin or coin in active_coins or coin in ["USDC", "USDT"]:
                 continue
             if now_ts < float(state.get("cooldown_blocklist", {}).get(coin, 0)) or idx < 20:
                 continue
-            scan_universe.append((coin, idx))
 
-        for coin, rank_idx in scan_universe[:60]:
+            try:
+                ctx = asset_ctxs[idx] if idx < len(asset_ctxs) else {}
+                prev_px = float(ctx.get("prevDayPx", 0.0))
+                mark_px = float(ctx.get("markPx", 0.0))
+                if prev_px > 0 and mark_px > 0:
+                    change_24h = ((mark_px - prev_px) / prev_px) * 100
+                    scored_universe.append({"coin": coin, "change_24h": change_24h, "rank": idx})
+            except Exception:
+                continue
+
+        # Sort universe by 24H gain descending (Ross Cameron Leaderboard)
+        scored_universe = sorted(scored_universe, key=lambda x: x["change_24h"], reverse=True)
+
+        # Log Top 5 Gainers Leaderboard in Telemetry
+        top_runners_str = ", ".join([f"{item['coin']} ({item['change_24h']:+.2f}%)" for item in scored_universe[:5]])
+        if top_runners_str:
+            audit_logs.append(f"📊 TOP RUNNERS LEADERBOARD (#20-#300+): {top_runners_str}")
+        else:
+            audit_logs.append("📊 TOP RUNNERS LEADERBOARD: No coins found in rank #20-#300+")
+
+        # 2. Scan top runners against Ross Cameron 5M Technical Indicators
+        for item in scored_universe[:25]:
+            coin = item["coin"]
+            chg_24h = item["change_24h"]
             try:
                 curr_live_px = float(all_mids.get(coin, 0))
                 if curr_live_px <= 0:
@@ -755,7 +774,6 @@ def execute_engine():
                 lows = [float(c["l"]) for c in candles]
                 volumes = [float(c.get("v", 0)) for c in candles]
 
-                # 1. ROSS INDICATOR CALCULATIONS
                 ross_ind = calculate_5m_ross_indicators(candles)
                 if not ross_ind:
                     continue
@@ -764,7 +782,6 @@ def execute_engine():
                 vwap = ross_ind["vwap"]
                 macd_hist = ross_ind["macd_hist"]
 
-                # 2. RVOL CALCULATION
                 candle_start_ms = candles[-1]["t"]
                 elapsed_mins = (now_ms - candle_start_ms) / 60000.0
                 live_volume_raw = float(candles[-1].get("v", 0))
@@ -772,40 +789,36 @@ def execute_engine():
                 avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
                 vol_ratio = paced_volume / avg_vol if avg_vol > 0 else 1.0
 
-                if vol_ratio < required_vol_ratio:
-                    continue
-
-                # 3. ROSS CAMERON "BUY THE DIP" GUARDRAILS
                 is_above_ema9 = curr_live_px > ema9
                 is_above_vwap = curr_live_px > vwap
                 is_macd_frontside = macd_hist > 0.0
 
-                # 4. MICRO-PULLBACK & TRIGGER CANDLE EVALUATION
                 prev_high = highs[-2]
                 prev_low = lows[-2]
-                prev_open = float(candles[-2]["o"])
-                prev_close = closes[-2]
-
-                # Trigger: Live 5M price breaks above previous candle high
                 is_trigger_break = curr_live_px > prev_high
 
-                # Volume Profile Check: Pullback red volume must be lighter than breakout green volume
                 recent_green_vols = [volumes[i] for i in range(-6, -1) if closes[i] > float(candles[i]["o"])]
                 recent_red_vols = [volumes[i] for i in range(-3, -1) if closes[i] < float(candles[i]["o"])]
                 avg_green_v = np.mean(recent_green_vols) if recent_green_vols else 1.0
                 avg_red_v = np.mean(recent_red_vols) if recent_red_vols else 0.0
                 is_light_red_vol = (avg_red_v <= avg_green_v * 0.85)
 
-                # Fatigue Rule: Max 2 pullbacks allowed per wave
                 pullback_count = sum(1 for i in range(-4, -1) if closes[i] < float(candles[i]["o"]))
                 is_valid_pullback_count = (pullback_count <= 2)
 
-                # Dump Protection: Upper wick <= 35%
                 c_range = max(highs[-1] - lows[-1], 1e-8)
                 upper_wick_ratio = (highs[-1] - max(float(candles[-1]["o"]), curr_live_px)) / c_range
                 is_clean_structure = (upper_wick_ratio <= 0.35)
 
-                if is_above_ema9 and is_above_vwap and is_macd_frontside and is_trigger_break and is_light_red_vol and is_valid_pullback_count and is_clean_structure:
+                # Log detailed Telemetry for Top 3 evaluated runners
+                if item in scored_universe[:3]:
+                    status_ema = "PASS" if is_above_ema9 else "FAIL"
+                    status_vwap = "PASS" if is_above_vwap else "FAIL"
+                    status_macd = "PASS" if is_macd_frontside else "FAIL"
+                    status_rvol = "PASS" if vol_ratio >= required_vol_ratio else "FAIL"
+                    audit_logs.append(f"🔍 [{coin}] Px:${curr_live_px:.4f} | 9EMA:{status_ema} | VWAP:{status_vwap} | MACD:{status_macd} | RVOL:{vol_ratio:.2f}x ({status_rvol})")
+
+                if vol_ratio >= required_vol_ratio and is_above_ema9 and is_above_vwap and is_macd_frontside and is_trigger_break and is_light_red_vol and is_valid_pullback_count and is_clean_structure:
                     score = vol_ratio * (1.0 + (macd_hist / max(curr_live_px, 1e-8)))
 
                     market_candidates.append({
@@ -817,6 +830,11 @@ def execute_engine():
                     })
             except Exception:
                 continue
+
+        if not market_candidates:
+            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met full Ross Cameron trigger rules on this 5M candle.")
+        else:
+            audit_logs.append(f"🚀 SCAN COMPLETED: {len(market_candidates)} candidate(s) triggered entry setup!")
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
     trades_executed = False
