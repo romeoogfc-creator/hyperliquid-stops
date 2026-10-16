@@ -90,6 +90,30 @@
   "stagnation_tracker": {},
   "closed_trades_ledger": [
     {
+      "coin": "TAO",
+      "entry_price": 285.4,
+      "exit_price": 282.95,
+      "pnl_usd": -0.18232,
+      "roe_pct": -0.8584442887175855,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-16 03:35:22",
+      "ts_sec": 1792121722.7527435,
+      "fill_hash": "TAO_213878458079880"
+    },
+    {
+      "coin": "FIL",
+      "entry_price": 1.1681,
+      "exit_price": 1.1568,
+      "pnl_usd": -0.2373,
+      "roe_pct": -0.967382929543692,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-16 03:35:22",
+      "ts_sec": 1792121722.7527435,
+      "fill_hash": "FIL_671455559336411"
+    },
+    {
       "coin": "PONS",
       "entry_price": 0.34368,
       "exit_price": 0.340865,
@@ -299,62 +323,17 @@
       "timestamp": "2026-10-12 03:30:38",
       "ts_sec": 1791775838.8591301,
       "fill_hash": "CAKE_1011961962863747"
-    },
-    {
-      "coin": "AZTEC",
-      "entry_price": 0.020004,
-      "exit_price": 0.017321,
-      "pnl_usd": -0.040124,
-      "roe_pct": -13.412317536492708,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-12 03:30:38",
-      "ts_sec": 1791775838.8591301,
-      "fill_hash": "AZTEC_737168391384325"
-    },
-    {
-      "coin": "ICP",
-      "entry_price": 3.4937,
-      "exit_price": 3.4978,
-      "pnl_usd": 0.02911,
-      "roe_pct": 0.11735409451297393,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-12 00:30:29",
-      "ts_sec": 1791765029.299401,
-      "fill_hash": "ICP_576866405938488"
     }
   ],
-  "active_position_cache": {
-    "FIL": {
-      "entry_px": 1.1681,
-      "current_px": 1.16015,
-      "szi": 21.0,
-      "margin": 24.36,
-      "side": "LONG",
-      "peak_roe": -0.0068059241503295115,
-      "strategy": "5M_ROSS_PULLBACK",
-      "entry_candle_low": 1.157,
-      "entry_candle_high": 1.1672
-    },
-    "TAO": {
-      "strategy": "5M_ROSS_PULLBACK",
-      "entry_px": 285.4,
-      "side": "LONG",
-      "entry_candle_low": 284.44,
-      "entry_candle_high": 285.18
-    }
-  },
-  "previous_active_coins": [
-    "FIL"
-  ],
-  "last_run_timestamp": "2026-10-15 22:30:01",
-  "last_email_timestamp": 1792121375.8580377,
-  "last_scan_timestamp": 1792121375.8580377,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-15 22:35:38",
+  "last_email_timestamp": 1792121722.7527435,
+  "last_scan_timestamp": 1792121722.7527435,
   "gemini_cache": {
-    "timestamp": 1792121375.8580377,
-    "risk": "MODERATE",
-    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of a stabilizing macroeconomic environment, crypto markets currently face heightened volatility due to unpredictable regulatory shifts and ongoing uncertainty regarding the timing of interest rate adjustments."
+    "timestamp": 1792121722.7527435,
+    "risk": "HIGH",
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to geopolitical instability, which collectively amplify the potential for sharp, sudden price corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
