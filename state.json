@@ -326,13 +326,13 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-15 21:25:47",
+  "last_run_timestamp": "2026-10-15 21:30:51",
   "last_email_timestamp": 1792117236.3409884,
-  "last_scan_timestamp": 1792117529.5941136,
+  "last_scan_timestamp": 1792117834.7604947,
   "gemini_cache": {
-    "timestamp": 1792117529.5941136,
+    "timestamp": 1792117834.7604947,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nPersistent macroeconomic tightening, ongoing regulatory crackdowns, and fragile market liquidity continue to expose crypto assets to extreme volatility and severe downside shocks."
+    "briefing": "**Risk Level: HIGH** \n\nDriven by persistent macroeconomic uncertainty, stringent regulatory headwinds, and fragile market liquidity, current crypto markets remain acutely vulnerable to sudden deleveraging events and sharp downside volatility."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
