@@ -93,6 +93,18 @@
   "closed_trades_ledger": [
     {
       "coin": "SAND",
+      "entry_price": 0.063689,
+      "exit_price": 0.062579,
+      "pnl_usd": -0.45638,
+      "roe_pct": -1.7428441332098163,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-17 16:20:24",
+      "ts_sec": 1792254024.3229015,
+      "fill_hash": "SAND_768453761562771"
+    },
+    {
+      "coin": "SAND",
       "entry_price": 0.064498,
       "exit_price": 0.064648,
       "pnl_usd": 0.0564,
@@ -315,37 +327,17 @@
       "timestamp": "2026-10-12 05:15:29",
       "ts_sec": 1791782129.4716415,
       "fill_hash": "LIT_45476672846195"
-    },
-    {
-      "coin": "NEAR",
-      "entry_price": 5.8571,
-      "exit_price": 5.8768,
-      "pnl_usd": 0.08471,
-      "roe_pct": 0.3363439244677447,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
-      "timestamp": "2026-10-12 05:00:56",
-      "ts_sec": 1791781256.327252,
-      "fill_hash": "NEAR_414205813012487"
     }
   ],
-  "active_position_cache": {
-    "SAND": {
-      "strategy": "15M_ROSS_PULLBACK",
-      "entry_px": 0.063689,
-      "side": "LONG",
-      "entry_candle_low": 0.061511,
-      "entry_candle_high": 0.063555
-    }
-  },
+  "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-17 11:15:52",
-  "last_email_timestamp": 1792253733.5320039,
-  "last_scan_timestamp": 1792253733.5320039,
+  "last_run_timestamp": "2026-10-17 11:20:28",
+  "last_email_timestamp": 1792254024.3229015,
+  "last_scan_timestamp": 1792254024.3229015,
   "gemini_cache": {
-    "timestamp": 1792253733.5320039,
+    "timestamp": 1792254024.3229015,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity cycles, making it susceptible to rapid, sharp corrections."
+    "briefing": "Risk Level: **HIGH**\n\nThe market is currently experiencing significant volatility driven by shifting macroeconomic expectations, regulatory uncertainty, and high levels of leverage, making it highly susceptible to sharp, sentiment-driven price swings."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
