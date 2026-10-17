@@ -93,6 +93,18 @@
   "closed_trades_ledger": [
     {
       "coin": "SAND",
+      "entry_price": 0.064498,
+      "exit_price": 0.064648,
+      "pnl_usd": 0.0564,
+      "roe_pct": 0.23256535086358857,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Orderbook TPSL Fill",
+      "timestamp": "2026-10-17 15:25:28",
+      "ts_sec": 1792250728.291167,
+      "fill_hash": "SAND_919545446717643"
+    },
+    {
+      "coin": "SAND",
       "entry_price": 0.063525,
       "exit_price": 0.062501,
       "pnl_usd": -0.391168,
@@ -315,42 +327,17 @@
       "timestamp": "2026-10-12 05:00:56",
       "ts_sec": 1791781256.327252,
       "fill_hash": "NEAR_414205813012487"
-    },
-    {
-      "coin": "FARTCOIN",
-      "entry_price": 0.17236,
-      "exit_price": 0.17277,
-      "pnl_usd": 0.05764,
-      "roe_pct": 0.23787421675562406,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Stop/Profit Lock Triggered (0.24%)",
-      "timestamp": "2026-10-12 05:00:56",
-      "ts_sec": 1791781256.327252
     }
   ],
-  "active_position_cache": {
-    "SAND": {
-      "entry_px": 0.064498,
-      "current_px": 0.065116,
-      "szi": 376.0,
-      "margin": 4.89755,
-      "side": "LONG",
-      "peak_roe": 0.009581692455579919,
-      "strategy": "15M_ROSS_PULLBACK",
-      "entry_candle_low": 0.062409,
-      "entry_candle_high": 0.064206
-    }
-  },
-  "previous_active_coins": [
-    "SAND"
-  ],
-  "last_run_timestamp": "2026-10-17 10:20:28",
-  "last_email_timestamp": 1792250260.6062806,
-  "last_scan_timestamp": 1792250421.9672482,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-17 10:25:54",
+  "last_email_timestamp": 1792250728.291167,
+  "last_scan_timestamp": 1792250728.291167,
   "gemini_cache": {
-    "timestamp": 1792250421.9672482,
+    "timestamp": 1792250728.291167,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nDriven by persistent macroeconomic uncertainty, potential regulatory crackdowns, and elevated market volatility, current crypto market conditions expose investors to severe downside risk and sudden liquidity crunches."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, potential regulatory uncertainty, and significant volatility surrounding global liquidity trends, necessitating extreme caution for investors."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
