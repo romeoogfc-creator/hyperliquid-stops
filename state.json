@@ -327,13 +327,13 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-17 06:00:33",
+  "last_run_timestamp": "2026-10-17 06:05:57",
   "last_email_timestamp": 1792234524.4458182,
-  "last_scan_timestamp": 1792234827.9438653,
+  "last_scan_timestamp": 1792235126.328118,
   "gemini_cache": {
-    "timestamp": 1792234827.9438653,
+    "timestamp": 1792235126.328118,
     "risk": "HIGH",
-    "briefing": "Risk Level: HIGH; market sentiment remains highly volatile and susceptible to sudden liquidity shifts driven by macroeconomic uncertainty and ongoing regulatory scrutiny."
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of looser monetary policy, the asset class remains highly sensitive to macroeconomic volatility and sudden liquidity shifts, necessitating a cautious outlook despite recent bullish momentum."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
