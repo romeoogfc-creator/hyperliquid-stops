@@ -329,9 +329,9 @@
   "active_position_cache": {
     "SAND": {
       "entry_px": 0.061454,
-      "current_px": 0.061131,
+      "current_px": 0.061028,
       "szi": 397.0,
-      "margin": 4.84737,
+      "margin": 4.8434,
       "side": "LONG",
       "peak_roe": -0.00525596381032974,
       "strategy": "5M_ROSS_PULLBACK",
@@ -342,13 +342,13 @@
   "previous_active_coins": [
     "SAND"
   ],
-  "last_run_timestamp": "2026-10-17 07:00:39",
+  "last_run_timestamp": "2026-10-17 07:03:58",
   "last_email_timestamp": 1792237825.9864948,
-  "last_scan_timestamp": 1792238428.5444107,
+  "last_scan_timestamp": 1792238628.2574313,
   "gemini_cache": {
-    "timestamp": 1792238428.5444107,
+    "timestamp": 1792238628.2574313,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting interest rate expectations, and increased regulatory scrutiny, all of which continue to drive significant short-term volatility."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic indicators, shifting regulatory landscapes, and high levels of leverage that leave assets prone to sharp, sudden corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
