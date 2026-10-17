@@ -327,13 +327,13 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-17 03:21:00",
+  "last_run_timestamp": "2026-10-17 03:25:30",
   "last_email_timestamp": 1792224926.6453066,
-  "last_scan_timestamp": 1792225225.6770864,
+  "last_scan_timestamp": 1792225526.795576,
   "gemini_cache": {
-    "timestamp": 1792225225.6770864,
+    "timestamp": 1792225526.795576,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Increased market volatility driven by macroeconomic uncertainty, regulatory scrutiny, and a precarious technical setup suggests a heightened potential for sharp price swings in the near term."
+    "briefing": "**Risk Level: HIGH**\n\nThe market is currently experiencing significant volatility driven by macroeconomic uncertainty, regulatory scrutiny, and high levels of speculative leverage, making it susceptible to sharp, unpredictable price swings."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
