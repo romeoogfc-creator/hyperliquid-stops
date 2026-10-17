@@ -329,11 +329,11 @@
   "active_position_cache": {
     "SAND": {
       "entry_px": 0.061454,
-      "current_px": 0.060992,
+      "current_px": 0.061131,
       "szi": 397.0,
-      "margin": 4.836571,
+      "margin": 4.84737,
       "side": "LONG",
-      "peak_roe": -0.007517818205487097,
+      "peak_roe": -0.00525596381032974,
       "strategy": "5M_ROSS_PULLBACK",
       "entry_candle_low": 0.059821,
       "entry_candle_high": 0.061444
@@ -342,13 +342,13 @@
   "previous_active_coins": [
     "SAND"
   ],
-  "last_run_timestamp": "2026-10-17 06:55:35",
+  "last_run_timestamp": "2026-10-17 07:00:39",
   "last_email_timestamp": 1792237825.9864948,
-  "last_scan_timestamp": 1792238127.475188,
+  "last_scan_timestamp": 1792238428.5444107,
   "gemini_cache": {
-    "timestamp": 1792238127.475188,
+    "timestamp": 1792238428.5444107,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, upcoming regulatory developments, and significant liquidity volatility, necessitating extreme caution for leveraged positions."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting interest rate expectations, and increased regulatory scrutiny, all of which continue to drive significant short-term volatility."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
