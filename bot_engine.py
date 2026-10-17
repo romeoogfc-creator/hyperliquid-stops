@@ -263,7 +263,7 @@ def sync_native_trigger_orders(exchange, info, coin, is_long, sz, stop_px, tp_px
         if audit_logs is not None:
             audit_logs.append(f"⚠️ TPSL sync warning on {coin}: {e}")
 
-def calculate_5m_ross_indicators(candles):
+def calculate_15m_ross_indicators(candles):
     closes = np.array([float(c["c"]) for c in candles])
     highs = np.array([float(c["h"]) for c in candles])
     lows = np.array([float(c["l"]) for c in candles])
@@ -277,8 +277,8 @@ def calculate_5m_ross_indicators(candles):
 
     typical_prices = (highs + lows + closes) / 3.0
     tp_v = typical_prices * vols
-    cum_tp_v = np.sum(tp_v[-288:])
-    cum_v = np.sum(vols[-288:])
+    cum_tp_v = np.sum(tp_v[-96:]) # 96 bars = 24 hours on 15m
+    cum_v = np.sum(vols[-96:])
     vwap = (cum_tp_v / cum_v) if cum_v > 0 else closes[-1]
 
     ema12 = df_c.ewm(span=12, adjust=False).mean()
@@ -309,7 +309,7 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
             
         is_full_red_body = (curr_px < c_open) and (body_ratio >= 0.65) and (dist_to_low_pct <= 0.15)
         if is_full_red_body and vol_ratio >= 1.5:
-            return True, f"🚨 True 5M Falling Knife (Red Body: {body_ratio*100:.0f}%, Vol: {vol_ratio:.1f}x)"
+            return True, f"🚨 True 15M Falling Knife (Red Body: {body_ratio*100:.0f}%, Vol: {vol_ratio:.1f}x)"
     else:
         dist_to_high_pct = (c_high - curr_px) / c_range if c_range > 0 else 1.0
         upper_wick_ratio = (c_high - max(c_open, curr_px)) / c_range
@@ -319,7 +319,7 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
             
         is_full_green_body = (curr_px > c_open) and (body_ratio >= 0.65) and (dist_to_high_pct <= 0.15)
         if is_full_green_body and vol_ratio >= 1.5:
-            return True, f"🚨 True 5M Rising Knife (Green Body: {body_ratio*100:.0f}%, Vol: {vol_ratio:.1f}x)"
+            return True, f"🚨 True 15M Rising Knife (Green Body: {body_ratio*100:.0f}%, Vol: {vol_ratio:.1f}x)"
             
     return False, "Normal Price Action"
 
@@ -331,10 +331,10 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle
 
     if is_long:
         raw_struct = (entry_candle_low / entry_px) - 1.0 if entry_px > 0 else -0.0080
-        initial_floor_roe = min(-0.0060, max(-0.0125, raw_struct))
+        initial_floor_roe = min(-0.0060, max(-0.0150, raw_struct))
     else:
         raw_struct = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else -0.0080
-        initial_floor_roe = min(-0.0060, max(-0.0125, raw_struct))
+        initial_floor_roe = min(-0.0060, max(-0.0150, raw_struct))
 
     activation_roe = 0.0080 
     be_floor_roe = 0.0040    
@@ -418,14 +418,14 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.3.4 Engine Started (Forced Scan Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.4.0 Engine Started (15M Pure Ross Scalper Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
 
     state = load_state()
 
-    is_5m_scan_window = True
+    is_15m_scan_window = True
 
     if now_ts < float(state.get("hibernating_until", 0)):
         remaining_hrs = (float(state["hibernating_until"]) - now_ts) / 3600.0
@@ -461,7 +461,7 @@ def execute_engine():
     all_mids = api_retry(info.all_mids)
     now_ms = int(now_ts * 1000)
 
-    gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_5m_scan_window)
+    gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_15m_scan_window)
     audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] {gemini_briefing}")
 
     is_sunday = (ct_now.weekday() == 6)
@@ -471,9 +471,9 @@ def execute_engine():
         required_vol_ratio = 2.20
         audit_logs.append(f"🛡️ SUNDAY WEEKLY CLOSE SHIELD ACTIVE (2:00PM-7:30PM CT): Requiring RVOL >= {required_vol_ratio:.2f}x to enter.")
     else:
-        # Calibrated RVOL scaling to eliminate cash stalling while maintaining volume confirmation
+        # 15M Calibrated RVOL Scaling
         required_vol_ratio = 1.35 if gemini_risk == "HIGH" else (1.20 if gemini_risk == "MODERATE" else 1.10)
-        audit_logs.append(f"⚡ Pure Ross 5M Scalper Active: Target RVOL >= {required_vol_ratio:.2f}x | 9 EMA + VWAP + MACD Active")
+        audit_logs.append(f"⚡ Pure Ross 15M Scalper Active: Target RVOL >= {required_vol_ratio:.2f}x | 15M 9 EMA + VWAP + MACD Active")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -584,7 +584,8 @@ def execute_engine():
             entry_candle_high = cache_info.get("entry_candle_high", entry_px * 1.0080)
 
             try:
-                c_candles = api_retry(info.candles_snapshot, name=coin, interval="5m", startTime=now_ms - 86400000, endTime=now_ms)
+                # Upgraded to 15m candle snapshot for exit evaluations
+                c_candles = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 86400000, endTime=now_ms)
                 closes = [float(c["c"]) for c in c_candles]
                 volumes = [float(c.get("v", 0)) for c in c_candles]
                 
@@ -594,12 +595,12 @@ def execute_engine():
                 avg_v = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
                 v_ratio = volumes[-1] / avg_v if avg_v > 0 else 1.0
 
-                ross_ind = calculate_5m_ross_indicators(c_candles)
+                ross_ind = calculate_15m_ross_indicators(c_candles)
                 if ross_ind and len(c_candles) >= 2:
                     prev_closed_px = float(c_candles[-2]["c"])
                     if is_long and (prev_closed_px < ross_ind["ema9"] or ross_ind["macd_hist"] < 0):
                         should_exit = True
-                        exit_reason = f"🚨 Ross Exit Signal (Closed Px ${prev_closed_px:.4f} < 9 EMA ${ross_ind['ema9']:.4f} or MACD Hist < 0)"
+                        exit_reason = f"🚨 Ross Exit Signal (Closed Px ${prev_closed_px:.4f} < 15M 9 EMA ${ross_ind['ema9']:.4f} or MACD Hist < 0)"
 
                 is_knife, knife_reason = analyze_live_falling_knife(current_px, c_open, c_high, c_low, v_ratio, is_long)
                 if is_knife:
@@ -617,7 +618,7 @@ def execute_engine():
                 state["stagnation_tracker"][coin] = curr_stag
                 if curr_stag >= 3:
                     should_exit = True
-                    exit_reason = f"🗡️ 5M Stagnation Cut ({current_roe*100:.2f}% after {curr_stag} 5m runs)"
+                    exit_reason = f"🗡️ 15M Stagnation Cut ({current_roe*100:.2f}% after {curr_stag} runs)"
             else:
                 if "stagnation_tracker" in state and coin in state["stagnation_tracker"]:
                     state["stagnation_tracker"][coin] = 0
@@ -674,12 +675,12 @@ def execute_engine():
             new_active_cache[coin] = {
                 "entry_px": entry_px, "current_px": current_px, "szi": szi, 
                 "margin": margin_used, "side": "LONG" if is_long else "SHORT",
-                "peak_roe": peak_roe, "strategy": cache_info.get("strategy", "5M_ROSS_PULLBACK"),
+                "peak_roe": peak_roe, "strategy": cache_info.get("strategy", "15M_ROSS_PULLBACK"),
                 "entry_candle_low": entry_candle_low, "entry_candle_high": entry_candle_high
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.3.4", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.4.0", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -731,7 +732,7 @@ def execute_engine():
 
     if available_slots > 0:
         state["last_scan_timestamp"] = now_ts
-        audit_logs.append(f"🌐 PURE ROSS 5M SCANNER ACTIVE: Scanning Top Gappers (#20-#300+)...")
+        audit_logs.append(f"🌐 PURE ROSS 15M SCANNER ACTIVE: Scanning Top Gappers (#20-#300+)...")
 
         scored_universe = []
         for idx, asset in enumerate(meta.get("universe", [])):
@@ -773,7 +774,8 @@ def execute_engine():
                     continue
                 
                 time.sleep(0.08)
-                candles = api_retry(info.candles_snapshot, name=coin, interval="5m", startTime=now_ms - 86400000, endTime=now_ms)
+                # Upgraded to 15m candle snapshot
+                candles = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 86400000, endTime=now_ms)
                 if not candles or len(candles) < 30:
                     continue
 
@@ -781,7 +783,6 @@ def execute_engine():
                 if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
                     continue
 
-                # Orderbook Spread Cap (0.15% spread max, $3,000 depth min)
                 is_liquid, spread_msg = check_liquidity_and_spread(info, coin, max_spread=0.0015, min_depth_usd=3000.0)
                 if not is_liquid:
                     continue
@@ -791,7 +792,7 @@ def execute_engine():
                 lows = [float(c["l"]) for c in candles]
                 volumes = [float(c.get("v", 0)) for c in candles]
 
-                ross_ind = calculate_5m_ross_indicators(candles)
+                ross_ind = calculate_15m_ross_indicators(candles)
                 if not ross_ind:
                     continue
 
@@ -803,11 +804,10 @@ def execute_engine():
                 elapsed_mins = (now_ms - candle_start_ms) / 60000.0
                 live_volume_raw = float(candles[-1].get("v", 0))
                 
-                # Accurate linear time projection for live 5M candle volume
-                paced_volume = live_volume_raw * (5.0 / max(0.25, elapsed_mins))
+                # Upgraded to 15-minute linear volume extrapolation
+                paced_volume = live_volume_raw * (15.0 / max(0.50, elapsed_mins))
                 avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
                 
-                # Dual-Bar Volume Memory: Max of live paced volume or last closed candle volume
                 paced_vol_ratio = paced_volume / avg_vol if avg_vol > 0 else 1.0
                 last_closed_vol_ratio = volumes[-2] / avg_vol if avg_vol > 0 else 1.0
                 vol_ratio = max(paced_vol_ratio, last_closed_vol_ratio)
@@ -819,10 +819,8 @@ def execute_engine():
                 prev_high = highs[-2]
                 prev_low = lows[-2]
                 
-                # V4.3.4 FIX: Expanded Breakout & Retest Buffer (within -0.30% to +1.20% of prev_high)
+                # 15M Breakout Range Anchor (-0.30% to +1.20% of prev_high)
                 is_trigger_break = (curr_live_px >= prev_high * 0.9970) and (curr_live_px <= prev_high * 1.0120)
-                
-                # V4.3.4 FIX: Adaptive Pullback / High Volume Override
                 is_prev_pullback = (closes[-2] < float(candles[-2]["o"])) or (volumes[-2] <= avg_vol * 1.10) or (vol_ratio >= 1.75)
 
                 recent_green_vols = [volumes[i] for i in range(-6, -1) if closes[i] > float(candles[i]["o"])]
@@ -834,7 +832,6 @@ def execute_engine():
                 pullback_count = sum(1 for i in range(-4, -1) if closes[i] < float(candles[i]["o"]))
                 is_valid_pullback_count = (pullback_count <= 2)
 
-                # V4.3.4 FIX: Closed Candle Wick Anchor + Relaxed Live Bar Tolerance
                 prev_c_range = max(highs[-2] - lows[-2], 1e-8)
                 prev_upper_wick = (highs[-2] - max(float(candles[-2]["o"]), float(candles[-2]["c"]))) / prev_c_range
                 
@@ -856,7 +853,7 @@ def execute_engine():
                     market_candidates.append({
                         "coin": coin, "close": curr_live_px, "is_long": True, 
                         "score": score, "candle_ts": current_candle_ts,
-                        "strategy": "5M_ROSS_PULLBACK",
+                        "strategy": "15M_ROSS_PULLBACK",
                         "entry_candle_low": prev_low,
                         "entry_candle_high": prev_high
                     })
@@ -864,7 +861,7 @@ def execute_engine():
                 continue
 
         if not market_candidates:
-            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met full Ross Cameron trigger rules on this 5M candle.")
+            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met full Ross Cameron 15M trigger rules on this candle.")
         else:
             audit_logs.append(f"🚀 SCAN COMPLETED: {len(market_candidates)} candidate(s) triggered entry setup!")
 
@@ -926,7 +923,7 @@ def execute_engine():
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V4.3.4", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V4.4.0", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -967,7 +964,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.3.4 | Pure Ross Cameron 5M Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.4.0 | Pure Ross Cameron 15M Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -1052,7 +1049,7 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); box-sizing: border-box;">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Crypto-LS-23 | Pure Ross Cameron 5M Scalper (V4.3.4)</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Crypto-LS-23 | Pure Ross Cameron 15M Scalper (V4.4.0)</div>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Forced Scan Active</div>
       </div>
 
@@ -1076,11 +1073,11 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Ross Cameron V4.3.4 Execution Rules</div>
-          <div>&bull; <b>Closed-Candle Structure Anchor:</b> Eliminates intra-bar wick false alarms</div>
-          <div>&bull; <b>Expanded Breakout Range (+1.20%):</b> Catches fast momentum candles and retests</div>
-          <div>&bull; <b>Linear Time Extrapolated RVOL:</b> Accurate live-candle volume projection from second 1</div>
-          <div>&bull; <b>Closed-Candle 9 EMA Anti-Wick Defense:</b> Prevents premature exits on 30s shadow wicks</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Ross Cameron V4.4.0 Execution Rules</div>
+          <div>&bull; <b>15M Pure Trend &amp; Volume Anchor:</b> Smooths out 3M/5M micro-wicks and noise</div>
+          <div>&bull; <b>Linear Time Extrapolated 15M RVOL:</b> Accurate live-bar volume projection</div>
+          <div>&bull; <b>15M 9 EMA &amp; VWAP Defense:</b> Replaces noisy 5M wicks with high-conviction trend signals</div>
+          <div>&bull; <b>Native Orderbook TPSL Sync:</b> Auto-places native stops on Hyperliquid's orderbook</div>
         </div>
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
@@ -1097,7 +1094,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 5M Fast Scalper Autonomous Engine &bull; V4.3.4 Forced Scan Active
+        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.4.0 Forced Scan Active
       </div>
     </div>
   </body>
@@ -1111,10 +1108,10 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing 5M Pure Ross Scalper cycle...", flush=True)
+    print(f"[{timestamp}] Executing 15M Pure Ross Scalper cycle...", flush=True)
     try:
         execute_engine()
-        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 5M cycle completed successfully.", flush=True)
+        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 15M cycle completed successfully.", flush=True)
     except Exception as e:
         err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Engine execution error: {e}"
         print(err_msg, flush=True)
