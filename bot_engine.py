@@ -418,7 +418,7 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.3.3 Engine Started (Forced Scan Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.3.4 Engine Started (Forced Scan Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -471,7 +471,7 @@ def execute_engine():
         required_vol_ratio = 2.20
         audit_logs.append(f"🛡️ SUNDAY WEEKLY CLOSE SHIELD ACTIVE (2:00PM-7:30PM CT): Requiring RVOL >= {required_vol_ratio:.2f}x to enter.")
     else:
-        # Calibrated RVOL scaling to prevent cash stalling while ensuring volume backing
+        # Calibrated RVOL scaling to eliminate cash stalling while maintaining volume confirmation
         required_vol_ratio = 1.35 if gemini_risk == "HIGH" else (1.20 if gemini_risk == "MODERATE" else 1.10)
         audit_logs.append(f"⚡ Pure Ross 5M Scalper Active: Target RVOL >= {required_vol_ratio:.2f}x | 9 EMA + VWAP + MACD Active")
 
@@ -679,7 +679,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.3.3", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.3.4", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -781,7 +781,7 @@ def execute_engine():
                 if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
                     continue
 
-                # Calibrated Orderbook Cap (0.15% spread max, $3,000 depth min)
+                # Orderbook Spread Cap (0.15% spread max, $3,000 depth min)
                 is_liquid, spread_msg = check_liquidity_and_spread(info, coin, max_spread=0.0015, min_depth_usd=3000.0)
                 if not is_liquid:
                     continue
@@ -803,11 +803,11 @@ def execute_engine():
                 elapsed_mins = (now_ms - candle_start_ms) / 60000.0
                 live_volume_raw = float(candles[-1].get("v", 0))
                 
-                # BUG FIX: Accurate linear time projection for live 5M candle volume
+                # Accurate linear time projection for live 5M candle volume
                 paced_volume = live_volume_raw * (5.0 / max(0.25, elapsed_mins))
                 avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
                 
-                # Dual-Bar Volume Memory: Takes max of live paced volume OR last completed closed candle volume
+                # Dual-Bar Volume Memory: Max of live paced volume or last closed candle volume
                 paced_vol_ratio = paced_volume / avg_vol if avg_vol > 0 else 1.0
                 last_closed_vol_ratio = volumes[-2] / avg_vol if avg_vol > 0 else 1.0
                 vol_ratio = max(paced_vol_ratio, last_closed_vol_ratio)
@@ -819,9 +819,11 @@ def execute_engine():
                 prev_high = highs[-2]
                 prev_low = lows[-2]
                 
-                # Calibrated Breakout Buffer (+0.60% max allowance above prev_high)
-                is_trigger_break = (curr_live_px > prev_high) and (curr_live_px <= prev_high * 1.0060)
-                is_prev_pullback = (closes[-2] < float(candles[-2]["o"])) or (volumes[-2] <= avg_vol * 0.85)
+                # V4.3.4 FIX: Expanded Breakout & Retest Buffer (within -0.30% to +1.20% of prev_high)
+                is_trigger_break = (curr_live_px >= prev_high * 0.9970) and (curr_live_px <= prev_high * 1.0120)
+                
+                # V4.3.4 FIX: Adaptive Pullback / High Volume Override
+                is_prev_pullback = (closes[-2] < float(candles[-2]["o"])) or (volumes[-2] <= avg_vol * 1.10) or (vol_ratio >= 1.75)
 
                 recent_green_vols = [volumes[i] for i in range(-6, -1) if closes[i] > float(candles[i]["o"])]
                 recent_red_vols = [volumes[i] for i in range(-3, -1) if closes[i] < float(candles[i]["o"])]
@@ -832,9 +834,14 @@ def execute_engine():
                 pullback_count = sum(1 for i in range(-4, -1) if closes[i] < float(candles[i]["o"]))
                 is_valid_pullback_count = (pullback_count <= 2)
 
-                c_range = max(highs[-1] - lows[-1], 1e-8)
-                upper_wick_ratio = (highs[-1] - max(float(candles[-1]["o"]), curr_live_px)) / c_range
-                is_clean_structure = (upper_wick_ratio <= 0.25)
+                # V4.3.4 FIX: Closed Candle Wick Anchor + Relaxed Live Bar Tolerance
+                prev_c_range = max(highs[-2] - lows[-2], 1e-8)
+                prev_upper_wick = (highs[-2] - max(float(candles[-2]["o"]), float(candles[-2]["c"]))) / prev_c_range
+                
+                live_c_range = max(highs[-1] - lows[-1], 1e-8)
+                live_upper_wick = (highs[-1] - max(float(candles[-1]["o"]), curr_live_px)) / live_c_range
+                
+                is_clean_structure = (prev_upper_wick <= 0.35) and (live_upper_wick <= 0.45)
 
                 if item in scored_universe[:3]:
                     status_ema = "PASS" if is_above_ema9 else "FAIL"
@@ -919,7 +926,7 @@ def execute_engine():
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V4.3.3", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V4.3.4", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -960,7 +967,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.3.3 | Pure Ross Cameron 5M Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.3.4 | Pure Ross Cameron 5M Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -1045,7 +1052,7 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); box-sizing: border-box;">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Crypto-LS-23 | Pure Ross Cameron 5M Scalper (V4.3.3)</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Crypto-LS-23 | Pure Ross Cameron 5M Scalper (V4.3.4)</div>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Forced Scan Active</div>
       </div>
 
@@ -1069,11 +1076,11 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Ross Cameron V4.3.3 Execution Rules</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Ross Cameron V4.3.4 Execution Rules</div>
+          <div>&bull; <b>Closed-Candle Structure Anchor:</b> Eliminates intra-bar wick false alarms</div>
+          <div>&bull; <b>Expanded Breakout Range (+1.20%):</b> Catches fast momentum candles and retests</div>
           <div>&bull; <b>Linear Time Extrapolated RVOL:</b> Accurate live-candle volume projection from second 1</div>
-          <div>&bull; <b>Dual-Bar Volume Memory:</b> Preserves high-volume signals from completed closed candles</div>
-          <div>&bull; <b>Calibrated Gemini RVOL (1.35x HIGH Cap):</b> Balances volume hurdles to trigger on real setups</div>
-          <div>&bull; <b>Closed-Candle 9 EMA Anti-Wick Defense:</b> Prevents premature exits on 30s intra-bar shadow wicks</div>
+          <div>&bull; <b>Closed-Candle 9 EMA Anti-Wick Defense:</b> Prevents premature exits on 30s shadow wicks</div>
         </div>
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
@@ -1090,7 +1097,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 5M Fast Scalper Autonomous Engine &bull; V4.3.3 Forced Scan Active
+        Hyperliquid 5M Fast Scalper Autonomous Engine &bull; V4.3.4 Forced Scan Active
       </div>
     </div>
   </body>
