@@ -330,11 +330,11 @@
   "active_position_cache": {
     "SAND": {
       "entry_px": 0.063525,
-      "current_px": 0.063159,
+      "current_px": 0.063414,
       "szi": 382.0,
-      "margin": 4.824278,
+      "margin": 4.84842,
       "side": "LONG",
-      "peak_roe": -0.005761511216056534,
+      "peak_roe": -0.0017473435655253836,
       "strategy": "5M_ROSS_PULLBACK",
       "entry_candle_low": 0.061541,
       "entry_candle_high": 0.06357
@@ -343,13 +343,13 @@
   "previous_active_coins": [
     "SAND"
   ],
-  "last_run_timestamp": "2026-10-17 09:25:32",
+  "last_run_timestamp": "2026-10-17 09:30:37",
   "last_email_timestamp": 1792246823.6226764,
-  "last_scan_timestamp": 1792247125.546142,
+  "last_scan_timestamp": 1792247430.9520907,
   "gemini_cache": {
-    "timestamp": 1792247125.546142,
+    "timestamp": 1792247430.9520907,
     "risk": "HIGH",
-    "briefing": "Risk Level: HIGH; while institutional inflows provide a foundational floor, the market remains hypersensitive to macroeconomic volatility, regulatory shifts, and the elevated leverage inherent in current speculative positioning."
+    "briefing": "Risk Level: HIGH; while institutional inflows provide a structural floor, extreme price volatility, looming macroeconomic shifts, and ongoing regulatory uncertainty maintain a heightened state of vulnerability for retail investors."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
