@@ -325,50 +325,48 @@ def analyze_live_falling_knife(curr_px, c_open, c_high, c_low, vol_ratio, is_lon
 
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle_low, entry_candle_high, peak_roe=0.0, coin="ETH"):
     if is_long:
-        roe = (current_px - entry_px) / entry_px
+        roe = (current_px - entry_px) / entry_px * 5.0
     else:
-        roe = (entry_px - current_px) / entry_px
+        roe = (entry_px - current_px) / entry_px * 5.0
 
+    # V4.4.1 FIX: Structural stop anchored to entry candle low with realistic ROE floor (-2.5% to -6.0% ROE)
     if is_long:
-        raw_struct = (entry_candle_low / entry_px) - 1.0 if entry_px > 0 else -0.0080
-        initial_floor_roe = min(-0.0060, max(-0.0150, raw_struct))
+        raw_struct_roe = ((entry_candle_low / entry_px) - 1.0) * 5.0 if entry_px > 0 else -0.0300
+        initial_floor_roe = min(-0.0250, max(-0.0600, raw_struct_roe))
     else:
-        raw_struct = 1.0 - (entry_candle_high / entry_px) if entry_px > 0 else -0.0080
-        initial_floor_roe = min(-0.0060, max(-0.0150, raw_struct))
+        raw_struct_roe = (1.0 - (entry_candle_high / entry_px)) * 5.0 if entry_px > 0 else -0.0300
+        initial_floor_roe = min(-0.0250, max(-0.0600, raw_struct_roe))
 
-    activation_roe = 0.0080 
-    be_floor_roe = 0.0040    
+    activation_roe = 0.0150 
+    be_floor_roe = 0.0050    
 
     if peak_roe >= activation_roe:
-        if peak_roe < 0.0150:      
+        if peak_roe < 0.0300:      
             target_floor_roe = max(be_floor_roe, peak_roe * 0.50)
             leash_status = f"⚡ FEE SHIELD [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-        elif peak_roe < 0.0300:    
+        elif peak_roe < 0.0600:    
             target_floor_roe = peak_roe * 0.70
             leash_status = f"⚡ TIER 1 LOCK (70%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-        elif peak_roe < 0.0500:    
+        elif peak_roe < 0.1000:    
             target_floor_roe = peak_roe * 0.85
             leash_status = f"🚀 TIER 2 LOCK (85%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-        elif peak_roe < 0.1000:    
+        else:                      
             target_floor_roe = peak_roe * 0.92
             leash_status = f"🔥 TIER 3 RUNNER (92%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-        else:                      
-            target_floor_roe = peak_roe * 0.97
-            leash_status = f"🏆 MOONSHOT LOCK (97%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
     else:
         target_floor_roe = initial_floor_roe
         leash_status = f"🛡 STRUCTURAL STOP ({target_floor_roe*100:.2f}%)"
 
     if is_long:
-        stop_px = entry_px * (1 + target_floor_roe)
+        stop_px = entry_px * (1 + (target_floor_roe / 5.0))
         risk_dist = abs(entry_px - stop_px)
         tp_px = entry_px + (2.0 * risk_dist)
     else:
-        stop_px = entry_px * (1 - target_floor_roe)
+        stop_px = entry_px * (1 - (target_floor_roe / 5.0))
         risk_dist = abs(entry_px - stop_px)
         tp_px = entry_px - (2.0 * risk_dist)
 
-    return stop_px, tp_px, roe, target_floor_roe, leash_status
+    return stop_px, tp_px, roe / 5.0, target_floor_roe, leash_status
 
 def check_gemini_macro_shield(state, now_ts, is_scan_window):
     gemini_cache = state.get("gemini_cache", {})
@@ -418,7 +416,7 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.4.0 Engine Started (15M Pure Ross Scalper Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.4.1 Engine Started (Airtight 15M Scalper Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -471,7 +469,6 @@ def execute_engine():
         required_vol_ratio = 2.20
         audit_logs.append(f"🛡️ SUNDAY WEEKLY CLOSE SHIELD ACTIVE (2:00PM-7:30PM CT): Requiring RVOL >= {required_vol_ratio:.2f}x to enter.")
     else:
-        # 15M Calibrated RVOL Scaling
         required_vol_ratio = 1.35 if gemini_risk == "HIGH" else (1.20 if gemini_risk == "MODERATE" else 1.10)
         audit_logs.append(f"⚡ Pure Ross 15M Scalper Active: Target RVOL >= {required_vol_ratio:.2f}x | 15M 9 EMA + VWAP + MACD Active")
 
@@ -544,8 +541,7 @@ def execute_engine():
                     exchange.market_close(coin, slippage=0.01)
                     closed_coins_this_run.add(coin)
 
-                    if pnl < 0:
-                        state["cooldown_blocklist"][coin] = now_ts + 86400
+                    state["cooldown_blocklist"][coin] = now_ts + 86400
 
                     state["closed_trades_ledger"].insert(0, {
                         "coin": coin, "entry_price": entry_px, "exit_price": exit_px,
@@ -574,7 +570,7 @@ def execute_engine():
             unrealized_pnl = float(pos.get("unrealizedPnl", 0))
             pos_equity = abs(szi) * current_px
 
-            current_roe = (((current_px - entry_px) / entry_px) * 1.0) if is_long else (((entry_px - current_px) / entry_px) * 1.0)
+            current_roe = (((current_px - entry_px) / entry_px) * 5.0) if is_long else (((entry_px - current_px) / entry_px) * 5.0)
             
             should_exit = False
             exit_reason = ""
@@ -584,7 +580,6 @@ def execute_engine():
             entry_candle_high = cache_info.get("entry_candle_high", entry_px * 1.0080)
 
             try:
-                # Upgraded to 15m candle snapshot for exit evaluations
                 c_candles = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 86400000, endTime=now_ms)
                 closes = [float(c["c"]) for c in c_candles]
                 volumes = [float(c.get("v", 0)) for c in c_candles]
@@ -611,7 +606,7 @@ def execute_engine():
 
             stag_map = state.get("stagnation_tracker", {})
             curr_stag = stag_map.get(coin, 0)
-            if current_roe < -0.0080:
+            if current_roe < -0.0150:
                 curr_stag += 1
                 if "stagnation_tracker" not in state:
                     state["stagnation_tracker"] = {}
@@ -626,7 +621,7 @@ def execute_engine():
             prev_peak = cache_info.get("peak_roe", current_roe)
             peak_roe = max(current_roe, prev_peak)
 
-            stop_px_calc, tp_px_calc, current_roe, target_floor_roe, leash_status = calculate_smart_exchange_targets(
+            stop_px_calc, tp_px_calc, current_roe_norm, target_floor_roe, leash_status = calculate_smart_exchange_targets(
                 entry_px, is_long, current_px, entry_candle_low, entry_candle_high, peak_roe=peak_roe, coin=coin
             )
 
@@ -653,14 +648,18 @@ def execute_engine():
                     if "stagnation_tracker" in state:
                         state["stagnation_tracker"].pop(coin, None)
 
-                    if unrealized_pnl < 0 or current_roe < 0:
-                        state["cooldown_blocklist"][coin] = now_ts + 86400
+                    # V4.4.1 FIX: AIRTIGHT COOLDOWN ENFORCEMENT & INSTANT SAVE
+                    if unrealized_pnl <= 0 or current_roe <= 0:
+                        state["cooldown_blocklist"][coin] = now_ts + 86400 # 24H Hard Block on Loss/Scratch
+                    else:
+                        state["cooldown_blocklist"][coin] = now_ts + 43200 # 12H Rest on Win
 
                     state["closed_trades_ledger"].insert(0, {
                         "coin": coin, "entry_price": entry_px, "exit_price": current_px,
                         "pnl_usd": unrealized_pnl, "roe_pct": current_roe * 100, "side": "LONG" if is_long else "SHORT",
                         "exit_reason": exit_reason, "timestamp": timestamp, "ts_sec": now_ts
                     })
+                    save_state(state) # Instant save
                     trade_closed_this_run = True
                     continue
                 except Exception as e:
@@ -680,7 +679,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.4.0", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.4.1", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -709,7 +708,13 @@ def execute_engine():
                 side = cache_data.get("side", "LONG")
                 is_long = (side == "LONG")
                 pnl_usd = float(latest_fill.get("closedPnl", 0.0))
-                roe_pct = ((exit_px - entry_px) / entry_px * 100) if is_long else ((entry_px - exit_px) / entry_px * 100)
+                roe_pct = ((exit_px - entry_px) / entry_px * 500) if is_long else ((entry_px - exit_px) / entry_px * 500)
+
+                # V4.4.1 FIX: AIRTIGHT BLOCKLIST ON TPSL FILL
+                if pnl_usd <= 0 or roe_pct <= 0:
+                    state["cooldown_blocklist"][coin] = now_ts + 86400 # 24H Hard Block
+                else:
+                    state["cooldown_blocklist"][coin] = now_ts + 43200 # 12H Rest
 
                 state["closed_trades_ledger"].insert(0, {
                     "coin": coin, "entry_price": entry_px, "exit_price": exit_px,
@@ -717,6 +722,7 @@ def execute_engine():
                     "exit_reason": "🎯 Native Orderbook TPSL Fill", "timestamp": timestamp, "ts_sec": now_ts,
                     "fill_hash": fill_hash
                 })
+                save_state(state) # Instant save
                 trade_closed_this_run = True
         except Exception:
             pass
@@ -739,6 +745,8 @@ def execute_engine():
             coin = asset.get("name")
             if not coin or coin in active_coins or coin in ["USDC", "USDT"]:
                 continue
+            
+            # AIRTIGHT COOLDOWN CHECK
             if now_ts < float(state.get("cooldown_blocklist", {}).get(coin, 0)) or idx < 20:
                 continue
 
@@ -774,7 +782,6 @@ def execute_engine():
                     continue
                 
                 time.sleep(0.08)
-                # Upgraded to 15m candle snapshot
                 candles = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 86400000, endTime=now_ms)
                 if not candles or len(candles) < 30:
                     continue
@@ -804,8 +811,13 @@ def execute_engine():
                 elapsed_mins = (now_ms - candle_start_ms) / 60000.0
                 live_volume_raw = float(candles[-1].get("v", 0))
                 
-                # Upgraded to 15-minute linear volume extrapolation
-                paced_volume = live_volume_raw * (15.0 / max(0.50, elapsed_mins))
+                # V4.4.1 FIX: DAMPENED EXTRAPOLATION (Prevents minute 0-2 fake volume multiplier spikes)
+                if elapsed_mins >= 2.0:
+                    extrap_mult = min(5.0, 15.0 / elapsed_mins)
+                    paced_volume = live_volume_raw * extrap_mult
+                else:
+                    paced_volume = live_volume_raw * 2.0
+
                 avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
                 
                 paced_vol_ratio = paced_volume / avg_vol if avg_vol > 0 else 1.0
@@ -819,8 +831,8 @@ def execute_engine():
                 prev_high = highs[-2]
                 prev_low = lows[-2]
                 
-                # 15M Breakout Range Anchor (-0.30% to +1.20% of prev_high)
-                is_trigger_break = (curr_live_px >= prev_high * 0.9970) and (curr_live_px <= prev_high * 1.0120)
+                # V4.4.1 FIX: STRICT ROSS BREAKOUT (Price MUST be strictly ABOVE prev_high)
+                is_trigger_break = (curr_live_px > prev_high) and (curr_live_px <= prev_high * 1.0080)
                 is_prev_pullback = (closes[-2] < float(candles[-2]["o"])) or (volumes[-2] <= avg_vol * 1.10) or (vol_ratio >= 1.75)
 
                 recent_green_vols = [volumes[i] for i in range(-6, -1) if closes[i] > float(candles[i]["o"])]
@@ -923,7 +935,7 @@ def execute_engine():
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V4.4.0", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V4.4.1", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -964,7 +976,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.4.0 | Pure Ross Cameron 15M Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.4.1 | Pure Ross Cameron 15M Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -1049,7 +1061,7 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); box-sizing: border-box;">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Crypto-LS-23 | Pure Ross Cameron 15M Scalper (V4.4.0)</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Crypto-LS-23 | Pure Ross Cameron 15M Scalper (V4.4.1)</div>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Forced Scan Active</div>
       </div>
 
@@ -1073,11 +1085,11 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Ross Cameron V4.4.0 Execution Rules</div>
-          <div>&bull; <b>15M Pure Trend &amp; Volume Anchor:</b> Smooths out 3M/5M micro-wicks and noise</div>
-          <div>&bull; <b>Linear Time Extrapolated 15M RVOL:</b> Accurate live-bar volume projection</div>
-          <div>&bull; <b>15M 9 EMA &amp; VWAP Defense:</b> Replaces noisy 5M wicks with high-conviction trend signals</div>
-          <div>&bull; <b>Native Orderbook TPSL Sync:</b> Auto-places native stops on Hyperliquid's orderbook</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Ross Cameron V4.4.1 Airtight Rules</div>
+          <div>&bull; <b>Airtight 24H Cooldown Ledger:</b> Blocks re-entry on lost or scratched tokens instantly</div>
+          <div>&bull; <b>Dampened RVOL Extrapolation:</b> Caps early-candle multipliers to stop fake volume spikes</div>
+          <div>&bull; <b>Strict High-of-Candle Gate:</b> Requires price to sit strictly above previous 15M high</div>
+          <div>&bull; <b>Structural Stop Anchor (-2.5% to -6.0% ROE):</b> Absorbs normal orderbook noise</div>
         </div>
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
@@ -1094,7 +1106,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.4.0 Forced Scan Active
+        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.4.1 Forced Scan Active
       </div>
     </div>
   </body>
