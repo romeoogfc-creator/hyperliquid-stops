@@ -136,7 +136,7 @@ def round_sig_figs(val, sig_figs=5):
         return 0
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
-def check_liquidity_and_spread(info, coin, max_spread=0.0008, min_depth_usd=5000.0):
+def check_liquidity_and_spread(info, coin, max_spread=0.0015, min_depth_usd=3000.0):
     try:
         l2_book = api_retry(info.l2_snapshot, name=coin)
         levels = l2_book.get("levels", [[], []])
@@ -782,8 +782,8 @@ def execute_engine():
                 if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
                     continue
 
-                # Strict Orderbook Depth & Spread Cap (0.08% spread max, $5,000 depth min)
-                is_liquid, spread_msg = check_liquidity_and_spread(info, coin, max_spread=0.0008, min_depth_usd=5000.0)
+                # Calibrated Orderbook Cap (0.15% spread max, $3,000 depth min)
+                is_liquid, spread_msg = check_liquidity_and_spread(info, coin, max_spread=0.0015, min_depth_usd=3000.0)
                 if not is_liquid:
                     continue
 
@@ -814,7 +814,8 @@ def execute_engine():
                 prev_high = highs[-2]
                 prev_low = lows[-2]
                 
-                is_trigger_break = (curr_live_px > prev_high) and (curr_live_px <= prev_high * 1.0020)
+                # Calibrated Breakout Buffer (+0.60% max allowance above prev_high)
+                is_trigger_break = (curr_live_px > prev_high) and (curr_live_px <= prev_high * 1.0060)
                 is_prev_pullback = (closes[-2] < float(candles[-2]["o"])) or (volumes[-2] <= avg_vol * 0.85)
 
                 recent_green_vols = [volumes[i] for i in range(-6, -1) if closes[i] > float(candles[i]["o"])]
@@ -1066,7 +1067,7 @@ def execute_engine():
           <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Ross Cameron V4.3.2 Execution Rules</div>
           <div>&bull; <b>Calibrated Gemini RVOL (1.65x HIGH Cap):</b> Balances volume entry hurdles to avoid cash stalling</div>
           <div>&bull; <b>Closed-Candle 9 EMA Anti-Wick Defense:</b> Prevents premature exits on 30s intra-bar shadow wicks</div>
-          <div>&bull; <b>Strict Orderbook Cap (0.08% Spread / $5k Depth):</b> Blocks entry on high-friction orderbooks</div>
+          <div>&bull; <b>Calibrated Orderbook Cap (0.15% Spread / $3k Depth):</b> Blocks entry on high-friction orderbooks</div>
           <div>&bull; <b>Pivot Low Stop Anchor:</b> Stops anchored to candle structure; avoids artificial noise stops</div>
         </div>
 
