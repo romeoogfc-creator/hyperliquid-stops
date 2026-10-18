@@ -277,7 +277,7 @@ def calculate_15m_ross_indicators(candles):
 
     typical_prices = (highs + lows + closes) / 3.0
     tp_v = typical_prices * vols
-    cum_tp_v = np.sum(tp_v[-96:]) # 96 bars = 24 hours on 15m
+    cum_tp_v = np.sum(tp_v[-96:]) 
     cum_v = np.sum(vols[-96:])
     vwap = (cum_tp_v / cum_v) if cum_v > 0 else closes[-1]
 
@@ -329,7 +329,6 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle
     else:
         roe = (entry_px - current_px) / entry_px * 5.0
 
-    # V4.4.1 FIX: Structural stop anchored to entry candle low with realistic ROE floor (-2.5% to -6.0% ROE)
     if is_long:
         raw_struct_roe = ((entry_candle_low / entry_px) - 1.0) * 5.0 if entry_px > 0 else -0.0300
         initial_floor_roe = min(-0.0250, max(-0.0600, raw_struct_roe))
@@ -416,7 +415,7 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.4.1 Engine Started (Airtight 15M Scalper Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.4.2 Engine Started (HOD Expansion Scalper Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -470,7 +469,7 @@ def execute_engine():
         audit_logs.append(f"🛡️ SUNDAY WEEKLY CLOSE SHIELD ACTIVE (2:00PM-7:30PM CT): Requiring RVOL >= {required_vol_ratio:.2f}x to enter.")
     else:
         required_vol_ratio = 1.35 if gemini_risk == "HIGH" else (1.20 if gemini_risk == "MODERATE" else 1.10)
-        audit_logs.append(f"⚡ Pure Ross 15M Scalper Active: Target RVOL >= {required_vol_ratio:.2f}x | 15M 9 EMA + VWAP + MACD Active")
+        audit_logs.append(f"⚡ Pure Ross 15M HOD Scalper Active: Target RVOL >= {required_vol_ratio:.2f}x | 15M HOD + 9 EMA + VWAP + MACD Active")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -648,18 +647,17 @@ def execute_engine():
                     if "stagnation_tracker" in state:
                         state["stagnation_tracker"].pop(coin, None)
 
-                    # V4.4.1 FIX: AIRTIGHT COOLDOWN ENFORCEMENT & INSTANT SAVE
                     if unrealized_pnl <= 0 or current_roe <= 0:
-                        state["cooldown_blocklist"][coin] = now_ts + 86400 # 24H Hard Block on Loss/Scratch
+                        state["cooldown_blocklist"][coin] = now_ts + 86400 
                     else:
-                        state["cooldown_blocklist"][coin] = now_ts + 43200 # 12H Rest on Win
+                        state["cooldown_blocklist"][coin] = now_ts + 43200 
 
                     state["closed_trades_ledger"].insert(0, {
                         "coin": coin, "entry_price": entry_px, "exit_price": current_px,
                         "pnl_usd": unrealized_pnl, "roe_pct": current_roe * 100, "side": "LONG" if is_long else "SHORT",
                         "exit_reason": exit_reason, "timestamp": timestamp, "ts_sec": now_ts
                     })
-                    save_state(state) # Instant save
+                    save_state(state) 
                     trade_closed_this_run = True
                     continue
                 except Exception as e:
@@ -679,7 +677,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.4.1", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.4.2", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -710,11 +708,10 @@ def execute_engine():
                 pnl_usd = float(latest_fill.get("closedPnl", 0.0))
                 roe_pct = ((exit_px - entry_px) / entry_px * 500) if is_long else ((entry_px - exit_px) / entry_px * 500)
 
-                # V4.4.1 FIX: AIRTIGHT BLOCKLIST ON TPSL FILL
                 if pnl_usd <= 0 or roe_pct <= 0:
-                    state["cooldown_blocklist"][coin] = now_ts + 86400 # 24H Hard Block
+                    state["cooldown_blocklist"][coin] = now_ts + 86400 
                 else:
-                    state["cooldown_blocklist"][coin] = now_ts + 43200 # 12H Rest
+                    state["cooldown_blocklist"][coin] = now_ts + 43200 
 
                 state["closed_trades_ledger"].insert(0, {
                     "coin": coin, "entry_price": entry_px, "exit_price": exit_px,
@@ -722,7 +719,7 @@ def execute_engine():
                     "exit_reason": "🎯 Native Orderbook TPSL Fill", "timestamp": timestamp, "ts_sec": now_ts,
                     "fill_hash": fill_hash
                 })
-                save_state(state) # Instant save
+                save_state(state) 
                 trade_closed_this_run = True
         except Exception:
             pass
@@ -738,7 +735,7 @@ def execute_engine():
 
     if available_slots > 0:
         state["last_scan_timestamp"] = now_ts
-        audit_logs.append(f"🌐 PURE ROSS 15M SCANNER ACTIVE: Scanning Top Gappers (#20-#300+)...")
+        audit_logs.append(f"🌐 PURE ROSS 15M HOD SCANNER ACTIVE: Scanning Top Gappers (#20-#300+)...")
 
         scored_universe = []
         for idx, asset in enumerate(meta.get("universe", [])):
@@ -746,7 +743,6 @@ def execute_engine():
             if not coin or coin in active_coins or coin in ["USDC", "USDT"]:
                 continue
             
-            # AIRTIGHT COOLDOWN CHECK
             if now_ts < float(state.get("cooldown_blocklist", {}).get(coin, 0)) or idx < 20:
                 continue
 
@@ -799,6 +795,9 @@ def execute_engine():
                 lows = [float(c["l"]) for c in candles]
                 volumes = [float(c.get("v", 0)) for c in candles]
 
+                # V4.4.2 FIX: Calculate True High of Day (24-Hour Max High)
+                day_high = max(highs[-96:]) if len(highs) >= 96 else max(highs)
+
                 ross_ind = calculate_15m_ross_indicators(candles)
                 if not ross_ind:
                     continue
@@ -811,7 +810,6 @@ def execute_engine():
                 elapsed_mins = (now_ms - candle_start_ms) / 60000.0
                 live_volume_raw = float(candles[-1].get("v", 0))
                 
-                # V4.4.1 FIX: DAMPENED EXTRAPOLATION (Prevents minute 0-2 fake volume multiplier spikes)
                 if elapsed_mins >= 2.0:
                     extrap_mult = min(5.0, 15.0 / elapsed_mins)
                     paced_volume = live_volume_raw * extrap_mult
@@ -831,7 +829,8 @@ def execute_engine():
                 prev_high = highs[-2]
                 prev_low = lows[-2]
                 
-                # V4.4.1 FIX: STRICT ROSS BREAKOUT (Price MUST be strictly ABOVE prev_high)
+                # V4.4.2 FIX: HOD PROXIMITY GATE (Price MUST be within 0.50% of 24H High of Day)
+                is_near_hod = (curr_live_px >= day_high * 0.9950)
                 is_trigger_break = (curr_live_px > prev_high) and (curr_live_px <= prev_high * 1.0080)
                 is_prev_pullback = (closes[-2] < float(candles[-2]["o"])) or (volumes[-2] <= avg_vol * 1.10) or (vol_ratio >= 1.75)
 
@@ -857,15 +856,17 @@ def execute_engine():
                     status_vwap = "PASS" if is_above_vwap else "FAIL"
                     status_macd = "PASS" if is_macd_frontside else "FAIL"
                     status_rvol = "PASS" if vol_ratio >= required_vol_ratio else "FAIL"
-                    audit_logs.append(f"🔍 [{coin}] Px:${curr_live_px:.4f} | 9EMA:{status_ema} | VWAP:{status_vwap} | MACD:{status_macd} | RVOL:{vol_ratio:.2f}x ({status_rvol})")
+                    status_hod = "PASS" if is_near_hod else f"FAIL (Px ${curr_live_px:.4f} < HOD ${day_high:.4f})"
+                    audit_logs.append(f"🔍 [{coin}] Px:${curr_live_px:.4f} | HOD:{status_hod} | 9EMA:{status_ema} | VWAP:{status_vwap} | MACD:{status_macd} | RVOL:{vol_ratio:.2f}x ({status_rvol})")
 
-                if vol_ratio >= required_vol_ratio and is_above_ema9 and is_above_vwap and is_macd_frontside and is_trigger_break and is_prev_pullback and is_light_red_vol and is_valid_pullback_count and is_clean_structure:
+                # MUST Pass HOD Proximity Gate to Enter
+                if is_near_hod and vol_ratio >= required_vol_ratio and is_above_ema9 and is_above_vwap and is_macd_frontside and is_trigger_break and is_prev_pullback and is_light_red_vol and is_valid_pullback_count and is_clean_structure:
                     score = vol_ratio * (1.0 + (macd_hist / max(curr_live_px, 1e-8)))
 
                     market_candidates.append({
                         "coin": coin, "close": curr_live_px, "is_long": True, 
                         "score": score, "candle_ts": current_candle_ts,
-                        "strategy": "15M_ROSS_PULLBACK",
+                        "strategy": "15M_ROSS_HOD_PULLBACK",
                         "entry_candle_low": prev_low,
                         "entry_candle_high": prev_high
                     })
@@ -873,7 +874,7 @@ def execute_engine():
                 continue
 
         if not market_candidates:
-            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met full Ross Cameron 15M trigger rules on this candle.")
+            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met full Ross Cameron 15M HOD trigger rules on this candle.")
         else:
             audit_logs.append(f"🚀 SCAN COMPLETED: {len(market_candidates)} candidate(s) triggered entry setup!")
 
@@ -935,7 +936,7 @@ def execute_engine():
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V4.4.1", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V4.4.2", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -976,7 +977,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.4.1 | Pure Ross Cameron 15M Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.4.2 | Pure Ross Cameron 15M HOD Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -1061,7 +1062,7 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); box-sizing: border-box;">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Crypto-LS-23 | Pure Ross Cameron 15M Scalper (V4.4.1)</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Crypto-LS-23 | Pure Ross Cameron 15M Scalper (V4.4.2)</div>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Forced Scan Active</div>
       </div>
 
@@ -1085,11 +1086,11 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Ross Cameron V4.4.1 Airtight Rules</div>
-          <div>&bull; <b>Airtight 24H Cooldown Ledger:</b> Blocks re-entry on lost or scratched tokens instantly</div>
-          <div>&bull; <b>Dampened RVOL Extrapolation:</b> Caps early-candle multipliers to stop fake volume spikes</div>
-          <div>&bull; <b>Strict High-of-Candle Gate:</b> Requires price to sit strictly above previous 15M high</div>
-          <div>&bull; <b>Structural Stop Anchor (-2.5% to -6.0% ROE):</b> Absorbs normal orderbook noise</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Ross Cameron V4.4.2 HOD Rules</div>
+          <div>&bull; <b>High-of-Day (HOD) Proximity Filter:</b> Requires price within 0.50% of 24h High</div>
+          <div>&bull; <b>Airtight 24H Cooldown Ledger:</b> Instantly blocks re-entry on lost/scratched tokens</div>
+          <div>&bull; <b>Dampened RVOL Extrapolation:</b> Caps early-candle multipliers to prevent fake spikes</div>
+          <div>&bull; <b>Structural Stop Anchor (-2.5% to -6.0% ROE):</b> Absorbs orderbook noise</div>
         </div>
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
@@ -1106,7 +1107,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.4.1 Forced Scan Active
+        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.4.2 Forced Scan Active
       </div>
     </div>
   </body>
