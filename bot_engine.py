@@ -280,10 +280,10 @@ def calculate_15m_ross_indicators(candles):
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle_low, entry_candle_high, peak_roe=0.0, coin="ETH"):
     roe = ((current_px - entry_px) / entry_px * 5.0) if is_long else ((entry_px - current_px) / entry_px * 5.0)
 
-    # V4.4.6 FIX: STRICT PENNY LOSS CAP (-0.80% ROE Max Loss = ~$0.20 on $25 trade)
+    # STRICT PENNY LOSS CAP (-0.80% ROE Max Loss = ~$0.20 on $25 trade)
     initial_floor_roe = -0.0080 
 
-    # V4.4.6 FIX: POSITIVE ASYMMETRIC RATCHET ENGINE
+    # POSITIVE ASYMMETRIC RATCHET ENGINE
     if peak_roe < 0.0150: # Below +1.50% ROE: Hold tight hard stop (-$0.20 max loss)
         target_floor_roe = initial_floor_roe
         leash_status = f"🛡 HARD PENNY STOP ({target_floor_roe*100:.2f}% ROE / -$0.20 MAX)"
@@ -353,7 +353,7 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.4.6 Engine Started (Asymmetric Risk Scalper Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.4.7 Engine Started (Explicit Audit Scalper Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -401,7 +401,7 @@ def execute_engine():
     required_vol_ratio = 1.12
     hod_proximity_pct = 0.0175
     
-    audit_logs.append(f"⚡ V4.4.6 Asymmetric Scalper: Target RVOL >= {required_vol_ratio:.2f}x | HOD Proximity <= {hod_proximity_pct*100:.2f}% | Max Loss -$0.20 Cap")
+    audit_logs.append(f"⚡ V4.4.7 Explicit Scalper: Target RVOL >= {required_vol_ratio:.2f}x | HOD Proximity <= {hod_proximity_pct*100:.2f}% | Max Loss -$0.20 Cap")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -540,12 +540,12 @@ def execute_engine():
             new_active_cache[coin] = {
                 "entry_px": entry_px, "current_px": current_px, "szi": szi, 
                 "margin": margin_used, "side": "LONG" if is_long else "SHORT",
-                "peak_roe": peak_roe, "strategy": "15M_ASYMMETRIC_SCALPER",
+                "peak_roe": peak_roe, "strategy": "15M_EXPLICIT_SCALPER",
                 "entry_candle_low": entry_candle_low, "entry_candle_high": entry_candle_high
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.4.6", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.4.7", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -571,9 +571,6 @@ def execute_engine():
             coin = asset.get("name")
             if not coin or coin in active_coins or coin in ["USDC", "USDT"]:
                 continue
-            
-            if now_ts < float(state.get("cooldown_blocklist", {}).get(coin, 0)) or idx < 20:
-                continue
 
             try:
                 ctx = asset_ctxs[idx] if idx < len(asset_ctxs) else {}
@@ -596,11 +593,29 @@ def execute_engine():
 
         for item in scored_universe[:20]:
             coin = item["coin"]
+            idx = item["rank"]
+
+            # PATCH 1: Transparent Skip Reason Logging
+            if idx < 20:
+                audit_logs.append(f"🔍 [{coin}] Skipped: Excluded Top 20 Market Cap Rank (#{idx+1})")
+                continue
+
+            cooldown_until = float(state.get("cooldown_blocklist", {}).get(coin, 0))
+            if now_ts < cooldown_until:
+                rem_mins = (cooldown_until - now_ts) / 60.0
+                audit_logs.append(f"🔍 [{coin}] Skipped: Active Cooldown Blocklist ({rem_mins:.0f}m remaining)")
+                continue
+
             try:
                 curr_live_px = float(all_mids.get(coin, 0))
                 if curr_live_px <= 0:
                     continue
                 
+                is_liquid, spread_msg = check_liquidity_and_spread(info, coin, max_spread=0.0025, min_depth_usd=1500.0)
+                if not is_liquid:
+                    audit_logs.append(f"🔍 [{coin}] Skipped: Liquidity Check Failed ({spread_msg})")
+                    continue
+
                 time.sleep(0.08)
                 candles = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 86400000, endTime=now_ms)
                 if not candles or len(candles) < 30:
@@ -608,10 +623,7 @@ def execute_engine():
 
                 current_candle_ts = candles[-1]["t"]
                 if state.get("last_traded_candle", {}).get(coin) == current_candle_ts:
-                    continue
-
-                is_liquid, spread_msg = check_liquidity_and_spread(info, coin, max_spread=0.0025, min_depth_usd=1500.0)
-                if not is_liquid:
+                    audit_logs.append(f"🔍 [{coin}] Skipped: Already evaluated on this 15M candle")
                     continue
 
                 closes = [float(c["c"]) for c in candles]
@@ -665,7 +677,7 @@ def execute_engine():
                     market_candidates.append({
                         "coin": coin, "close": curr_live_px, "is_long": True, 
                         "score": score, "candle_ts": current_candle_ts,
-                        "strategy": "15M_ASYMMETRIC_SCALPER",
+                        "strategy": "15M_EXPLICIT_SCALPER",
                         "entry_candle_low": prev_low,
                         "entry_candle_high": prev_high
                     })
@@ -673,7 +685,7 @@ def execute_engine():
                 continue
 
         if not market_candidates:
-            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.4.6 trigger rules on this candle.")
+            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.4.7 trigger rules on this candle.")
         else:
             audit_logs.append(f"🚀 SCAN COMPLETED: {len(market_candidates)} candidate(s) triggered entry setup!")
 
@@ -732,7 +744,7 @@ def execute_engine():
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V4.4.6", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V4.4.7", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -770,7 +782,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.4.6 | Asymmetric Risk Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.4.7 | Explicit Audit Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -846,7 +858,7 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Asymmetric Risk Scalper (V4.4.6)</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Explicit Audit Scalper (V4.4.7)</div>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Forced Scan Active</div>
       </div>
 
@@ -867,11 +879,11 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.4.6 Asymmetric Rules</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.4.7 Explicit Audit Rules</div>
+          <div>&bull; <b>Explicit Skip Telemetry:</b> Logs exact reasons top gappers are bypassed</div>
           <div>&bull; <b>Penny Loss Cap:</b> Clamps hard stop to -0.80% ROE (-$0.20 max risk)</div>
           <div>&bull; <b>No Micro-Choking:</b> Requires +1.50% ROE before setting Fee Shield floor</div>
           <div>&bull; <b>Uncapped Upside Engine:</b> Zero hard TP orders; lets runners ride</div>
-          <div>&bull; <b>Dynamic Trailing Ratchet:</b> 70% Ratchet Lock -> 1.0% Trailing Leash on mega runners</div>
         </div>
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
@@ -888,7 +900,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.4.6 Forced Scan Active
+        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.4.7 Forced Scan Active
       </div>
     </div>
   </body>
@@ -901,7 +913,7 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing 15M Asymmetric Scalper cycle...", flush=True)
+    print(f"[{timestamp}] Executing 15M Explicit Scalper cycle...", flush=True)
     try:
         execute_engine()
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 15M cycle completed successfully.", flush=True)
