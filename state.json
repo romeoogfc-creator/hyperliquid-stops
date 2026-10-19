@@ -109,7 +109,8 @@
     "VIRTUAL": 2,
     "KAS": 2,
     "WLFI": 2,
-    "MNT": 1
+    "MNT": 2,
+    "MORPHO": 1
   },
   "closed_trades_ledger": [
     {
@@ -226,9 +227,9 @@
   "active_position_cache": {
     "MNT": {
       "entry_px": 0.53611,
-      "current_px": 0.53602,
+      "current_px": 0.53596,
       "szi": 44.7,
-      "margin": 23.957859,
+      "margin": 23.958306,
       "side": "LONG",
       "peak_roe": -0.000839379977988878,
       "strategy": "HOD_BREAKOUT",
@@ -236,9 +237,9 @@
     },
     "MORPHO": {
       "entry_px": 2.4753,
-      "current_px": 2.47815,
+      "current_px": 2.47525,
       "szi": 9.7,
-      "margin": 24.03563,
+      "margin": 24.0075,
       "side": "LONG",
       "peak_roe": 0.00575687795418741,
       "strategy": "HOD_BREAKOUT",
@@ -249,13 +250,13 @@
     "MORPHO",
     "MNT"
   ],
-  "last_run_timestamp": "2026-10-19 03:55:38",
+  "last_run_timestamp": "2026-10-19 04:00:50",
   "last_email_timestamp": 1792399831.543571,
-  "last_scan_timestamp": 1792400124.21917,
+  "last_scan_timestamp": 1792400431.0518305,
   "gemini_cache": {
-    "timestamp": 1792400124.21917,
+    "timestamp": 1792400431.0518305,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating extreme volatility driven by shifting macroeconomic expectations, heightened geopolitical uncertainty, and ongoing regulatory ambiguity, leaving assets susceptible to sharp liquidity-driven corrections."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity cycles, all of which keep market sentiment fragile and prone to sharp, sudden corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
