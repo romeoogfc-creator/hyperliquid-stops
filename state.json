@@ -37,7 +37,8 @@
     "PONS": 1792202433.111476,
     "PENDLE": 1792220432.1087716,
     "COMP": 1792423229.2559965,
-    "HYPE": 1792409128.2297819
+    "HYPE": 1792409128.2297819,
+    "MNT": 1792444822.9715397
   },
   "last_traded_candle": {
     "FET": 1791759600000,
@@ -92,7 +93,7 @@
     "RUNE": 1792363500000,
     "ALT": 1792368000000,
     "COMP": 1792378800000,
-    "VIRTUAL": 1792378800000,
+    "VIRTUAL": 1792401300000,
     "WLFI": 1792379700000,
     "KAS": 1792380600000,
     "UNI": 1792386900000,
@@ -110,10 +111,20 @@
     "VIRTUAL": 2,
     "KAS": 2,
     "WLFI": 2,
-    "MNT": 2,
-    "MORPHO": 2
+    "MORPHO": 0
   },
   "closed_trades_ledger": [
+    {
+      "coin": "MNT",
+      "entry_price": 0.53611,
+      "exit_price": 0.53584,
+      "pnl_usd": -0.014465,
+      "roe_pct": -0.2518139933968705,
+      "side": "LONG",
+      "exit_reason": "\u23f1\ufe0f 45M Range Stagnation Cut (-0.25% ROE)",
+      "timestamp": "2026-10-19 09:20:22",
+      "ts_sec": 1792401622.9715397
+    },
     {
       "coin": "BRETT",
       "entry_price": 0.004715,
@@ -226,49 +237,44 @@
     }
   ],
   "active_position_cache": {
-    "MNT": {
-      "entry_px": 0.53611,
-      "current_px": 0.53527,
-      "szi": 44.7,
-      "margin": 23.926569,
-      "side": "LONG",
-      "peak_roe": 0.007088097591911948,
-      "strategy": "HOD_BREAKOUT",
-      "entry_candle_low": 0.53632
-    },
     "MORPHO": {
       "entry_px": 2.4753,
-      "current_px": 2.4776,
+      "current_px": 2.50905,
       "szi": 9.7,
-      "margin": 24.02496,
+      "margin": 24.33439,
       "side": "LONG",
-      "peak_roe": 0.007978830848786249,
+      "peak_roe": 0.06817355472063982,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 2.4661
     },
     "BABY": {
       "entry_px": 0.012371,
-      "current_px": 0.012389,
+      "current_px": 0.012395,
       "szi": 1934.0,
-      "margin": 7.985486,
+      "margin": 7.991932,
       "side": "LONG",
-      "peak_roe": 0.007275078813354076,
+      "peak_roe": 0.009700105084471633,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.01239
+    },
+    "VIRTUAL": {
+      "strategy": "HOD_BREAKOUT",
+      "entry_px": 0.66694,
+      "side": "LONG",
+      "entry_candle_low": 0.66188
     }
   },
   "previous_active_coins": [
-    "MORPHO",
     "BABY",
-    "MNT"
+    "MORPHO"
   ],
-  "last_run_timestamp": "2026-10-19 04:15:43",
-  "last_email_timestamp": 1792401030.1752996,
-  "last_scan_timestamp": 1792401030.1752996,
+  "last_run_timestamp": "2026-10-19 04:20:49",
+  "last_email_timestamp": 1792401622.9715397,
+  "last_scan_timestamp": 1792401622.9715397,
   "gemini_cache": {
-    "timestamp": 1792401331.1644936,
-    "risk": "MODERATE",
-    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and anticipated macroeconomic easing, the sector faces heightened volatility risk due to ongoing regulatory uncertainty and the potential for rapid deleveraging if short-term liquidity conditions tighten."
+    "timestamp": 1792401622.9715397,
+    "risk": "HIGH",
+    "briefing": "**Risk Level: HIGH**\n\nThe market is currently experiencing heightened volatility driven by macroeconomic uncertainty, shifting regulatory signals, and speculative exhaustion following recent price peaks, necessitating extreme caution for leveraged positions."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
