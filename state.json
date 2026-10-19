@@ -106,7 +106,7 @@
     "VIRTUAL": 2,
     "KAS": 2,
     "WLFI": 2,
-    "HYPE": 1
+    "HYPE": 2
   },
   "closed_trades_ledger": [
     {
@@ -223,11 +223,11 @@
   "active_position_cache": {
     "HYPE": {
       "entry_px": 80.079,
-      "current_px": 80.1005,
+      "current_px": 80.1345,
       "szi": 0.3,
-      "margin": 2.40264,
+      "margin": 2.40405,
       "side": "LONG",
-      "peak_roe": 0.0013424243559486998,
+      "peak_roe": 0.0034653279886118216,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 80.101
     }
@@ -235,13 +235,13 @@
   "previous_active_coins": [
     "HYPE"
   ],
-  "last_run_timestamp": "2026-10-19 02:15:42",
+  "last_run_timestamp": "2026-10-19 02:20:45",
   "last_email_timestamp": 1792393833.2322466,
-  "last_scan_timestamp": 1792394127.9522617,
+  "last_scan_timestamp": 1792394431.5396874,
   "gemini_cache": {
-    "timestamp": 1792394127.9522617,
+    "timestamp": 1792394431.5396874,
     "risk": "HIGH",
-    "briefing": "Risk Level: HIGH; while institutional inflows provide a foundational floor, the market remains extremely sensitive to macroeconomic interest rate shifts, ongoing regulatory uncertainty, and significant volatility surrounding geopolitical tensions."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting regulatory landscapes, and sudden liquidity contractions, all of which continue to drive significant price volatility."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
