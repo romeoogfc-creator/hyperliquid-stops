@@ -129,7 +129,8 @@
     "WLD": 0,
     "BCH": 1,
     "DOT": 0,
-    "SNX": 2
+    "SNX": 2,
+    "PEOPLE": 1
   },
   "closed_trades_ledger": [
     {
@@ -246,9 +247,9 @@
   "active_position_cache": {
     "PEOPLE": {
       "entry_px": 0.007539,
-      "current_px": 0.007551,
+      "current_px": 0.007546,
       "szi": 3158.0,
-      "margin": 7.949738,
+      "margin": 7.94658,
       "side": "LONG",
       "peak_roe": 0.007958615200955515,
       "strategy": "HOD_BREAKOUT",
@@ -258,13 +259,13 @@
   "previous_active_coins": [
     "PEOPLE"
   ],
-  "last_run_timestamp": "2026-10-19 16:25:40",
+  "last_run_timestamp": "2026-10-19 16:30:44",
   "last_email_timestamp": 1792444876.721855,
-  "last_scan_timestamp": 1792445128.0391393,
+  "last_scan_timestamp": 1792445429.3794334,
   "gemini_cache": {
-    "timestamp": 1792445128.0391393,
-    "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market remains in a state of elevated risk due to heightened macroeconomic uncertainty, ongoing regulatory scrutiny, and significant volatility surrounding global liquidity shifts."
+    "timestamp": 1792445429.3794334,
+    "risk": "MODERATE",
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of looser monetary policy, the crypto sector continues to face significant volatility risks driven by ongoing regulatory uncertainty and macroeconomic sensitivity."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
