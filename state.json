@@ -116,8 +116,8 @@
     "MORPHO": 0,
     "PENDLE": 0,
     "ZK": 1,
-    "WLD": 2,
-    "JUP": 1
+    "WLD": 0,
+    "JUP": 0
   },
   "closed_trades_ledger": [
     {
@@ -234,21 +234,21 @@
   "active_position_cache": {
     "WLD": {
       "entry_px": 0.50684,
-      "current_px": 0.50699,
+      "current_px": 0.51014,
       "szi": 47.2,
-      "margin": 23.93748,
+      "margin": 24.081912,
       "side": "LONG",
-      "peak_roe": 0.0038473680056822813,
+      "peak_roe": 0.032554652355773823,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.50859
     },
     "JUP": {
       "entry_px": 0.29742,
-      "current_px": 0.297515,
+      "current_px": 0.29873,
       "szi": 81.0,
-      "margin": 24.09831,
+      "margin": 24.19713,
       "side": "LONG",
-      "peak_roe": 0.001597068119157357,
+      "peak_roe": 0.02202272880102175,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.29612
     }
@@ -257,13 +257,13 @@
     "WLD",
     "JUP"
   ],
-  "last_run_timestamp": "2026-10-19 08:01:13",
+  "last_run_timestamp": "2026-10-19 08:05:43",
   "last_email_timestamp": 1792414526.8976963,
-  "last_scan_timestamp": 1792414832.068432,
+  "last_scan_timestamp": 1792415129.2794294,
   "gemini_cache": {
-    "timestamp": 1792414832.068432,
+    "timestamp": 1792415129.2794294,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe market is currently characterized by heightened volatility driven by shifting macroeconomic expectations, significant regulatory uncertainty, and speculative leverage, making it highly susceptible to sharp, sentiment-driven corrections."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, upcoming regulatory developments, and significant liquidity volatility, necessitating extreme caution for short-term traders."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
