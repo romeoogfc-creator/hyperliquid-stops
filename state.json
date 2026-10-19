@@ -107,7 +107,8 @@
     "JUP": 1792414800000,
     "BCH": 1792414800000,
     "DOT": 1792416600000,
-    "SNX": 1792416600000
+    "SNX": 1792416600000,
+    "GOAT": 1792417500000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {
@@ -239,25 +240,31 @@
   "active_position_cache": {
     "SNX": {
       "entry_px": 0.21492,
-      "current_px": 0.21523,
+      "current_px": 0.21573,
       "szi": 111.4,
-      "margin": 7.991464,
+      "margin": 8.006318,
       "side": "LONG",
-      "peak_roe": 0.014656616415410191,
+      "peak_roe": 0.018844221105527758,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.21568
+    },
+    "GOAT": {
+      "strategy": "HOD_BREAKOUT",
+      "entry_px": 0.014437,
+      "side": "LONG",
+      "entry_candle_low": 0.01437
     }
   },
   "previous_active_coins": [
     "SNX"
   ],
-  "last_run_timestamp": "2026-10-19 08:45:30",
-  "last_email_timestamp": 1792416931.1368072,
-  "last_scan_timestamp": 1792417520.2226496,
+  "last_run_timestamp": "2026-10-19 08:51:47",
+  "last_email_timestamp": 1792417826.84536,
+  "last_scan_timestamp": 1792417826.84536,
   "gemini_cache": {
-    "timestamp": 1792417520.2226496,
+    "timestamp": 1792417826.84536,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nDriven by heightened macroeconomic uncertainty, potential regulatory crackdowns, and persistent liquidity squeezes, the current crypto market faces elevated downside volatility and vulnerability to sudden, sharp liquidations."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to shifting macroeconomic conditions, ongoing regulatory scrutiny, and high price volatility that leave investors vulnerable to sharp, liquidity-driven corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
