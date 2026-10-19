@@ -135,7 +135,7 @@ def round_sig_figs(val, sig_figs=5):
         return 0
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
-def check_liquidity_and_spread(info, coin, max_spread=0.0008, min_depth_usd=3000.0):
+def check_liquidity_and_spread(info, coin, max_spread=0.0008, min_depth_usd=2000.0):
     try:
         l2_book = api_retry(info.l2_snapshot, name=coin)
         levels = l2_book.get("levels", [[], []])
@@ -282,7 +282,7 @@ def sync_closed_trades_from_exchange(info, account_address, state, audit_logs, c
                 roe_pct = (closed_pnl / (sz * entry_px / 5.0) * 100.0) if (sz > 0 and entry_px > 0) else 0.0
 
                 if closed_pnl <= 0:
-                    state["cooldown_blocklist"][coin] = now_ts + 14400  # 4-hour cooldown
+                    state["cooldown_blocklist"][coin] = now_ts + 14400
                     cooldown_added = True
 
                 reason = "🎯 Native Exchange Orderbook Fill (Profit Target)" if closed_pnl > 0 else "🛡️ Native Exchange Orderbook Fill (Penny Stop)"
@@ -359,32 +359,6 @@ def calculate_15m_ross_indicators(candles):
         "prev_ema9": df_c.ewm(span=9, adjust=False).mean().iloc[-2]
     }
 
-def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle_low, peak_roe=0.0, coin="ETH", setup_type="BULLISH_RECLAIM"):
-    roe = ((current_px - entry_px) / entry_px * 5.0) if is_long else ((entry_px - current_px) / entry_px * 5.0)
-
-    # Noise-Immune Initial Hard Stop (-2.00% ROE / -0.40% Price Move)
-    initial_floor_roe = -0.0200  
-
-    # Fee-Inclusive Tight Retention Ratchet Logic
-    if peak_roe >= 0.0800:
-        target_floor_roe = max(peak_roe * 0.95, peak_roe - 0.0030)  # Locks 95%+, trails max 0.30% ROE
-        leash_status = f"🚀 MOONSHOT RIDER (95% LOCKED) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.0400:
-        target_floor_roe = max(peak_roe * 0.90, peak_roe - 0.0025)  # Tight 0.25% ROE trail above +4%
-        leash_status = f"🎯 HIGH RETENTION RATCHET (90% LOCKED) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.0200:
-        target_floor_roe = peak_roe * 0.85  # Locks 85% of gains
-        leash_status = f"⚡ PROFIT LOCK (85% LOCKED) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.0100:
-        target_floor_roe = 0.0050  # Break-Even + Fee Floor (+0.50% ROE covers roundtrip taker fee)
-        leash_status = f"🛡 FEE FLOOR LOCKED (+0.50% ROE)"
-    else:
-        target_floor_roe = initial_floor_roe
-        leash_status = f"🛡 HARD PENNY STOP ({target_floor_roe*100:.2f}% ROE)"
-
-    stop_px = entry_px * (1 + (target_floor_roe / 5.0)) if is_long else entry_px * (1 - (target_floor_roe / 5.0))
-    return stop_px, None, roe / 5.0, target_floor_roe, leash_status
-
 def check_gemini_macro_shield(state, now_ts, is_scan_window):
     gemini_cache = state.get("gemini_cache", {})
     if not is_scan_window and "risk" in gemini_cache:
@@ -433,7 +407,7 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.7.1 Engine Started (High Quality Pure V-Bottom Engine Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.7.3 Engine Started (Dynamic Parabolic Trail Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -480,10 +454,10 @@ def execute_engine():
     gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_15m_scan_window)
     audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] {gemini_briefing}")
 
-    required_vol_ratio = 1.75 if gemini_risk == "HIGH" else 1.20
+    required_vol_ratio = 1.65 if gemini_risk == "HIGH" else 1.20
     hod_proximity_pct = 0.0150
     
-    audit_logs.append(f"⚡ V4.7.1 Engine: Pure V-Bottom Mode ({gemini_risk} Risk) | Depth >= $3,000 | Spread <= 0.08% | 5m Pacing Gate Active")
+    audit_logs.append(f"⚡ V4.7.3 Engine: Dynamic Parabolic Leash | Depth >= $2,000 | Spread <= 0.08% | 3.5m Pacing Gate Active")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -627,13 +601,13 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.7.1", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.7.3", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
                 "pnl": unrealized_pnl, "roe": current_roe * 100,
                 "stop": round_sig_figs(stop_px_calc, 5),
-                "tp_target": "UNCAPPED (80-97% Retention)",
+                "tp_target": "UNCAPPED (80-88% Parabolic Trail)",
                 "status": leash_status
             })
 
@@ -687,8 +661,8 @@ def execute_engine():
                 if curr_live_px <= 0:
                     continue
                 
-                # Elevated Quality Liquidity Gate: $3,000 Depth & Max 0.08% Spread
-                is_liquid, spread_msg = check_liquidity_and_spread(info, coin, max_spread=0.0008, min_depth_usd=3000.0)
+                # Quality Liquidity Gate: $2,000 Depth & Max 0.08% Spread
+                is_liquid, spread_msg = check_liquidity_and_spread(info, coin, max_spread=0.0008, min_depth_usd=2000.0)
                 if not is_liquid:
                     audit_logs.append(f"🔍 [{coin}] Skipped: Liquidity/Spread Check Failed ({spread_msg})")
                     continue
@@ -705,9 +679,9 @@ def execute_engine():
                 candle_start_ms = candles[-1]["t"]
                 elapsed_mins = (now_ms - candle_start_ms) / 60000.0
 
-                # Strict 5-Minute Candle Pacing Gate
-                if elapsed_mins < 5.0:
-                    audit_logs.append(f"🔍 [{coin}] Skipped: Candle Pacing Gate ({elapsed_mins:.1f}m < 5.0m)")
+                # 3.5-Minute Candle Pacing Gate
+                if elapsed_mins < 3.5:
+                    audit_logs.append(f"🔍 [{coin}] Skipped: Candle Pacing Gate ({elapsed_mins:.1f}m < 3.5m)")
                     continue
 
                 closes = [float(c["c"]) for c in candles]
@@ -733,7 +707,7 @@ def execute_engine():
                     continue
 
                 live_volume_raw = float(candles[-1].get("v", 0))
-                extrap_mult = min(2.5, 15.0 / elapsed_mins)  # Capped extrapolation at 2.5x
+                extrap_mult = min(3.0, 15.0 / elapsed_mins)
                 paced_volume = live_volume_raw * extrap_mult
 
                 avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
@@ -779,7 +753,7 @@ def execute_engine():
                 continue
 
         if not market_candidates:
-            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.7.1 trigger rules on this candle.")
+            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.7.3 trigger rules on this candle.")
         else:
             audit_logs.append(f"🚀 SCAN COMPLETED: {len(market_candidates)} candidate(s) triggered entry setup!")
 
@@ -836,13 +810,13 @@ def execute_engine():
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V4.7.1", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V4.7.3", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
                         "pnl": 0.0, "roe": 0.0,
                         "stop": round_sig_figs(initial_stop_px, 5),
-                        "tp_target": "UNCAPPED (80-97% Retention)",
+                        "tp_target": "UNCAPPED (80-88% Parabolic Trail)",
                         "status": initial_status
                     })
             except Exception as e:
@@ -874,7 +848,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.7.1 | Pure V-Bottom Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.7.3 | Parabolic Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -954,7 +928,7 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Pure V-Bottom Scalper (V4.7.1)</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Dynamic Parabolic Scalper (V4.7.3)</div>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Forced Scan Active</div>
       </div>
 
@@ -975,11 +949,11 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.7.1 High Quality Rules</div>
-          <div>&bull; <b>Pure V-Bottom Execution:</b> Restricts HIGH risk trading to 100% capitulation support sweeps</div>
-          <div>&bull; <b>5-Minute Candle Pacing:</b> Blocks early-bar false volume extrapolation spikes</div>
-          <div>&bull; <b>Strict Quality Liquidity Gate:</b> Requires $3,000 depth and max 0.08% spread cap</div>
-          <div>&bull; <b>Noise-Immune Hard Stop:</b> Sets stop at -2.00% ROE (-0.40% price move) to clear spread friction</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.7.3 Parabolic Rules</div>
+          <div>&bull; <b>88% Retention Cushion:</b> Locks 88% of gains with a guaranteed 1.80% ROE cushion below peak</div>
+          <div>&bull; <b>Volume Decay Detection:</b> Distinguishes low-volume pullback wicks from real trend reversals</div>
+          <div>&bull; <b>Quality Liquidity Gate:</b> Requires $2,000 depth and max 0.08% spread cap</div>
+          <div>&bull; <b>Single-Slot Stagger:</b> Max 1 entry per scan pass to eliminate cluster entries</div>
         </div>
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
@@ -996,7 +970,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.7.1 Forced Scan Active
+        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.7.3 Forced Scan Active
       </div>
     </div>
   </body>
@@ -1009,7 +983,7 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing 15M Pure V-Bottom Scalper cycle...", flush=True)
+    print(f"[{timestamp}] Executing 15M Parabolic Dynamic Scalper cycle...", flush=True)
     try:
         execute_engine()
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 15M cycle completed successfully.", flush=True)
