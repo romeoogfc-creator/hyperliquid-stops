@@ -109,7 +109,7 @@
     "BCH": 1792414800000,
     "DOT": 1792420200000,
     "SNX": 1792422000000,
-    "GOAT": 1792417500000
+    "GOAT": 1792428300000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {
@@ -239,15 +239,22 @@
       "ts_sec": 1792418449.228
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "GOAT": {
+      "strategy": "HOD_BREAKOUT",
+      "entry_px": 0.014551,
+      "side": "LONG",
+      "entry_candle_low": 0.014554
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-19 11:50:42",
-  "last_email_timestamp": 1792428629.8272512,
-  "last_scan_timestamp": 1792428629.8272512,
+  "last_run_timestamp": "2026-10-19 11:55:55",
+  "last_email_timestamp": 1792428931.7603152,
+  "last_scan_timestamp": 1792428931.7603152,
   "gemini_cache": {
-    "timestamp": 1792428629.8272512,
-    "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nPersistent macroeconomic uncertainty, stringent regulatory headwinds, and ongoing liquidity concerns create an exceptionally volatile environment for digital assets, making capital preservation paramount."
+    "timestamp": 1792428931.7603152,
+    "risk": "MODERATE",
+    "briefing": "**Risk Level: MODERATE**\n\nWhile ongoing institutional adoption and favorable macroeconomic liquidity provide a strong structural floor, current market valuations remain vulnerable to sudden regulatory crackdowns, geopolitical shocks, and leverage-driven liquidations."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
