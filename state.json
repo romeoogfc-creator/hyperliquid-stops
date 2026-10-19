@@ -39,7 +39,8 @@
     "COMP": 1792423229.2559965,
     "HYPE": 1792409128.2297819,
     "MNT": 1792444822.9715397,
-    "VIRTUAL": 1792416327.472914
+    "VIRTUAL": 1792416327.472914,
+    "BABY": 1792446327.3676167
   },
   "last_traded_candle": {
     "FET": 1791759600000,
@@ -112,10 +113,20 @@
     "KAS": 2,
     "WLFI": 2,
     "MORPHO": 0,
-    "PENDLE": 0,
-    "BABY": 2
+    "PENDLE": 1
   },
   "closed_trades_ledger": [
+    {
+      "coin": "BABY",
+      "entry_price": 0.012371,
+      "exit_price": 0.012359,
+      "pnl_usd": -0.024123,
+      "roe_pct": -0.48500525422358165,
+      "side": "LONG",
+      "exit_reason": "\u23f1\ufe0f 45M Range Stagnation Cut (-0.49% ROE)",
+      "timestamp": "2026-10-19 09:45:27",
+      "ts_sec": 1792403127.3676167
+    },
     {
       "coin": "VIRTUAL",
       "entry_price": 0.66684,
@@ -230,36 +241,25 @@
   "active_position_cache": {
     "PENDLE": {
       "entry_px": 2.1025,
-      "current_px": 2.10615,
+      "current_px": 2.1037,
       "szi": 12.0,
-      "margin": 5.05368,
+      "margin": 5.04888,
       "side": "LONG",
       "peak_roe": 0.008680142687276887,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 2.0919
-    },
-    "BABY": {
-      "entry_px": 0.012371,
-      "current_px": 0.01238,
-      "szi": 1934.0,
-      "margin": 7.980973,
-      "side": "LONG",
-      "peak_roe": 0.009700105084471633,
-      "strategy": "HOD_BREAKOUT",
-      "entry_candle_low": 0.01239
     }
   },
   "previous_active_coins": [
-    "PENDLE",
-    "BABY"
+    "PENDLE"
   ],
-  "last_run_timestamp": "2026-10-19 04:40:38",
-  "last_email_timestamp": 1792402229.9022138,
-  "last_scan_timestamp": 1792402823.2587159,
+  "last_run_timestamp": "2026-10-19 04:45:48",
+  "last_email_timestamp": 1792403127.3676167,
+  "last_scan_timestamp": 1792403127.3676167,
   "gemini_cache": {
-    "timestamp": 1792402823.2587159,
+    "timestamp": 1792403127.3676167,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Persistent macroeconomic uncertainty, regulatory scrutiny, and high market volatility create a landscape where significant sudden price swings remain probable."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory landscapes, and high leverage in derivatives markets, which collectively create a high probability of rapid price swings."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
