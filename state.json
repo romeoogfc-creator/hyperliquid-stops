@@ -335,36 +335,15 @@
       "fill_hash": "LIT_45476672846195"
     }
   ],
-  "active_position_cache": {
-    "ETHFI": {
-      "entry_px": 0.69708,
-      "current_px": 0.69754,
-      "szi": 34.6,
-      "margin": 24.131078,
-      "side": "LONG",
-      "peak_roe": 0.00329947782177093,
-      "strategy": "15M_EXPLICIT_SCALPER",
-      "entry_candle_low": 0.69128,
-      "entry_candle_high": 0.69495
-    },
-    "ZEC": {
-      "strategy": "15M_EXPLICIT_SCALPER",
-      "entry_px": 1187.35,
-      "side": "LONG",
-      "entry_candle_low": 1168.1,
-      "entry_candle_high": 1188.0
-    }
-  },
-  "previous_active_coins": [
-    "ETHFI"
-  ],
-  "last_run_timestamp": "2026-10-18 21:15:37",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-18 21:20:31",
   "last_email_timestamp": 1792376127.9290252,
-  "last_scan_timestamp": 1792376127.9290252,
+  "last_scan_timestamp": 1792376427.3380988,
   "gemini_cache": {
-    "timestamp": 1792376127.9290252,
+    "timestamp": 1792376427.3380988,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to geopolitical instability, all of which contribute to an elevated risk of sudden, sharp price corrections."
+    "briefing": "Risk Level: HIGH; ongoing macroeconomic uncertainty, potential regulatory shifts, and high market volatility create a landscape where significant sudden price swings remain highly probable."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
