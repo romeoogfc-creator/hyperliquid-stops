@@ -125,7 +125,8 @@
     "WLD": 0,
     "BCH": 1,
     "DOT": 0,
-    "SNX": 2
+    "SNX": 2,
+    "GOAT": 1
   },
   "closed_trades_ledger": [
     {
@@ -241,20 +242,26 @@
   ],
   "active_position_cache": {
     "GOAT": {
-      "strategy": "HOD_BREAKOUT",
-      "entry_px": 0.014551,
+      "entry_px": 0.014563,
+      "current_px": 0.014553,
+      "szi": 1640.0,
+      "margin": 7.95564,
       "side": "LONG",
+      "peak_roe": -0.00343335851129561,
+      "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.014554
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-19 11:55:55",
+  "previous_active_coins": [
+    "GOAT"
+  ],
+  "last_run_timestamp": "2026-10-19 12:00:49",
   "last_email_timestamp": 1792428931.7603152,
-  "last_scan_timestamp": 1792428931.7603152,
+  "last_scan_timestamp": 1792429234.6337612,
   "gemini_cache": {
-    "timestamp": 1792428931.7603152,
-    "risk": "MODERATE",
-    "briefing": "**Risk Level: MODERATE**\n\nWhile ongoing institutional adoption and favorable macroeconomic liquidity provide a strong structural floor, current market valuations remain vulnerable to sudden regulatory crackdowns, geopolitical shocks, and leverage-driven liquidations."
+    "timestamp": 1792429234.6337612,
+    "risk": "HIGH",
+    "briefing": "**Risk Level: HIGH** \n\nDriven by aggressive macroeconomic tightening, persistent regulatory scrutiny, and lingering systemic contagion fears, current crypto market conditions expose investors to extreme volatility and severe downside vulnerability."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
