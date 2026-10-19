@@ -335,35 +335,28 @@
     }
   ],
   "active_position_cache": {
-    "NEAR": {
-      "entry_px": 5.0259,
-      "current_px": 5.02105,
-      "szi": 4.8,
-      "margin": 24.10704,
-      "side": "LONG",
-      "peak_roe": -0.004825006466503754,
-      "strategy": "15M_EXPLICIT_SCALPER",
-      "entry_candle_low": 5.0065,
-      "entry_candle_high": 5.0237
-    },
     "ALT": {
-      "strategy": "15M_EXPLICIT_SCALPER",
-      "entry_px": 0.009028,
+      "entry_px": 0.009026,
+      "current_px": 0.009079,
+      "szi": 2663.0,
+      "margin": 8.055575,
       "side": "LONG",
+      "peak_roe": 0.029359627742078977,
+      "strategy": "15M_EXPLICIT_SCALPER",
       "entry_candle_low": 0.008823,
       "entry_candle_high": 0.008867
     }
   },
   "previous_active_coins": [
-    "NEAR"
+    "ALT"
   ],
-  "last_run_timestamp": "2026-10-18 19:10:39",
+  "last_run_timestamp": "2026-10-18 19:15:40",
   "last_email_timestamp": 1792368627.2448368,
-  "last_scan_timestamp": 1792368627.2448368,
+  "last_scan_timestamp": 1792368933.406089,
   "gemini_cache": {
-    "timestamp": 1792368627.2448368,
+    "timestamp": 1792368933.406089,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts and regulatory uncertainty, leading to elevated volatility and the potential for sharp, sudden price corrections."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic data, ongoing regulatory scrutiny, and a sensitive technical setup that leaves prices highly susceptible to sharp liquidations."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
