@@ -247,21 +247,27 @@
   ],
   "active_position_cache": {
     "CHIP": {
-      "strategy": "BULLISH_RECLAIM",
-      "entry_px": 0.041533,
+      "entry_px": 0.041516,
+      "current_px": 0.041597,
+      "szi": 574.0,
+      "margin": 7.957936,
       "side": "LONG",
+      "peak_roe": 0.00975527507467057,
+      "strategy": "BULLISH_RECLAIM",
       "entry_candle_low": 0.041499,
       "entry_time_sec": 1792447123.915205
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-19 16:59:03",
+  "previous_active_coins": [
+    "CHIP"
+  ],
+  "last_run_timestamp": "2026-10-19 17:00:52",
   "last_email_timestamp": 1792447123.915205,
-  "last_scan_timestamp": 1792447123.915205,
+  "last_scan_timestamp": 1792447237.1812634,
   "gemini_cache": {
-    "timestamp": 1792447123.915205,
-    "risk": "MODERATE",
-    "briefing": "**Risk Level: MODERATE** \n\nWhile strong institutional inflows and broader macroeconomic stabilization provide a solid underlying floor, crypto markets remain vulnerable to sudden regulatory shifts, leverage-driven liquidations, and lingering macroeconomic uncertainties."
+    "timestamp": 1792447237.1812634,
+    "risk": "HIGH",
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting interest rate expectations, and increased regulatory scrutiny, leading to elevated volatility across all asset classes."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
