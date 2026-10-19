@@ -123,7 +123,7 @@
     "ZK": 1,
     "WLD": 0,
     "BCH": 1,
-    "DOT": 1
+    "DOT": 0
   },
   "closed_trades_ledger": [
     {
@@ -238,27 +238,38 @@
     }
   ],
   "active_position_cache": {
-    "DOT": {
-      "strategy": "HOD_BREAKOUT",
-      "entry_px": 1.12905,
-      "side": "LONG",
-      "entry_candle_low": 1.1247
-    },
     "WLD": {
-      "strategy": "HOD_BREAKOUT",
-      "entry_px": 0.50876,
+      "entry_px": 0.50914,
+      "current_px": 0.50993,
+      "szi": 47.0,
+      "margin": 23.97423,
       "side": "LONG",
+      "peak_roe": 0.007758180461169396,
+      "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.50821
+    },
+    "DOT": {
+      "entry_px": 1.1282,
+      "current_px": 1.1307,
+      "szi": 21.2,
+      "margin": 23.97508,
+      "side": "LONG",
+      "peak_roe": 0.011079595816344382,
+      "strategy": "HOD_BREAKOUT",
+      "entry_candle_low": 1.1247
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-19 08:55:45",
+  "previous_active_coins": [
+    "WLD",
+    "DOT"
+  ],
+  "last_run_timestamp": "2026-10-19 09:00:46",
   "last_email_timestamp": 1792418128.4010644,
-  "last_scan_timestamp": 1792418128.4010644,
+  "last_scan_timestamp": 1792418427.4099169,
   "gemini_cache": {
-    "timestamp": 1792418128.4010644,
+    "timestamp": 1792418427.4099169,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets face severe downside pressure driven by escalating macroeconomic uncertainty, tightening global liquidity, and persistent regulatory crackdowns."
+    "briefing": "**Risk Level: HIGH** \n\nDriven by macroeconomic uncertainty, regulatory headwinds, and fragile liquidity, the crypto market currently faces an elevated risk of sharp downside volatility and potential capital loss."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
