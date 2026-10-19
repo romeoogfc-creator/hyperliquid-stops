@@ -359,6 +359,37 @@ def calculate_15m_ross_indicators(candles):
         "prev_ema9": df_c.ewm(span=9, adjust=False).mean().iloc[-2]
     }
 
+def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle_low, peak_roe=0.0, coin="ETH", setup_type="BULLISH_RECLAIM", upper_wick_pct=0.0):
+    roe = ((current_px - entry_px) / entry_px * 5.0) if is_long else ((entry_px - current_px) / entry_px * 5.0)
+
+    initial_floor_roe = -0.0200  
+    drawdown_from_peak = peak_roe - roe
+
+    # V4.7.4 Intrabar Peak Climax Exhaustion Guard
+    is_exhaustion = (peak_roe >= 0.0400) and (drawdown_from_peak >= 0.0040 or upper_wick_pct >= 0.45)
+
+    if is_exhaustion:
+        target_floor_roe = max(peak_roe - 0.0030, roe)
+        leash_status = f"⚡ CLIMAX EXHAUSTION LOCK [Peak +{peak_roe*100:.2f}% -> Stop +{target_floor_roe*100:.2f}%]"
+    elif peak_roe >= 0.0800:
+        target_floor_roe = max(peak_roe * 0.88, peak_roe - 0.0180)
+        leash_status = f"🚀 UNCAPPED MOONSHOT (88% LOCKED) [Peak +{peak_roe*100:.2f}% -> Stop +{target_floor_roe*100:.2f}%]"
+    elif peak_roe >= 0.0400:
+        target_floor_roe = max(peak_roe * 0.80, peak_roe - 0.0120)
+        leash_status = f"🎯 EXPANSION RATCHET (80% LOCKED) [Peak +{peak_roe*100:.2f}% -> Stop +{target_floor_roe*100:.2f}%]"
+    elif peak_roe >= 0.0200:
+        target_floor_roe = max(0.0080, peak_roe * 0.70)
+        leash_status = f"⚡ PROFIT LOCK (+{target_floor_roe*100:.2f}% ROE)"
+    elif peak_roe >= 0.0100:
+        target_floor_roe = 0.0050
+        leash_status = f"🛡 FEE FLOOR LOCKED (+0.50% ROE)"
+    else:
+        target_floor_roe = initial_floor_roe
+        leash_status = f"🛡 HARD PENNY STOP ({target_floor_roe*100:.2f}% ROE)"
+
+    stop_px = entry_px * (1 + (target_floor_roe / 5.0)) if is_long else entry_px * (1 - (target_floor_roe / 5.0))
+    return stop_px, None, roe / 5.0, target_floor_roe, leash_status
+
 def check_gemini_macro_shield(state, now_ts, is_scan_window):
     gemini_cache = state.get("gemini_cache", {})
     if not is_scan_window and "risk" in gemini_cache:
@@ -407,7 +438,7 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.7.3 Engine Started (Dynamic Parabolic Trail Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.7.4 Engine Started (Climax Exhaustion Guard Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -457,7 +488,7 @@ def execute_engine():
     required_vol_ratio = 1.65 if gemini_risk == "HIGH" else 1.20
     hod_proximity_pct = 0.0150
     
-    audit_logs.append(f"⚡ V4.7.3 Engine: Dynamic Parabolic Leash | Depth >= $2,000 | Spread <= 0.08% | 3.5m Pacing Gate Active")
+    audit_logs.append(f"⚡ V4.7.4 Engine: Climax Exhaustion Guard Active | Depth >= $2,000 | Spread <= 0.08% | 3.5m Pacing Gate Active")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -527,6 +558,19 @@ def execute_engine():
             entry_candle_low = cache_info.get("entry_candle_low", entry_px * 0.9920)
             strat_type = cache_info.get("strategy", "BULLISH_RECLAIM")
 
+            # Check candle wicks for exhaustion
+            upper_wick_ratio = 0.0
+            try:
+                c_snap = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 1800000, endTime=now_ms)
+                if c_snap and len(c_snap) > 0:
+                    last_c = c_snap[-1]
+                    c_high, c_low, c_open = float(last_c["h"]), float(last_c["l"]), float(last_c["o"])
+                    c_range = max(1e-8, c_high - c_low)
+                    body_top = max(c_open, current_px)
+                    upper_wick_ratio = (c_high - body_top) / c_range
+            except Exception:
+                pass
+
             stag_map = state.get("stagnation_tracker", {})
             curr_stag = stag_map.get(coin, 0)
             if current_roe < 0.0050:
@@ -545,7 +589,7 @@ def execute_engine():
             peak_roe = max(current_roe, prev_peak)
 
             stop_px_calc, tp_px_calc, current_roe_norm, target_floor_roe, leash_status = calculate_smart_exchange_targets(
-                entry_px, is_long, current_px, entry_candle_low, peak_roe=peak_roe, coin=coin, setup_type=strat_type
+                entry_px, is_long, current_px, entry_candle_low, peak_roe=peak_roe, coin=coin, setup_type=strat_type, upper_wick_pct=upper_wick_ratio
             )
 
             if is_long and current_px <= stop_px_calc:
@@ -601,13 +645,13 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.7.3", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.7.4", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
                 "pnl": unrealized_pnl, "roe": current_roe * 100,
                 "stop": round_sig_figs(stop_px_calc, 5),
-                "tp_target": "UNCAPPED (80-88% Parabolic Trail)",
+                "tp_target": "UNCAPPED (Peak Climax Guard)",
                 "status": leash_status
             })
 
@@ -753,7 +797,7 @@ def execute_engine():
                 continue
 
         if not market_candidates:
-            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.7.3 trigger rules on this candle.")
+            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.7.4 trigger rules on this candle.")
         else:
             audit_logs.append(f"🚀 SCAN COMPLETED: {len(market_candidates)} candidate(s) triggered entry setup!")
 
@@ -810,13 +854,13 @@ def execute_engine():
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V4.7.3", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V4.7.4", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
                         "pnl": 0.0, "roe": 0.0,
                         "stop": round_sig_figs(initial_stop_px, 5),
-                        "tp_target": "UNCAPPED (80-88% Parabolic Trail)",
+                        "tp_target": "UNCAPPED (Peak Climax Guard)",
                         "status": initial_status
                     })
             except Exception as e:
@@ -848,7 +892,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.7.3 | Parabolic Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.7.4 | Climax Guard Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -928,7 +972,7 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Dynamic Parabolic Scalper (V4.7.3)</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Climax Guard Scalper (V4.7.4)</div>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Forced Scan Active</div>
       </div>
 
@@ -949,11 +993,11 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.7.3 Parabolic Rules</div>
-          <div>&bull; <b>88% Retention Cushion:</b> Locks 88% of gains with a guaranteed 1.80% ROE cushion below peak</div>
-          <div>&bull; <b>Volume Decay Detection:</b> Distinguishes low-volume pullback wicks from real trend reversals</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.7.4 Climax Rules</div>
+          <div>&bull; <b>Peak Climax Exhaustion Lock:</b> Automatically locks peak - 0.30% ROE upon 0.40% drop or upper wick</div>
+          <div>&bull; <b>Dynamic Breathing Room:</b> Allows normal pullbacks until a climax pattern emerges</div>
           <div>&bull; <b>Quality Liquidity Gate:</b> Requires $2,000 depth and max 0.08% spread cap</div>
-          <div>&bull; <b>Single-Slot Stagger:</b> Max 1 entry per scan pass to eliminate cluster entries</div>
+          <div>&bull; <b>Single-Slot Stagger:</b> Max 1 entry per scan pass to prevent cluster risk</div>
         </div>
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
@@ -970,7 +1014,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.7.3 Forced Scan Active
+        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.7.4 Forced Scan Active
       </div>
     </div>
   </body>
@@ -983,7 +1027,7 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing 15M Parabolic Dynamic Scalper cycle...", flush=True)
+    print(f"[{timestamp}] Executing 15M Climax Guard Scalper cycle...", flush=True)
     try:
         execute_engine()
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 15M cycle completed successfully.", flush=True)
