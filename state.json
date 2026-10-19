@@ -112,8 +112,8 @@
     "KAS": 2,
     "WLFI": 2,
     "MORPHO": 0,
-    "PENDLE": 1,
-    "BABY": 1
+    "PENDLE": 0,
+    "BABY": 2
   },
   "closed_trades_ledger": [
     {
@@ -230,19 +230,19 @@
   "active_position_cache": {
     "PENDLE": {
       "entry_px": 2.1025,
-      "current_px": 2.10075,
+      "current_px": 2.10615,
       "szi": 12.0,
-      "margin": 5.04216,
+      "margin": 5.05368,
       "side": "LONG",
-      "peak_roe": -0.004161712247324419,
+      "peak_roe": 0.008680142687276887,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 2.0919
     },
     "BABY": {
       "entry_px": 0.012371,
-      "current_px": 0.012371,
+      "current_px": 0.01238,
       "szi": 1934.0,
-      "margin": 7.973237,
+      "margin": 7.980973,
       "side": "LONG",
       "peak_roe": 0.009700105084471633,
       "strategy": "HOD_BREAKOUT",
@@ -253,13 +253,13 @@
     "PENDLE",
     "BABY"
   ],
-  "last_run_timestamp": "2026-10-19 04:35:36",
+  "last_run_timestamp": "2026-10-19 04:40:38",
   "last_email_timestamp": 1792402229.9022138,
-  "last_scan_timestamp": 1792402521.8613198,
+  "last_scan_timestamp": 1792402823.2587159,
   "gemini_cache": {
-    "timestamp": 1792402521.8613198,
+    "timestamp": 1792402823.2587159,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, potential regulatory uncertainty, and significant volatility surrounding global liquidity trends."
+    "briefing": "Risk Level: **HIGH** \u2014 Persistent macroeconomic uncertainty, regulatory scrutiny, and high market volatility create a landscape where significant sudden price swings remain probable."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
