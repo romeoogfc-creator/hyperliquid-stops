@@ -43,7 +43,7 @@
     "BRETT": 1791707700000,
     "MOODENG": 1791666000000,
     "BERA": 1791979500000,
-    "VVV": 1792375200000,
+    "VVV": 1792376100000,
     "APEX": 1791668400000,
     "CFX": 1791669900000,
     "NEO": 1791671700000,
@@ -335,15 +335,23 @@
       "fill_hash": "LIT_45476672846195"
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "VVV": {
+      "strategy": "15M_EXPLICIT_SCALPER",
+      "entry_px": 24.3875,
+      "side": "LONG",
+      "entry_candle_low": 23.84,
+      "entry_candle_high": 24.4
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-18 21:20:31",
-  "last_email_timestamp": 1792376127.9290252,
-  "last_scan_timestamp": 1792376427.3380988,
+  "last_run_timestamp": "2026-10-18 21:25:40",
+  "last_email_timestamp": 1792376731.3161142,
+  "last_scan_timestamp": 1792376731.3161142,
   "gemini_cache": {
-    "timestamp": 1792376427.3380988,
-    "risk": "HIGH",
-    "briefing": "Risk Level: HIGH; ongoing macroeconomic uncertainty, potential regulatory shifts, and high market volatility create a landscape where significant sudden price swings remain highly probable."
+    "timestamp": 1792376731.3161142,
+    "risk": "MODERATE",
+    "briefing": "Risk Level: **MODERATE** \u2014 While recent institutional inflows and macroeconomic easing provide a supportive foundation, the market remains susceptible to significant volatility stemming from regulatory uncertainty, geopolitical tensions, and the potential for profit-taking following recent price appreciation."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
