@@ -110,7 +110,8 @@
     "BCH": 1792414800000,
     "DOT": 1792420200000,
     "SNX": 1792422000000,
-    "GOAT": 1792428300000
+    "GOAT": 1792428300000,
+    "DASH": 1792440900000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {
@@ -240,15 +241,22 @@
       "ts_sec": 1792419093.685
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "DASH": {
+      "strategy": "HOD_BREAKOUT",
+      "entry_px": 49.6985,
+      "side": "LONG",
+      "entry_candle_low": 49.403
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-19 15:15:39",
-  "last_email_timestamp": 1792440331.2951875,
-  "last_scan_timestamp": 1792440923.6861138,
+  "last_run_timestamp": "2026-10-19 15:20:46",
+  "last_email_timestamp": 1792441229.4156063,
+  "last_scan_timestamp": 1792441229.4156063,
   "gemini_cache": {
-    "timestamp": 1792440923.6861138,
-    "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic uncertainty, shifting interest rate expectations, and increased regulatory scrutiny, all of which continue to drive significant volatility and potential for sudden liquidity contractions."
+    "timestamp": 1792441229.4156063,
+    "risk": "MODERATE",
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of future monetary easing, the short-term outlook remains sensitive to heightened macroeconomic volatility and potential regulatory shifts that could trigger sudden deleveraging."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
