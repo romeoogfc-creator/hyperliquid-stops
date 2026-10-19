@@ -110,8 +110,8 @@
     "VIRTUAL": 2,
     "KAS": 2,
     "WLFI": 2,
-    "MNT": 1,
-    "MORPHO": 1
+    "MNT": 2,
+    "MORPHO": 2
   },
   "closed_trades_ledger": [
     {
@@ -228,9 +228,9 @@
   "active_position_cache": {
     "MNT": {
       "entry_px": 0.53611,
-      "current_px": 0.53556,
+      "current_px": 0.53527,
       "szi": 44.7,
-      "margin": 23.939085,
+      "margin": 23.926569,
       "side": "LONG",
       "peak_roe": 0.007088097591911948,
       "strategy": "HOD_BREAKOUT",
@@ -238,32 +238,37 @@
     },
     "MORPHO": {
       "entry_px": 2.4753,
-      "current_px": 2.47695,
+      "current_px": 2.4776,
       "szi": 9.7,
-      "margin": 24.02981,
+      "margin": 24.02496,
       "side": "LONG",
       "peak_roe": 0.007978830848786249,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 2.4661
     },
     "BABY": {
-      "strategy": "HOD_BREAKOUT",
-      "entry_px": 0.012365,
+      "entry_px": 0.012371,
+      "current_px": 0.012389,
+      "szi": 1934.0,
+      "margin": 7.985486,
       "side": "LONG",
+      "peak_roe": 0.007275078813354076,
+      "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.01239
     }
   },
   "previous_active_coins": [
-    "MNT",
-    "MORPHO"
+    "MORPHO",
+    "BABY",
+    "MNT"
   ],
-  "last_run_timestamp": "2026-10-19 04:10:48",
+  "last_run_timestamp": "2026-10-19 04:15:43",
   "last_email_timestamp": 1792401030.1752996,
   "last_scan_timestamp": 1792401030.1752996,
   "gemini_cache": {
-    "timestamp": 1792401030.1752996,
-    "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic uncertainty, shifting interest rate expectations, and increased regulatory scrutiny, all of which continue to drive significant volatility and potential for sudden downside swings."
+    "timestamp": 1792401331.1644936,
+    "risk": "MODERATE",
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and anticipated macroeconomic easing, the sector faces heightened volatility risk due to ongoing regulatory uncertainty and the potential for rapid deleveraging if short-term liquidity conditions tighten."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
