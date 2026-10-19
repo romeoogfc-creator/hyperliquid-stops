@@ -128,7 +128,7 @@
     "BCH": 1,
     "DOT": 0,
     "SNX": 2,
-    "DASH": 1
+    "DASH": 2
   },
   "closed_trades_ledger": [
     {
@@ -245,9 +245,9 @@
   "active_position_cache": {
     "DASH": {
       "entry_px": 49.712,
-      "current_px": 49.6325,
+      "current_px": 49.6145,
       "szi": 0.48,
-      "margin": 4.763942,
+      "margin": 4.76231,
       "side": "LONG",
       "peak_roe": -0.007996057289990647,
       "strategy": "HOD_BREAKOUT",
@@ -257,13 +257,13 @@
   "previous_active_coins": [
     "DASH"
   ],
-  "last_run_timestamp": "2026-10-19 15:25:56",
+  "last_run_timestamp": "2026-10-19 15:30:47",
   "last_email_timestamp": 1792441229.4156063,
-  "last_scan_timestamp": 1792441534.302862,
+  "last_scan_timestamp": 1792441829.4034152,
   "gemini_cache": {
-    "timestamp": 1792441534.302862,
+    "timestamp": 1792441829.4034152,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Increased macroeconomic uncertainty and geopolitical tensions, combined with significant volatility surrounding regulatory developments and institutional capital flows, necessitate a cautious approach toward market exposure."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic indicators, shifting regulatory landscapes, and the potential for rapid deleveraging following recent price breakouts."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
