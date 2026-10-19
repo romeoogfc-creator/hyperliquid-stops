@@ -42,7 +42,8 @@
     "VIRTUAL": 1792416327.472914,
     "BABY": 1792446327.3676167,
     "JUP": 1792430727.4383802,
-    "SNX": 1792437334.4411736
+    "SNX": 1792437334.4411736,
+    "GOAT": 1792444235.2237458
   },
   "last_traded_candle": {
     "FET": 1791759600000,
@@ -125,10 +126,20 @@
     "WLD": 0,
     "BCH": 1,
     "DOT": 0,
-    "SNX": 2,
-    "GOAT": 2
+    "SNX": 2
   },
   "closed_trades_ledger": [
+    {
+      "coin": "GOAT",
+      "entry_price": 0.014563,
+      "exit_price": 0.014529,
+      "pnl_usd": -0.05576,
+      "roe_pct": -1.1673418938405313,
+      "side": "LONG",
+      "exit_reason": "\u23f1\ufe0f 45M Range Stagnation Cut (-1.17% ROE)",
+      "timestamp": "2026-10-19 17:10:35",
+      "ts_sec": 1792429835.2237458
+    },
     {
       "coin": "SNX",
       "entry_price": 0.21532,
@@ -240,28 +251,15 @@
       "ts_sec": 1792418449.228
     }
   ],
-  "active_position_cache": {
-    "GOAT": {
-      "entry_px": 0.014563,
-      "current_px": 0.014541,
-      "szi": 1640.0,
-      "margin": 7.951266,
-      "side": "LONG",
-      "peak_roe": -0.00343335851129561,
-      "strategy": "HOD_BREAKOUT",
-      "entry_candle_low": 0.014554
-    }
-  },
-  "previous_active_coins": [
-    "GOAT"
-  ],
-  "last_run_timestamp": "2026-10-19 12:05:45",
-  "last_email_timestamp": 1792428931.7603152,
-  "last_scan_timestamp": 1792429528.429333,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-19 12:10:51",
+  "last_email_timestamp": 1792429835.2237458,
+  "last_scan_timestamp": 1792429835.2237458,
   "gemini_cache": {
-    "timestamp": 1792429528.429333,
+    "timestamp": 1792429835.2237458,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic shifts, fluctuating regulatory clarity, and extreme volatility driven by speculative leverage, necessitating caution despite recent bullish momentum."
+    "briefing": "**Risk Level: HIGH** \n\nCrypto markets currently face acute volatility driven by tightening macroeconomic liquidity, regulatory crackdowns, and heightened vulnerability to sudden leverage liquidations."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
