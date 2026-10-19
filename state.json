@@ -98,9 +98,9 @@
     "NEAR": 1,
     "ETHFI": 1,
     "VVV": 0,
-    "COMP": 1,
-    "VIRTUAL": 1,
-    "PUMP": 1
+    "COMP": 2,
+    "VIRTUAL": 2,
+    "PUMP": 2
   },
   "closed_trades_ledger": [
     {
@@ -217,9 +217,9 @@
   "active_position_cache": {
     "COMP": {
       "entry_px": 21.668,
-      "current_px": 21.6655,
+      "current_px": 21.657,
       "szi": 1.11,
-      "margin": 4.80852,
+      "margin": 4.808964,
       "side": "LONG",
       "peak_roe": -0.0005768875761486354,
       "strategy": "15M_RECLAIM_SCALPER",
@@ -228,9 +228,9 @@
     },
     "VIRTUAL": {
       "entry_px": 0.66273,
-      "current_px": 0.66309,
+      "current_px": 0.66244,
       "szi": 36.3,
-      "margin": 24.066537,
+      "margin": 24.044031,
       "side": "LONG",
       "peak_roe": 0.002716038205603458,
       "strategy": "15M_RECLAIM_SCALPER",
@@ -239,11 +239,11 @@
     },
     "PUMP": {
       "entry_px": 0.004484,
-      "current_px": 0.004479,
+      "current_px": 0.004488,
       "szi": 5344.0,
-      "margin": 23.94112,
+      "margin": 23.989216,
       "side": "LONG",
-      "peak_roe": -0.0055753791257803255,
+      "peak_roe": 0.004460303300624067,
       "strategy": "15M_RECLAIM_SCALPER",
       "entry_candle_low": 0.004382,
       "entry_candle_high": 0.004456
@@ -254,13 +254,13 @@
     "PUMP",
     "VIRTUAL"
   ],
-  "last_run_timestamp": "2026-10-18 22:10:31",
+  "last_run_timestamp": "2026-10-18 22:15:31",
   "last_email_timestamp": 1792379275.5167933,
   "last_scan_timestamp": 1792379275.5167933,
   "gemini_cache": {
-    "timestamp": 1792379424.1017551,
+    "timestamp": 1792379725.267993,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, heightened regulatory scrutiny, and the potential for sharp liquidations following recent price rallies."
+    "briefing": "Risk Level: HIGH; ongoing macroeconomic uncertainty, potential regulatory shifts, and high market volatility necessitate extreme caution as current price structures remain highly sensitive to liquidity fluctuations and institutional sentiment."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
