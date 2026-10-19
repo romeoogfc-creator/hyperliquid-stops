@@ -113,7 +113,8 @@
     "KAS": 2,
     "WLFI": 2,
     "MORPHO": 0,
-    "PENDLE": 0
+    "PENDLE": 0,
+    "ZK": 1
   },
   "closed_trades_ledger": [
     {
@@ -229,20 +230,26 @@
   ],
   "active_position_cache": {
     "ZK": {
-      "strategy": "HOD_BREAKOUT",
-      "entry_px": 0.014908,
+      "entry_px": 0.014911,
+      "current_px": 0.01491,
+      "szi": 1606.0,
+      "margin": 4.788128,
       "side": "LONG",
+      "peak_roe": -0.0003353229159684126,
+      "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.014681
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-19 05:50:43",
+  "previous_active_coins": [
+    "ZK"
+  ],
+  "last_run_timestamp": "2026-10-19 05:55:38",
   "last_email_timestamp": 1792407027.299944,
-  "last_scan_timestamp": 1792407027.299944,
+  "last_scan_timestamp": 1792407328.577244,
   "gemini_cache": {
-    "timestamp": 1792407027.299944,
+    "timestamp": 1792407328.577244,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic uncertainty, shifting regulatory landscapes, and sudden liquidity volatility, which continue to drive sharp, unpredictable price swings."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to geopolitical instability, all of which contribute to an elevated risk of sudden, sharp price corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
