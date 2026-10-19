@@ -40,7 +40,8 @@
     "HYPE": 1792409128.2297819,
     "MNT": 1792444822.9715397,
     "VIRTUAL": 1792416327.472914,
-    "BABY": 1792446327.3676167
+    "BABY": 1792446327.3676167,
+    "JUP": 1792430727.4383802
   },
   "last_traded_candle": {
     "FET": 1791759600000,
@@ -118,10 +119,20 @@
     "PENDLE": 0,
     "ZK": 1,
     "WLD": 0,
-    "JUP": 2,
     "BCH": 1
   },
   "closed_trades_ledger": [
+    {
+      "coin": "JUP",
+      "entry_price": 0.29772,
+      "exit_price": 0.297885,
+      "pnl_usd": 0.01377,
+      "roe_pct": 0.27710600564293003,
+      "side": "LONG",
+      "exit_reason": "\u23f1\ufe0f 45M Range Stagnation Cut (0.28% ROE)",
+      "timestamp": "2026-10-19 13:25:27",
+      "ts_sec": 1792416327.4383802
+    },
     {
       "coin": "BCH",
       "entry_price": 279.68,
@@ -233,28 +244,15 @@
       "ts_sec": 1792401927.472914
     }
   ],
-  "active_position_cache": {
-    "JUP": {
-      "entry_px": 0.29772,
-      "current_px": 0.29788,
-      "szi": 81.0,
-      "margin": 24.12909,
-      "side": "LONG",
-      "peak_roe": 0.002687088539567269,
-      "strategy": "HOD_BREAKOUT",
-      "entry_candle_low": 0.29671
-    }
-  },
-  "previous_active_coins": [
-    "JUP"
-  ],
-  "last_run_timestamp": "2026-10-19 08:20:39",
-  "last_email_timestamp": 1792415429.02128,
-  "last_scan_timestamp": 1792416025.1955128,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-19 08:25:48",
+  "last_email_timestamp": 1792416327.4383802,
+  "last_scan_timestamp": 1792416327.4383802,
   "gemini_cache": {
-    "timestamp": 1792416025.1955128,
+    "timestamp": 1792416327.4383802,
     "risk": "HIGH",
-    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, the asset class remains highly sensitive to macroeconomic volatility and sudden shifts in regulatory or liquidity conditions."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity cycles, all of which keep market sentiment fragile and prone to sharp, sudden corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
