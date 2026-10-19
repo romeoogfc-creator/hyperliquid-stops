@@ -116,7 +116,8 @@
     "MORPHO": 0,
     "PENDLE": 0,
     "ZK": 1,
-    "WLD": 1
+    "WLD": 2,
+    "JUP": 1
   },
   "closed_trades_ledger": [
     {
@@ -233,31 +234,36 @@
   "active_position_cache": {
     "WLD": {
       "entry_px": 0.50684,
-      "current_px": 0.50723,
+      "current_px": 0.50699,
       "szi": 47.2,
-      "margin": 23.939368,
+      "margin": 23.93748,
       "side": "LONG",
       "peak_roe": 0.0038473680056822813,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.50859
     },
     "JUP": {
-      "strategy": "HOD_BREAKOUT",
-      "entry_px": 0.297245,
+      "entry_px": 0.29742,
+      "current_px": 0.297515,
+      "szi": 81.0,
+      "margin": 24.09831,
       "side": "LONG",
+      "peak_roe": 0.001597068119157357,
+      "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.29612
     }
   },
   "previous_active_coins": [
-    "WLD"
+    "WLD",
+    "JUP"
   ],
-  "last_run_timestamp": "2026-10-19 07:55:42",
+  "last_run_timestamp": "2026-10-19 08:01:13",
   "last_email_timestamp": 1792414526.8976963,
-  "last_scan_timestamp": 1792414526.8976963,
+  "last_scan_timestamp": 1792414832.068432,
   "gemini_cache": {
-    "timestamp": 1792414526.8976963,
+    "timestamp": 1792414832.068432,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and historical post-halving price sensitivity, leaving assets vulnerable to sharp liquidity swings."
+    "briefing": "**Risk Level: HIGH**\n\nThe market is currently characterized by heightened volatility driven by shifting macroeconomic expectations, significant regulatory uncertainty, and speculative leverage, making it highly susceptible to sharp, sentiment-driven corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
