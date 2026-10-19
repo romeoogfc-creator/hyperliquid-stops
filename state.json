@@ -36,7 +36,8 @@
     "SKY": 1791881125.2083867,
     "PONS": 1792202433.111476,
     "PENDLE": 1792220432.1087716,
-    "COMP": 1792423229.2559965
+    "COMP": 1792423229.2559965,
+    "HYPE": 1792409128.2297819
   },
   "last_traded_candle": {
     "FET": 1791759600000,
@@ -105,10 +106,20 @@
     "VVV": 0,
     "VIRTUAL": 2,
     "KAS": 2,
-    "WLFI": 2,
-    "HYPE": 2
+    "WLFI": 2
   },
   "closed_trades_ledger": [
+    {
+      "coin": "HYPE",
+      "entry_price": 80.079,
+      "exit_price": 80.1355,
+      "pnl_usd": 0.01833,
+      "roe_pct": 0.3527766330748372,
+      "side": "LONG",
+      "exit_reason": "\u23f1\ufe0f 45M Range Stagnation Cut (0.35% ROE)",
+      "timestamp": "2026-10-19 07:25:28",
+      "ts_sec": 1792394728.2297819
+    },
     {
       "coin": "UNI",
       "entry_price": 7.3674,
@@ -220,28 +231,15 @@
       "ts_sec": 1792378329.543
     }
   ],
-  "active_position_cache": {
-    "HYPE": {
-      "entry_px": 80.079,
-      "current_px": 80.1345,
-      "szi": 0.3,
-      "margin": 2.40405,
-      "side": "LONG",
-      "peak_roe": 0.0034653279886118216,
-      "strategy": "HOD_BREAKOUT",
-      "entry_candle_low": 80.101
-    }
-  },
-  "previous_active_coins": [
-    "HYPE"
-  ],
-  "last_run_timestamp": "2026-10-19 02:20:45",
-  "last_email_timestamp": 1792393833.2322466,
-  "last_scan_timestamp": 1792394431.5396874,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-19 02:25:44",
+  "last_email_timestamp": 1792394728.2297819,
+  "last_scan_timestamp": 1792394728.2297819,
   "gemini_cache": {
-    "timestamp": 1792394431.5396874,
+    "timestamp": 1792394728.2297819,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting regulatory landscapes, and sudden liquidity contractions, all of which continue to drive significant price volatility."
+    "briefing": "Risk Level: **HIGH**\n\nThe market is currently characterized by heightened volatility driven by shifting macroeconomic expectations, significant regulatory uncertainty, and speculative exhaustion following recent price rallies, creating a landscape prone to sharp, sudden corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
