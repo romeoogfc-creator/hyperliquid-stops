@@ -46,7 +46,7 @@ def get_central_midnight_timestamp():
     ct_now = get_central_time()
     ct_midnight = datetime(ct_now.year, ct_now.month, ct_now.day, 0, 0, 0)
     
-    utc_now = datetime.now(timezone.utc).replace(tzinfo=None)
+    utc_now = datetime.now(timezone.utc).replace(tzinfo=timezone.utc).replace(tzinfo=None)
     year = utc_now.year
     dst_start = datetime(year, 3, 8, 7, 0, 0)
     dst_start += timedelta(days=(6 - dst_start.weekday()) % 7)
@@ -135,7 +135,7 @@ def round_sig_figs(val, sig_figs=5):
         return 0
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
-def check_liquidity_and_spread(info, coin, max_spread=0.0012, min_depth_usd=1500.0):
+def check_liquidity_and_spread(info, coin, max_spread=0.0008, min_depth_usd=3000.0):
     try:
         l2_book = api_retry(info.l2_snapshot, name=coin)
         levels = l2_book.get("levels", [[], []])
@@ -321,7 +321,7 @@ def sync_closed_trades_from_exchange(info, account_address, state, audit_logs, c
             state["seen_fill_hashes"] = list(seen_hashes)[-100:]
             
             if cooldown_added:
-                save_state(state)  # Instant disk persistence for anti-reentry blocklist
+                save_state(state)
     except Exception as e:
         audit_logs.append(f"⚠️ Direct fill sync notice: {e}")
 
@@ -362,15 +362,15 @@ def calculate_15m_ross_indicators(candles):
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle_low, peak_roe=0.0, coin="ETH", setup_type="BULLISH_RECLAIM"):
     roe = ((current_px - entry_px) / entry_px * 5.0) if is_long else ((entry_px - current_px) / entry_px * 5.0)
 
-    # Initial Hard Stop (-1.50% ROE / -0.30% Price Move)
-    initial_floor_roe = -0.0150  
+    # Noise-Immune Initial Hard Stop (-2.00% ROE / -0.40% Price Move)
+    initial_floor_roe = -0.0200  
 
     # Fee-Inclusive Tight Retention Ratchet Logic
     if peak_roe >= 0.0800:
         target_floor_roe = max(peak_roe * 0.95, peak_roe - 0.0030)  # Locks 95%+, trails max 0.30% ROE
         leash_status = f"🚀 MOONSHOT RIDER (95% LOCKED) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
     elif peak_roe >= 0.0400:
-        target_floor_roe = max(peak_roe * 0.90, peak_roe - 0.0020)  # Tight 0.20% ROE trail above +4%
+        target_floor_roe = max(peak_roe * 0.90, peak_roe - 0.0025)  # Tight 0.25% ROE trail above +4%
         leash_status = f"🎯 HIGH RETENTION RATCHET (90% LOCKED) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
     elif peak_roe >= 0.0200:
         target_floor_roe = peak_roe * 0.85  # Locks 85% of gains
@@ -433,7 +433,7 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.7.0 Engine Started (Zero-Leaking Anti-Chop Engine Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.7.1 Engine Started (High Quality Pure V-Bottom Engine Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -480,10 +480,10 @@ def execute_engine():
     gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_15m_scan_window)
     audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] {gemini_briefing}")
 
-    required_vol_ratio = 1.50 if gemini_risk == "HIGH" else 1.10
+    required_vol_ratio = 1.75 if gemini_risk == "HIGH" else 1.20
     hod_proximity_pct = 0.0150
     
-    audit_logs.append(f"⚡ V4.7.0 Engine: Single-Slot Stagger Active | Spread Limit <= 0.12% | Instant Cooldown Sync | Peak Climax Guard Active")
+    audit_logs.append(f"⚡ V4.7.1 Engine: Pure V-Bottom Mode ({gemini_risk} Risk) | Depth >= $3,000 | Spread <= 0.08% | 5m Pacing Gate Active")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -627,7 +627,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.7.0", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.7.1", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -687,8 +687,8 @@ def execute_engine():
                 if curr_live_px <= 0:
                     continue
                 
-                # Strict Spread Limit Guard: Max 0.12% Spread
-                is_liquid, spread_msg = check_liquidity_and_spread(info, coin, max_spread=0.0012, min_depth_usd=1500.0)
+                # Elevated Quality Liquidity Gate: $3,000 Depth & Max 0.08% Spread
+                is_liquid, spread_msg = check_liquidity_and_spread(info, coin, max_spread=0.0008, min_depth_usd=3000.0)
                 if not is_liquid:
                     audit_logs.append(f"🔍 [{coin}] Skipped: Liquidity/Spread Check Failed ({spread_msg})")
                     continue
@@ -705,8 +705,9 @@ def execute_engine():
                 candle_start_ms = candles[-1]["t"]
                 elapsed_mins = (now_ms - candle_start_ms) / 60000.0
 
-                if elapsed_mins < 2.5:
-                    audit_logs.append(f"🔍 [{coin}] Skipped: Candle Pacing Gate ({elapsed_mins:.1f}m < 2.5m)")
+                # Strict 5-Minute Candle Pacing Gate
+                if elapsed_mins < 5.0:
+                    audit_logs.append(f"🔍 [{coin}] Skipped: Candle Pacing Gate ({elapsed_mins:.1f}m < 5.0m)")
                     continue
 
                 closes = [float(c["c"]) for c in candles]
@@ -732,7 +733,7 @@ def execute_engine():
                     continue
 
                 live_volume_raw = float(candles[-1].get("v", 0))
-                extrap_mult = min(5.0, 15.0 / elapsed_mins)
+                extrap_mult = min(2.5, 15.0 / elapsed_mins)  # Capped extrapolation at 2.5x
                 paced_volume = live_volume_raw * extrap_mult
 
                 avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
@@ -744,27 +745,27 @@ def execute_engine():
 
                 prev_low = lows[-2]
 
-                # Setup 1: High of Day Breakout (SUPPRESSED DURING HIGH RISK REGIME)
+                # Setup 1: High of Day Breakout (SUPPRESSED IN HIGH RISK REGIME)
                 is_near_hod = (curr_live_px >= day_high * (1.0 - hod_proximity_pct))
                 is_breakout = (gemini_risk != "HIGH") and (is_near_hod and vol_ratio >= required_vol_ratio and is_above_ema9 and is_above_vwap and is_macd_positive)
 
-                # Setup 2: Bullish Retracement Support Reclaim
+                # Setup 2: Bullish Retracement Support Reclaim (SUPPRESSED IN HIGH RISK REGIME)
                 is_reclaim_cross = (prev_close <= prev_ema9 or prev_close <= vwap) and (curr_live_px > ema9 and curr_live_px > vwap)
                 is_pullback_proximity = (curr_live_px <= ema9 * 1.0025)
-                is_bullish_reclaim = (is_reclaim_cross and is_pullback_proximity and vol_ratio >= required_vol_ratio and is_macd_positive)
+                is_bullish_reclaim = (gemini_risk != "HIGH") and (is_reclaim_cross and is_pullback_proximity and vol_ratio >= required_vol_ratio and is_macd_positive)
 
-                # Setup 3: V-Bottom Capitulation Sweep
+                # Setup 3: Pure V-Bottom Capitulation Sweep (100% EXCLUSIVE SETUP IN HIGH RISK REGIME)
                 prev_30_min = min(lows[-31:-1])
                 is_capitulation_low = (lows[-1] <= prev_30_min)
                 candle_range = max(1e-8, highs[-1] - lows[-1])
                 body_bottom = min(float(candles[-1]["o"]), curr_live_px)
                 lower_wick_ratio = (body_bottom - lows[-1]) / candle_range
                 
-                is_v_bottom = (is_capitulation_low and lower_wick_ratio >= 0.55 and vol_ratio >= 1.75 and curr_live_px > ema9)
+                is_v_bottom = (is_capitulation_low and lower_wick_ratio >= 0.55 and vol_ratio >= required_vol_ratio and curr_live_px > ema9)
 
                 if is_breakout or is_bullish_reclaim or is_v_bottom:
                     setup_type = "V_BOTTOM_RECLAIM" if is_v_bottom else ("HOD_BREAKOUT" if is_breakout else "BULLISH_RECLAIM")
-                    score = vol_ratio * (2.5 if setup_type == "V_BOTTOM_RECLAIM" else (1.5 if setup_type == "BULLISH_RECLAIM" else 1.0))
+                    score = vol_ratio * (3.0 if setup_type == "V_BOTTOM_RECLAIM" else (1.5 if setup_type == "BULLISH_RECLAIM" else 1.0))
 
                     audit_logs.append(f"🔥 [{coin}] TRIGGERED [{setup_type}] @ ${curr_live_px:.4f} | RVOL:{vol_ratio:.2f}x | Ext:{extension_pct*100:+.2f}%")
 
@@ -778,14 +779,14 @@ def execute_engine():
                 continue
 
         if not market_candidates:
-            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.7.0 trigger rules on this candle.")
+            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.7.1 trigger rules on this candle.")
         else:
             audit_logs.append(f"🚀 SCAN COMPLETED: {len(market_candidates)} candidate(s) triggered entry setup!")
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
     trades_executed = False
 
-    # FIX HOLE 1: Enforce Max 1 New Slot Entry Per Scan Pass (Single-Slot Stagger)
+    # Enforce Single-Slot Entry Stagger (Max 1 Entry Per Pass)
     if available_slots > 0 and market_candidates:
         single_best_candidate = market_candidates[0]
         coin = single_best_candidate["coin"]
@@ -835,7 +836,7 @@ def execute_engine():
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V4.7.0", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V4.7.1", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -873,7 +874,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.7.0 | Zero-Leaking Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.7.1 | Pure V-Bottom Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -953,7 +954,7 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Zero-Leaking Scalper (V4.7.0)</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Pure V-Bottom Scalper (V4.7.1)</div>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Forced Scan Active</div>
       </div>
 
@@ -974,11 +975,11 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.7.0 Zero-Leaking Rules</div>
-          <div>&bull; <b>Single-Slot Entry Stagger:</b> Max 1 new entry per scan pass (Blocks multi-slot cluster risk)</div>
-          <div>&bull; <b>Instant Cooldown Persistence:</b> Writes loss stops to state instantly to stop same-coin re-entry</div>
-          <div>&bull; <b>Tightened Peak Climax Trail:</b> Trails within 0.20% ROE during parabolic spikes &gt; +4% ROE</div>
-          <div>&bull; <b>Fee-Inclusive Floor:</b> Sets Break-Even stop at +0.50% ROE to cover roundtrip taker fees</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.7.1 High Quality Rules</div>
+          <div>&bull; <b>Pure V-Bottom Execution:</b> Restricts HIGH risk trading to 100% capitulation support sweeps</div>
+          <div>&bull; <b>5-Minute Candle Pacing:</b> Blocks early-bar false volume extrapolation spikes</div>
+          <div>&bull; <b>Strict Quality Liquidity Gate:</b> Requires $3,000 depth and max 0.08% spread cap</div>
+          <div>&bull; <b>Noise-Immune Hard Stop:</b> Sets stop at -2.00% ROE (-0.40% price move) to clear spread friction</div>
         </div>
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
@@ -995,7 +996,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.7.0 Forced Scan Active
+        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.7.1 Forced Scan Active
       </div>
     </div>
   </body>
@@ -1008,7 +1009,7 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing 15M Zero-Leaking Scalper cycle...", flush=True)
+    print(f"[{timestamp}] Executing 15M Pure V-Bottom Scalper cycle...", flush=True)
     try:
         execute_engine()
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 15M cycle completed successfully.", flush=True)
