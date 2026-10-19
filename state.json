@@ -59,7 +59,7 @@
     "PENDLE": 1792403100000,
     "WLD": 1792417500000,
     "S": 1791720600000,
-    "EIGEN": 1791682800000,
+    "EIGEN": 1792420200000,
     "STRK": 1791682800000,
     "ZK": 1792419300000,
     "DYM": 1791701700000,
@@ -106,7 +106,7 @@
     "BABY": 1792400400000,
     "JUP": 1792414800000,
     "BCH": 1792414800000,
-    "DOT": 1792419300000,
+    "DOT": 1792420200000,
     "SNX": 1792418400000,
     "GOAT": 1792417500000
   },
@@ -237,15 +237,28 @@
       "ts_sec": 1792417144.244
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "EIGEN": {
+      "strategy": "HOD_BREAKOUT",
+      "entry_px": 0.2381,
+      "side": "LONG",
+      "entry_candle_low": 0.2362
+    },
+    "DOT": {
+      "strategy": "HOD_BREAKOUT",
+      "entry_px": 1.12835,
+      "side": "LONG",
+      "entry_candle_low": 1.1258
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-19 09:35:44",
-  "last_email_timestamp": 1792419928.7312331,
-  "last_scan_timestamp": 1792420530.8091898,
+  "last_run_timestamp": "2026-10-19 09:40:47",
+  "last_email_timestamp": 1792420822.8012311,
+  "last_scan_timestamp": 1792420822.8012311,
   "gemini_cache": {
-    "timestamp": 1792420530.8091898,
+    "timestamp": 1792420822.8012311,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nPersistent macroeconomic uncertainty, stringent global regulatory headwinds, and ongoing vulnerabilities in liquidity create an environment highly susceptible to sharp, unexpected drawdowns."
+    "briefing": "**Risk Level: HIGH** \n\nPersistent macroeconomic tightening, ongoing regulatory crackdowns, and fragile market liquidity create an environment highly susceptible to sudden downward volatility and liquidity crunches."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
