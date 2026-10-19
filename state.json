@@ -57,7 +57,7 @@
     "AZTEC": 1791774900000,
     "SYRUP": 1791751500000,
     "PENDLE": 1792403100000,
-    "WLD": 1792413900000,
+    "WLD": 1792416600000,
     "S": 1791720600000,
     "EIGEN": 1791682800000,
     "STRK": 1791682800000,
@@ -105,7 +105,9 @@
     "MORPHO": 1792399500000,
     "BABY": 1792400400000,
     "JUP": 1792414800000,
-    "BCH": 1792414800000
+    "BCH": 1792414800000,
+    "DOT": 1792416600000,
+    "SNX": 1792416600000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {
@@ -233,15 +235,34 @@
       "ts_sec": 1792403127.3676167
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "DOT": {
+      "strategy": "HOD_BREAKOUT",
+      "entry_px": 1.12805,
+      "side": "LONG",
+      "entry_candle_low": 1.1346
+    },
+    "WLD": {
+      "strategy": "HOD_BREAKOUT",
+      "entry_px": 0.51044,
+      "side": "LONG",
+      "entry_candle_low": 0.51066
+    },
+    "SNX": {
+      "strategy": "HOD_BREAKOUT",
+      "entry_px": 0.21488,
+      "side": "LONG",
+      "entry_candle_low": 0.21568
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-19 08:30:45",
-  "last_email_timestamp": 1792416327.4383802,
-  "last_scan_timestamp": 1792416632.962493,
+  "last_run_timestamp": "2026-10-19 08:36:00",
+  "last_email_timestamp": 1792416931.1368072,
+  "last_scan_timestamp": 1792416931.1368072,
   "gemini_cache": {
-    "timestamp": 1792416632.962493,
-    "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic indicators, shifting regulatory landscapes, and high levels of leverage, creating a environment prone to sharp, sudden corrections."
+    "timestamp": 1792416931.1368072,
+    "risk": "MODERATE",
+    "briefing": "**Risk Level: MODERATE** \n\nWhile strong institutional inflows and favorable macroeconomic liquidity continue to support upside momentum, current crypto markets remain vulnerable to sharp deleveraging events driven by overextended leverage and shifting regulatory headlines."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
