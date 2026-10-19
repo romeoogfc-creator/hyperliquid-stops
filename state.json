@@ -127,7 +127,8 @@
     "WLD": 0,
     "BCH": 1,
     "DOT": 0,
-    "SNX": 2
+    "SNX": 2,
+    "DASH": 1
   },
   "closed_trades_ledger": [
     {
@@ -243,20 +244,26 @@
   ],
   "active_position_cache": {
     "DASH": {
-      "strategy": "HOD_BREAKOUT",
-      "entry_px": 49.6985,
+      "entry_px": 49.712,
+      "current_px": 49.6325,
+      "szi": 0.48,
+      "margin": 4.763942,
       "side": "LONG",
+      "peak_roe": -0.007996057289990647,
+      "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 49.403
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-19 15:20:46",
+  "previous_active_coins": [
+    "DASH"
+  ],
+  "last_run_timestamp": "2026-10-19 15:25:56",
   "last_email_timestamp": 1792441229.4156063,
-  "last_scan_timestamp": 1792441229.4156063,
+  "last_scan_timestamp": 1792441534.302862,
   "gemini_cache": {
-    "timestamp": 1792441229.4156063,
-    "risk": "MODERATE",
-    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of future monetary easing, the short-term outlook remains sensitive to heightened macroeconomic volatility and potential regulatory shifts that could trigger sudden deleveraging."
+    "timestamp": 1792441534.302862,
+    "risk": "HIGH",
+    "briefing": "Risk Level: **HIGH** \u2014 Increased macroeconomic uncertainty and geopolitical tensions, combined with significant volatility surrounding regulatory developments and institutional capital flows, necessitate a cautious approach toward market exposure."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
