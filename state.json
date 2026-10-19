@@ -96,7 +96,8 @@
     "WLFI": 1792379700000,
     "KAS": 1792380600000,
     "UNI": 1792386900000,
-    "HYPE": 1792393200000
+    "HYPE": 1792393200000,
+    "MNT": 1792397700000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {
@@ -220,15 +221,22 @@
       "ts_sec": 1792380029.2559965
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "MNT": {
+      "strategy": "HOD_BREAKOUT",
+      "entry_px": 0.53633,
+      "side": "LONG",
+      "entry_candle_low": 0.53439
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-19 03:20:37",
-  "last_email_timestamp": 1792398023.4003806,
-  "last_scan_timestamp": 1792398023.4003806,
+  "last_run_timestamp": "2026-10-19 03:25:37",
+  "last_email_timestamp": 1792398318.4400868,
+  "last_scan_timestamp": 1792398318.4400868,
   "gemini_cache": {
-    "timestamp": 1792398023.4003806,
+    "timestamp": 1792398318.4400868,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts and regulatory uncertainty, leading to significant volatility that can trigger rapid liquidations in either direction."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, upcoming regulatory developments, and significant liquidity volatility, necessitating extreme caution despite recent price momentum."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
