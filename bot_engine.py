@@ -302,7 +302,6 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle
     else:
         stop_px = entry_px * (1 - (target_floor_roe / 5.0))
 
-    # Return tp_px as None to enforce UNCAPPED upside
     return stop_px, None, roe / 5.0, target_floor_roe, leash_status
 
 def check_gemini_macro_shield(state, now_ts, is_scan_window):
@@ -353,7 +352,7 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.4.7 Engine Started (Explicit Audit Scalper Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.4.8 Engine Started (Reconciliation Scalper Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -401,7 +400,7 @@ def execute_engine():
     required_vol_ratio = 1.12
     hod_proximity_pct = 0.0175
     
-    audit_logs.append(f"⚡ V4.4.7 Explicit Scalper: Target RVOL >= {required_vol_ratio:.2f}x | HOD Proximity <= {hod_proximity_pct*100:.2f}% | Max Loss -$0.20 Cap")
+    audit_logs.append(f"⚡ V4.4.8 Native Fill Reconciliation: RVOL >= {required_vol_ratio:.2f}x | Max Loss -$0.20 Cap")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -447,6 +446,9 @@ def execute_engine():
     today_start_eq = daily_starting_dict[today_str]
     today_total_gain = account_value - today_start_eq
 
+    # ------------------------------------------------------------------
+    # 1. EVALUATE CURRENTLY ACTIVE EXCHANGE POSITIONS
+    # ------------------------------------------------------------------
     if asset_positions:
         for pos_item in asset_positions:
             pos = pos_item.get("position", {})
@@ -545,7 +547,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.4.7", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.4.8", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -554,6 +556,52 @@ def execute_engine():
                 "tp_target": "UNCAPPED (Trailing Ratchet)",
                 "status": leash_status
             })
+
+    # ------------------------------------------------------------------
+    # 2. V4.4.8 PATCH: RECONCILE NATIVE EXCHANGE CLOSES (e.g. VVV)
+    # ------------------------------------------------------------------
+    previous_coins = set(state.get("previous_active_coins", []))
+    natively_closed_coins = previous_coins - active_coins - closed_coins_this_run
+
+    if natively_closed_coins:
+        try:
+            user_fills = api_retry(info.user_fills, ACCOUNT_ADDRESS)
+            for coin in natively_closed_coins:
+                cached_pos = current_active_cache.get(coin, {})
+                entry_px = float(cached_pos.get("entry_px", 0.0))
+                side = cached_pos.get("side", "LONG")
+                peak_roe = float(cached_pos.get("peak_roe", 0.0))
+                
+                coin_fills = [f for f in user_fills if f.get("coin") == coin]
+                if coin_fills:
+                    last_fill = coin_fills[0]
+                    exit_px = float(last_fill.get("px", entry_px))
+                    closed_pnl = float(last_fill.get("closedPnl", 0.0))
+                    
+                    if side == "LONG":
+                        roe_pct = (((exit_px - entry_px) / entry_px) * 5.0) * 100 if entry_px > 0 else 0.0
+                    else:
+                        roe_pct = (((entry_px - exit_px) / entry_px) * 5.0) * 100 if entry_px > 0 else 0.0
+
+                    exit_reason = f"🎯 Native Orderbook TPSL Fill (Triggered @ ${exit_px:.5f})"
+                    audit_logs.append(f"✅ RECONCILED NATIVE FILL [{coin}]: Closed @ ${exit_px:.5f} (PnL: ${closed_pnl:+.2f}, ROE: {roe_pct:+.2f}%)")
+                    
+                    if closed_pnl <= 0 or roe_pct <= 0:
+                        state["cooldown_blocklist"][coin] = now_ts + 43200
+                    else:
+                        state["cooldown_blocklist"][coin] = now_ts + 14400
+
+                    state["closed_trades_ledger"].insert(0, {
+                        "coin": coin, "entry_price": entry_px, "exit_price": exit_px,
+                        "pnl_usd": closed_pnl, "roe_pct": roe_pct, "side": side,
+                        "exit_reason": exit_reason, "timestamp": timestamp, "ts_sec": now_ts
+                    })
+                    trade_closed_this_run = True
+                else:
+                    audit_logs.append(f"ℹ️ NATIVELY CLOSED [{coin}]: Orderbook trigger filled on exchange.")
+            save_state(state)
+        except Exception as e:
+            audit_logs.append(f"⚠️ Native reconciliation warning: {e}")
 
     state["active_position_cache"] = new_active_cache
     state["previous_active_coins"] = list(active_coins)
@@ -595,7 +643,6 @@ def execute_engine():
             coin = item["coin"]
             idx = item["rank"]
 
-            # PATCH 1: Transparent Skip Reason Logging
             if idx < 20:
                 audit_logs.append(f"🔍 [{coin}] Skipped: Excluded Top 20 Market Cap Rank (#{idx+1})")
                 continue
@@ -685,7 +732,7 @@ def execute_engine():
                 continue
 
         if not market_candidates:
-            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.4.7 trigger rules on this candle.")
+            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.4.8 trigger rules on this candle.")
         else:
             audit_logs.append(f"🚀 SCAN COMPLETED: {len(market_candidates)} candidate(s) triggered entry setup!")
 
@@ -744,7 +791,7 @@ def execute_engine():
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V4.4.7", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V4.4.8", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -782,7 +829,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.4.7 | Explicit Audit Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.4.8 | Reconciliation Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -858,7 +905,7 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Explicit Audit Scalper (V4.4.7)</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Reconciliation Scalper (V4.4.8)</div>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Forced Scan Active</div>
       </div>
 
@@ -879,10 +926,10 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.4.7 Explicit Audit Rules</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.4.8 Native Fill Reconciliation</div>
+          <div>&bull; <b>Exchange Fill Sync:</b> Automatically catches &amp; logs trades closed natively on exchange</div>
           <div>&bull; <b>Explicit Skip Telemetry:</b> Logs exact reasons top gappers are bypassed</div>
           <div>&bull; <b>Penny Loss Cap:</b> Clamps hard stop to -0.80% ROE (-$0.20 max risk)</div>
-          <div>&bull; <b>No Micro-Choking:</b> Requires +1.50% ROE before setting Fee Shield floor</div>
           <div>&bull; <b>Uncapped Upside Engine:</b> Zero hard TP orders; lets runners ride</div>
         </div>
 
@@ -900,7 +947,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.4.7 Forced Scan Active
+        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.4.8 Forced Scan Active
       </div>
     </div>
   </body>
@@ -913,7 +960,7 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing 15M Explicit Scalper cycle...", flush=True)
+    print(f"[{timestamp}] Executing 15M Reconciliation Scalper cycle...", flush=True)
     try:
         execute_engine()
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 15M cycle completed successfully.", flush=True)
