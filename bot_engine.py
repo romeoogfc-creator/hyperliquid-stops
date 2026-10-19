@@ -354,7 +354,7 @@ def calculate_15m_ross_indicators(candles):
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle_low, peak_roe=0.0, coin="ETH", setup_type="BULLISH_RECLAIM"):
     roe = ((current_px - entry_px) / entry_px * 5.0) if is_long else ((entry_px - current_px) / entry_px * 5.0)
 
-    # Noise-Tolerant Initial Hard Penny Stop (-1.50% ROE / -0.30% Price Move / ~$0.07 Risk)
+    # Noise-Tolerant Initial Hard Penny Stop (-1.50% ROE / -0.30% Price Move)
     initial_floor_roe = -0.0150  
 
     # High Retention Ratchet (80%–97% Profit Lock)
@@ -425,7 +425,7 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.6.7 Engine Started (Noise-Tolerant High Retention Scalper Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.6.8 Engine Started (Refined V-Bottom & Fast Fill Guard Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -475,7 +475,7 @@ def execute_engine():
     required_vol_ratio = 1.35 if gemini_risk == "HIGH" else 1.10
     hod_proximity_pct = 0.0175
     
-    audit_logs.append(f"⚡ V4.6.7 Engine: RVOL >= {required_vol_ratio:.2f}x | Ext Cap <= 0.50% | Noise Stop -1.50% ROE | 80-97% Retention")
+    audit_logs.append(f"⚡ V4.6.8 Engine: RVOL >= {required_vol_ratio:.2f}x | Ext Cap <= 0.50% | Noise Stop -1.50% ROE | 80-97% Retention")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -568,7 +568,7 @@ def execute_engine():
 
             if is_long and current_px <= stop_px_calc:
                 should_exit = True
-                exit_reason = f"🎯 Noise/Retention Ratchet Triggered ({current_roe*100:.2f}% ROE)"
+                exit_reason = f"🎯 Retention Ratchet Triggered ({current_roe*100:.2f}% ROE)"
 
             if should_exit:
                 try:
@@ -619,7 +619,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.6.7", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.6.8", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -686,7 +686,7 @@ def execute_engine():
 
                 time.sleep(0.08)
                 candles = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 86400000, endTime=now_ms)
-                if not candles or len(candles) < 30:
+                if not candles or len(candles) < 32:
                     continue
 
                 current_candle_ts = candles[-1]["t"]
@@ -744,9 +744,9 @@ def execute_engine():
                 is_pullback_proximity = (curr_live_px <= ema9 * 1.0035)
                 is_bullish_reclaim = (is_reclaim_cross and is_pullback_proximity and vol_ratio >= required_vol_ratio and is_macd_positive)
 
-                # Setup 3: V-Bottom Capitulation Reclaim with Strict Volume Sweep
-                recent_30_min = min(lows[-30:])
-                is_capitulation_low = (lows[-1] <= recent_30_min)
+                # Setup 3: Refined V-Bottom Capitulation Sweep (Compares current sweep against preceding 30 bars)
+                prev_30_min = min(lows[-31:-1])
+                is_capitulation_low = (lows[-1] <= prev_30_min)
                 candle_range = max(1e-8, highs[-1] - lows[-1])
                 body_bottom = min(float(candles[-1]["o"]), curr_live_px)
                 lower_wick_ratio = (body_bottom - lows[-1]) / candle_range
@@ -769,7 +769,7 @@ def execute_engine():
                 continue
 
         if not market_candidates:
-            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.6.7 trigger rules on this candle.")
+            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.6.8 trigger rules on this candle.")
         else:
             audit_logs.append(f"🚀 SCAN COMPLETED: {len(market_candidates)} candidate(s) triggered entry setup!")
 
@@ -804,7 +804,8 @@ def execute_engine():
                 except Exception:
                     pass
 
-                res = exchange.market_open(coin, is_long, sz, px, slippage=0.001)
+                # Fast-Market Execution Guard with 0.5% slippage limit parameter
+                res = exchange.market_open(coin, is_long, sz, px, slippage=0.005)
                 if res.get("status") == "ok":
                     active_count += 1
                     active_coins.add(coin)
@@ -827,7 +828,7 @@ def execute_engine():
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V4.6.7", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V4.6.8", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -865,7 +866,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.6.7 | Noise-Tolerant Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.6.8 | Refined V-Bottom Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -945,7 +946,7 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Noise-Tolerant Scalper (V4.6.7)</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Refined V-Bottom Scalper (V4.6.8)</div>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Forced Scan Active</div>
       </div>
 
@@ -966,11 +967,11 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.6.7 Noise-Tolerant Rules</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.6.8 Refined Rules</div>
+          <div>&bull; <b>Refined V-Bottom Sweep:</b> Validates current bar flush against preceding 30-bar baseline</div>
+          <div>&bull; <b>Fast Fill Guard:</b> 0.5% slippage tolerance prevents order rejections during fast surges</div>
           <div>&bull; <b>Noise-Tolerant Penny Stop:</b> -1.50% ROE (-0.30% price move) protects against orderbook spread noise</div>
           <div>&bull; <b>High Retention Ratchet:</b> Locks 85% @ +2.0% ROE, 90% @ +4.0% ROE, 95%+ @ +8.0% ROE</div>
-          <div>&bull; <b>Volume V-Bottom Sweep:</b> Buys low-wick capitulations on 30-bar lows with RVOL &ge; 1.75x</div>
-          <div>&bull; <b>12H Anti-Churn Blocklist:</b> Blocks micro-reentries on volatile/choppy coins</div>
         </div>
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
@@ -987,7 +988,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.6.7 Forced Scan Active
+        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.6.8 Forced Scan Active
       </div>
     </div>
   </body>
@@ -1000,7 +1001,7 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing 15M Noise-Tolerant Scalper cycle...", flush=True)
+    print(f"[{timestamp}] Executing 15M Refined V-Bottom Scalper cycle...", flush=True)
     try:
         execute_engine()
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 15M cycle completed successfully.", flush=True)
