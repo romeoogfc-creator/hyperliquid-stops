@@ -102,8 +102,8 @@
     "ETHFI": 1,
     "VVV": 0,
     "VIRTUAL": 2,
-    "KAS": 1,
-    "WLFI": 1
+    "KAS": 2,
+    "WLFI": 2
   },
   "closed_trades_ledger": [
     {
@@ -220,38 +220,36 @@
   "active_position_cache": {
     "KAS": {
       "entry_px": 0.035969,
-      "current_px": 0.035962,
+      "current_px": 0.035946,
       "szi": 666.0,
-      "margin": 23.956686,
+      "margin": 23.934708,
       "side": "LONG",
       "peak_roe": -0.0009730601351163586,
       "strategy": "15M_RECLAIM_SCALPER",
-      "entry_candle_low": 0.035975,
-      "entry_candle_high": 0.036125
+      "entry_candle_low": 0.035975
     },
     "WLFI": {
       "entry_px": 0.057571,
-      "current_px": 0.057529,
+      "current_px": 0.057499,
       "szi": 416.0,
-      "margin": 23.933728,
+      "margin": 23.92208,
       "side": "LONG",
       "peak_roe": -0.003647669833770507,
       "strategy": "15M_RECLAIM_SCALPER",
-      "entry_candle_low": 0.05761,
-      "entry_candle_high": 0.057846
+      "entry_candle_low": 0.05761
     }
   },
   "previous_active_coins": [
-    "KAS",
-    "WLFI"
+    "WLFI",
+    "KAS"
   ],
-  "last_run_timestamp": "2026-10-18 22:25:47",
-  "last_email_timestamp": 1792380029.2559965,
-  "last_scan_timestamp": 1792380332.4087806,
+  "last_run_timestamp": "2026-10-18 22:29:33",
+  "last_email_timestamp": 1792380561.5330715,
+  "last_scan_timestamp": 1792380561.5330715,
   "gemini_cache": {
-    "timestamp": 1792380332.4087806,
+    "timestamp": 1792380561.5330715,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts and regulatory uncertainty, leading to significant volatility that can trigger rapid liquidations in either direction."
+    "briefing": "**Risk Level: HIGH**\n\nThe market is currently characterized by heightened volatility, significant regulatory uncertainty, and shifting macroeconomic expectations, necessitating extreme caution for leveraged positions and speculative assets."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
