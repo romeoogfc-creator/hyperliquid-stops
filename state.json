@@ -248,11 +248,11 @@
   "active_position_cache": {
     "CHIP": {
       "entry_px": 0.041516,
-      "current_px": 0.041812,
+      "current_px": 0.042023,
       "szi": 574.0,
-      "margin": 8.000603,
+      "margin": 8.042505,
       "side": "LONG",
-      "peak_roe": 0.035648906445708235,
+      "peak_roe": 0.06106079583774937,
       "strategy": "BULLISH_RECLAIM",
       "entry_candle_low": 0.041499,
       "entry_time_sec": 1792447123.915205
@@ -261,13 +261,13 @@
   "previous_active_coins": [
     "CHIP"
   ],
-  "last_run_timestamp": "2026-10-19 17:06:03",
+  "last_run_timestamp": "2026-10-19 17:10:43",
   "last_email_timestamp": 1792447123.915205,
-  "last_scan_timestamp": 1792447531.3093789,
+  "last_scan_timestamp": 1792447827.3461843,
   "gemini_cache": {
-    "timestamp": 1792447531.3093789,
+    "timestamp": 1792447827.3461843,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe market is currently characterized by heightened volatility driven by macroeconomic uncertainty, regulatory scrutiny, and significant leverage, creating a fragile environment prone to rapid liquidity swings."
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of looser monetary policy, the asset class remains highly sensitive to macroeconomic volatility and sudden liquidity shifts, necessitating a cautious outlook despite the bullish trend."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
