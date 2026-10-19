@@ -97,7 +97,10 @@
     "RUNE": 1,
     "NEAR": 1,
     "ETHFI": 1,
-    "VVV": 0
+    "VVV": 0,
+    "COMP": 1,
+    "VIRTUAL": 1,
+    "PUMP": 1
   },
   "closed_trades_ledger": [
     {
@@ -213,35 +216,51 @@
   ],
   "active_position_cache": {
     "COMP": {
-      "strategy": "HOD_BREAKOUT",
-      "entry_px": 21.6655,
+      "entry_px": 21.668,
+      "current_px": 21.6655,
+      "szi": 1.11,
+      "margin": 4.80852,
       "side": "LONG",
+      "peak_roe": -0.0005768875761486354,
+      "strategy": "15M_RECLAIM_SCALPER",
       "entry_candle_low": 21.625,
       "entry_candle_high": 21.692
     },
     "VIRTUAL": {
-      "strategy": "HOD_BREAKOUT",
-      "entry_px": 0.66264,
+      "entry_px": 0.66273,
+      "current_px": 0.66309,
+      "szi": 36.3,
+      "margin": 24.066537,
       "side": "LONG",
+      "peak_roe": 0.002716038205603458,
+      "strategy": "15M_RECLAIM_SCALPER",
       "entry_candle_low": 0.66277,
       "entry_candle_high": 0.66611
     },
     "PUMP": {
-      "strategy": "HOD_BREAKOUT",
-      "entry_px": 0.00449,
+      "entry_px": 0.004484,
+      "current_px": 0.004479,
+      "szi": 5344.0,
+      "margin": 23.94112,
       "side": "LONG",
+      "peak_roe": -0.0055753791257803255,
+      "strategy": "15M_RECLAIM_SCALPER",
       "entry_candle_low": 0.004382,
       "entry_candle_high": 0.004456
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-18 22:08:16",
+  "previous_active_coins": [
+    "COMP",
+    "PUMP",
+    "VIRTUAL"
+  ],
+  "last_run_timestamp": "2026-10-18 22:10:31",
   "last_email_timestamp": 1792379275.5167933,
   "last_scan_timestamp": 1792379275.5167933,
   "gemini_cache": {
-    "timestamp": 1792379275.5167933,
+    "timestamp": 1792379424.1017551,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic data, shifting regulatory landscapes, and high leverage, which leaves assets vulnerable to sharp, liquidity-driven corrections."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, heightened regulatory scrutiny, and the potential for sharp liquidations following recent price rallies."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
