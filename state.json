@@ -222,13 +222,13 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-19 02:45:45",
+  "last_run_timestamp": "2026-10-19 02:50:42",
   "last_email_timestamp": 1792395630.292233,
-  "last_scan_timestamp": 1792395929.0545247,
+  "last_scan_timestamp": 1792396229.470869,
   "gemini_cache": {
-    "timestamp": 1792395929.0545247,
+    "timestamp": 1792396229.470869,
     "risk": "HIGH",
-    "briefing": "Risk Level: HIGH; while institutional inflows via ETFs provide structural support, the market remains hypersensitive to shifting macroeconomic interest rate expectations and regulatory uncertainty, which continue to drive significant short-term volatility."
+    "briefing": "Risk Level: **HIGH** \u2014 Continued macroeconomic uncertainty, regulatory scrutiny, and high market volatility create a landscape where significant price swings remain likely in the immediate term."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
