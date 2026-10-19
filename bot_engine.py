@@ -365,7 +365,7 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle
     initial_floor_roe = -0.0200  
     drawdown_from_peak = peak_roe - roe
 
-    # V4.7.4 Intrabar Peak Climax Exhaustion Guard
+    # V4.7.5 Micro-Fee Lock & Climax Protection
     is_exhaustion = (peak_roe >= 0.0400) and (drawdown_from_peak >= 0.0040 or upper_wick_pct >= 0.45)
 
     if is_exhaustion:
@@ -377,12 +377,9 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle
     elif peak_roe >= 0.0400:
         target_floor_roe = max(peak_roe * 0.80, peak_roe - 0.0120)
         leash_status = f"🎯 EXPANSION RATCHET (80% LOCKED) [Peak +{peak_roe*100:.2f}% -> Stop +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.0200:
-        target_floor_roe = max(0.0080, peak_roe * 0.70)
-        leash_status = f"⚡ PROFIT LOCK (+{target_floor_roe*100:.2f}% ROE)"
-    elif peak_roe >= 0.0100:
-        target_floor_roe = 0.0050
-        leash_status = f"🛡 FEE FLOOR LOCKED (+0.50% ROE)"
+    elif peak_roe >= 0.0080:  # Micro-Fee Lock at +0.80% ROE
+        target_floor_roe = 0.0020  # +0.20% ROE covers roundtrip exchange fees
+        leash_status = f"🛡 FEE FLOOR LOCKED (+0.20% ROE)"
     else:
         target_floor_roe = initial_floor_roe
         leash_status = f"🛡 HARD PENNY STOP ({target_floor_roe*100:.2f}% ROE)"
@@ -438,7 +435,7 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.7.4 Engine Started (Climax Exhaustion Guard Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.7.5 Engine Started (Real-Time Stagnation & $500k Vol Gate Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -488,7 +485,7 @@ def execute_engine():
     required_vol_ratio = 1.65 if gemini_risk == "HIGH" else 1.20
     hod_proximity_pct = 0.0150
     
-    audit_logs.append(f"⚡ V4.7.4 Engine: Climax Exhaustion Guard Active | Depth >= $2,000 | Spread <= 0.08% | 3.5m Pacing Gate Active")
+    audit_logs.append(f"⚡ V4.7.5 Engine: Real-Time 30M Stagnation | 24H Vol >= $500k | Depth >= $2,000 | Spread <= 0.08%")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -557,8 +554,14 @@ def execute_engine():
             cache_info = current_active_cache.get(coin, {})
             entry_candle_low = cache_info.get("entry_candle_low", entry_px * 0.9920)
             strat_type = cache_info.get("strategy", "BULLISH_RECLAIM")
+            entry_ts = float(cache_info.get("entry_time_sec", now_ts))
 
-            # Check candle wicks for exhaustion
+            # Real-Time Timestamp Stagnation Cut (30 Mins Max if ROE < +0.30%)
+            held_duration_mins = (now_ts - entry_ts) / 60.0
+            if held_duration_mins >= 30.0 and current_roe < 0.0030:
+                should_exit = True
+                exit_reason = f"⏱️ 30M Real-Time Stagnation Cut ({current_roe*100:.2f}% ROE after {held_duration_mins:.0f}m)"
+
             upper_wick_ratio = 0.0
             try:
                 c_snap = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 1800000, endTime=now_ms)
@@ -570,20 +573,6 @@ def execute_engine():
                     upper_wick_ratio = (c_high - body_top) / c_range
             except Exception:
                 pass
-
-            stag_map = state.get("stagnation_tracker", {})
-            curr_stag = stag_map.get(coin, 0)
-            if current_roe < 0.0050:
-                curr_stag += 1
-                if "stagnation_tracker" not in state:
-                    state["stagnation_tracker"] = {}
-                state["stagnation_tracker"][coin] = curr_stag
-                if curr_stag >= 3:
-                    should_exit = True
-                    exit_reason = f"⏱️ 45M Range Stagnation Cut ({current_roe*100:.2f}% ROE)"
-            else:
-                if "stagnation_tracker" in state and coin in state["stagnation_tracker"]:
-                    state["stagnation_tracker"][coin] = 0
 
             prev_peak = cache_info.get("peak_roe", current_roe)
             peak_roe = max(current_roe, prev_peak)
@@ -612,9 +601,6 @@ def execute_engine():
                     exchange.market_close(coin, slippage=0.01)
                     closed_coins_this_run.add(coin)
 
-                    if "stagnation_tracker" in state:
-                        state["stagnation_tracker"].pop(coin, None)
-
                     if unrealized_pnl <= 0 or current_roe <= 0:
                         state["cooldown_blocklist"][coin] = now_ts + 14400
                     else:
@@ -641,11 +627,11 @@ def execute_engine():
                 "entry_px": entry_px, "current_px": current_px, "szi": szi, 
                 "margin": margin_used, "side": "LONG" if is_long else "SHORT",
                 "peak_roe": peak_roe, "strategy": strat_type,
-                "entry_candle_low": entry_candle_low
+                "entry_candle_low": entry_candle_low, "entry_time_sec": entry_ts
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.7.4", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.7.5", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -676,10 +662,15 @@ def execute_engine():
                 ctx = asset_ctxs[idx] if idx < len(asset_ctxs) else {}
                 prev_px = float(ctx.get("prevDayPx", 0.0))
                 mark_px = float(ctx.get("markPx", 0.0))
+                volume_24h_usd = float(ctx.get("dayNtlVlm", 0.0))
+
+                # $500,000 24H Volume Gate
+                if volume_24h_usd < 500000.0:
+                    continue
 
                 if prev_px > 0 and mark_px > 0:
                     change_24h = ((mark_px - prev_px) / prev_px) * 100
-                    all_eligible_coins.append({"coin": coin, "change_24h": change_24h, "rank": idx, "mark_px": mark_px})
+                    all_eligible_coins.append({"coin": coin, "change_24h": change_24h, "rank": idx, "mark_px": mark_px, "vlm_24h": volume_24h_usd})
             except Exception:
                 continue
 
@@ -690,6 +681,7 @@ def execute_engine():
         for item in all_eligible_coins[:35]:
             coin = item["coin"]
             idx = item["rank"]
+            vlm_24h = item["vlm_24h"]
 
             if idx < 20:
                 continue
@@ -723,7 +715,6 @@ def execute_engine():
                 candle_start_ms = candles[-1]["t"]
                 elapsed_mins = (now_ms - candle_start_ms) / 60000.0
 
-                # 3.5-Minute Candle Pacing Gate
                 if elapsed_mins < 3.5:
                     audit_logs.append(f"🔍 [{coin}] Skipped: Candle Pacing Gate ({elapsed_mins:.1f}m < 3.5m)")
                     continue
@@ -785,7 +776,7 @@ def execute_engine():
                     setup_type = "V_BOTTOM_RECLAIM" if is_v_bottom else ("HOD_BREAKOUT" if is_breakout else "BULLISH_RECLAIM")
                     score = vol_ratio * (3.0 if setup_type == "V_BOTTOM_RECLAIM" else (1.5 if setup_type == "BULLISH_RECLAIM" else 1.0))
 
-                    audit_logs.append(f"🔥 [{coin}] TRIGGERED [{setup_type}] @ ${curr_live_px:.4f} | RVOL:{vol_ratio:.2f}x | Ext:{extension_pct*100:+.2f}%")
+                    audit_logs.append(f"🔥 [{coin}] TRIGGERED [{setup_type}] @ ${curr_live_px:.4f} | RVOL:{vol_ratio:.2f}x | 24H Vol:${vlm_24h/1e3:.0f}k")
 
                     market_candidates.append({
                         "coin": coin, "close": curr_live_px, "is_long": True, 
@@ -797,14 +788,13 @@ def execute_engine():
                 continue
 
         if not market_candidates:
-            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.7.4 trigger rules on this candle.")
+            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.7.5 trigger rules on this candle.")
         else:
             audit_logs.append(f"🚀 SCAN COMPLETED: {len(market_candidates)} candidate(s) triggered entry setup!")
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
     trades_executed = False
 
-    # Enforce Single-Slot Entry Stagger (Max 1 Entry Per Pass)
     if available_slots > 0 and market_candidates:
         single_best_candidate = market_candidates[0]
         coin = single_best_candidate["coin"]
@@ -845,7 +835,7 @@ def execute_engine():
                         state["active_position_cache"] = {}
                     state["active_position_cache"][coin] = {
                         "strategy": strat_used, "entry_px": px, "side": "LONG" if is_long else "SHORT",
-                        "entry_candle_low": e_candle_low
+                        "entry_candle_low": e_candle_low, "entry_time_sec": now_ts
                     }
 
                     initial_stop_px, initial_tp_px, _, _, initial_status = calculate_smart_exchange_targets(
@@ -854,7 +844,7 @@ def execute_engine():
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V4.7.4", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V4.7.5", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -892,7 +882,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.7.4 | Climax Guard Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.7.5 | Real-Time Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -972,7 +962,7 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Climax Guard Scalper (V4.7.4)</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Real-Time Scalper (V4.7.5)</div>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Forced Scan Active</div>
       </div>
 
@@ -993,11 +983,10 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.7.4 Climax Rules</div>
-          <div>&bull; <b>Peak Climax Exhaustion Lock:</b> Automatically locks peak - 0.30% ROE upon 0.40% drop or upper wick</div>
-          <div>&bull; <b>Dynamic Breathing Room:</b> Allows normal pullbacks until a climax pattern emerges</div>
-          <div>&bull; <b>Quality Liquidity Gate:</b> Requires $2,000 depth and max 0.08% spread cap</div>
-          <div>&bull; <b>Single-Slot Stagger:</b> Max 1 entry per scan pass to prevent cluster risk</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.7.5 Upgrades</div>
+          <div>&bull; <b>$500k 24H Volume Gate:</b> Excludes illiquid micro-caps like PEOPLE ($124k)</div>
+          <div>&bull; <b>Real-Time 30M Stagnation Cut:</b> Uses system timestamps to hard-exit dead positions after 30 mins</div>
+          <div>&bull; <b>Micro-Fee Lock:</b> Locks +0.20% ROE floor once peak hits +0.80% ROE to guarantee positive net trades</div>
         </div>
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
@@ -1014,7 +1003,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.7.4 Forced Scan Active
+        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.7.5 Forced Scan Active
       </div>
     </div>
   </body>
@@ -1027,7 +1016,7 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing 15M Climax Guard Scalper cycle...", flush=True)
+    print(f"[{timestamp}] Executing 15M Real-Time Scalper cycle...", flush=True)
     try:
         execute_engine()
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 15M cycle completed successfully.", flush=True)
