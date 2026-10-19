@@ -336,21 +336,27 @@
   ],
   "active_position_cache": {
     "VVV": {
-      "strategy": "15M_EXPLICIT_SCALPER",
-      "entry_px": 23.366,
+      "entry_px": 23.409,
+      "current_px": 23.5405,
+      "szi": 0.37,
+      "margin": 8.70721,
       "side": "LONG",
+      "peak_roe": 0.028087487718399466,
+      "strategy": "15M_EXPLICIT_SCALPER",
       "entry_candle_low": 22.79,
       "entry_candle_high": 22.965
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-18 20:35:37",
+  "previous_active_coins": [
+    "VVV"
+  ],
+  "last_run_timestamp": "2026-10-18 20:40:39",
   "last_email_timestamp": 1792373728.5321553,
-  "last_scan_timestamp": 1792373728.5321553,
+  "last_scan_timestamp": 1792374033.455298,
   "gemini_cache": {
-    "timestamp": 1792373728.5321553,
+    "timestamp": 1792374033.455298,
     "risk": "HIGH",
-    "briefing": "Risk Level: HIGH; while institutional inflows provide a foundational floor, the market remains extremely sensitive to macroeconomic volatility and sudden deleveraging events that can trigger rapid, outsized price swings."
+    "briefing": "Risk Level: **HIGH** \u2014 Increased market volatility driven by macroeconomic uncertainty, regulatory scrutiny, and high leverage necessitates extreme caution despite ongoing institutional adoption."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
