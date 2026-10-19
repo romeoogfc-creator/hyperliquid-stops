@@ -240,21 +240,21 @@
   "active_position_cache": {
     "DOT": {
       "entry_px": 1.1294,
-      "current_px": 1.1392,
+      "current_px": 1.14195,
       "szi": 21.1,
-      "margin": 24.040285,
+      "margin": 24.09198,
       "side": "LONG",
-      "peak_roe": 0.04338586860279808,
+      "peak_roe": 0.05556047458827724,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 1.1258
     },
     "EIGEN": {
       "entry_px": 0.2385,
-      "current_px": 0.2411,
+      "current_px": 0.2416,
       "szi": 99.93,
-      "margin": 4.816626,
+      "margin": 4.828617,
       "side": "LONG",
-      "peak_roe": 0.054507337526205846,
+      "peak_roe": 0.06498951781970691,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.2362
     }
@@ -263,13 +263,13 @@
     "DOT",
     "EIGEN"
   ],
-  "last_run_timestamp": "2026-10-19 09:51:04",
-  "last_email_timestamp": 1792420822.8012311,
-  "last_scan_timestamp": 1792421427.9078267,
+  "last_run_timestamp": "2026-10-19 09:55:52",
+  "last_email_timestamp": 1792421738.664381,
+  "last_scan_timestamp": 1792421738.664381,
   "gemini_cache": {
-    "timestamp": 1792421427.9078267,
+    "timestamp": 1792421738.664381,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH**\n\nCurrent crypto markets face severe tailwinds from macroeconomic uncertainty, regulatory crackdowns, and fragile liquidity, making sudden downward volatility extremely likely."
+    "briefing": "**Risk Level: HIGH** \n\nDriven by persistent macroeconomic tightening, ongoing regulatory crackdowns, and elevated market leverage, the current crypto environment faces severe downside vulnerability and heightened volatility."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
