@@ -307,7 +307,15 @@ def sync_closed_trades_from_exchange(info, account_address, state, audit_logs, c
                 if (now_ts - (fill_time_ms / 1000.0)) <= 900:
                     audit_logs.append(f"✅ EXCHANGED FILL SYNCED [{entry_card['coin']}]: {entry_card['side']} Exit @ ${entry_card['exit_price']} | PnL: ${entry_card['pnl_usd']:+.2f} ({entry_card['roe_pct']:+.2f}% ROE)")
 
-            state["closed_trades_ledger"] = existing_ledger[:10]
+            # Deduplicate & enforce strict descending sort by timestamp
+            dedup_map = {}
+            for t in existing_ledger:
+                k = f"{t.get('coin')}_{t.get('ts_sec', 0)}"
+                if k not in dedup_map:
+                    dedup_map[k] = t
+            
+            sorted_ledger = sorted(list(dedup_map.values()), key=lambda x: float(x.get("ts_sec", 0)), reverse=True)
+            state["closed_trades_ledger"] = sorted_ledger[:10]
             state["seen_fill_hashes"] = list(seen_hashes)[-100:]
     except Exception as e:
         audit_logs.append(f"⚠️ Direct fill sync notice: {e}")
@@ -417,7 +425,7 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.5.0 Engine Started (Filtered Session Scalper Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.5.1 Engine Started (Sorted Session Scalper Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -467,7 +475,7 @@ def execute_engine():
     required_vol_ratio = 1.12
     hod_proximity_pct = 0.0175
     
-    audit_logs.append(f"⚡ V4.5.0 Filtered Scalper: Target RVOL >= {required_vol_ratio:.2f}x | HOD Proximity <= {hod_proximity_pct*100:.2f}% | Max Loss -$0.20 Cap")
+    audit_logs.append(f"⚡ V4.5.1 Sorted Scalper: Target RVOL >= {required_vol_ratio:.2f}x | HOD Proximity <= {hod_proximity_pct*100:.2f}% | Max Loss -$0.20 Cap")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -611,7 +619,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.5.0", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.5.1", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -750,7 +758,7 @@ def execute_engine():
                 continue
 
         if not market_candidates:
-            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.5.0 trigger rules on this candle.")
+            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.5.1 trigger rules on this candle.")
         else:
             audit_logs.append(f"🚀 SCAN COMPLETED: {len(market_candidates)} candidate(s) triggered entry setup!")
 
@@ -809,7 +817,7 @@ def execute_engine():
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V4.5.0", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V4.5.1", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -847,7 +855,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.5.0 | Filtered Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.5.1 | Sorted Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -875,7 +883,7 @@ def execute_engine():
             positions_cards = '<div style="padding: 12px; text-align: center; color: #666666; font-size: 11px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px;">No active positions.</div>'
 
         closed_cards = ""
-        closed_ledger = sorted(state.get("closed_trades_ledger", []), key=lambda x: x.get("timestamp", ""), reverse=True)
+        closed_ledger = sorted(state.get("closed_trades_ledger", []), key=lambda x: float(x.get("ts_sec", 0)), reverse=True)
         total_realized_pnl = sum(float(t.get('pnl_usd', 0.0)) for t in closed_ledger[:10])
 
         if closed_ledger:
@@ -884,6 +892,7 @@ def execute_engine():
                 roe_val = float(t.get('roe_pct', 0.0))
                 pnl_color = '#2e7d32' if pnl_val >= 0 else '#c62828'
                 side_color = '#2e7d32' if t.get('side') == 'LONG' else '#c62828'
+                ts_display = t.get('timestamp', 'N/A')
                 closed_cards += f"""
                 <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 8px;">
                   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
@@ -893,10 +902,13 @@ def execute_engine():
                     </div>
                     <span style="font-weight: 700; font-size: 13px; color: {pnl_color};">${pnl_val:+.2f} ({roe_val:+.2f}%)</span>
                   </div>
-                  <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">
+                  <div style="font-size: 11px; color: #475569; margin-bottom: 3px;">
                     <b>Entry:</b> ${round_sig_figs(t.get('entry_price', 0), 5)} &bull; <b>Exit:</b> ${round_sig_figs(t.get('exit_price', 0), 5)}
                   </div>
-                  <div style="font-size: 10px; color: #b45309; margin-bottom: 2px;">
+                  <div style="font-size: 10px; color: #64748b; margin-bottom: 3px;">
+                    <b>Time:</b> {ts_display}
+                  </div>
+                  <div style="font-size: 10px; color: #b45309;">
                     <b>Reason:</b> {t.get('exit_reason', 'N/A')}
                   </div>
                 </div>
@@ -923,7 +935,7 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Filtered Scalper (V4.5.0)</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Sorted Scalper (V4.5.1)</div>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Forced Scan Active</div>
       </div>
 
@@ -944,9 +956,9 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.5.0 Filtered Rules</div>
-          <div>&bull; <b>Filtered Session Sync:</b> Ignores ancient fills; syncs strictly active session trades</div>
-          <div>&bull; <b>Explicit Skip Telemetry:</b> Logs exact reasons top gappers are bypassed</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.5.1 Sorted Rules</div>
+          <div>&bull; <b>Timestamped Cards:</b> Displays exact date &amp; time (Texas CT) on every closed trade card</div>
+          <div>&bull; <b>Strict Descending Sorting:</b> Guarantees newest closed trade is always card #1 at top</div>
           <div>&bull; <b>Penny Loss Cap:</b> Clamps hard stop to -0.80% ROE (-$0.20 max risk)</div>
           <div>&bull; <b>Uncapped Upside Engine:</b> Zero hard TP orders; lets runners ride</div>
         </div>
@@ -965,7 +977,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.5.0 Forced Scan Active
+        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.5.1 Forced Scan Active
       </div>
     </div>
   </body>
@@ -978,7 +990,7 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing 15M Filtered Scalper cycle...", flush=True)
+    print(f"[{timestamp}] Executing 15M Sorted Scalper cycle...", flush=True)
     try:
         execute_engine()
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 15M cycle completed successfully.", flush=True)
