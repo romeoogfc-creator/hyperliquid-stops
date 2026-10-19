@@ -60,7 +60,7 @@
     "BOME": 1791707700000,
     "ZRO": 1791711900000,
     "MEGA": 1791723000000,
-    "ETHFI": 1791726300000,
+    "ETHFI": 1792375200000,
     "MANTA": 1791727800000,
     "IO": 1791786600000,
     "APT": 1791728700000,
@@ -335,22 +335,22 @@
     }
   ],
   "active_position_cache": {
-    "VVV": {
+    "ETHFI": {
       "strategy": "15M_EXPLICIT_SCALPER",
-      "entry_px": 24.0095,
+      "entry_px": 0.69711,
       "side": "LONG",
-      "entry_candle_low": 23.615,
-      "entry_candle_high": 23.94
+      "entry_candle_low": 0.69128,
+      "entry_candle_high": 0.69495
     }
   },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-18 21:05:38",
-  "last_email_timestamp": 1792375527.7464073,
-  "last_scan_timestamp": 1792375527.7464073,
+  "last_run_timestamp": "2026-10-18 21:10:37",
+  "last_email_timestamp": 1792375828.7733288,
+  "last_scan_timestamp": 1792375828.7733288,
   "gemini_cache": {
-    "timestamp": 1792375527.7464073,
+    "timestamp": 1792375828.7733288,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic uncertainty, shifting regulatory landscapes, and extreme volatility fueled by speculative leverage, necessitating caution despite recent bullish sentiment."
+    "briefing": "**Risk Level: HIGH**\n\nThe market is currently characterized by heightened volatility driven by macroeconomic uncertainty, regulatory scrutiny, and significant speculative leverage, creating a landscape prone to sharp, sudden corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
