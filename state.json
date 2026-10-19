@@ -123,7 +123,7 @@
     "ZK": 2,
     "WLD": 0,
     "BCH": 1,
-    "DOT": 0
+    "DOT": 1
   },
   "closed_trades_ledger": [
     {
@@ -238,27 +238,38 @@
     }
   ],
   "active_position_cache": {
-    "EIGEN": {
-      "strategy": "HOD_BREAKOUT",
-      "entry_px": 0.2381,
-      "side": "LONG",
-      "entry_candle_low": 0.2362
-    },
     "DOT": {
-      "strategy": "HOD_BREAKOUT",
-      "entry_px": 1.12835,
+      "entry_px": 1.1294,
+      "current_px": 1.13025,
+      "szi": 21.1,
+      "margin": 23.84511,
       "side": "LONG",
+      "peak_roe": 0.003763060031875409,
+      "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 1.1258
+    },
+    "EIGEN": {
+      "entry_px": 0.2385,
+      "current_px": 0.2394,
+      "szi": 99.93,
+      "margin": 4.786647,
+      "side": "LONG",
+      "peak_roe": 0.018867924528302136,
+      "strategy": "HOD_BREAKOUT",
+      "entry_candle_low": 0.2362
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-19 09:40:47",
+  "previous_active_coins": [
+    "EIGEN",
+    "DOT"
+  ],
+  "last_run_timestamp": "2026-10-19 09:45:36",
   "last_email_timestamp": 1792420822.8012311,
-  "last_scan_timestamp": 1792420822.8012311,
+  "last_scan_timestamp": 1792421121.6178465,
   "gemini_cache": {
-    "timestamp": 1792420822.8012311,
+    "timestamp": 1792421121.6178465,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nPersistent macroeconomic tightening, ongoing regulatory crackdowns, and fragile market liquidity create an environment highly susceptible to sudden downward volatility and liquidity crunches."
+    "briefing": "Risk Level: **HIGH** \u2014 Persistent macroeconomic uncertainty, ongoing regulatory crackdowns, and fragile market liquidity create a volatile environment where downside contagion risks heavily outweigh short-term upside potential."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
