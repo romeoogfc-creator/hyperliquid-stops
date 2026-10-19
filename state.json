@@ -221,11 +221,11 @@
   "active_position_cache": {
     "UNI": {
       "entry_px": 7.3674,
-      "current_px": 7.38715,
+      "current_px": 7.4122,
       "szi": 3.3,
-      "margin": 24.3771,
+      "margin": 24.45927,
       "side": "LONG",
-      "peak_roe": 0.01340364307625496,
+      "peak_roe": 0.030404213155251783,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 7.3331
     }
@@ -233,13 +233,13 @@
   "previous_active_coins": [
     "UNI"
   ],
-  "last_run_timestamp": "2026-10-19 00:30:39",
+  "last_run_timestamp": "2026-10-19 00:35:40",
   "last_email_timestamp": 1792387528.6233068,
-  "last_scan_timestamp": 1792387823.8902788,
+  "last_scan_timestamp": 1792388127.5717647,
   "gemini_cache": {
-    "timestamp": 1792387823.8902788,
+    "timestamp": 1792388127.5717647,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, upcoming regulatory scrutiny, and significant volatility surrounding global liquidity trends."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting regulatory landscapes, and extreme volatility typical of current leverage-heavy positioning."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
