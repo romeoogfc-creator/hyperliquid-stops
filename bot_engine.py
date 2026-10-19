@@ -74,7 +74,8 @@ def load_state():
         "last_email_timestamp": 0,
         "last_scan_timestamp": 0,
         "gemini_cache": {},
-        "daily_starting_equity": {}
+        "daily_starting_equity": {},
+        "seen_fill_hashes": []
     }
     if os.path.exists(STATE_FILE):
         try:
@@ -245,6 +246,66 @@ def sync_native_trigger_orders(exchange, info, coin, is_long, sz, stop_px, tp_px
         if audit_logs is not None:
             audit_logs.append(f"⚠️ TPSL sync warning on {coin}: {e}")
 
+def sync_closed_trades_from_exchange(info, account_address, state, audit_logs):
+    try:
+        fills = api_retry(info.user_fills, account_address)
+        if not fills:
+            return
+
+        seen_hashes = set(state.get("seen_fill_hashes", []))
+        new_entries = []
+
+        for f in fills:
+            f_hash = str(f.get("hash") or f"{f.get('coin')}_{f.get('tid')}_{f.get('time')}")
+            if f_hash in seen_hashes:
+                continue
+
+            closed_pnl = float(f.get("closedPnl", 0.0))
+            f_dir = str(f.get("dir", "")).lower()
+
+            if closed_pnl != 0.0 or "close" in f_dir:
+                coin = f.get("coin")
+                px = float(f.get("px", 0.0))
+                sz = float(f.get("sz", 0.0))
+                fill_time_ms = int(f.get("time", 0))
+
+                dt_fill = datetime.fromtimestamp(fill_time_ms / 1000.0, tz=timezone.utc)
+                ct_dt = dt_fill.astimezone(ZoneInfo("America/Chicago")) if ZoneInfo else dt_fill
+                ts_str = ct_dt.strftime('%Y-%m-%d %H:%M:%S')
+
+                side = "LONG" if ("close long" in f_dir or "sell" in f_dir) else "SHORT"
+                entry_px = px - (closed_pnl / sz) if sz > 0 else px
+                roe_pct = (closed_pnl / (sz * entry_px / 5.0) * 100.0) if (sz > 0 and entry_px > 0) else 0.0
+
+                reason = "🎯 Native Exchange Orderbook Fill (Profit Target)" if closed_pnl > 0 else "🛡️ Native Exchange Orderbook Fill (Penny Stop)"
+
+                entry_card = {
+                    "coin": coin,
+                    "entry_price": round_sig_figs(entry_px, 5),
+                    "exit_price": round_sig_figs(px, 5),
+                    "pnl_usd": round(closed_pnl, 2),
+                    "roe_pct": round(roe_pct, 2),
+                    "side": side,
+                    "exit_reason": reason,
+                    "timestamp": ts_str,
+                    "ts_sec": fill_time_ms / 1000.0
+                }
+                new_entries.append((fill_time_ms, entry_card, f_hash))
+
+        if new_entries:
+            new_entries.sort(key=lambda x: x[0], reverse=True)
+            existing_ledger = state.get("closed_trades_ledger", [])
+
+            for _, entry_card, f_hash in new_entries:
+                existing_ledger.insert(0, entry_card)
+                seen_hashes.add(f_hash)
+                audit_logs.append(f"✅ EXCHANGED FILL SYNCED [{entry_card['coin']}]: {entry_card['side']} Exit @ ${entry_card['exit_price']} | PnL: ${entry_card['pnl_usd']:+.2f} ({entry_card['roe_pct']:+.2f}% ROE)")
+
+            state["closed_trades_ledger"] = existing_ledger[:20]
+            state["seen_fill_hashes"] = list(seen_hashes)[-100:]
+    except Exception as e:
+        audit_logs.append(f"⚠️ Direct fill sync notice: {e}")
+
 def calculate_15m_ross_indicators(candles):
     closes = np.array([float(c["c"]) for c in candles])
     highs = np.array([float(c["h"]) for c in candles])
@@ -280,20 +341,18 @@ def calculate_15m_ross_indicators(candles):
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle_low, entry_candle_high, peak_roe=0.0, coin="ETH"):
     roe = ((current_px - entry_px) / entry_px * 5.0) if is_long else ((entry_px - current_px) / entry_px * 5.0)
 
-    # STRICT PENNY LOSS CAP (-0.80% ROE Max Loss = ~$0.20 on $25 trade)
     initial_floor_roe = -0.0080 
 
-    # POSITIVE ASYMMETRIC RATCHET ENGINE
-    if peak_roe < 0.0150: # Below +1.50% ROE: Hold tight hard stop (-$0.20 max loss)
+    if peak_roe < 0.0150:
         target_floor_roe = initial_floor_roe
         leash_status = f"🛡 HARD PENNY STOP ({target_floor_roe*100:.2f}% ROE / -$0.20 MAX)"
-    elif peak_roe < 0.0300: # +1.50% to +3.00% ROE: Lock Fee Shield +0.50% ROE (+$0.12 gain)
+    elif peak_roe < 0.0300:
         target_floor_roe = 0.0050
         leash_status = f"⚡ FEE SHIELD LOCK [Peak +{peak_roe*100:.2f}% -> Floor +0.50%]"
-    elif peak_roe < 0.0800: # +3.00% to +8.00% ROE: Lock 70% of peak gains
+    elif peak_roe < 0.0800:
         target_floor_roe = peak_roe * 0.70
         leash_status = f"🎯 RATCHET LOCK (70%) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
-    else: # +8.00%+ ROE: Trail 1.0% ROE behind peak (Uncapped Runner)
+    else:
         target_floor_roe = peak_roe - 0.0100
         leash_status = f"🚀 MEGA RUNNER UNLOCKED (1.0% LEASH) [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
 
@@ -352,7 +411,7 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.4.8 Engine Started (Reconciliation Scalper Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.4.9 Engine Started (Direct Fill Scalper Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -364,6 +423,13 @@ def execute_engine():
         remaining_hrs = (float(state["hibernating_until"]) - now_ts) / 3600.0
         print(f"[{timestamp}] 🚨 BOT IN 12H EMERGENCY HIBERNATION ({remaining_hrs:.1f}h remaining). Execution halted.", flush=True)
         return
+
+    wallet = eth_account.Account.from_key(SECRET_KEY)
+    exchange = api_retry(Exchange, wallet, constants.MAINNET_API_URL, account_address=ACCOUNT_ADDRESS)
+    info = api_retry(Info, constants.MAINNET_API_URL, skip_ws=True)
+
+    # V4.4.9 DIRECT EXCHANGE FILL SYNCHRONIZATION
+    sync_closed_trades_from_exchange(info, ACCOUNT_ADDRESS, state, audit_logs)
 
     one_hour_ago = now_ts - 3600
     recent_losses = [
@@ -379,10 +445,6 @@ def execute_engine():
         print(f"[{timestamp}] {err_body}", flush=True)
         send_html_dashboard_email("🚨 EMERGENCY HALT: Rolling Circuit Breaker Active", f"<h3>{err_body}</h3>", err_body)
         return
-
-    wallet = eth_account.Account.from_key(SECRET_KEY)
-    exchange = api_retry(Exchange, wallet, constants.MAINNET_API_URL, account_address=ACCOUNT_ADDRESS)
-    info = api_retry(Info, constants.MAINNET_API_URL, skip_ws=True)
 
     user_state = api_retry(info.user_state, ACCOUNT_ADDRESS)
     spot_state = api_retry(info.spot_user_state, ACCOUNT_ADDRESS)
@@ -400,7 +462,7 @@ def execute_engine():
     required_vol_ratio = 1.12
     hod_proximity_pct = 0.0175
     
-    audit_logs.append(f"⚡ V4.4.8 Native Fill Reconciliation: RVOL >= {required_vol_ratio:.2f}x | Max Loss -$0.20 Cap")
+    audit_logs.append(f"⚡ V4.4.9 Direct Fill Sync: Target RVOL >= {required_vol_ratio:.2f}x | HOD Proximity <= {hod_proximity_pct*100:.2f}% | Max Loss -$0.20 Cap")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -446,9 +508,6 @@ def execute_engine():
     today_start_eq = daily_starting_dict[today_str]
     today_total_gain = account_value - today_start_eq
 
-    # ------------------------------------------------------------------
-    # 1. EVALUATE CURRENTLY ACTIVE EXCHANGE POSITIONS
-    # ------------------------------------------------------------------
     if asset_positions:
         for pos_item in asset_positions:
             pos = pos_item.get("position", {})
@@ -547,7 +606,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.4.8", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.4.9", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -556,52 +615,6 @@ def execute_engine():
                 "tp_target": "UNCAPPED (Trailing Ratchet)",
                 "status": leash_status
             })
-
-    # ------------------------------------------------------------------
-    # 2. V4.4.8 PATCH: RECONCILE NATIVE EXCHANGE CLOSES (e.g. VVV)
-    # ------------------------------------------------------------------
-    previous_coins = set(state.get("previous_active_coins", []))
-    natively_closed_coins = previous_coins - active_coins - closed_coins_this_run
-
-    if natively_closed_coins:
-        try:
-            user_fills = api_retry(info.user_fills, ACCOUNT_ADDRESS)
-            for coin in natively_closed_coins:
-                cached_pos = current_active_cache.get(coin, {})
-                entry_px = float(cached_pos.get("entry_px", 0.0))
-                side = cached_pos.get("side", "LONG")
-                peak_roe = float(cached_pos.get("peak_roe", 0.0))
-                
-                coin_fills = [f for f in user_fills if f.get("coin") == coin]
-                if coin_fills:
-                    last_fill = coin_fills[0]
-                    exit_px = float(last_fill.get("px", entry_px))
-                    closed_pnl = float(last_fill.get("closedPnl", 0.0))
-                    
-                    if side == "LONG":
-                        roe_pct = (((exit_px - entry_px) / entry_px) * 5.0) * 100 if entry_px > 0 else 0.0
-                    else:
-                        roe_pct = (((entry_px - exit_px) / entry_px) * 5.0) * 100 if entry_px > 0 else 0.0
-
-                    exit_reason = f"🎯 Native Orderbook TPSL Fill (Triggered @ ${exit_px:.5f})"
-                    audit_logs.append(f"✅ RECONCILED NATIVE FILL [{coin}]: Closed @ ${exit_px:.5f} (PnL: ${closed_pnl:+.2f}, ROE: {roe_pct:+.2f}%)")
-                    
-                    if closed_pnl <= 0 or roe_pct <= 0:
-                        state["cooldown_blocklist"][coin] = now_ts + 43200
-                    else:
-                        state["cooldown_blocklist"][coin] = now_ts + 14400
-
-                    state["closed_trades_ledger"].insert(0, {
-                        "coin": coin, "entry_price": entry_px, "exit_price": exit_px,
-                        "pnl_usd": closed_pnl, "roe_pct": roe_pct, "side": side,
-                        "exit_reason": exit_reason, "timestamp": timestamp, "ts_sec": now_ts
-                    })
-                    trade_closed_this_run = True
-                else:
-                    audit_logs.append(f"ℹ️ NATIVELY CLOSED [{coin}]: Orderbook trigger filled on exchange.")
-            save_state(state)
-        except Exception as e:
-            audit_logs.append(f"⚠️ Native reconciliation warning: {e}")
 
     state["active_position_cache"] = new_active_cache
     state["previous_active_coins"] = list(active_coins)
@@ -732,7 +745,7 @@ def execute_engine():
                 continue
 
         if not market_candidates:
-            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.4.8 trigger rules on this candle.")
+            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.4.9 trigger rules on this candle.")
         else:
             audit_logs.append(f"🚀 SCAN COMPLETED: {len(market_candidates)} candidate(s) triggered entry setup!")
 
@@ -791,7 +804,7 @@ def execute_engine():
                     sync_native_trigger_orders(exchange, info, coin, is_long, sz, initial_stop_px, initial_tp_px, ACCOUNT_ADDRESS, audit_logs)
 
                     positions_data.append({
-                        "bot_title": "TR-GC-Crypto-LS-23-V4.4.8", "coin": coin,
+                        "bot_title": "TR-GC-Crypto-LS-23-V4.4.9", "coin": coin,
                         "side": "LONG" if is_long else "SHORT", "sz": sz,
                         "entry": px, "current": px, "leverage": 5,
                         "collateral": (sz * px) / 5.0, "position_usd": (sz * px),
@@ -829,7 +842,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.4.8 | Reconciliation Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.4.9 | Direct Fill Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -905,7 +918,7 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Reconciliation Scalper (V4.4.8)</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Direct Fill Scalper (V4.4.9)</div>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Forced Scan Active</div>
       </div>
 
@@ -926,8 +939,8 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.4.8 Native Fill Reconciliation</div>
-          <div>&bull; <b>Exchange Fill Sync:</b> Automatically catches &amp; logs trades closed natively on exchange</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.4.9 Direct Fill Rules</div>
+          <div>&bull; <b>Direct Fill Sync:</b> Queries exchange fill API directly to capture closed trades</div>
           <div>&bull; <b>Explicit Skip Telemetry:</b> Logs exact reasons top gappers are bypassed</div>
           <div>&bull; <b>Penny Loss Cap:</b> Clamps hard stop to -0.80% ROE (-$0.20 max risk)</div>
           <div>&bull; <b>Uncapped Upside Engine:</b> Zero hard TP orders; lets runners ride</div>
@@ -947,7 +960,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.4.8 Forced Scan Active
+        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.4.9 Forced Scan Active
       </div>
     </div>
   </body>
@@ -960,7 +973,7 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing 15M Reconciliation Scalper cycle...", flush=True)
+    print(f"[{timestamp}] Executing 15M Direct Fill Scalper cycle...", flush=True)
     try:
         execute_engine()
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 15M cycle completed successfully.", flush=True)
