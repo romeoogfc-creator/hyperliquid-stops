@@ -220,20 +220,26 @@
   ],
   "active_position_cache": {
     "UNI": {
-      "strategy": "HOD_BREAKOUT",
-      "entry_px": 7.36095,
+      "entry_px": 7.3674,
+      "current_px": 7.38715,
+      "szi": 3.3,
+      "margin": 24.3771,
       "side": "LONG",
+      "peak_roe": 0.01340364307625496,
+      "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 7.3331
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-19 00:25:47",
+  "previous_active_coins": [
+    "UNI"
+  ],
+  "last_run_timestamp": "2026-10-19 00:30:39",
   "last_email_timestamp": 1792387528.6233068,
-  "last_scan_timestamp": 1792387528.6233068,
+  "last_scan_timestamp": 1792387823.8902788,
   "gemini_cache": {
-    "timestamp": 1792387528.6233068,
+    "timestamp": 1792387823.8902788,
     "risk": "HIGH",
-    "briefing": "Risk Level: HIGH; while institutional inflows provide a foundational floor, the market remains extremely sensitive to sudden shifts in macroeconomic policy, geopolitical instability, and regulatory uncertainty, which currently drive significant intraday volatility."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, upcoming regulatory scrutiny, and significant volatility surrounding global liquidity trends."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
