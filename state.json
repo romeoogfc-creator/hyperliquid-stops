@@ -93,7 +93,8 @@
     "COMP": 1792378800000,
     "VIRTUAL": 1792378800000,
     "WLFI": 1792379700000,
-    "KAS": 1792380600000
+    "KAS": 1792380600000,
+    "UNI": 1792386900000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {
@@ -217,15 +218,22 @@
       "ts_sec": 1792377975.268
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "UNI": {
+      "strategy": "HOD_BREAKOUT",
+      "entry_px": 7.36095,
+      "side": "LONG",
+      "entry_candle_low": 7.3331
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-19 00:20:45",
-  "last_email_timestamp": 1792386332.3603137,
-  "last_scan_timestamp": 1792387230.4132984,
+  "last_run_timestamp": "2026-10-19 00:25:47",
+  "last_email_timestamp": 1792387528.6233068,
+  "last_scan_timestamp": 1792387528.6233068,
   "gemini_cache": {
-    "timestamp": 1792387230.4132984,
+    "timestamp": 1792387528.6233068,
     "risk": "HIGH",
-    "briefing": "Risk Level: HIGH; crypto markets currently face significant volatility driven by macroeconomic uncertainty, shifting regulatory landscapes, and high leverage, which leaves prices vulnerable to sharp corrections."
+    "briefing": "Risk Level: HIGH; while institutional inflows provide a foundational floor, the market remains extremely sensitive to sudden shifts in macroeconomic policy, geopolitical instability, and regulatory uncertainty, which currently drive significant intraday volatility."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
