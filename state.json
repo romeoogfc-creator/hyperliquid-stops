@@ -126,7 +126,7 @@
     "BCH": 1,
     "DOT": 0,
     "SNX": 2,
-    "GOAT": 1
+    "GOAT": 2
   },
   "closed_trades_ledger": [
     {
@@ -243,9 +243,9 @@
   "active_position_cache": {
     "GOAT": {
       "entry_px": 0.014563,
-      "current_px": 0.014553,
+      "current_px": 0.014541,
       "szi": 1640.0,
-      "margin": 7.95564,
+      "margin": 7.951266,
       "side": "LONG",
       "peak_roe": -0.00343335851129561,
       "strategy": "HOD_BREAKOUT",
@@ -255,13 +255,13 @@
   "previous_active_coins": [
     "GOAT"
   ],
-  "last_run_timestamp": "2026-10-19 12:00:49",
+  "last_run_timestamp": "2026-10-19 12:05:45",
   "last_email_timestamp": 1792428931.7603152,
-  "last_scan_timestamp": 1792429234.6337612,
+  "last_scan_timestamp": 1792429528.429333,
   "gemini_cache": {
-    "timestamp": 1792429234.6337612,
+    "timestamp": 1792429528.429333,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nDriven by aggressive macroeconomic tightening, persistent regulatory scrutiny, and lingering systemic contagion fears, current crypto market conditions expose investors to extreme volatility and severe downside vulnerability."
+    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic shifts, fluctuating regulatory clarity, and extreme volatility driven by speculative leverage, necessitating caution despite recent bullish momentum."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
