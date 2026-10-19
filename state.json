@@ -111,7 +111,9 @@
     "VVV": 0,
     "KAS": 2,
     "WLFI": 2,
-    "MORPHO": 0
+    "MORPHO": 0,
+    "PENDLE": 1,
+    "BABY": 1
   },
   "closed_trades_ledger": [
     {
@@ -226,33 +228,38 @@
     }
   ],
   "active_position_cache": {
+    "PENDLE": {
+      "entry_px": 2.1025,
+      "current_px": 2.10075,
+      "szi": 12.0,
+      "margin": 5.04216,
+      "side": "LONG",
+      "peak_roe": -0.004161712247324419,
+      "strategy": "HOD_BREAKOUT",
+      "entry_candle_low": 2.0919
+    },
     "BABY": {
       "entry_px": 0.012371,
-      "current_px": 0.012388,
+      "current_px": 0.012371,
       "szi": 1934.0,
-      "margin": 7.98742,
+      "margin": 7.973237,
       "side": "LONG",
       "peak_roe": 0.009700105084471633,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.01239
-    },
-    "PENDLE": {
-      "strategy": "HOD_BREAKOUT",
-      "entry_px": 2.10165,
-      "side": "LONG",
-      "entry_candle_low": 2.0919
     }
   },
   "previous_active_coins": [
+    "PENDLE",
     "BABY"
   ],
-  "last_run_timestamp": "2026-10-19 04:30:55",
+  "last_run_timestamp": "2026-10-19 04:35:36",
   "last_email_timestamp": 1792402229.9022138,
-  "last_scan_timestamp": 1792402229.9022138,
+  "last_scan_timestamp": 1792402521.8613198,
   "gemini_cache": {
-    "timestamp": 1792402229.9022138,
+    "timestamp": 1792402521.8613198,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and elevated leverage, all of which leave prices susceptible to sharp, liquidation-driven pullbacks."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, potential regulatory uncertainty, and significant volatility surrounding global liquidity trends."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
