@@ -42,7 +42,7 @@
   "last_traded_candle": {
     "FET": 1791759600000,
     "JTO": 1791664200000,
-    "BRETT": 1791707700000,
+    "BRETT": 1792398600000,
     "MOODENG": 1791666000000,
     "BERA": 1791979500000,
     "VVV": 1792377000000,
@@ -108,7 +108,7 @@
     "VIRTUAL": 2,
     "KAS": 2,
     "WLFI": 2,
-    "MNT": 1
+    "MNT": 2
   },
   "closed_trades_ledger": [
     {
@@ -225,25 +225,31 @@
   "active_position_cache": {
     "MNT": {
       "entry_px": 0.53636,
-      "current_px": 0.53634,
+      "current_px": 0.53637,
       "szi": 44.6,
-      "margin": 23.921656,
+      "margin": 23.917642,
       "side": "LONG",
-      "peak_roe": -0.00018644194197841918,
+      "peak_roe": 9.322097099024455e-05,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.53439
+    },
+    "BRETT": {
+      "strategy": "HOD_BREAKOUT",
+      "entry_px": 0.004711,
+      "side": "LONG",
+      "entry_candle_low": 0.004692
     }
   },
   "previous_active_coins": [
     "MNT"
   ],
-  "last_run_timestamp": "2026-10-19 03:30:48",
-  "last_email_timestamp": 1792398318.4400868,
-  "last_scan_timestamp": 1792398632.2756085,
+  "last_run_timestamp": "2026-10-19 03:35:50",
+  "last_email_timestamp": 1792398932.0065343,
+  "last_scan_timestamp": 1792398932.0065343,
   "gemini_cache": {
-    "timestamp": 1792398632.2756085,
+    "timestamp": 1792398932.0065343,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting regulatory signals, and significant volatility, necessitating extreme caution despite recent price fluctuations."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to geopolitical instability, all of which contribute to an elevated potential for sudden, sharp price corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
