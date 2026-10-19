@@ -43,7 +43,8 @@
     "BABY": 1792446327.3676167,
     "JUP": 1792430727.4383802,
     "SNX": 1792437334.4411736,
-    "GOAT": 1792444559.2730765
+    "GOAT": 1792444559.2730765,
+    "DASH": 1792456530.2394414
   },
   "last_traded_candle": {
     "FET": 1791759600000,
@@ -127,10 +128,20 @@
     "WLD": 0,
     "BCH": 1,
     "DOT": 0,
-    "SNX": 2,
-    "DASH": 2
+    "SNX": 2
   },
   "closed_trades_ledger": [
+    {
+      "coin": "DASH",
+      "entry_price": 49.712,
+      "exit_price": 49.5565,
+      "pnl_usd": -0.07872,
+      "roe_pct": -1.5640086900547505,
+      "side": "LONG",
+      "exit_reason": "\u23f1\ufe0f 45M Range Stagnation Cut (-1.56% ROE)",
+      "timestamp": "2026-10-19 20:35:30",
+      "ts_sec": 1792442130.2394414
+    },
     {
       "coin": "GOAT",
       "entry_price": 0.014563,
@@ -242,28 +253,15 @@
       "ts_sec": 1792419093.685
     }
   ],
-  "active_position_cache": {
-    "DASH": {
-      "entry_px": 49.712,
-      "current_px": 49.6145,
-      "szi": 0.48,
-      "margin": 4.76231,
-      "side": "LONG",
-      "peak_roe": -0.007996057289990647,
-      "strategy": "HOD_BREAKOUT",
-      "entry_candle_low": 49.403
-    }
-  },
-  "previous_active_coins": [
-    "DASH"
-  ],
-  "last_run_timestamp": "2026-10-19 15:30:47",
-  "last_email_timestamp": 1792441229.4156063,
-  "last_scan_timestamp": 1792441829.4034152,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-19 15:35:49",
+  "last_email_timestamp": 1792442130.2394414,
+  "last_scan_timestamp": 1792442130.2394414,
   "gemini_cache": {
-    "timestamp": 1792441829.4034152,
+    "timestamp": 1792442130.2394414,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic indicators, shifting regulatory landscapes, and the potential for rapid deleveraging following recent price breakouts."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, heightened regulatory scrutiny, and the potential for sharp liquidity swings following recent price rallies."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
