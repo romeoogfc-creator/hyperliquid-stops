@@ -451,7 +451,7 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.8.1 Engine Started (Resting Limit Entries Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.8.2 Engine Started (Calibrated Quality Balance Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -499,10 +499,10 @@ def execute_engine():
     gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_5m_scan_window)
     audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] {gemini_briefing}")
 
-    required_vol_ratio = 1.65 if gemini_risk == "HIGH" else 1.20
+    required_vol_ratio = 1.50 if gemini_risk == "HIGH" else 1.20
     hod_proximity_pct = 0.0120
     
-    audit_logs.append(f"⚡ V4.8.1 Engine: Resting Limit Entries | 5M Granularity | $500k Vol Gate")
+    audit_logs.append(f"⚡ V4.8.2 Engine: Calibrated Quality Balance | Ext Limit: +0.60% | Vol Floor: $300k")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -647,7 +647,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.8.1", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.8.2", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -680,7 +680,8 @@ def execute_engine():
                 mark_px = float(ctx.get("markPx", 0.0))
                 volume_24h_usd = float(ctx.get("dayNtlVlm", 0.0))
 
-                if volume_24h_usd < 500000.0:
+                # V4.8.2: Calibrated $300k 24H Volume Floor
+                if volume_24h_usd < 300000.0:
                     continue
 
                 if prev_px > 0 and mark_px > 0:
@@ -746,9 +747,10 @@ def execute_engine():
                 prev_close = ross_ind["prev_close"]
                 prev_ema9 = ross_ind["prev_ema9"]
 
+                # V4.8.2: Relaxed Extension Limit (+0.60% Max)
                 extension_pct = (curr_live_px - ema9) / ema9
-                if extension_pct > 0.0035:
-                    audit_logs.append(f"🔍 [{coin}] Skipped: Extended Peak Guard (+{extension_pct*100:.2f}% > +0.35% limit)")
+                if extension_pct > 0.0060:
+                    audit_logs.append(f"🔍 [{coin}] Skipped: Extended Peak Guard (+{extension_pct*100:.2f}% > +0.60% limit)")
                     continue
 
                 live_volume_raw = float(candles[-1].get("v", 0))
@@ -768,19 +770,19 @@ def execute_engine():
                 is_near_hod = (curr_live_px >= day_high * (1.0 - hod_proximity_pct))
                 is_breakout = (gemini_risk != "HIGH") and (is_near_hod and vol_ratio >= required_vol_ratio and is_above_ema9 and is_above_vwap and is_macd_positive)
 
-                # Setup 2: 5M Bullish Retracement Reclaim (SUPPRESSED IN HIGH RISK REGIME)
+                # Setup 2: 5M Bullish Retracement Reclaim (UNLOCKED IN HIGH RISK IF VOL >= 1.50x)
                 is_reclaim_cross = (prev_close <= prev_ema9 or prev_close <= vwap) and (curr_live_px > ema9 and curr_live_px > vwap)
-                is_pullback_proximity = (curr_live_px <= ema9 * 1.0020)
-                is_bullish_reclaim = (gemini_risk != "HIGH") and (is_reclaim_cross and is_pullback_proximity and vol_ratio >= required_vol_ratio and is_macd_positive)
+                is_pullback_proximity = (curr_live_px <= ema9 * 1.0030)
+                is_bullish_reclaim = (is_reclaim_cross and is_pullback_proximity and vol_ratio >= required_vol_ratio and is_above_ema9)
 
-                # Setup 3: Pure 5M V-Bottom Capitulation Sweep (EXCLUSIVE SETUP IN HIGH RISK REGIME)
+                # Setup 3: Pure 5M V-Bottom Capitulation Sweep
                 prev_15_min = min(lows[-7:-1])
                 is_capitulation_low = (lows[-1] <= prev_15_min)
                 candle_range = max(1e-8, highs[-1] - lows[-1])
                 body_bottom = min(float(candles[-1]["o"]), curr_live_px)
                 lower_wick_ratio = (body_bottom - lows[-1]) / candle_range
                 
-                is_v_bottom = (is_capitulation_low and lower_wick_ratio >= 0.50 and vol_ratio >= required_vol_ratio and curr_live_px > ema9)
+                is_v_bottom = (is_capitulation_low and lower_wick_ratio >= 0.45 and vol_ratio >= required_vol_ratio and curr_live_px > ema9)
 
                 if is_breakout or is_bullish_reclaim or is_v_bottom:
                     setup_type = "V_BOTTOM_RECLAIM" if is_v_bottom else ("HOD_BREAKOUT" if is_breakout else "BULLISH_RECLAIM")
@@ -800,7 +802,7 @@ def execute_engine():
                 continue
 
         if not market_candidates:
-            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.8.1 trigger rules on this candle.")
+            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.8.2 trigger rules on this candle.")
         else:
             audit_logs.append(f"🚀 SCAN COMPLETED: {len(market_candidates)} candidate(s) triggered entry setup!")
 
@@ -881,7 +883,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.8.1 | Resting Limit Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.8.2 | Calibrated Quality Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -961,7 +963,7 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Resting Limit Entries (V4.8.1)</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Calibrated Quality Scalper (V4.8.2)</div>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Forced Scan Active</div>
       </div>
 
@@ -982,10 +984,10 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.8.1 Upgrades</div>
-          <div>&bull; <b>Resting Support Limits:</b> Places limit orders at 5m 9 EMA / VWAP to catch wicks natively</div>
-          <div>&bull; <b>Auto-Purge Stale Orders:</b> Cancels unfilled entry limits every 5 mins to prevent stale entries</div>
-          <div>&bull; <b>$500k 24H Volume Gate:</b> Filters out low-liquidity orderbooks with poor depth</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.8.2 Calibrations</div>
+          <div>&bull; <b>Extended Peak Guard Widen:</b> Expanded from +0.35% to +0.60% max extension to catch limit pullbacks</div>
+          <div>&bull; <b>HIGH Risk Support Reclaims:</b> Allows 5m 9 EMA / VWAP reclaims in HIGH risk when RVOL &ge; 1.50x</div>
+          <div>&bull; <b>$300k Volume Floor:</b> Safely expands active gappers universe during evening/weekend hours</div>
         </div>
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
@@ -1002,7 +1004,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 5M Scalper Autonomous Engine &bull; V4.8.1 Forced Scan Active
+        Hyperliquid 5M Scalper Autonomous Engine &bull; V4.8.2 Forced Scan Active
       </div>
     </div>
   </body>
@@ -1015,7 +1017,7 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing 5M Resting Limit Scalper cycle...", flush=True)
+    print(f"[{timestamp}] Executing 5M Calibrated Scalper cycle...", flush=True)
     try:
         execute_engine()
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] 5M cycle completed successfully.", flush=True)
