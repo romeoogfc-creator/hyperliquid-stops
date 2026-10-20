@@ -451,7 +451,7 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.8.7 Engine Started (Calibrated Quality-Loosening Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.8.8 Engine Started (Hybrid Execution Routing Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -502,7 +502,7 @@ def execute_engine():
     required_vol_ratio = 1.50 if gemini_risk == "HIGH" else 1.20
     hod_proximity_pct = 0.0120
     
-    audit_logs.append(f"⚡ V4.8.7 Engine: Hard Stop: -1.80% ROE | Ext Limit: +1.10% | Vol Floor: $500k | Top 20 Scan | Depth: $1,200")
+    audit_logs.append(f"⚡ V4.8.8 Engine: Hard Stop: -1.80% ROE | Ext Limit: +1.10% | Hybrid Market/Limit Routing Active")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -646,7 +646,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.8.7", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.8.8", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -692,7 +692,7 @@ def execute_engine():
         top_gapper_str = ", ".join([f"{g['coin']} ({g['change_24h']:+.2f}%)" for g in all_eligible_coins[:5]])
         audit_logs.append(f"🔥 TOP EXPLOSIVE GAPPERS (#20-#300+): {top_gapper_str if top_gapper_str else 'None'}")
 
-        # V4.8.7 Fast Engine: Scans top 20 liquid gappers with Lazy L2 depth checking
+        # V4.8.8 Fast Engine: Scans top 20 liquid gappers with Lazy L2 depth checking
         for item in all_eligible_coins[:20]:
             coin = item["coin"]
             idx = item["rank"]
@@ -739,7 +739,6 @@ def execute_engine():
                 prev_close = ross_ind["prev_close"]
                 prev_ema9 = ross_ind["prev_ema9"]
 
-                # V4.8.7 Calibrated Extension Limit (+1.10% Max)
                 extension_pct = (curr_live_px - ema9) / ema9
                 if extension_pct > 0.0110:
                     audit_logs.append(f"🔍 [{coin}] Skipped: Extended Peak Guard (+{extension_pct*100:.2f}% > +1.10% limit)")
@@ -800,7 +799,7 @@ def execute_engine():
                 continue
 
         if not market_candidates:
-            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.8.7 trigger rules on this candle.")
+            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.8.8 trigger rules on this candle.")
         else:
             audit_logs.append(f"🚀 SCAN COMPLETED: {len(market_candidates)} candidate(s) triggered entry setup!")
 
@@ -811,6 +810,7 @@ def execute_engine():
         single_best_candidate = market_candidates[0]
         coin = single_best_candidate["coin"]
         limit_px = single_best_candidate["limit_px"]
+        curr_px = single_best_candidate["close"]
         is_long = single_best_candidate["is_long"]
         candle_ts = single_best_candidate["candle_ts"]
         strat_used = single_best_candidate["strategy"]
@@ -818,12 +818,14 @@ def execute_engine():
         
         target_notional_usd = max(min_notional_usd, account_value * 0.25 * 0.85)
         decimals = sz_decimals_map.get(coin, 4)
-        raw_sz = target_notional_usd / limit_px
+        
+        entry_calc_px = curr_px if strat_used == "HOD_BREAKOUT" else limit_px
+        raw_sz = target_notional_usd / entry_calc_px
 
         sz = int(np.ceil(raw_sz)) if decimals == 0 else round(np.ceil(raw_sz * (10 ** decimals)) / (10 ** decimals), decimals)
 
-        if (sz * limit_px) < min_notional_usd:
-            needed_sz = min_notional_usd / limit_px
+        if (sz * entry_calc_px) < min_notional_usd:
+            needed_sz = min_notional_usd / entry_calc_px
             sz = int(np.ceil(needed_sz)) if decimals == 0 else round(np.ceil(needed_sz * (10 ** decimals)) / (10 ** decimals), decimals)
 
         if sz > 0:
@@ -833,13 +835,22 @@ def execute_engine():
                 except Exception:
                     pass
 
-                clean_limit_px = float(round_sig_figs(limit_px, 5))
-                order_type = {"limit": {"tif": "Gtc"}}
-                
-                res = exchange.order(coin, is_long, sz, clean_limit_px, order_type, reduce_only=False)
+                # V4.8.8 Hybrid Execution Routing
+                if strat_used == "HOD_BREAKOUT":
+                    # Instant Market Order Fill for High-Conviction Breakouts
+                    res = exchange.market_open(coin, is_long, sz, slippage=0.003)
+                    exec_px = curr_px
+                    audit_logs.append(f"⚡ MARKET ENTRY EXECUTED [{coin}] {sz} units @ ~${exec_px:.5f} (HOD Breakout Fill)")
+                else:
+                    # Resting Limit Order Targeting Support Wicks
+                    clean_limit_px = float(round_sig_figs(limit_px, 5))
+                    order_type = {"limit": {"tif": "Gtc"}}
+                    res = exchange.order(coin, is_long, sz, clean_limit_px, order_type, reduce_only=False)
+                    exec_px = clean_limit_px
+                    audit_logs.append(f"⏳ RESTING LIMIT PLACED [{coin}] {sz} @ ${clean_limit_px:.5f} (Targeting Support Wick)")
+
                 if res.get("status") == "ok":
                     trades_executed = True
-                    audit_logs.append(f"⏳ RESTING LIMIT PLACED [{coin}] {sz} @ ${clean_limit_px:.5f} (Targeting Support Wick)")
 
                     if "last_traded_candle" not in state:
                         state["last_traded_candle"] = {}
@@ -848,11 +859,11 @@ def execute_engine():
                     if "active_position_cache" not in state:
                         state["active_position_cache"] = {}
                     state["active_position_cache"][coin] = {
-                        "strategy": strat_used, "entry_px": clean_limit_px, "side": "LONG" if is_long else "SHORT",
+                        "strategy": strat_used, "entry_px": exec_px, "side": "LONG" if is_long else "SHORT",
                         "entry_candle_low": e_candle_low, "entry_time_sec": now_ts
                     }
             except Exception as e:
-                audit_logs.append(f"LIMIT ORDER PLACEMENT FAILED on {coin}: {e}")
+                audit_logs.append(f"ORDER PLACEMENT FAILED on {coin}: {e}")
 
     if trades_executed:
         time.sleep(0.5)
@@ -880,7 +891,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.8.7 | Calibrated Quality Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.8.8 | Calibrated Quality Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -960,8 +971,8 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Calibrated Quality Scalper (V4.8.7)</div>
-        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; V4.8.7 Active</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Calibrated Quality Scalper (V4.8.8)</div>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; V4.8.8 Active</div>
       </div>
 
       <div style="padding: 12px;">
@@ -981,10 +992,10 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.8.7 Calibrations</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.8.8 Hybrid Execution Calibrations</div>
+          <div>&bull; <b>Hybrid Routing:</b> Instant market order fills for HOD breakouts; resting limit orders for pullbacks</div>
           <div>&bull; <b>Top 20 Fast-Scan:</b> Expanded scanner scope to top 20 liquid gappers</div>
-          <div>&bull; <b>Calibrated Extension Cap:</b> Shifted to +1.10% for natural 5m volatility</div>
-          <div>&bull; <b>Ballistic HOD Breakouts:</b> Allowed in HIGH risk if RVOL &ge; 2.20x</div>
+          <div>&bull; <b>Calibrated Extension Cap:</b> Bounded at +1.10% for natural 5m volatility</div>
           <div>&bull; <b>Depth Floor ($1,200):</b> Optimized orderbook filter for $25 margin slots</div>
         </div>
 
@@ -1002,7 +1013,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 5M Scalper Autonomous Engine &bull; V4.8.7 Active
+        Hyperliquid 5M Scalper Autonomous Engine &bull; V4.8.8 Active
       </div>
     </div>
   </body>
