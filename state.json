@@ -249,11 +249,11 @@
   "active_position_cache": {
     "DASH": {
       "entry_px": 50.008,
-      "current_px": 50.0085,
+      "current_px": 50.1275,
       "szi": 0.48,
-      "margin": 4.79856,
+      "margin": 4.811616,
       "side": "LONG",
-      "peak_roe": 4.999200127932351e-05,
+      "peak_roe": 0.011948088305870564,
       "strategy": "BULLISH_RECLAIM",
       "entry_candle_low": 49.757960000000004,
       "entry_time_sec": 1792479428.0221527
@@ -262,13 +262,13 @@
   "previous_active_coins": [
     "DASH"
   ],
-  "last_run_timestamp": "2026-10-20 01:57:22",
+  "last_run_timestamp": "2026-10-20 02:00:52",
   "last_email_timestamp": 1792479428.0221527,
-  "last_scan_timestamp": 1792479428.0221527,
+  "last_scan_timestamp": 1792479633.1685884,
   "gemini_cache": {
-    "timestamp": 1792479428.0221527,
+    "timestamp": 1792479633.1685884,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity fluctuations, necessitating a cautious approach."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, potential regulatory actions, and extreme volatility fueled by speculative leverage, making it prone to sudden, significant corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
