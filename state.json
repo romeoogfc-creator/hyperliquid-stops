@@ -34,7 +34,7 @@
     "TAO": 1791877465.6945598,
     "BERA": 1792067431.7473655,
     "SKY": 1792485624.6785798,
-    "PONS": 1792202433.111476,
+    "PONS": 1792510533.8101385,
     "PENDLE": 1792220432.1087716,
     "COMP": 1792423229.2559965,
     "HYPE": 1792409128.2297819,
@@ -137,6 +137,17 @@
     "SNX": 2
   },
   "closed_trades_ledger": [
+    {
+      "coin": "PONS",
+      "entry_price": 0.26958,
+      "exit_price": 0.268695,
+      "pnl_usd": -0.090068,
+      "roe_pct": -1.6414422434898157,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Retention Ratchet Triggered (-1.64% ROE)",
+      "timestamp": "2026-10-20 13:35:33",
+      "ts_sec": 1792503333.8101385
+    },
     {
       "coin": "VVV",
       "entry_price": 24.315,
@@ -248,23 +259,15 @@
       "ts_sec": 1792470934.279952
     }
   ],
-  "active_position_cache": {
-    "PONS": {
-      "strategy": "BULLISH_RECLAIM",
-      "entry_px": 0.26958,
-      "side": "LONG",
-      "entry_candle_low": 0.26919,
-      "entry_time_sec": 1792503033.1796968
-    }
-  },
+  "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-20 08:30:54",
-  "last_email_timestamp": 1792503033.1796968,
-  "last_scan_timestamp": 1792503033.1796968,
+  "last_run_timestamp": "2026-10-20 08:35:50",
+  "last_email_timestamp": 1792503333.8101385,
+  "last_scan_timestamp": 1792503333.8101385,
   "gemini_cache": {
-    "timestamp": 1792503033.1796968,
+    "timestamp": 1792503333.8101385,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nDriven by persistent macroeconomic uncertainty, stringent global regulatory scrutiny, and ongoing liquidity concerns, current crypto markets remain highly vulnerable to sudden downward volatility and systemic contagion."
+    "briefing": "**Risk Level: HIGH** \n\nPersistent macroeconomic uncertainty, stringent regulatory headwinds, and fragile liquidity combine to create an environment where sudden downside volatility and capital preservation risks remain elevated."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
