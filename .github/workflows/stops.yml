@@ -46,9 +46,12 @@ jobs:
           python bot_engine.py
 
       - name: Auto-commit State Updates
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "Auto-update bot state and telemetry [skip ci]"
-          file_pattern: "state.json"
-          skip_dirty_check: false
-          git_pull_args: "--rebase --autostash"
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git stash
+          git rebase origin/main
+          git stash pop || true
+          git add state.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Auto-update bot state and telemetry [skip ci]" && git push origin HEAD:main)
