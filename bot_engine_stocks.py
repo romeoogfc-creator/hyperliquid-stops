@@ -1,7 +1,7 @@
 import os
 import json
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
@@ -9,6 +9,11 @@ from math import log10, floor
 import requests
 import pandas as pd
 import numpy as np
+
+try:
+    from zoneinfo import ZoneInfo
+except ImportError:
+    ZoneInfo = None
 
 API_KEY = os.getenv("APAL_API_KEY_ID")
 SECRET_KEY = os.getenv("APAL_SECRET_KEY")
@@ -24,11 +29,17 @@ HEADERS = {
 }
 
 def get_central_time():
-    utc_now = datetime.utcnow()
+    if ZoneInfo is not None:
+        try:
+            return datetime.now(ZoneInfo("America/Chicago")).replace(tzinfo=None)
+        except Exception:
+            pass
+            
+    utc_now = datetime.now(timezone.utc).replace(tzinfo=None)
     year = utc_now.year
-    dst_start = datetime(year, 3, 8)
+    dst_start = datetime(year, 3, 8, 7, 0, 0)
     dst_start += timedelta(days=(6 - dst_start.weekday()) % 7)
-    dst_end = datetime(year, 11, 1)
+    dst_end = datetime(year, 11, 1, 6, 0, 0)
     dst_end += timedelta(days=(6 - dst_end.weekday()) % 7)
     
     is_dst = dst_start <= utc_now < dst_end
@@ -52,20 +63,41 @@ def load_state():
                         data[k] = v
                 return data
         except Exception as e:
-            print(f"Error loading stock state.json: {e}")
+            print(f"Error loading stock_state.json: {e}", flush=True)
     return default_state
 
 def save_state(state):
-    state["last_run_timestamp"] = time.strftime('%Y-%m-%d %H:%M:%S')
+    ct_now = get_central_time()
+    state["last_run_timestamp"] = ct_now.strftime('%Y-%m-%d %H:%M:%S')
     with open(STATE_FILE, "w") as f:
         json.dump(state, f, indent=2)
+
+def api_retry(func, *args, retries=4, delay=2.0, **kwargs):
+    for attempt in range(retries):
+        try:
+            res = func(*args, **kwargs)
+            if isinstance(res, requests.Response):
+                if res.status_code in [200, 201, 202, 204]:
+                    return res
+                elif attempt < retries - 1:
+                    time.sleep(delay)
+                    delay *= 2.0
+                    continue
+            return res
+        except Exception as e:
+            if attempt < retries - 1:
+                time.sleep(delay)
+                delay *= 2.0
+            else:
+                raise e
+    return None
 
 def check_market_macro_regime():
     try:
         start_date = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
         url = f"https://data.alpaca.markets/v2/stocks/bars?symbols=SPY&timeframe=1Day&limit=5&feed=iex&start={start_date}"
-        res = requests.get(url, headers=HEADERS)
-        if res.status_code == 200:
+        res = api_retry(requests.get, url, headers=HEADERS)
+        if res and res.status_code == 200:
             bars_data = res.json().get("bars", {})
             spy_bars = bars_data.get("SPY", [])
             if len(spy_bars) >= 2:
@@ -73,7 +105,7 @@ def check_market_macro_regime():
                 prev_close = float(spy_bars[-2]["c"])
                 return latest_close >= prev_close, prev_close, latest_close
     except Exception as e:
-        print(f"Error checking SPY macro regime: {e}")
+        print(f"Error checking SPY macro regime: {e}", flush=True)
     return True, 0.0, 0.0
 
 def send_html_dashboard_email(subject, html_content, text_fallback):
@@ -82,6 +114,7 @@ def send_html_dashboard_email(subject, html_content, text_fallback):
     receiver_email = os.getenv("RECEIVER_EMAIL")
 
     if not sender_email or not sender_password or not receiver_email:
+        print("[WARN] Email credentials missing in environment variables. Skipping email dispatch.", flush=True)
         return
 
     msg = MIMEMultipart("alternative")
@@ -93,11 +126,12 @@ def send_html_dashboard_email(subject, html_content, text_fallback):
     msg.attach(MIMEText(html_content, "html"))
 
     try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465) as server:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=15) as server:
             server.login(sender_email, sender_password)
             server.sendmail(sender_email, receiver_email, msg.as_string())
+        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Equities telemetry email sent successfully.", flush=True)
     except Exception as e:
-        print(f"Failed to send email: {e}")
+        print(f"Failed to send email: {e}", flush=True)
 
 def round_sig_figs(val, sig_figs=5):
     if val == 0 or val is None:
@@ -135,7 +169,7 @@ def execute_stock_engine():
     today_str = ct_now.strftime('%Y-%m-%d')
     
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Engine Started (Pure Ross Cameron 5M Scalper, Texas CT: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Engine Started (Pure Ross Cameron 5M Scalper, Central Time: {ct_now.strftime('%H:%M:%S')}).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
@@ -148,9 +182,9 @@ def execute_stock_engine():
 
     state = load_state()
 
-    account_res = requests.get(f"{BASE_URL}/v2/account", headers=HEADERS)
-    if account_res.status_code != 200:
-        raise Exception(f"Failed to fetch Alpaca account: {account_res.text}")
+    account_res = api_retry(requests.get, f"{BASE_URL}/v2/account", headers=HEADERS)
+    if not account_res or account_res.status_code != 200:
+        raise Exception(f"Failed to fetch Alpaca account: {account_res.text if account_res else 'No Response'}")
     account_data = account_res.json()
 
     equity = float(account_data.get("equity", 100000.0))
@@ -171,11 +205,11 @@ def execute_stock_engine():
     today_total_gain = equity - today_start_eq
     lifetime_cumulative_pnl = equity - 100000.0
 
-    positions_res = requests.get(f"{BASE_URL}/v2/positions", headers=HEADERS)
-    positions_list = positions_res.json() if positions_res.status_code == 200 else []
+    positions_res = api_retry(requests.get, f"{BASE_URL}/v2/positions", headers=HEADERS)
+    positions_list = positions_res.json() if positions_res and positions_res.status_code == 200 else []
 
-    orders_res = requests.get(f"{BASE_URL}/v2/orders?status=open", headers=HEADERS)
-    open_orders = orders_res.json() if orders_res.status_code == 200 else []
+    orders_res = api_retry(requests.get, f"{BASE_URL}/v2/orders?status=open", headers=HEADERS)
+    open_orders = orders_res.json() if orders_res and orders_res.status_code == 200 else []
 
     # --- PORTFOLIO DRAWDOWN CIRCUIT BREAKER (-3.5% Loss Check) ---
     total_unrealized_pnl = sum([float(p.get("unrealized_pl", 0)) for p in positions_list])
@@ -188,7 +222,7 @@ def execute_stock_engine():
             side = pos.get("side")
             close_side = "sell" if side == "long" else "buy"
             try:
-                requests.post(f"{BASE_URL}/v2/orders", json={
+                api_retry(requests.post, f"{BASE_URL}/v2/orders", json={
                     "symbol": sym, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"
                 }, headers=HEADERS)
                 if "closed_trades_ledger" not in state:
@@ -202,11 +236,11 @@ def execute_stock_engine():
             except Exception as e:
                 audit_logs.append(f"Circuit breaker close failed on {sym}: {e}")
         for order in open_orders:
-            requests.delete(f"{BASE_URL}/v2/orders/{order.get('id')}", headers=HEADERS)
+            api_retry(requests.delete, f"{BASE_URL}/v2/orders/{order.get('id')}", headers=HEADERS)
         save_state(state)
         positions_list = []
 
-    # --- RULE 1: PRE-CLOSE EOD SQUARE-OFF (2:40 PM CT) ---
+    # --- PRE-CLOSE EOD SQUARE-OFF (2:40 PM CT) ---
     is_eod_square_off = (ct_now.hour == 14 and ct_now.minute >= 40) or (ct_now.hour >= 15)
 
     if is_eod_square_off and positions_list:
@@ -226,8 +260,8 @@ def execute_stock_engine():
                 "symbol": sym, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"
             }
             try:
-                close_res = requests.post(f"{BASE_URL}/v2/orders", json=close_payload, headers=HEADERS)
-                if close_res.status_code == 200:
+                close_res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=close_payload, headers=HEADERS)
+                if close_res and close_res.status_code == 200:
                     audit_logs.append(f"LIQUIDATION SUCCESS: Closed {sym}")
                     if "closed_trades_ledger" not in state:
                         state["closed_trades_ledger"] = []
@@ -242,7 +276,7 @@ def execute_stock_engine():
                 audit_logs.append(f"LIQUIDATION ERROR on {sym}: {e}")
         
         for order in open_orders:
-            requests.delete(f"{BASE_URL}/v2/orders/{order.get('id')}", headers=HEADERS)
+            api_retry(requests.delete, f"{BASE_URL}/v2/orders/{order.get('id')}", headers=HEADERS)
 
         save_state(state)
         positions_list = []
@@ -273,8 +307,8 @@ def execute_stock_engine():
         entry_candle_low = cache_info.get("entry_candle_low", entry_px * 0.9920)
 
         try:
-            bar_res = requests.get(f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=5Min&limit=50&feed=iex&start={start_date}", headers=HEADERS)
-            if bar_res.status_code == 200:
+            bar_res = api_retry(requests.get, f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=5Min&limit=50&feed=iex&start={start_date}", headers=HEADERS)
+            if bar_res and bar_res.status_code == 200:
                 b_list = bar_res.json().get("bars", {}).get(symbol, [])
                 if len(b_list) >= 20:
                     closes_pos = [float(b["c"]) for b in b_list]
@@ -303,7 +337,7 @@ def execute_stock_engine():
                 "symbol": symbol, "qty": str(abs(int(qty))), "side": close_side, "type": "market", "time_in_force": "day"
             }
             try:
-                requests.post(f"{BASE_URL}/v2/orders", json=close_payload, headers=HEADERS)
+                api_retry(requests.post, f"{BASE_URL}/v2/orders", json=close_payload, headers=HEADERS)
                 if "closed_trades_ledger" not in state:
                     state["closed_trades_ledger"] = []
                 
@@ -345,7 +379,7 @@ def execute_stock_engine():
     state["previous_active_symbols"] = list(active_symbols)
 
     MAX_STOCK_SLOTS = 3
-    is_trading_window = (8 <= ct_now.hour < 14) or (ct_now.hour == 14 and ct_now.minute < 35)
+    is_trading_window = (ct_now.weekday() < 5) and ((ct_now.hour == 8 and ct_now.minute >= 30) or (9 <= ct_now.hour < 14) or (ct_now.hour == 14 and ct_now.minute < 35))
 
     watchlist = [
         "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "AVGO", "QCOM",
@@ -374,8 +408,8 @@ def execute_stock_engine():
                 url += f"&page_token={page_token}"
 
             try:
-                bars_res = requests.get(url, headers=HEADERS)
-                if bars_res.status_code != 200:
+                bars_res = api_retry(requests.get, url, headers=HEADERS)
+                if not bars_res or bars_res.status_code != 200:
                     break
                 res_json = bars_res.json()
                 returned_bars = res_json.get("bars", {})
@@ -458,8 +492,8 @@ def execute_stock_engine():
                 "time_in_force": "day"
             }
             try:
-                order_res = requests.post(f"{BASE_URL}/v2/orders", json=order_payload, headers=HEADERS)
-                if order_res.status_code == 200:
+                order_res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=order_payload, headers=HEADERS)
+                if order_res and order_res.status_code == 200:
                     active_count += 1
                     active_symbols.add(symbol)
                     state["active_position_cache"][symbol] = {
@@ -467,7 +501,7 @@ def execute_stock_engine():
                     }
                     audit_logs.append(f"ROSS 5M ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} (~${(qty * px):.2f})")
                 else:
-                    audit_logs.append(f"ORDER REJECTED BY ALPACA [{order_res.status_code}] on {symbol}: {order_res.text}")
+                    audit_logs.append(f"ORDER REJECTED BY ALPACA [{order_res.status_code if order_res else 'ERR'}] on {symbol}: {order_res.text if order_res else 'No response'}")
             except Exception as e:
                 audit_logs.append(f"ORDER EXCEPTION on {symbol}: {e}")
     else:
@@ -475,7 +509,6 @@ def execute_stock_engine():
 
     save_state(state)
 
-    # --- MOBILE-FRIENDLY HTML DASHBOARD RENDERER ---
     positions_cards = ""
     if positions_data:
         for p in positions_data:
@@ -564,7 +597,6 @@ def execute_stock_engine():
   <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 8px; color: #333333; -webkit-text-size-adjust: 100%;">
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); box-sizing: border-box;">
       
-      <!-- Header Banner -->
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
         <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Equities-LS-01 | Pure Ross Cameron 5M Scalper</div>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Pure Ross Cameron 5M Active</div>
@@ -572,7 +604,6 @@ def execute_stock_engine():
 
       <div style="padding: 12px; box-sizing: border-box;">
         
-        <!-- Total Account Equity Card -->
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; margin-bottom: 14px; box-sizing: border-box;">
           <div style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 2px;">Total Account Equity</div>
           <div style="font-size: 22px; font-weight: 700; color: #0f172a;">USD ${equity:,.2f}</div>
@@ -583,7 +614,6 @@ def execute_stock_engine():
           </div>
         </div>
 
-        <!-- Guardrails Card -->
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4; box-sizing: border-box;">
           <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Guardrails (Pure Ross Cameron 5M Engine)</div>
           <div>&bull; <b>Limit-Clamp Entry (0.20% Max):</b> Prevents buying extended candle spikes</div>
@@ -594,11 +624,9 @@ def execute_stock_engine():
           <div>&bull; <b>Portfolio Drawdown Circuit Breaker:</b> Instantly flattens 100% to cash if open loss hits -3.5%</div>
         </div>
 
-        <!-- Active Positions Section -->
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Sniper Scalps</div>
         {positions_cards}
 
-        <!-- Recently Closed Trades Section -->
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 14px 0 6px 0; font-weight: 700;">Recently Closed Trades &amp; Exit Telemetry</div>
         {closed_cards}
         
@@ -606,7 +634,6 @@ def execute_stock_engine():
           TOTAL RECENT REALIZED P&amp;L: <span style="color: {total_pnl_color};">${total_realized_pnl:+.2f}</span>
         </div>
 
-        <!-- Live Test Telemetry -->
         {audit_section}
 
       </div>
@@ -620,13 +647,13 @@ def execute_stock_engine():
 """
 
     send_html_dashboard_email(f"Alpaca Quantitative Report — USD ${equity:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] Pure Ross Cameron 5M stock telemetry report complete.")
+    print(f"[{timestamp}] Pure Ross Cameron 5M stock telemetry report complete.", flush=True)
 
 if __name__ == "__main__":
     try:
         execute_stock_engine()
     except Exception as e:
         err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Pure Ross Cameron Stock Engine execution error: {e}"
-        print(err_msg)
+        print(err_msg, flush=True)
         send_html_dashboard_email("Alpaca Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
         raise e
