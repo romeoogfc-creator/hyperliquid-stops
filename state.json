@@ -249,11 +249,11 @@
   "active_position_cache": {
     "DASH": {
       "entry_px": 50.008,
-      "current_px": 50.1275,
+      "current_px": 50.196,
       "szi": 0.48,
-      "margin": 4.811616,
+      "margin": 4.819488,
       "side": "LONG",
-      "peak_roe": 0.011948088305870564,
+      "peak_roe": 0.018796992481202535,
       "strategy": "BULLISH_RECLAIM",
       "entry_candle_low": 49.757960000000004,
       "entry_time_sec": 1792479428.0221527
@@ -262,13 +262,13 @@
   "previous_active_coins": [
     "DASH"
   ],
-  "last_run_timestamp": "2026-10-20 02:00:52",
+  "last_run_timestamp": "2026-10-20 02:05:41",
   "last_email_timestamp": 1792479428.0221527,
-  "last_scan_timestamp": 1792479633.1685884,
+  "last_scan_timestamp": 1792479924.5008814,
   "gemini_cache": {
-    "timestamp": 1792479633.1685884,
+    "timestamp": 1792479924.5008814,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, potential regulatory actions, and extreme volatility fueled by speculative leverage, making it prone to sudden, significant corrections."
+    "briefing": "**Risk Level: HIGH**\n\nThe market is currently characterized by heightened volatility driven by macroeconomic uncertainty, regulatory scrutiny, and significant leverage, which collectively create a precarious environment prone to sharp, sudden corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
