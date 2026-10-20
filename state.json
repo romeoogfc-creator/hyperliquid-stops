@@ -252,9 +252,9 @@
   "active_position_cache": {
     "JTO": {
       "entry_px": 0.48624,
-      "current_px": 0.486665,
+      "current_px": 0.485415,
       "szi": 49.0,
-      "margin": 4.768484,
+      "margin": 4.757606,
       "side": "LONG",
       "peak_roe": 0.004370269825600616,
       "strategy": "HOD_BREAKOUT",
@@ -265,13 +265,13 @@
   "previous_active_coins": [
     "JTO"
   ],
-  "last_run_timestamp": "2026-10-20 18:05:39",
+  "last_run_timestamp": "2026-10-20 18:09:24",
   "last_email_timestamp": 1792537230.5326881,
-  "last_scan_timestamp": 1792537529.3703592,
+  "last_scan_timestamp": 1792537753.8988962,
   "gemini_cache": {
-    "timestamp": 1792537529.3703592,
+    "timestamp": 1792537753.8988962,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic shifts, fluctuating regulatory clarity, and extreme volatility fueled by speculative leverage, making them prone to sharp, sudden corrections."
+    "briefing": "Risk Level: **HIGH** \u2014 Continued macroeconomic uncertainty, regulatory scrutiny, and high market volatility create a landscape where significant price swings remain likely in the near term."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
