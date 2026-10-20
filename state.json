@@ -117,7 +117,8 @@
     "GOAT": 1792428300000,
     "DASH": 1792440900000,
     "PEOPLE": 1792444500000,
-    "CHIP": 1792446900000
+    "CHIP": 1792446900000,
+    "POL": 1792497600000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {
@@ -250,26 +251,33 @@
   "active_position_cache": {
     "TIA": {
       "entry_px": 0.64902,
-      "current_px": 0.64961,
+      "current_px": 0.64861,
       "szi": 36.7,
-      "margin": 4.768431,
+      "margin": 4.759696,
       "side": "LONG",
       "peak_roe": 0.0045453144741300685,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.64538,
       "entry_time_sec": 1792497329.4075437
+    },
+    "POL": {
+      "strategy": "BULLISH_RECLAIM",
+      "entry_px": 0.092221,
+      "side": "LONG",
+      "entry_candle_low": 0.092209,
+      "entry_time_sec": 1792497697.3069975
     }
   },
   "previous_active_coins": [
     "TIA"
   ],
-  "last_run_timestamp": "2026-10-20 07:00:53",
-  "last_email_timestamp": 1792497329.4075437,
-  "last_scan_timestamp": 1792497639.1627388,
+  "last_run_timestamp": "2026-10-20 07:02:18",
+  "last_email_timestamp": 1792497697.3069975,
+  "last_scan_timestamp": 1792497697.3069975,
   "gemini_cache": {
-    "timestamp": 1792497639.1627388,
+    "timestamp": 1792497697.3069975,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to geopolitical instability, all of which contribute to an elevated potential for rapid price swings."
+    "briefing": "Risk Level: **HIGH**\n\nThe market is currently characterized by heightened volatility driven by macroeconomic uncertainty, regulatory scrutiny, and a fragile liquidity environment that leaves prices susceptible to sharp, unpredictable swings."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
