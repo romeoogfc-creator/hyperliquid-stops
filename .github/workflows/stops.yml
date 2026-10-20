@@ -20,6 +20,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -48,3 +49,4 @@ jobs:
           commit_message: "Auto-update bot state and telemetry [skip ci]"
           file_pattern: "state.json"
           skip_dirty_check: false
+          git_pull_args: "--rebase --autostash"
