@@ -253,11 +253,19 @@
   "active_position_cache": {
     "LIT": {
       "entry_px": 3.3916,
+<<<<<<< Updated upstream
       "current_px": 3.3951,
       "szi": 7.0,
       "margin": 4.753,
       "side": "LONG",
       "peak_roe": 0.005159806580964496,
+=======
+      "current_px": 3.39545,
+      "szi": 7.0,
+      "margin": 4.7537,
+      "side": "LONG",
+      "peak_roe": 0.005675787239061076,
+>>>>>>> Stashed changes
       "strategy": "V_BOTTOM_RECLAIM",
       "entry_candle_low": 3.3882,
       "entry_time_sec": 1792539321.820277
@@ -266,6 +274,7 @@
   "previous_active_coins": [
     "LIT"
   ],
+<<<<<<< Updated upstream
   "last_run_timestamp": "2026-10-20 18:45:30",
   "last_email_timestamp": 1792539918.6556473,
   "last_scan_timestamp": 1792539918.6556473,
@@ -273,6 +282,15 @@
     "timestamp": 1792539918.6556473,
     "risk": "HIGH",
     "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, upcoming regulatory developments, and significant liquidity volatility, necessitating extreme caution for leveraged positions."
+=======
+  "last_run_timestamp": "2026-10-20 18:46:08",
+  "last_email_timestamp": 1792539609.1774101,
+  "last_scan_timestamp": 1792539952.242629,
+  "gemini_cache": {
+    "timestamp": 1792539952.242629,
+    "risk": "HIGH",
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to geopolitical instability, all of which contribute to an elevated risk of sudden, sharp price corrections."
+>>>>>>> Stashed changes
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
