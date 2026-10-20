@@ -250,21 +250,27 @@
   ],
   "active_position_cache": {
     "MON": {
-      "strategy": "V_BOTTOM_RECLAIM",
-      "entry_px": 0.022002,
+      "entry_px": 0.021987,
+      "current_px": 0.021973,
+      "szi": 1078.0,
+      "margin": 23.687972,
       "side": "LONG",
+      "peak_roe": -0.0031836994587711204,
+      "strategy": "V_BOTTOM_RECLAIM",
       "entry_candle_low": 0.021981,
       "entry_time_sec": 1792508751.436165
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-20 10:06:11",
+  "previous_active_coins": [
+    "MON"
+  ],
+  "last_run_timestamp": "2026-10-20 10:11:10",
   "last_email_timestamp": 1792508751.436165,
-  "last_scan_timestamp": 1792508751.436165,
+  "last_scan_timestamp": 1792509032.251277,
   "gemini_cache": {
-    "timestamp": 1792508751.436165,
+    "timestamp": 1792509032.251277,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Increased market volatility driven by macroeconomic uncertainty, regulatory shifts, and significant leverage in the derivatives market creates an environment susceptible to sharp, unpredictable price swings."
+    "briefing": "**Risk Level: HIGH** \n\nDriven by persistent macroeconomic uncertainty, stringent global regulatory headwinds, and ongoing vulnerabilities in exchange and protocol liquidity, crypto markets currently face a precarious environment prone to sharp downside volatility and capital flight."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
