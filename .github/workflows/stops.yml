@@ -1,8 +1,8 @@
-name: TR-GC-Crypto-LS-23
+name: TR-GC-Crypto-LS-23 15M Engine
 
 on:
   schedule:
-    - cron: '*/5 * * * *'    # Native 5-minute scan cadence
+    - cron: '*/15 * * * *'    # Native 15-minute scan cadence
   repository_dispatch:
     types: [trigger-bot]    # Listens for cron-job.org webhook trigger
   workflow_dispatch:
@@ -41,6 +41,7 @@ jobs:
           SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
           SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
           RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
         run: |
           python bot_engine.py
 
