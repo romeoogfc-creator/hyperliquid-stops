@@ -33,7 +33,7 @@
     "IO": 1791874853.275973,
     "TAO": 1791877465.6945598,
     "BERA": 1792067431.7473655,
-    "SKY": 1791881125.2083867,
+    "SKY": 1792478134.279952,
     "PONS": 1792202433.111476,
     "PENDLE": 1792220432.1087716,
     "COMP": 1792423229.2559965,
@@ -134,6 +134,17 @@
     "SNX": 2
   },
   "closed_trades_ledger": [
+    {
+      "coin": "SKY",
+      "entry_price": 0.072295,
+      "exit_price": 0.072133,
+      "pnl_usd": -0.0495,
+      "roe_pct": -1.120409433570755,
+      "side": "LONG",
+      "exit_reason": "\u23f1\ufe0f 15M Fast Stagnation Cut (-1.12% ROE after 15m)",
+      "timestamp": "2026-10-20 04:35:34",
+      "ts_sec": 1792470934.279952
+    },
     {
       "coin": "CHIP",
       "entry_price": 0.041516,
@@ -245,29 +256,15 @@
       "ts_sec": 1792422024.4843678
     }
   ],
-  "active_position_cache": {
-    "SKY": {
-      "entry_px": 0.072295,
-      "current_px": 0.072134,
-      "szi": 330.0,
-      "margin": 23.80752,
-      "side": "LONG",
-      "peak_roe": -0.0013140604467799465,
-      "strategy": "BULLISH_RECLAIM",
-      "entry_candle_low": 0.072029,
-      "entry_time_sec": 1792470022.8377485
-    }
-  },
-  "previous_active_coins": [
-    "SKY"
-  ],
-  "last_run_timestamp": "2026-10-19 23:30:38",
-  "last_email_timestamp": 1792470022.8377485,
-  "last_scan_timestamp": 1792470623.932513,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-19 23:35:50",
+  "last_email_timestamp": 1792470934.279952,
+  "last_scan_timestamp": 1792470934.279952,
   "gemini_cache": {
-    "timestamp": 1792470623.932513,
+    "timestamp": 1792470934.279952,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH**\n\nThe market is currently characterized by heightened volatility, regulatory uncertainty, and sensitivity to macroeconomic shifts, creating a high-stakes environment for investors."
+    "briefing": "**Risk Level: HIGH**\n\nThe market is currently experiencing significant volatility driven by macroeconomic uncertainty, regulatory scrutiny, and high leverage, leaving it highly susceptible to rapid sentiment-driven corrections."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
