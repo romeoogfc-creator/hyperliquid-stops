@@ -250,13 +250,13 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-20 11:06:01",
+  "last_run_timestamp": "2026-10-20 11:10:57",
   "last_email_timestamp": 1792511796.231564,
-  "last_scan_timestamp": 1792512332.2691638,
+  "last_scan_timestamp": 1792512628.8863602,
   "gemini_cache": {
-    "timestamp": 1792512332.2691638,
+    "timestamp": 1792512628.8863602,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nPersistent macroeconomic headwinds, regulatory uncertainty, and heightened macroeconomic volatility continue to threaten severe downside corrections across digital asset markets."
+    "briefing": "**Risk Level: HIGH** \n\nPersistent macroeconomic uncertainty, stringent global regulatory headwinds, and ongoing vulnerabilities in liquidity create a precarious environment prone to sharp downside volatility."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
