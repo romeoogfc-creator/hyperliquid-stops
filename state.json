@@ -92,7 +92,7 @@
     "LIT": 1791780000000,
     "LINEA": 1791784200000,
     "TAO": 1792121100000,
-    "SKY": 1791793800000,
+    "SKY": 1792470000000,
     "RSR": 1791856800000,
     "PONS": 1792115100000,
     "FIL": 1792120800000,
@@ -245,15 +245,23 @@
       "ts_sec": 1792422024.4843678
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "SKY": {
+      "strategy": "BULLISH_RECLAIM",
+      "entry_px": 0.072295,
+      "side": "LONG",
+      "entry_candle_low": 0.072029,
+      "entry_time_sec": 1792470022.8377485
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-19 23:15:50",
-  "last_email_timestamp": 1792469129.9532294,
-  "last_scan_timestamp": 1792469728.4848359,
+  "last_run_timestamp": "2026-10-19 23:20:42",
+  "last_email_timestamp": 1792470022.8377485,
+  "last_scan_timestamp": 1792470022.8377485,
   "gemini_cache": {
-    "timestamp": 1792469728.4848359,
+    "timestamp": 1792470022.8377485,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic indicators, shifting regulatory landscapes, and high levels of leverage, which heighten the potential for sharp, sudden price corrections."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to geopolitical instability, all of which contribute to an elevated risk of sharp, unpredictable price swings."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
