@@ -1,10 +1,10 @@
-name: TR-GC-Crypto-LS-23 15M Engine
+name: TR-GC-Crypto-LS-23
 
 on:
   schedule:
-    - cron: '*/15 * * * *'    # Native 15-minute scan cadence
+    - cron: '*/15 * * * *'
   repository_dispatch:
-    types: [trigger-bot]    # Listens for cron-job.org webhook trigger
+    types: [trigger-bot]
   workflow_dispatch:
 
 concurrency:
