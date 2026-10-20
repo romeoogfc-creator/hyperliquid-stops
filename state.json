@@ -51,7 +51,7 @@
   },
   "last_traded_candle": {
     "FET": 1791759600000,
-    "JTO": 1791664200000,
+    "JTO": 1792537200000,
     "BRETT": 1792398600000,
     "MOODENG": 1791666000000,
     "BERA": 1791979500000,
@@ -249,15 +249,23 @@
       "ts_sec": 1792480572.481
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "JTO": {
+      "strategy": "HOD_BREAKOUT",
+      "entry_px": 0.48609,
+      "side": "LONG",
+      "entry_candle_low": 0.48637,
+      "entry_time_sec": 1792537230.5326881
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-20 17:55:43",
-  "last_email_timestamp": 1792536934.3314543,
-  "last_scan_timestamp": 1792536934.3314543,
+  "last_run_timestamp": "2026-10-20 18:00:44",
+  "last_email_timestamp": 1792537230.5326881,
+  "last_scan_timestamp": 1792537230.5326881,
   "gemini_cache": {
-    "timestamp": 1792536934.3314543,
+    "timestamp": 1792537230.5326881,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting regulatory headwinds, and significant leveraged volatility, necessitating extreme caution despite recent price stabilization."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity cycles, all of which keep the potential for sharp, sudden corrections elevated."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
