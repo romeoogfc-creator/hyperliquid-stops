@@ -248,21 +248,27 @@
   ],
   "active_position_cache": {
     "ZRO": {
-      "strategy": "BULLISH_RECLAIM",
       "entry_px": 1.9127,
+      "current_px": 1.9188,
+      "szi": 12.5,
+      "margin": 4.797425,
       "side": "LONG",
+      "peak_roe": 0.015946044858054044,
+      "strategy": "BULLISH_RECLAIM",
       "entry_candle_low": 1.9078,
       "entry_time_sec": 1792494325.7320788
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-20 06:06:07",
+  "previous_active_coins": [
+    "ZRO"
+  ],
+  "last_run_timestamp": "2026-10-20 06:10:52",
   "last_email_timestamp": 1792494325.7320788,
-  "last_scan_timestamp": 1792494325.7320788,
+  "last_scan_timestamp": 1792494633.0864317,
   "gemini_cache": {
-    "timestamp": 1792494325.7320788,
-    "risk": "MODERATE",
-    "briefing": "**Risk Level: MODERATE**\n\nWhile ongoing institutional adoption and favorable macroeconomic liquidity provide a strong baseline support, crypto markets remain vulnerable to sudden regulatory shifts, leverage liquidations, and broader geopolitical shocks that could trigger swift downward corrections."
+    "timestamp": 1792494633.0864317,
+    "risk": "HIGH",
+    "briefing": "**Risk Level: HIGH**\n\nThe market is currently experiencing significant volatility driven by macroeconomic uncertainty, regulatory scrutiny, and high leverage, leaving it highly susceptible to sharp, sentiment-driven price swings."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
