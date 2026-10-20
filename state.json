@@ -24,7 +24,7 @@
     "CC": 1792013432.7524428,
     "ENA": 1791836341.8394768,
     "USELESS": 1791838841.0562112,
-    "ALGO": 1791839587.6187005,
+    "ALGO": 1792490728.7469497,
     "SYRUP": 1791839587.6187005,
     "FET": 1791846928.4952013,
     "CAKE": 1791862238.8591301,
@@ -136,6 +136,17 @@
   },
   "closed_trades_ledger": [
     {
+      "coin": "ALGO",
+      "entry_price": 0.11135,
+      "exit_price": 0.110785,
+      "pnl_usd": -0.12198,
+      "roe_pct": -2.5370453524921865,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Retention Ratchet Triggered (-2.54% ROE)",
+      "timestamp": "2026-10-20 08:05:28",
+      "ts_sec": 1792483528.7469497
+    },
+    {
       "coin": "DASH",
       "entry_price": 50.008,
       "exit_price": 50.014,
@@ -246,23 +257,15 @@
       "ts_sec": 1792429843.187
     }
   ],
-  "active_position_cache": {
-    "ALGO": {
-      "strategy": "BULLISH_RECLAIM",
-      "entry_px": 0.11137,
-      "side": "LONG",
-      "entry_candle_low": 0.11123,
-      "entry_time_sec": 1792483233.3162403
-    }
-  },
+  "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-20 03:01:25",
-  "last_email_timestamp": 1792483233.3162403,
-  "last_scan_timestamp": 1792483233.3162403,
+  "last_run_timestamp": "2026-10-20 03:05:43",
+  "last_email_timestamp": 1792483528.7469497,
+  "last_scan_timestamp": 1792483528.7469497,
   "gemini_cache": {
-    "timestamp": 1792483233.3162403,
+    "timestamp": 1792483528.7469497,
     "risk": "HIGH",
-    "briefing": "Risk Level: HIGH; crypto markets currently face significant uncertainty driven by macroeconomic volatility, shifting regulatory landscapes, and high leverage, leaving prices susceptible to sharp, sentiment-driven corrections."
+    "briefing": "**Risk Level: HIGH**\n\nThe market is currently experiencing significant volatility driven by macroeconomic uncertainty, regulatory scrutiny, and a precarious technical setup, making it highly susceptible to sharp, unpredictable swings."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
