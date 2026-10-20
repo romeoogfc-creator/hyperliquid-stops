@@ -135,7 +135,7 @@ def round_sig_figs(val, sig_figs=5):
         return 0
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
-def check_liquidity_and_spread(info, coin, max_spread=0.0008, min_depth_usd=2000.0):
+def check_liquidity_and_spread(info, coin, max_spread=0.0010, min_depth_usd=1200.0):
     try:
         l2_book = api_retry(info.l2_snapshot, name=coin)
         levels = l2_book.get("levels", [[], []])
@@ -451,7 +451,7 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.8.6 Engine Started (Sub-35s Fast-Scan Engine Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.8.7 Engine Started (Calibrated Quality-Loosening Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -502,7 +502,7 @@ def execute_engine():
     required_vol_ratio = 1.50 if gemini_risk == "HIGH" else 1.20
     hod_proximity_pct = 0.0120
     
-    audit_logs.append(f"⚡ V4.8.6 Fast Engine: Hard Stop: -1.80% ROE | Ext Limit: +0.75% | Vol Floor: $500k | Fast Scan Top 10 | Lazy L2 Depth")
+    audit_logs.append(f"⚡ V4.8.7 Engine: Hard Stop: -1.80% ROE | Ext Limit: +1.10% | Vol Floor: $500k | Top 20 Scan | Depth: $1,200")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -646,7 +646,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.8.6", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.8.7", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -692,8 +692,8 @@ def execute_engine():
         top_gapper_str = ", ".join([f"{g['coin']} ({g['change_24h']:+.2f}%)" for g in all_eligible_coins[:5]])
         audit_logs.append(f"🔥 TOP EXPLOSIVE GAPPERS (#20-#300+): {top_gapper_str if top_gapper_str else 'None'}")
 
-        # V4.8.6 Fast Engine: Focuses strictly on top 10 liquid gappers with Lazy L2 checking
-        for item in all_eligible_coins[:10]:
+        # V4.8.7 Fast Engine: Scans top 20 liquid gappers with Lazy L2 depth checking
+        for item in all_eligible_coins[:20]:
             coin = item["coin"]
             idx = item["rank"]
 
@@ -739,9 +739,10 @@ def execute_engine():
                 prev_close = ross_ind["prev_close"]
                 prev_ema9 = ross_ind["prev_ema9"]
 
+                # V4.8.7 Calibrated Extension Limit (+1.10% Max)
                 extension_pct = (curr_live_px - ema9) / ema9
-                if extension_pct > 0.0075:
-                    audit_logs.append(f"🔍 [{coin}] Skipped: Extended Peak Guard (+{extension_pct*100:.2f}% > +0.75% limit)")
+                if extension_pct > 0.0110:
+                    audit_logs.append(f"🔍 [{coin}] Skipped: Extended Peak Guard (+{extension_pct*100:.2f}% > +1.10% limit)")
                     continue
 
                 live_volume_raw = float(candles[-1].get("v", 0))
@@ -757,9 +758,10 @@ def execute_engine():
 
                 prev_low = lows[-2]
 
-                # Setup 1: High of Day Breakout
+                # Setup 1: High of Day Breakout (Unblocked in HIGH risk IF RVOL >= 2.20x)
+                hod_vol_req = 2.20 if gemini_risk == "HIGH" else required_vol_ratio
                 is_near_hod = (curr_live_px >= day_high * (1.0 - hod_proximity_pct))
-                is_breakout = (gemini_risk != "HIGH") and (is_near_hod and vol_ratio >= required_vol_ratio and is_above_ema9 and is_above_vwap and is_macd_positive)
+                is_breakout = is_near_hod and (vol_ratio >= hod_vol_req) and is_above_ema9 and is_above_vwap and is_macd_positive
 
                 # Setup 2: 5M Bullish Retracement Reclaim
                 is_reclaim_cross = (prev_close <= prev_ema9 or prev_close <= vwap) and (curr_live_px > ema9 and curr_live_px > vwap)
@@ -776,8 +778,8 @@ def execute_engine():
                 is_v_bottom = (is_capitulation_low and lower_wick_ratio >= 0.45 and vol_ratio >= required_vol_ratio and curr_live_px > ema9 and is_macd_positive)
 
                 if is_breakout or is_bullish_reclaim or is_v_bottom:
-                    # LAZY L2 CHECK: Only query L2 orderbook depth when a coin passes all technical filters!
-                    is_liquid, spread_msg = check_liquidity_and_spread(info, coin, max_spread=0.0008, min_depth_usd=2000.0)
+                    # Lazy L2 Check ($1,200 depth floor / 0.10% max spread)
+                    is_liquid, spread_msg = check_liquidity_and_spread(info, coin, max_spread=0.0010, min_depth_usd=1200.0)
                     if not is_liquid:
                         audit_logs.append(f"🔍 [{coin}] Skipped: Liquidity/Spread Check Failed ({spread_msg})")
                         continue
@@ -798,7 +800,7 @@ def execute_engine():
                 continue
 
         if not market_candidates:
-            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.8.6 trigger rules on this candle.")
+            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.8.7 trigger rules on this candle.")
         else:
             audit_logs.append(f"🚀 SCAN COMPLETED: {len(market_candidates)} candidate(s) triggered entry setup!")
 
@@ -878,7 +880,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.8.6 | Calibrated Quality Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.8.7 | Calibrated Quality Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -958,8 +960,8 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Calibrated Quality Scalper (V4.8.6)</div>
-        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Fast Engine Active</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Calibrated Quality Scalper (V4.8.7)</div>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; V4.8.7 Active</div>
       </div>
 
       <div style="padding: 12px;">
@@ -979,10 +981,11 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.8.6 Fast Calibrations</div>
-          <div>&bull; <b>Sub-35s Fast Scan:</b> Lazy L2 depth checking eliminates 85%+ of network latency</div>
-          <div>&bull; <b>Top 10 Focus:</b> Focuses strictly on top liquid movers</div>
-          <div>&bull; <b>Clamped Hard Stop:</b> Bounded at -1.80% ROE (-0.36% Px)</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.8.7 Calibrations</div>
+          <div>&bull; <b>Top 20 Fast-Scan:</b> Expanded scanner scope to top 20 liquid gappers</div>
+          <div>&bull; <b>Calibrated Extension Cap:</b> Shifted to +1.10% for natural 5m volatility</div>
+          <div>&bull; <b>Ballistic HOD Breakouts:</b> Allowed in HIGH risk if RVOL &ge; 2.20x</div>
+          <div>&bull; <b>Depth Floor ($1,200):</b> Optimized orderbook filter for $25 margin slots</div>
         </div>
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
@@ -999,7 +1002,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 5M Scalper Autonomous Engine &bull; V4.8.6 Fast Engine Active
+        Hyperliquid 5M Scalper Autonomous Engine &bull; V4.8.7 Active
       </div>
     </div>
   </body>
