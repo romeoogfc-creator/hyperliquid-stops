@@ -246,23 +246,15 @@
       "ts_sec": 1792442139.148
     }
   ],
-  "active_position_cache": {
-    "JUP": {
-      "strategy": "HOD_BREAKOUT",
-      "entry_px": 0.297,
-      "side": "LONG",
-      "entry_candle_low": 0.29733,
-      "entry_time_sec": 1792490727.7418442
-    }
-  },
+  "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-20 05:05:50",
+  "last_run_timestamp": "2026-10-20 05:10:45",
   "last_email_timestamp": 1792490727.7418442,
-  "last_scan_timestamp": 1792490727.7418442,
+  "last_scan_timestamp": 1792491024.9599717,
   "gemini_cache": {
-    "timestamp": 1792490727.7418442,
-    "risk": "MODERATE",
-    "briefing": "**Risk Level: MODERATE**\n\nCrypto markets currently face a balanced tug-of-war between strong institutional ETF inflows and favorable long-term liquidity trends offsetting ongoing macroeconomic uncertainty, stubborn inflation fears, and the constant threat of sudden regulatory interventions."
+    "timestamp": 1792491024.9599717,
+    "risk": "HIGH",
+    "briefing": "**Risk Level: HIGH** \n\nCrypto markets currently face severe vulnerability due to macroeconomic uncertainty, ongoing regulatory crackdowns, and fragile liquidity conditions that heighten the potential for sudden, sharp liquidations."
   },
   "daily_starting_equity": {
     "2026-10-10": 115.9235492,
