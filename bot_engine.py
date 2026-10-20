@@ -379,7 +379,7 @@ def calculate_5m_ross_indicators(candles):
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle_low, peak_roe=0.0, coin="ETH", setup_type="BULLISH_RECLAIM", upper_wick_pct=0.0):
     roe = ((current_px - entry_px) / entry_px * 5.0) if is_long else ((entry_px - current_px) / entry_px * 5.0)
 
-    # V4.8.5 Fix: Clamped -1.80% ROE Initial Hard Stop (-0.36% Price Move Buffer)
+    # V4.8.5 Clamped -1.80% ROE Initial Hard Stop (-0.36% Price Move Buffer)
     initial_floor_roe = -0.0180
     drawdown_from_peak = peak_roe - roe
 
@@ -452,7 +452,7 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.8.5 Engine Started (Exhaustion Top Protection Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.8.5 Engine Started (Fast-Scan & Exhaustion Top Protection Active).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -503,7 +503,7 @@ def execute_engine():
     required_vol_ratio = 1.50 if gemini_risk == "HIGH" else 1.20
     hod_proximity_pct = 0.0120
     
-    audit_logs.append(f"⚡ V4.8.5 Engine: Hard Stop: -1.80% ROE | Ext Limit: +0.75% | Vol Floor: $500k")
+    audit_logs.append(f"⚡ V4.8.5 Engine: Hard Stop: -1.80% ROE | Ext Limit: +0.75% | Vol Floor: $500k | Fast Scan Top 15")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -694,7 +694,8 @@ def execute_engine():
         top_gapper_str = ", ".join([f"{g['coin']} ({g['change_24h']:+.2f}%)" for g in all_eligible_coins[:5]])
         audit_logs.append(f"🔥 TOP EXPLOSIVE GAPPERS (#20-#300+): {top_gapper_str if top_gapper_str else 'None'}")
 
-        for item in all_eligible_coins[:35]:
+        # V4.8.5 Fast-Scan: Focuses strictly on top 15 liquid gappers to keep runtime < 60s
+        for item in all_eligible_coins[:15]:
             coin = item["coin"]
             idx = item["rank"]
             vlm_24h = item["vlm_24h"]
@@ -747,7 +748,7 @@ def execute_engine():
                 prev_close = ross_ind["prev_close"]
                 prev_ema9 = ross_ind["prev_ema9"]
 
-                # V4.8.5 Fix: Re-tightened Extension Guard Cap (+0.75% Max)
+                # V4.8.5 Re-tightened Extension Guard Cap (+0.75% Max)
                 extension_pct = (curr_live_px - ema9) / ema9
                 if extension_pct > 0.0075:
                     audit_logs.append(f"🔍 [{coin}] Skipped: Extended Peak Guard (+{extension_pct*100:.2f}% > +0.75% limit)")
@@ -763,7 +764,7 @@ def execute_engine():
                 is_above_ema9 = curr_live_px > ema9
                 is_above_vwap = curr_live_px > vwap
                 
-                # V4.8.5 Fix: Strict MACD Histogram Expansion
+                # V4.8.5 Strict MACD Histogram Expansion
                 is_macd_positive = macd_hist > 0.0
 
                 prev_low = lows[-2]
@@ -987,9 +988,9 @@ def execute_engine():
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
           <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.8.5 Calibrations</div>
+          <div>&bull; <b>Fast-Scan Top 15:</b> Scans top 15 gappers for ultra-fast execution (&lt;60s)</div>
           <div>&bull; <b>Tightened Extension Guard:</b> Capped at +0.75% to eliminate exhaustion peak entries</div>
           <div>&bull; <b>Clamped Hard Stop:</b> Bounded at -1.80% ROE (-0.36% Px) to keep paper cuts small</div>
-          <div>&bull; <b>Strict MACD Filter:</b> Requires macd_hist &gt; 0 to block entries during high-volume dumps</div>
         </div>
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
