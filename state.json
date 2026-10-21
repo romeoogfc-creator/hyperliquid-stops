@@ -17,7 +17,9 @@
     "DASH": 1792562735.6883337,
     "WLD": 1792550135.6883337
   },
-  "last_traded_candle": {},
+  "last_traded_candle": {
+    "WLD": 1792555200000
+  },
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
@@ -132,15 +134,23 @@
       "ts_sec": 1792503341.517
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "WLD": {
+      "strategy": "HOD_BREAKOUT",
+      "entry_px": 0.59078,
+      "side": "LONG",
+      "entry_candle_low": 0.5902,
+      "entry_time_sec": 1792555831.4139993
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-20 23:05:50",
-  "last_email_timestamp": 1792554926.5380657,
-  "last_scan_timestamp": 1792555534.7314794,
+  "last_run_timestamp": "2026-10-20 23:10:40",
+  "last_email_timestamp": 1792555831.4139993,
+  "last_scan_timestamp": 1792555831.4139993,
   "gemini_cache": {
-    "timestamp": 1792555534.7314794,
+    "timestamp": 1792555831.4139993,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting regulatory headwinds, and significant volatility surrounding potential liquidity fluctuations."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, heightened regulatory scrutiny, and the potential for sharp liquidity swings following recent price rallies."
   },
   "daily_starting_equity": {
     "2026-10-20": 110.9460072
