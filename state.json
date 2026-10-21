@@ -21,7 +21,8 @@
   "last_traded_candle": {
     "WLD": 1792555200000,
     "ENA": 1792557000000,
-    "SKY": 1792569600000
+    "SKY": 1792569600000,
+    "TRUMP": 1792571400000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
@@ -140,26 +141,33 @@
   "active_position_cache": {
     "SKY": {
       "entry_px": 0.076507,
-      "current_px": 0.0767,
+      "current_px": 0.076626,
       "szi": 309.0,
-      "margin": 23.704008,
+      "margin": 23.679597,
       "side": "LONG",
       "peak_roe": 0.012613224933666118,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.076022,
       "entry_time_sec": 1792570231.773548
+    },
+    "TRUMP": {
+      "strategy": "HOD_BREAKOUT",
+      "entry_px": 1.80275,
+      "side": "LONG",
+      "entry_candle_low": 1.7976,
+      "entry_time_sec": 1792571437.0221493
     }
   },
   "previous_active_coins": [
     "SKY"
   ],
-  "last_run_timestamp": "2026-10-21 03:25:41",
-  "last_email_timestamp": 1792571132.0642161,
-  "last_scan_timestamp": 1792571132.0642161,
+  "last_run_timestamp": "2026-10-21 03:34:07",
+  "last_email_timestamp": 1792571437.0221493,
+  "last_scan_timestamp": 1792571437.0221493,
   "gemini_cache": {
-    "timestamp": 1792571132.0642161,
+    "timestamp": 1792571437.0221493,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts and regulatory uncertainty, leading to significant volatility that can trigger rapid liquidations in both directions."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity cycles, all of which keep the potential for sharp, sudden price corrections elevated."
   },
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
