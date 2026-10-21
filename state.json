@@ -145,13 +145,13 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-21 11:15:42",
+  "last_run_timestamp": "2026-10-21 11:20:39",
   "last_email_timestamp": 1792598733.7904766,
-  "last_scan_timestamp": 1792599331.7200434,
+  "last_scan_timestamp": 1792599631.3150713,
   "gemini_cache": {
-    "timestamp": 1792599331.7200434,
-    "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nPersistent macroeconomic tightening, ongoing regulatory crackdowns, and elevated market leverage continue to create an environment acutely vulnerable to sudden liquidity shocks and severe downside volatility."
+    "timestamp": 1792599631.3150713,
+    "risk": "MODERATE",
+    "briefing": "**Risk Level: MODERATE** \n\nWhile improving macroeconomic liquidity and institutional adoption provide a strong structural floor, the market remains vulnerable to sudden regulatory crackdowns, elevated leverage flush-outs, and persistent geopolitical uncertainties."
   },
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
