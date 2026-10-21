@@ -147,11 +147,11 @@
   "active_position_cache": {
     "XLM": {
       "entry_px": 0.18657,
-      "current_px": 0.186265,
+      "current_px": 0.18659,
       "szi": 127.0,
-      "margin": 23.65756,
+      "margin": 23.69439,
       "side": "LONG",
-      "peak_roe": -0.008173875757089227,
+      "peak_roe": 0.0005359918529236278,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.18553,
       "entry_time_sec": 1792605933.865068
@@ -160,13 +160,13 @@
   "previous_active_coins": [
     "XLM"
   ],
-  "last_run_timestamp": "2026-10-21 13:10:50",
+  "last_run_timestamp": "2026-10-21 13:16:00",
   "last_email_timestamp": 1792605933.865068,
-  "last_scan_timestamp": 1792606233.7924597,
+  "last_scan_timestamp": 1792606529.0472517,
   "gemini_cache": {
-    "timestamp": 1792606233.7924597,
-    "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nDriven by persistent macroeconomic uncertainty, potential regulatory crackdowns, and elevated market leverage, the crypto sector currently faces significant vulnerability to sudden, sharp downside volatility."
+    "timestamp": 1792606529.0472517,
+    "risk": "MODERATE",
+    "briefing": "**Risk Level: MODERATE**\n\nCrypto markets currently face a balanced tug-of-war between strong institutional ETF inflows and favorable long-term liquidity trends offsetting ongoing macroeconomic uncertainty, stubborn regulatory pressures, and typical mid-cycle volatility."
   },
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
