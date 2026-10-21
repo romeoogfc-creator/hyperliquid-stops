@@ -130,35 +130,40 @@
     }
   ],
   "active_position_cache": {
+    "PUMP": {
+      "entry_px": 0.004926,
+      "current_px": 0.004922,
+      "szi": 4821.0,
+      "margin": 23.728962,
+      "side": "LONG",
+      "peak_roe": -0.0040600893219647416,
+      "strategy": "HOD_BREAKOUT",
+      "entry_candle_low": 0.00489,
+      "entry_time_sec": 1792543231.5512445
+    },
     "SKY": {
       "entry_px": 0.076741,
-      "current_px": 0.076999,
+      "current_px": 0.076963,
       "szi": 310.0,
-      "margin": 23.86969,
+      "margin": 23.85946,
       "side": "LONG",
       "peak_roe": 0.016809788770018264,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.076103,
       "entry_time_sec": 1792542331.5864146
-    },
-    "PUMP": {
-      "strategy": "HOD_BREAKOUT",
-      "entry_px": 0.00493,
-      "side": "LONG",
-      "entry_candle_low": 0.00489,
-      "entry_time_sec": 1792543231.5512445
     }
   },
   "previous_active_coins": [
-    "SKY"
+    "SKY",
+    "PUMP"
   ],
-  "last_run_timestamp": "2026-10-20 19:40:43",
+  "last_run_timestamp": "2026-10-20 19:45:34",
   "last_email_timestamp": 1792543231.5512445,
-  "last_scan_timestamp": 1792543231.5512445,
+  "last_scan_timestamp": 1792543523.2404218,
   "gemini_cache": {
-    "timestamp": 1792543231.5512445,
-    "risk": "MODERATE",
-    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional interest and upcoming macroeconomic shifts, the potential for volatility persists due to lingering regulatory uncertainty and sensitive reactions to central bank policy updates."
+    "timestamp": 1792543523.2404218,
+    "risk": "HIGH",
+    "briefing": "Risk Level: **HIGH** \u2014 Increased market volatility driven by macroeconomic uncertainty, regulatory shifts, and significant leverage in derivatives markets creates a landscape prone to sudden, sharp corrections."
   },
   "daily_starting_equity": {
     "2026-10-20": 111.2514322
