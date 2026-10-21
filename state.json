@@ -141,11 +141,11 @@
   "active_position_cache": {
     "TRUMP": {
       "entry_px": 1.8008,
-      "current_px": 1.80115,
+      "current_px": 1.80335,
       "szi": 13.1,
-      "margin": 2.35931,
+      "margin": 2.362454,
       "side": "LONG",
-      "peak_roe": 0.0009717903154155722,
+      "peak_roe": 0.007080186583740705,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 1.7976,
       "entry_time_sec": 1792571437.0221493
@@ -154,13 +154,13 @@
   "previous_active_coins": [
     "TRUMP"
   ],
-  "last_run_timestamp": "2026-10-21 03:40:34",
-  "last_email_timestamp": 1792571437.0221493,
-  "last_scan_timestamp": 1792572026.7633958,
+  "last_run_timestamp": "2026-10-21 03:45:45",
+  "last_email_timestamp": 1792572337.674949,
+  "last_scan_timestamp": 1792572337.674949,
   "gemini_cache": {
-    "timestamp": 1792572026.7633958,
-    "risk": "MODERATE",
-    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, volatility remains elevated due to ongoing macroeconomic uncertainty and sensitive shifts in regulatory and liquidity landscapes."
+    "timestamp": 1792572337.674949,
+    "risk": "HIGH",
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, the asset class remains highly sensitive to macroeconomic volatility and sudden shifts in regulatory or liquidity conditions."
   },
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
