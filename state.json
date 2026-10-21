@@ -31,7 +31,8 @@
     "VVV": 1792581300000,
     "PENGU": 1792593900000,
     "XLM": 1792605600000,
-    "GRAM": 1792617300000
+    "GRAM": 1792617300000,
+    "BNB": 1792619100000
   },
   "hibernating_until": 0,
   "closed_trades_ledger": [
@@ -426,11 +427,19 @@
       "ts_sec": 1792442139.148
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "BNB": {
+      "strategy": "HOD_BREAKOUT",
+      "entry_px": 750.56,
+      "side": "LONG",
+      "entry_candle_low": 749.93,
+      "entry_time_sec": 1792619735.9204903
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-21 16:50:57",
-  "last_email_timestamp": 1792619425.3963206,
-  "last_scan_timestamp": 1792619425.3963206,
+  "last_run_timestamp": "2026-10-21 16:55:53",
+  "last_email_timestamp": 1792619735.9204903,
+  "last_scan_timestamp": 1792619735.9204903,
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
     "2026-10-21": 110.9460072
@@ -512,13 +521,13 @@
   "ledger_version": 2,
   "near_miss_stats": {
     "2026-10-21": {
-      "Too extended from EMA9": 59,
-      "MACD negative": 94,
-      "RVOL": 19,
-      "VWAP stretch": 50,
-      "Not near day high": 14,
-      "No reclaim cross": 2,
-      "Below VWAP": 9
+      "Too extended from EMA9": 62,
+      "MACD negative": 97,
+      "RVOL": 20,
+      "VWAP stretch": 55,
+      "Not near day high": 15,
+      "No reclaim cross": 3,
+      "Below VWAP": 10
     }
   }
 }
