@@ -52,7 +52,8 @@ def load_state():
         "active_position_cache": {},
         "previous_active_symbols": [],
         "last_run_timestamp": "", 
-        "daily_starting_equity": {}
+        "daily_starting_equity": {},
+        "last_traded_candle": {}
     }
     if os.path.exists(STATE_FILE):
         try:
@@ -138,7 +139,7 @@ def round_sig_figs(val, sig_figs=5):
         return 0
     return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
 
-def calculate_5m_ross_indicators(closes, highs, lows, vols):
+def calculate_15m_ross_indicators(closes, highs, lows, vols):
     if len(closes) < 20:
         return None
 
@@ -147,8 +148,8 @@ def calculate_5m_ross_indicators(closes, highs, lows, vols):
 
     typical_prices = (np.array(highs) + np.array(lows) + np.array(closes)) / 3.0
     tp_v = typical_prices * np.array(vols)
-    cum_tp_v = np.sum(tp_v)
-    cum_v = np.sum(vols)
+    cum_tp_v = np.sum(tp_v[-32:])
+    cum_v = np.sum(vols[-32:])
     vwap = (cum_tp_v / cum_v) if cum_v > 0 else closes[-1]
 
     ema12 = df_c.ewm(span=12, adjust=False).mean()
@@ -160,27 +161,76 @@ def calculate_5m_ross_indicators(closes, highs, lows, vols):
     return {
         "ema9": ema9,
         "vwap": vwap,
-        "macd_hist": macd_hist
+        "macd_hist": macd_hist,
+        "prev_close": closes[-2],
+        "prev_ema9": df_c.ewm(span=9, adjust=False).mean().iloc[-2]
     }
+
+def calculate_stock_retention_targets(entry_px, is_long, current_px, entry_candle_low, peak_roe=0.0, upper_wick_pct=0.0):
+    # Stock Scale Calibration (1x Unleveraged Equity)
+    roe = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
+    initial_floor_roe = -0.0150  # -1.50% Px Hard Stop Buffer
+    drawdown_from_peak = peak_roe - roe
+
+    # Climax Exhaustion Lock: Peak >= +1.50% with a 45%+ upper wick
+    is_exhaustion = (peak_roe >= 0.0150) and (drawdown_from_peak >= 0.0030 or upper_wick_pct >= 0.45)
+
+    if is_exhaustion:
+        target_floor_roe = max(peak_roe - 0.0020, roe)
+        leash_status = f"⚡ CLIMAX EXHAUSTION LOCK [Peak +{peak_roe*100:.2f}% -> Stop +{target_floor_roe*100:.2f}%]"
+    elif peak_roe >= 0.0300:  # +3.00% Px Gain (Stock Moonshot)
+        target_floor_roe = max(peak_roe * 0.88, peak_roe - 0.0050)
+        leash_status = f"🚀 UNCAPPED MOONSHOT (88% LOCKED) [Peak +{peak_roe*100:.2f}% -> Stop +{target_floor_roe*100:.2f}%]"
+    elif peak_roe >= 0.0150:  # +1.50% Px Gain (Stock Expansion)
+        target_floor_roe = max(peak_roe * 0.80, peak_roe - 0.0040)
+        leash_status = f"🎯 EXPANSION RATCHET (80% LOCKED) [Peak +{peak_roe*100:.2f}% -> Stop +{target_floor_roe*100:.2f}%]"
+    elif peak_roe >= 0.0050:  # +0.50% Px Gain (Stock Fee Floor)
+        target_floor_roe = 0.0015  # Lock +0.15% profit floor
+        leash_status = f"🛡 FEE FLOOR LOCKED (+0.15% Px)"
+    else:
+        target_floor_roe = initial_floor_roe
+        leash_status = f"🛡 STRUCTURAL STOCK STOP ({target_floor_roe*100:.2f}% Px)"
+
+    stop_px = entry_px * (1 + target_floor_roe) if is_long else entry_px * (1 - target_floor_roe)
+    return max(stop_px, entry_candle_low) if is_long else min(stop_px, entry_candle_low), leash_status
 
 def execute_stock_engine():
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
     ct_now = get_central_time()
     today_str = ct_now.strftime('%Y-%m-%d')
+    now_ts = time.time()
     
+    # Market Trading Hours Gate (Mon-Fri: 8:30 AM CT to 3:00 PM CT)
+    is_weekday = ct_now.weekday() < 5
+    mins_from_midnight = ct_now.hour * 60 + ct_now.minute
+    
+    market_open_mins = 8 * 60 + 30     # 8:30 AM CT
+    market_close_mins = 15 * 60        # 3:00 PM CT
+    eod_square_off_mins = 14 * 60 + 50 # 2:50 PM CT (3:50 PM ET)
+    
+    is_trading_window = is_weekday and (market_open_mins <= mins_from_midnight < market_close_mins)
+    is_eod_square_off = is_weekday and (mins_from_midnight >= eod_square_off_mins)
+
+    state = load_state()
+    positions_res = api_retry(requests.get, f"{BASE_URL}/v2/positions", headers=HEADERS)
+    positions_list = positions_res.json() if positions_res and positions_res.status_code == 200 else []
+
+    # Quiet Hours Gate: After 3:05 PM CT or before 8:25 AM CT with 0 positions -> Exit silently
+    if not is_trading_window and not positions_list and (mins_from_midnight >= 15 * 60 + 5 or mins_from_midnight < 8 * 60 + 25 or not is_weekday):
+        print(f"[{timestamp}] Market is CLOSED (Central Time: {ct_now.strftime('%H:%M:%S')}). 0 active positions. Skipping run silently.", flush=True)
+        return
+
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Engine Started (Pure Ross Cameron 5M Scalper, Central Time: {ct_now.strftime('%H:%M:%S')}).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Equities-LS-01 Engine Started (V4.8.9 Hybrid 15M Calibrated Engine Active).")
 
     if not API_KEY or not SECRET_KEY:
         raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
 
-    start_date = (datetime.now() - timedelta(days=3)).strftime('%Y-%m-%d')
+    start_date = (datetime.now() - timedelta(days=5)).strftime('%Y-%m-%d')
 
     spy_green, spy_open_px, spy_close_px = check_market_macro_regime()
     spy_regime_str = f"GREEN (Open: ${spy_open_px:.2f}, Close: ${spy_close_px:.2f}) -> LONGs Allowed" if spy_green else f"RED (Open: ${spy_open_px:.2f}, Close: ${spy_close_px:.2f}) -> SHORTs Allowed"
     audit_logs.append(f"SPY Macro Regime Shield: {spy_regime_str}")
-
-    state = load_state()
 
     account_res = api_retry(requests.get, f"{BASE_URL}/v2/account", headers=HEADERS)
     if not account_res or account_res.status_code != 200:
@@ -204,9 +254,6 @@ def execute_stock_engine():
     today_start_eq = daily_starting_dict[today_str]
     today_total_gain = equity - today_start_eq
     lifetime_cumulative_pnl = equity - 100000.0
-
-    positions_res = api_retry(requests.get, f"{BASE_URL}/v2/positions", headers=HEADERS)
-    positions_list = positions_res.json() if positions_res and positions_res.status_code == 200 else []
 
     orders_res = api_retry(requests.get, f"{BASE_URL}/v2/orders?status=open", headers=HEADERS)
     open_orders = orders_res.json() if orders_res and orders_res.status_code == 200 else []
@@ -240,11 +287,9 @@ def execute_stock_engine():
         save_state(state)
         positions_list = []
 
-    # --- PRE-CLOSE EOD SQUARE-OFF (2:40 PM CT) ---
-    is_eod_square_off = (ct_now.hour == 14 and ct_now.minute >= 40) or (ct_now.hour >= 15)
-
+    # --- EOD SQUARE-OFF (2:50 PM CT / 3:50 PM ET) ---
     if is_eod_square_off and positions_list:
-        reason_text = "EOD Square-Off (100% Cash Flat)"
+        reason_text = "EOD Square-Off (100% Cash Flat at 2:50 PM CT)"
         audit_logs.append(f"EMERGENCY EXIT TRIGGERED ({reason_text}): Liquidating all open positions to cash.")
         for pos in positions_list:
             sym = pos.get("symbol")
@@ -253,7 +298,6 @@ def execute_stock_engine():
             entry_px = float(pos.get("avg_entry_price", 0))
             current_px = float(pos.get("current_price", entry_px))
             close_side = "sell" if side == "long" else "buy"
-            
             realized_pnl = (current_px - entry_px) * qty if side == "long" else (entry_px - current_px) * qty
 
             close_payload = {
@@ -266,12 +310,10 @@ def execute_stock_engine():
                     if "closed_trades_ledger" not in state:
                         state["closed_trades_ledger"] = []
                     
-                    existing_symbols_today = [t['symbol'] for t in state["closed_trades_ledger"] if today_str in t.get("timestamp", "")]
-                    if sym not in existing_symbols_today:
-                        state["closed_trades_ledger"].insert(0, {
-                            "symbol": sym, "entry_price": entry_px, "exit_price": current_px,
-                            "exit_reason": reason_text, "realized_pnl": realized_pnl, "timestamp": timestamp
-                        })
+                    state["closed_trades_ledger"].insert(0, {
+                        "symbol": sym, "entry_price": entry_px, "exit_price": current_px,
+                        "exit_reason": reason_text, "realized_pnl": realized_pnl, "timestamp": timestamp
+                    })
             except Exception as e:
                 audit_logs.append(f"LIQUIDATION ERROR on {sym}: {e}")
         
@@ -300,33 +342,35 @@ def execute_stock_engine():
         active_symbols.add(symbol)
         current_roe = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
 
+        cache_info = current_active_cache.get(symbol, {})
+        entry_candle_low = cache_info.get("entry_candle_low", entry_px * 0.9930)
+        prev_peak = cache_info.get("peak_roe", current_roe)
+        peak_roe = max(current_roe, prev_peak)
+
+        upper_wick_ratio = 0.0
+        try:
+            bar_res = api_retry(requests.get, f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=15Min&limit=5&feed=iex&start={start_date}", headers=HEADERS)
+            if bar_res and bar_res.status_code == 200:
+                b_list = bar_res.json().get("bars", {}).get(symbol, [])
+                if b_list:
+                    last_c = b_list[-1]
+                    c_high, c_low, c_open = float(last_c["h"]), float(last_c["l"]), float(last_c["o"])
+                    c_range = max(1e-8, c_high - c_low)
+                    body_top = max(c_open, current_px)
+                    upper_wick_ratio = (c_high - body_top) / c_range
+        except Exception:
+            pass
+
+        stop_px_calc, leash_status = calculate_stock_retention_targets(
+            entry_px, is_long, current_px, entry_candle_low, peak_roe=peak_roe, upper_wick_pct=upper_wick_ratio
+        )
+
         should_exit = False
         exit_reason = ""
 
-        cache_info = current_active_cache.get(symbol, {})
-        entry_candle_low = cache_info.get("entry_candle_low", entry_px * 0.9920)
-
-        try:
-            bar_res = api_retry(requests.get, f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbol}&timeframe=5Min&limit=50&feed=iex&start={start_date}", headers=HEADERS)
-            if bar_res and bar_res.status_code == 200:
-                b_list = bar_res.json().get("bars", {}).get(symbol, [])
-                if len(b_list) >= 20:
-                    closes_pos = [float(b["c"]) for b in b_list]
-                    highs_pos = [float(b["h"]) for b in b_list]
-                    lows_pos = [float(b["l"]) for b in b_list]
-                    vols_pos = [float(b["v"]) for b in b_list]
-
-                    ross_ind = calculate_5m_ross_indicators(closes_pos, highs_pos, lows_pos, vols_pos)
-                    if ross_ind:
-                        if is_long and (current_px < ross_ind["ema9"] or ross_ind["macd_hist"] < 0):
-                            should_exit = True
-                            exit_reason = f"🚨 Ross Exit Signal (Price < 9 EMA or MACD Hist < 0)"
-        except Exception as e:
-            audit_logs.append(f"Indicator calculation warning on {symbol}: {e}")
-
-        if current_px <= entry_candle_low and is_long:
+        if is_long and current_px <= stop_px_calc:
             should_exit = True
-            exit_reason = f"🎯 Pivot Low Stop Triggered (${entry_candle_low:.2f})"
+            exit_reason = f"🎯 Retention Ratchet Triggered ({current_roe*100:+.2f}% ROE)"
 
         if should_exit:
             audit_logs.append(f"EXIT TRIGGERED on {symbol} at {current_roe*100:+.2f}% ROE. Reason: {exit_reason}")
@@ -341,20 +385,15 @@ def execute_stock_engine():
                 if "closed_trades_ledger" not in state:
                     state["closed_trades_ledger"] = []
                 
-                existing_symbols_today = [t['symbol'] for t in state["closed_trades_ledger"] if today_str in t.get("timestamp", "")]
-                if symbol not in existing_symbols_today:
-                    state["closed_trades_ledger"].insert(0, {
-                        "symbol": symbol, "entry_price": entry_px, "exit_price": current_px,
-                        "exit_reason": exit_reason, "realized_pnl": realized_pnl, "timestamp": timestamp
-                    })
+                state["closed_trades_ledger"].insert(0, {
+                    "symbol": symbol, "entry_price": entry_px, "exit_price": current_px,
+                    "exit_reason": exit_reason, "realized_pnl": realized_pnl, "timestamp": timestamp
+                })
                 state["closed_trades_ledger"] = state["closed_trades_ledger"][:20]
                 active_count -= 1
                 continue
             except Exception as e:
                 audit_logs.append(f"Execution Failed on {symbol}: {e}")
-
-        prev_peak = cache_info.get("peak_roe", current_roe)
-        peak_roe = max(current_roe, prev_peak)
 
         new_active_cache[symbol] = {
             "entry_px": entry_px, "current_px": current_px, "qty": qty, "peak_roe": peak_roe,
@@ -371,141 +410,149 @@ def execute_stock_engine():
             "market_value": market_value,
             "pnl": unrealized_pnl,
             "roe": current_roe * 100,
-            "stop": round_sig_figs(entry_candle_low, 5),
-            "status": "Active 5M Ross Scalp"
+            "stop": round_sig_figs(stop_px_calc, 5),
+            "status": leash_status
         })
 
     state["active_position_cache"] = new_active_cache
     state["previous_active_symbols"] = list(active_symbols)
 
     MAX_STOCK_SLOTS = 3
-    is_trading_window = (ct_now.weekday() < 5) and ((ct_now.hour == 8 and ct_now.minute >= 30) or (9 <= ct_now.hour < 14) or (ct_now.hour == 14 and ct_now.minute < 35))
-
+    # High-Beta Momentum Equity Scope
     watchlist = [
-        "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "TSLA", "AMD", "AVGO", "QCOM",
-        "INTC", "MU", "ARM", "AMAT", "LRCX", "SMCI", "ORCL", "CRM", "NOW", "PANW", "FTNT", "PLTR",
-        "COIN", "HOOD", "SQ", "PYPL", "NET", "SNOW", "SHOP", "MSTR", "UBER", "ABNB", "RBLX", "DKNG",
-        "NFLX", "COST", "WMT", "HD", "DIS", "NKE", "SBUX", "BA", "CAT", "GE", "HON", "DE", "LMT",
-        "JPM", "BAC", "GS", "MS", "V", "MA", "XOM", "CVX", "SLB", "LLY", "UNH", "JNJ", "PFE", "ABBV",
-        "TXN", "ADI", "KLAC", "MCHP", "DELL"
+        "NVDA", "TSLA", "AMD", "PLTR", "COIN", "MSTR", "HOOD", "SMCI", "AAPL", "MSFT",
+        "AMZN", "GOOGL", "META", "AVGO", "QCOM", "ARM", "AMAT", "LRCX", "ORCL", "CRM",
+        "NOW", "PANW", "FTNT", "SQ", "PYPL", "NET", "SNOW", "SHOP", "UBER", "ABNB",
+        "RBLX", "DKNG", "NFLX"
     ]
 
     symbols_to_scan = [s for s in watchlist if s not in active_symbols]
     market_candidates = []
     scanned_count = 0
 
-    chunk_size = 20
-    for i in range(0, len(symbols_to_scan), chunk_size):
-        chunk = symbols_to_scan[i:i + chunk_size]
-        symbols_param = ",".join(chunk)
+    if is_trading_window and not is_eod_square_off and active_count < MAX_STOCK_SLOTS:
+        chunk_size = 20
+        for i in range(0, len(symbols_to_scan), chunk_size):
+            chunk = symbols_to_scan[i:i + chunk_size]
+            symbols_param = ",".join(chunk)
 
-        all_bars_data = {}
-        page_token = None
+            all_bars_data = {}
+            page_token = None
 
-        while True:
-            url = f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbols_param}&timeframe=5Min&limit=10000&feed=iex&start={start_date}"
-            if page_token:
-                url += f"&page_token={page_token}"
+            while True:
+                url = f"https://data.alpaca.markets/v2/stocks/bars?symbols={symbols_param}&timeframe=15Min&limit=1000&feed=iex&start={start_date}"
+                if page_token:
+                    url += f"&page_token={page_token}"
 
-            try:
-                bars_res = api_retry(requests.get, url, headers=HEADERS)
-                if not bars_res or bars_res.status_code != 200:
+                try:
+                    bars_res = api_retry(requests.get, url, headers=HEADERS)
+                    if not bars_res or bars_res.status_code != 200:
+                        break
+                    res_json = bars_res.json()
+                    returned_bars = res_json.get("bars", {})
+                    for sym, b_list in returned_bars.items():
+                        if sym not in all_bars_data:
+                            all_bars_data[sym] = []
+                        all_bars_data[sym].extend(b_list)
+                    page_token = res_json.get("next_page_token")
+                    if not page_token:
+                        break
+                except Exception:
                     break
-                res_json = bars_res.json()
-                returned_bars = res_json.get("bars", {})
-                for sym, b_list in returned_bars.items():
-                    if sym not in all_bars_data:
-                        all_bars_data[sym] = []
-                    all_bars_data[sym].extend(b_list)
-                page_token = res_json.get("next_page_token")
-                if not page_token:
-                    break
-            except Exception:
-                break
 
-        for symbol in chunk:
-            bars = all_bars_data.get(symbol, [])
-            if not bars or len(bars) < 20:
-                continue
+            for symbol in chunk:
+                bars = all_bars_data.get(symbol, [])
+                if not bars or len(bars) < 20:
+                    continue
 
-            scanned_count += 1
-            closes = [float(b["c"]) for b in bars]
-            opens = [float(b["o"]) for b in bars]
-            highs = [float(b["h"]) for b in bars]
-            lows = [float(b["l"]) for b in bars]
-            vols = [float(b["v"]) for b in bars]
+                scanned_count += 1
+                closes = [float(b["c"]) for b in bars]
+                highs = [float(b["h"]) for b in bars]
+                lows = [float(b["l"]) for b in bars]
+                vols = [float(b["v"]) for b in bars]
 
-            curr_px = closes[-1]
-            prev_close = closes[-2]
-            prev_high = highs[-2]
-            prev_low = lows[-2]
+                curr_px = closes[-1]
+                prev_high = highs[-2]
+                prev_low = lows[-2]
 
-            ross_ind = calculate_5m_ross_indicators(closes, highs, lows, vols)
-            if not ross_ind:
-                continue
+                # Intrabar Paced RVOL Formula (15M Candle Pacing)
+                bar_start_dt = datetime.fromisoformat(bars[-1]["t"].replace("Z", "+00:00"))
+                elapsed_mins = max(0.5, (datetime.now(timezone.utc) - bar_start_dt).total_seconds() / 60.0)
+                extrap_mult = min(3.0, 15.0 / elapsed_mins)
+                paced_volume = vols[-1] * extrap_mult
 
-            ema9 = ross_ind["ema9"]
-            vwap = ross_ind["vwap"]
-            macd_hist = ross_ind["macd_hist"]
+                avg_vol = np.mean(vols[-12:-2]) if len(vols) >= 12 else np.mean(vols[:-1])
+                vol_ratio = paced_volume / avg_vol if avg_vol > 0 else 1.0
 
-            avg_vol = np.mean(vols[-12:-2]) if len(vols) >= 12 else np.mean(vols[:-1])
-            vol_ratio = vols[-1] / avg_vol if avg_vol > 0 else 1.0
+                ross_ind = calculate_15m_ross_indicators(closes, highs, lows, vols)
+                if not ross_ind:
+                    continue
 
-            required_vol_ratio = 2.00
-            is_above_ema9 = curr_px > ema9
-            is_above_vwap = curr_px > vwap
-            is_macd_frontside = macd_hist > 0.0
+                ema9 = ross_ind["ema9"]
+                vwap = ross_ind["vwap"]
+                macd_hist = ross_ind["macd_hist"]
 
-            is_trigger_break = (curr_px > prev_high) and (curr_px <= prev_high * 1.0020)
-            is_prev_pullback = (closes[-2] < opens[-2]) or (vols[-2] <= avg_vol * 0.85)
+                required_vol_ratio = 1.80
+                is_above_ema9 = curr_px > ema9
+                is_above_vwap = curr_px > vwap
+                is_macd_positive = macd_hist > 0.0
 
-            if spy_green and vol_ratio >= required_vol_ratio and is_above_ema9 and is_above_vwap and is_macd_frontside and is_trigger_break and is_prev_pullback:
-                score = vol_ratio * (1.0 + (macd_hist / max(curr_px, 1e-8)))
-                market_candidates.append({
-                    "symbol": symbol, "close": curr_px, "is_long": True,
-                    "score": score, "entry_candle_low": prev_low
-                })
-                audit_logs.append(f"🔥 ROSS 5M BREAKOUT TRIGGER: {symbol} @ ${curr_px:.2f} (RVOL: {vol_ratio:.2f}x, 9EMA: PASS, VWAP: PASS)")
+                is_breakout = (curr_px >= prev_high) and (vol_ratio >= required_vol_ratio)
+                is_reclaim = (closes[-2] <= ema9 or closes[-2] <= vwap) and (curr_px > ema9 and curr_px > vwap) and (vol_ratio >= 1.30)
+
+                if spy_green and is_above_ema9 and is_above_vwap and is_macd_positive and (is_breakout or is_reclaim):
+                    setup_type = "HOD_BREAKOUT" if is_breakout else "BULLISH_RECLAIM"
+                    score = vol_ratio * (1.5 if setup_type == "HOD_BREAKOUT" else 1.0)
+                    target_limit_px = min(curr_px * 0.9985, max(ema9, vwap))
+
+                    market_candidates.append({
+                        "symbol": symbol, "close": curr_px, "limit_px": target_limit_px,
+                        "is_long": True, "score": score, "entry_candle_low": prev_low, "strategy": setup_type
+                    })
+                    audit_logs.append(f"🔥 V4.8.9 TRIGGER [{setup_type}]: {symbol} @ ${curr_px:.2f} (Paced RVOL: {vol_ratio:.2f}x, 9EMA: PASS, VWAP: PASS)")
 
     market_candidates = sorted(market_candidates, key=lambda x: x["score"], reverse=True)
-    audit_logs.append(f"Pure Ross 5M Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} validated Ross triggers.")
+    audit_logs.append(f"V4.8.9 15M Scan Complete: Evaluated {scanned_count} symbols. Found {len(market_candidates)} validated triggers.")
 
     if not is_trading_window or is_eod_square_off:
-        audit_logs.append("Execution Gate: Outside active trading hours or square-off window active.")
+        audit_logs.append("Execution Gate: Outside active market hours (8:30 AM - 3:00 PM CT) or EOD Square-Off active.")
     elif active_count < MAX_STOCK_SLOTS and market_candidates:
         for candidate in market_candidates[: (MAX_STOCK_SLOTS - active_count)]:
             symbol = candidate["symbol"]
             px = candidate["close"]
+            limit_px = candidate["limit_px"]
             is_long = candidate["is_long"]
             e_candle_low = candidate["entry_candle_low"]
+            strat_used = candidate["strategy"]
 
-            target_usd = max(50.0, equity * 0.13)
-            raw_qty = target_usd / px
-            qty = max(1, int(raw_qty))
+            target_usd = max(100.0, equity * 0.15)
+            entry_calc_px = px if strat_used == "HOD_BREAKOUT" else limit_px
+            qty = max(1, int(target_usd / entry_calc_px))
             order_side = "buy" if is_long else "sell"
 
             order_payload = {
                 "symbol": symbol,
                 "qty": str(qty),
                 "side": order_side,
-                "type": "market",
+                "type": "market" if strat_used == "HOD_BREAKOUT" else "limit",
                 "time_in_force": "day"
             }
+            if strat_used != "HOD_BREAKOUT":
+                order_payload["limit_price"] = str(round(limit_px, 2))
+
             try:
                 order_res = api_retry(requests.post, f"{BASE_URL}/v2/orders", json=order_payload, headers=HEADERS)
                 if order_res and order_res.status_code == 200:
                     active_count += 1
                     active_symbols.add(symbol)
                     state["active_position_cache"][symbol] = {
-                        "entry_px": px, "entry_candle_low": e_candle_low, "qty": qty
+                        "entry_px": entry_calc_px, "entry_candle_low": e_candle_low, "qty": qty, "strategy": strat_used
                     }
-                    audit_logs.append(f"ROSS 5M ENTRY SUCCESS: Opened {'LONG' if is_long else 'SHORT'} on {qty} shares of {symbol} (~${(qty * px):.2f})")
+                    audit_logs.append(f"V4.8.9 ENTRY SUCCESS [{strat_used}]: Opened LONG on {qty} shares of {symbol} (~${(qty * entry_calc_px):.2f})")
                 else:
                     audit_logs.append(f"ORDER REJECTED BY ALPACA [{order_res.status_code if order_res else 'ERR'}] on {symbol}: {order_res.text if order_res else 'No response'}")
             except Exception as e:
                 audit_logs.append(f"ORDER EXCEPTION on {symbol}: {e}")
-    else:
-        audit_logs.append(f"Execution Gate: Active slots ({active_count}/{MAX_STOCK_SLOTS}). No new scalps triggered.")
 
     save_state(state)
 
@@ -578,7 +625,7 @@ def execute_stock_engine():
     if VERBOSE_TEST_MODE:
         audit_rows = "".join([f"<tr><td style='padding: 6px 8px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 10px; color: #475569; white-space: pre-wrap; word-break: break-all;'>{log}</td></tr>" for log in audit_logs])
         audit_section = f"""
-        <div style="font-size: 11px; text-transform: uppercase; color: #d97706; margin: 14px 0 6px 0; font-weight: 700;">Live Test Telemetry & Audit Log</div>
+        <div style="font-size: 11px; text-transform: uppercase; color: #d97706; margin: 14px 0 6px 0; font-weight: 700;">Live Telemetry & Audit Log</div>
         <div style="width: 100%; border: 1px solid #fde68a; border-radius: 6px; background-color: #fffbeb; margin-bottom: 15px; box-sizing: border-box;">
           <table style="width: 100%; font-size: 11px; border-collapse: collapse;">
             <tbody>{audit_rows}</tbody>
@@ -586,7 +633,7 @@ def execute_stock_engine():
         </div>
         """
 
-    text_fallback = f"TR-GC-Equities-LS-01 | Pure Ross Cameron 5M Scalper\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Total Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
+    text_fallback = f"TR-GC-Equities-LS-01 | V4.8.9 15M Calibrated Scalper\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Total Gain: USD ${today_total_gain:+.2f}\nLifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}"
 
     html_content = f"""<!DOCTYPE html>
 <html>
@@ -598,8 +645,8 @@ def execute_stock_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); box-sizing: border-box;">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Equities-LS-01 | Pure Ross Cameron 5M Scalper</div>
-        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; Pure Ross Cameron 5M Active</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Equities-LS-01 | V4.8.9 15M Scalper</div>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; V4.8.9 Equities Active</div>
       </div>
 
       <div style="padding: 12px; box-sizing: border-box;">
@@ -615,16 +662,15 @@ def execute_stock_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4; box-sizing: border-box;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active Guardrails (Pure Ross Cameron 5M Engine)</div>
-          <div>&bull; <b>Limit-Clamp Entry (0.20% Max):</b> Prevents buying extended candle spikes</div>
-          <div>&bull; <b>Pivot Low Stop Anchor:</b> Stops anchored to candle structure; avoids artificial noise stops</div>
-          <div>&bull; <b>Required Closed Pullback:</b> Forces 1 light-red pullback candle before entering</div>
-          <div>&bull; <b>Ross Exit Signal:</b> Immediate exit if price &lt; 9 EMA or MACD Hist &lt; 0</div>
-          <div>&bull; <b>Pre-Close EOD Square-Off:</b> Automatic 100% cash liquidation at 2:40 PM CT daily</div>
-          <div>&bull; <b>Portfolio Drawdown Circuit Breaker:</b> Instantly flattens 100% to cash if open loss hits -3.5%</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.8.9 Stock Calibrations</div>
+          <div>&bull; <b>Stock-Calibrated Scale:</b> Fee Floor (+0.15%), Expansion (+1.50%), Moonshot (+3.00%)</div>
+          <div>&bull; <b>High-Beta Watchlist:</b> Scans liquid momentum equities (MSTR, NVDA, TSLA, PLTR, COIN)</div>
+          <div>&bull; <b>Hybrid Routing:</b> Market orders on breakouts; limit orders on pullbacks</div>
+          <div>&bull; <b>Retention Ratchet:</b> 80%-88% peak profit locks + Climax Exhaustion Lock</div>
+          <div>&bull; <b>EOD Square-Off:</b> Auto 100% cash liquidation at 2:50 PM CT</div>
         </div>
 
-        <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Sniper Scalps</div>
+        <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
         {positions_cards}
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 14px 0 6px 0; font-weight: 700;">Recently Closed Trades &amp; Exit Telemetry</div>
@@ -639,7 +685,7 @@ def execute_stock_engine():
       </div>
 
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Alpaca Pure Ross Cameron 5M Engine &bull; Managed via GitHub Actions
+        Alpaca V4.8.9 Equities Scalper &bull; Managed via GitHub Actions
       </div>
     </div>
   </body>
@@ -647,13 +693,13 @@ def execute_stock_engine():
 """
 
     send_html_dashboard_email(f"Alpaca Quantitative Report — USD ${equity:.2f}", html_content, text_fallback)
-    print(f"[{timestamp}] Pure Ross Cameron 5M stock telemetry report complete.", flush=True)
+    print(f"[{timestamp}] V4.8.9 Equities telemetry report complete.", flush=True)
 
 if __name__ == "__main__":
     try:
         execute_stock_engine()
     except Exception as e:
-        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Pure Ross Cameron Stock Engine execution error: {e}"
+        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Equities Engine execution error: {e}"
         print(err_msg, flush=True)
         send_html_dashboard_email("Alpaca Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
         raise e
