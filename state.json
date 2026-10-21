@@ -444,17 +444,23 @@
   ],
   "active_position_cache": {
     "WLFI": {
-      "strategy": "HOD_BREAKOUT",
-      "entry_px": 0.056625,
+      "entry_px": 0.056623,
+      "current_px": 0.056675,
+      "szi": 417.0,
+      "margin": 4.726695,
       "side": "LONG",
+      "peak_roe": 0.005474807057202864,
+      "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.056487,
-      "entry_time_sec": 1792621836.4101696
+      "entry_time_sec": 1792621849.231
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-21 17:30:49",
+  "previous_active_coins": [
+    "WLFI"
+  ],
+  "last_run_timestamp": "2026-10-21 17:35:36",
   "last_email_timestamp": 1792621836.4101696,
-  "last_scan_timestamp": 1792621836.4101696,
+  "last_scan_timestamp": 1792622123.133715,
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
     "2026-10-21": 110.9460072
@@ -526,19 +532,24 @@
     "893370746735142": 1792617347116,
     "1034239100468482": 1792619430111,
     "1041213409570021": 1792619752829,
-    "974001781105935": 1792620207106
+    "974001781105935": 1792620207106,
+    "700716708585503": 1792621849231
   },
-  "open_fee_accum": {},
-  "entry_fill_times": {},
+  "open_fee_accum": {
+    "WLFI": 0.0102
+  },
+  "entry_fill_times": {
+    "WLFI": 1792621849.231
+  },
   "pending_exit_reasons": {},
   "ledger_version": 2,
   "near_miss_stats": {
     "2026-10-21": {
       "Too extended from EMA9": 68,
-      "MACD negative": 103,
-      "RVOL": 31,
-      "VWAP stretch": 65,
-      "Not near day high": 24,
+      "MACD negative": 107,
+      "RVOL": 34,
+      "VWAP stretch": 67,
+      "Not near day high": 25,
       "No reclaim cross": 3,
       "Below VWAP": 10,
       "Below EMA9": 5
