@@ -478,7 +478,7 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.8.13 Engine Started (Failed-V Stop + Noise Trail).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.8.14 Engine Started (Failed-V Stop + Noise Trail).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -530,7 +530,7 @@ def execute_engine():
     max_vwap_extension = 1.0040 if gemini_risk == "HIGH" else 1.0080
     hod_proximity_pct = 0.0100
 
-    audit_logs.append(f"⚡ V4.8.13 Engine: Balanced Ross-Style | Stop: failed-V low or -2.50% ROE cap | RVOL Gate: {required_vol_ratio}x | VWAP Cap: +{(max_vwap_extension-1)*100:.2f}%")
+    audit_logs.append(f"⚡ V4.8.14 Engine: Balanced Ross-Style | Stop: failed-V low or -2.50% ROE cap | RVOL Gate: {required_vol_ratio}x | VWAP Cap: +{(max_vwap_extension-1)*100:.2f}%")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -680,7 +680,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.8.13", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.8.14", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -724,9 +724,9 @@ def execute_engine():
 
         all_eligible_coins = sorted(all_eligible_coins, key=lambda x: x["change_24h"], reverse=True)
         top_gapper_str = ", ".join([f"{g['coin']} ({g['change_24h']:+.2f}%)" for g in all_eligible_coins[:5]])
-        audit_logs.append(f"🔥 TOP EXPLOSIVE GAPPERS (#20-#300+): {top_gapper_str if top_gapper_str else 'None'}")
+        audit_logs.append(f"🔥 TOP EXPLOSIVE GAPPERS (scanning top 60): {top_gapper_str if top_gapper_str else 'None'}")
 
-        for item in all_eligible_coins[:20]:
+        for item in all_eligible_coins[:60]:
             coin = item["coin"]
             idx = item["rank"]
 
@@ -837,7 +837,7 @@ def execute_engine():
                 continue
 
         if not market_candidates:
-            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.8.13 high-quality trigger rules on this candle.")
+            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.8.14 high-quality trigger rules on this candle.")
         else:
             audit_logs.append(f"🚀 SCAN COMPLETED: {len(market_candidates)} high-quality candidate(s) triggered entry setup!")
 
@@ -926,7 +926,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.8.13 | Failed-V Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.8.14 | Failed-V Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -1006,8 +1006,8 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
 
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Failed-V Stop (V4.8.13)</div>
-        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; V4.8.13 Active</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Failed-V Stop (V4.8.14)</div>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; V4.8.14 Active</div>
       </div>
 
       <div style="padding: 12px;">
@@ -1027,11 +1027,11 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.8.13 Quality Calibrations</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.8.14 Quality Calibrations</div>
           <div>&bull; <b>Failed-V stop:</b> Exit when price trades through the entry-candle low</div>
           <div>&bull; <b>Hard cap -2.50% ROE:</b> A wide candle cannot turn into a -4% loss</div>
           <div>&bull; <b>Penny trail only after +2.50% peak ROE:</b> Then give back ~1.25% ROE, not the whole move</div>
-          <div>&bull; <b>Same entries:</b> RVOL 2.8x/1.8x, reclaim and V-bottom preferred, EMA9 cap +1.0%</div>
+          <div>&bull; <b>Same entries:</b> RVOL 2.8x/1.8x, reclaim and V-bottom preferred, EMA9 cap +1.0%, scanning top 60 gappers</div>
           <div>&bull; <b>No 15m red scratch:</b> That was cutting inside normal wick noise</div>
         </div>
 
@@ -1049,7 +1049,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.8.13 Active
+        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.8.14 Active
       </div>
     </div>
   </body>
@@ -1062,10 +1062,10 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing Failed-V Scalper cycle (V4.8.13)...", flush=True)
+    print(f"[{timestamp}] Executing Failed-V Scalper cycle (V4.8.14)...", flush=True)
     try:
         execute_engine()
-        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] V4.8.13 cycle completed successfully.", flush=True)
+        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] V4.8.14 cycle completed successfully.", flush=True)
     except Exception as e:
         err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Engine execution error: {e}"
         print(err_msg, flush=True)
