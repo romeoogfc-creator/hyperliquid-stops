@@ -135,9 +135,9 @@
   "active_position_cache": {
     "TRUMP": {
       "entry_px": 1.8041,
-      "current_px": 1.79485,
+      "current_px": 1.79505,
       "szi": 13.2,
-      "margin": 2.368938,
+      "margin": 2.3694,
       "side": "LONG",
       "peak_roe": 0.011778726234687282,
       "strategy": "HOD_BREAKOUT",
@@ -146,9 +146,9 @@
     },
     "SKY": {
       "entry_px": 0.076741,
-      "current_px": 0.076805,
+      "current_px": 0.076831,
       "szi": 310.0,
-      "margin": 23.82288,
+      "margin": 23.81854,
       "side": "LONG",
       "peak_roe": 0.031013408738483357,
       "strategy": "HOD_BREAKOUT",
@@ -160,13 +160,13 @@
     "SKY",
     "TRUMP"
   ],
-  "last_run_timestamp": "2026-10-20 20:05:44",
-  "last_email_timestamp": 1792544125.2977898,
-  "last_scan_timestamp": 1792544735.2787595,
+  "last_run_timestamp": "2026-10-20 20:10:41",
+  "last_email_timestamp": 1792545029.3731997,
+  "last_scan_timestamp": 1792545029.3731997,
   "gemini_cache": {
-    "timestamp": 1792544735.2787595,
+    "timestamp": 1792545029.3731997,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity cycles, all of which keep the potential for sharp, sudden price swings elevated."
+    "briefing": "Risk Level: HIGH; crypto markets currently face heightened uncertainty driven by volatile macroeconomic shifts, fluctuating institutional inflows, and ongoing regulatory scrutiny, which collectively increase the potential for sharp, sudden price corrections."
   },
   "daily_starting_equity": {
     "2026-10-20": 111.2514322
