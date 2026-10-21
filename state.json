@@ -138,13 +138,13 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-21 02:15:33",
-  "last_email_timestamp": 1792566034.569099,
-  "last_scan_timestamp": 1792566926.3444986,
+  "last_run_timestamp": "2026-10-21 02:20:33",
+  "last_email_timestamp": 1792567225.9934845,
+  "last_scan_timestamp": 1792567225.9934845,
   "gemini_cache": {
-    "timestamp": 1792566926.3444986,
+    "timestamp": 1792567225.9934845,
     "risk": "HIGH",
-    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, the asset class remains highly vulnerable to sudden volatility driven by shifting macroeconomic data and ongoing regulatory uncertainty."
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, the asset class remains highly vulnerable to sudden volatility driven by macroeconomic data shifts and ongoing regulatory uncertainty."
   },
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
