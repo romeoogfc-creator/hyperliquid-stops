@@ -25,7 +25,8 @@
     "SKY": 1792569600000,
     "TRUMP": 1792571400000,
     "USELESS": 1792572300000,
-    "VVV": 1792581300000
+    "VVV": 1792581300000,
+    "PENGU": 1792593900000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
@@ -141,15 +142,23 @@
       "ts_sec": 1792545644.697
     }
   ],
-  "active_position_cache": {},
+  "active_position_cache": {
+    "PENGU": {
+      "strategy": "HOD_BREAKOUT",
+      "entry_px": 0.008144,
+      "side": "LONG",
+      "entry_candle_low": 0.008106,
+      "entry_time_sec": 1792593924.6431828
+    }
+  },
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-21 09:41:08",
-  "last_email_timestamp": 1792592732.313287,
-  "last_scan_timestamp": 1792593627.276247,
+  "last_run_timestamp": "2026-10-21 09:45:51",
+  "last_email_timestamp": 1792593924.6431828,
+  "last_scan_timestamp": 1792593924.6431828,
   "gemini_cache": {
-    "timestamp": 1792593627.276247,
+    "timestamp": 1792593924.6431828,
     "risk": "HIGH",
-    "briefing": "Risk Level: **MODERATE** \u2014 While recent institutional adoption and potential regulatory shifts provide bullish momentum, the market remains highly susceptible to sudden volatility driven by macroeconomic uncertainty and leverage-heavy trading positions."
+    "briefing": "**Risk Level: HIGH** \n\nDriven by persistent macroeconomic uncertainty, stringent regulatory headwinds, and severe liquidity contractions, current crypto markets remain exceptionally vulnerable to sudden downside volatility and systemic contagion."
   },
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
