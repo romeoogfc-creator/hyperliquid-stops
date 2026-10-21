@@ -636,7 +636,9 @@ def execute_stock_engine():
     positions_res = api.get("/v2/positions")
     positions_list = positions_res.json() if ok(positions_res) else []
 
-    if not is_open and not positions_list:
+    is_manual_run = os.getenv("GITHUB_EVENT_NAME", "").lower() == "workflow_dispatch"
+    # Scheduled runs stay silent while the market is closed; a manual "Run workflow" always emails a report.
+    if not is_open and not positions_list and not is_manual_run:
         print(f"[{timestamp}] Market CLOSED ({et_now.strftime('%a %H:%M')} ET / {fmt_ct(now_ts)}). 0 positions. Skipping run silently.", flush=True)
         return
 
@@ -716,6 +718,8 @@ def execute_stock_engine():
         positions_list, open_orders = [], []
         trade_closed_this_run = True
 
+    if not is_open and not positions_list:
+        audit_logs.append(f"🌙 Market closed (next open {fmt_ct(parse_ts(clock['next_open']))}) — manual run, report only. No orders sent.")
     if not is_open and positions_list:
         audit_logs.append(f"⚠️ MARKET CLOSED WITH {len(positions_list)} OPEN POSITION(S): {', '.join(p['symbol'] for p in positions_list)}. They will be closed at the next open.")
 
@@ -938,7 +942,6 @@ def execute_stock_engine():
 
     # 7) Email (every 15 min, or immediately on any entry/exit, or on manual runs).
     last_email_ts = float(state.get("last_email_timestamp", 0))
-    is_manual_run = os.getenv("GITHUB_EVENT_NAME", "").lower() == "workflow_dispatch"
     should_send_email = is_manual_run or (now_ts - last_email_ts) / 60.0 >= 15.0 or trades_executed or trade_closed_this_run
     if should_send_email:
         state["last_email_timestamp"] = now_ts
