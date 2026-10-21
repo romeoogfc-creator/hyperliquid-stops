@@ -19,7 +19,7 @@ from hyperliquid.info import Info
 from hyperliquid.exchange import Exchange
 from hyperliquid.utils import constants
 
-BOT_VERSION = "V4.9.1"
+BOT_VERSION = "V4.9.2"
 BOT_TITLE = f"TR-GC-Crypto-LS-23-{BOT_VERSION}"
 
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
@@ -526,6 +526,27 @@ def calculate_15m_ross_indicators(candles):
     }
 
 
+def rolling_15m_volume(info, coin, now_ms):
+    """Volume of the last 15 minutes from 1m candles, scaled to exactly 15 minutes.
+    Unlike the live 15m candle, this doesn't depend on how far into the candle the run happens to start
+    (cron runs land 1-5 min after the candle opens, where the old 3x pacing cap hid ~2/3 of the volume)."""
+    m1 = api_retry(info.candles_snapshot, name=coin, interval="1m", startTime=now_ms - 16 * 60000, endTime=now_ms)
+    if not m1:
+        return None
+    window_start = now_ms - 15 * 60000
+    vol, first_t = 0.0, None
+    for c in m1:
+        t = int(c["t"])
+        if t < window_start:
+            continue
+        first_t = t if first_t is None else min(first_t, t)
+        vol += float(c.get("v", 0) or 0)
+    if first_t is None:
+        return None
+    covered_mins = max(1.0, (now_ms - first_t) / 60000.0)
+    return vol * 15.0 / covered_mins if covered_mins < 15.0 else vol
+
+
 def setup_misses(checks):
     """checks: [(passed, rule_name, detail)] for one setup. Returns (rule_name, detail) for each failed rule."""
     return [(name, detail) for passed, name, detail in checks if not passed]
@@ -753,7 +774,7 @@ def execute_engine():
     required_vol_ratio = 2.80 if strict else 1.80
     max_vwap_extension = 1.0040 if strict else 1.0080
     hod_proximity_pct = 0.0100
-    audit_logs.append(f"⚡ {BOT_VERSION}: Stop failed-V low or {HARD_CAP_ROE*100:.2f}% ROE cap | Trail after +{TRAIL_ACTIVATE_ROE*100:.2f}% (min lock +{MIN_LOCK_ROE*100:.2f}%) | RVOL Gate {required_vol_ratio}x | VWAP Cap +{(max_vwap_extension-1)*100:.2f}%")
+    audit_logs.append(f"⚡ {BOT_VERSION}: Stop failed-V low or {HARD_CAP_ROE*100:.2f}% ROE cap | Trail after +{TRAIL_ACTIVATE_ROE*100:.2f}% (min lock +{MIN_LOCK_ROE*100:.2f}%) | RVOL Gate {required_vol_ratio}x (rolling 15m) | VWAP Cap +{(max_vwap_extension-1)*100:.2f}%")
     if entries_blocked_reason:
         audit_logs.append(f"⛔ NEW ENTRIES BLOCKED: {entries_blocked_reason}")
 
@@ -948,12 +969,7 @@ def execute_engine():
                     record_blockers(state, today_str, ["Too extended from EMA9"])
                     continue
 
-                live_volume_raw = volumes[-1]
-                extrap_mult = min(3.0, 15.0 / max(0.5, elapsed_mins))
-                paced_volume = live_volume_raw * extrap_mult
-
                 avg_vol = np.mean(volumes[-12:-2]) if len(volumes) >= 12 else (np.mean(volumes[:-1]) if len(volumes) > 1 else 1.0)
-                vol_ratio = paced_volume / avg_vol if avg_vol > 0 else 1.0
 
                 is_above_ema9 = curr_live_px > ema9
                 is_above_vwap = curr_live_px > vwap
@@ -963,23 +979,35 @@ def execute_engine():
                 vwap_dist = curr_live_px / vwap
                 is_near_hod = (curr_live_px >= day_high * (1.0 - hod_proximity_pct))
 
+                # RVOL = last 15 minutes of real volume (rolling, from 1m candles) vs. the average 15m candle.
+                # Only fetched when a coin passes every non-volume rule of some setup, to stay inside API limits.
+                vwap_ok_pre = vwap_dist <= max_vwap_extension
+                prev_45_min = min(lows[-4:-1])
+                candle_range = max(1e-12, highs[-1] - lows[-1])
+                lower_wick_ratio = (min(float(candles[-1]["o"]), curr_live_px) - lows[-1]) / candle_range
+                reclaim_pre = (prev_close <= prev_ema9 or prev_close <= vwap) and is_above_ema9 and is_above_vwap and curr_live_px <= ema9 * 1.0025
+                needs_volume = vwap_ok_pre and is_above_ema9 and is_macd_positive and (
+                    (is_near_hod and is_above_vwap) or reclaim_pre or (lows[-1] <= prev_45_min and lower_wick_ratio >= 0.45))
+                rolling_vol = rolling_15m_volume(info, coin, now_ms) if needs_volume else None
+                rvol_measured = rolling_vol is not None
+                if rolling_vol is None:
+                    rolling_vol = volumes[-1] * min(3.0, 15.0 / max(0.5, elapsed_mins))   # old estimate (logs only)
+                vol_ratio = rolling_vol / avg_vol if avg_vol > 0 else 1.0
+
                 is_breakout = is_near_hod and (vol_ratio >= required_vol_ratio) and (vwap_dist <= max_vwap_extension) and is_above_ema9 and is_above_vwap and is_macd_positive
 
                 is_reclaim_cross = (prev_close <= prev_ema9 or prev_close <= vwap) and (curr_live_px > ema9 and curr_live_px > vwap)
                 is_pullback_proximity = (curr_live_px <= ema9 * 1.0025)
                 is_bullish_reclaim = (is_reclaim_cross and is_pullback_proximity and vol_ratio >= required_vol_ratio and (vwap_dist <= max_vwap_extension) and is_above_ema9 and is_macd_positive)
 
-                prev_45_min = min(lows[-4:-1])
                 is_capitulation_low = (lows[-1] <= prev_45_min)
-                candle_range = max(1e-12, highs[-1] - lows[-1])
-                body_bottom = min(float(candles[-1]["o"]), curr_live_px)
-                lower_wick_ratio = (body_bottom - lows[-1]) / candle_range
 
                 is_v_bottom = (is_capitulation_low and lower_wick_ratio >= 0.45 and vol_ratio >= required_vol_ratio and (vwap_dist <= max_vwap_extension) and curr_live_px > ema9 and is_macd_positive)
 
                 if not (is_breakout or is_bullish_reclaim or is_v_bottom):
                     # Near-miss diagnostics only; does not change what the bot trades.
-                    rvol_c = (vol_ratio >= required_vol_ratio, "RVOL", f"RVOL {vol_ratio:.2f}x (need {required_vol_ratio}x)")
+                    # Volume is only measured for coins that passed every other rule; unmeasured = not blamed.
+                    rvol_c = (vol_ratio >= required_vol_ratio or not rvol_measured, "RVOL", f"RVOL {vol_ratio:.2f}x (need {required_vol_ratio}x)")
                     vwap_c = (vwap_dist <= max_vwap_extension, "VWAP stretch", f"VWAP stretch +{(vwap_dist-1)*100:.2f}% (max +{(max_vwap_extension-1)*100:.2f}%)")
                     ema_c = (is_above_ema9, "Below EMA9", f"below EMA9 ({(curr_live_px/ema9-1)*100:+.2f}%)")
                     macd_c = (is_macd_positive, "MACD negative", "MACD histogram negative")
