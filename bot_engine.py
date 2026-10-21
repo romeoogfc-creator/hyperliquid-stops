@@ -222,14 +222,33 @@ def execute_engine():
     
     user_data = user_state_res.json()
     margin_summary = user_data.get("marginSummary", {})
-    equity = float(margin_summary.get("accountValue", 100.0))
-    total_margin_used = float(margin_summary.get("totalMarginUsed", 0.0))
+    
+    # Robust Fail-Safe Equity Parser
+    equity = 0.0
+    try:
+        if isinstance(margin_summary, dict) and "accountValue" in margin_summary:
+            equity = float(margin_summary["accountValue"])
+        elif "crossMarginSummary" in user_data and "accountValue" in user_data["crossMarginSummary"]:
+            equity = float(user_data["crossMarginSummary"]["accountValue"])
+    except Exception as e:
+        audit_logs.append(f"Equity parsing warning: {e}")
+
+    if equity <= 0.0:
+        equity = float(state.get("daily_starting_equity", {}).get(today_str, 111.16))
+
+    total_margin_used = 0.0
+    try:
+        if isinstance(margin_summary, dict) and "totalMarginUsed" in margin_summary:
+            total_margin_used = float(margin_summary["totalMarginUsed"])
+    except Exception:
+        total_margin_used = 0.0
+
     reserve = max(0.0, equity - total_margin_used)
     margin_util_pct = (total_margin_used / equity * 100) if equity > 0 else 0.0
 
     daily_starting_dict = state.get("daily_starting_equity", {})
-    if today_str not in daily_starting_dict:
-        prev_days = [d for d in daily_starting_dict.keys() if d < today_str]
+    if today_str not in daily_starting_dict or daily_starting_dict[today_str] <= 0:
+        prev_days = [d for d in daily_starting_dict.keys() if d < today_str and daily_starting_dict[d] > 0]
         if prev_days:
             latest_prev_day = max(prev_days)
             daily_starting_dict[today_str] = daily_starting_dict[latest_prev_day]
@@ -288,7 +307,7 @@ def execute_engine():
 
         audit_logs.append(f"NATIVE SL SYNC [{coin}]: Hard Stop @ ${stop_px_calc:.5f}")
 
-        # FIX 3: 15-Minute Negative Stagnation Scratch
+        # 15-Minute Negative Stagnation Scratch
         held_duration_mins = (now_ts - entry_time) / 60.0
         should_exit = False
         exit_reason = ""
@@ -306,7 +325,7 @@ def execute_engine():
         if should_exit:
             audit_logs.append(f"EXIT TRIGGERED: Closing {coin} LONG @ ${mark_px:.5f} ({exit_reason}).")
             
-            # FIX 4: 4-Hour Post-Win Lockout vs 30-Min Loss Cooldown
+            # 4-Hour Post-Win Lockout vs 30-Min Loss Cooldown
             if unrealized_pnl >= 0.10 or current_roe >= 0.0150:
                 state["cooldown_blocklist"][coin] = now_ts + 14400  # 4-Hour Post-Win Lockout
                 audit_logs.append(f"🔒 POST-WIN LOCKOUT: {coin} locked for 4 hours to prevent re-entering local top.")
@@ -347,7 +366,6 @@ def execute_engine():
     market_candidates = []
     
     if active_count < MAX_SLOTS:
-        # Fetch Top Gappers Context
         meta_res = api_retry(requests.post, BASE_URL, json={"type": "metaAndAssetCtxs"})
         if meta_res and meta_res.status_code == 200:
             meta_data = meta_res.json()
@@ -357,13 +375,11 @@ def execute_engine():
             gappers = []
             for idx, ctx in enumerate(asset_ctxs[:200]):
                 coin_name = universe[idx]["name"]
-                day_change = float(ctx.get("dayNtlVlm", 0))
                 prev_day_px = float(ctx.get("prevDayPx", 1.0))
                 mark_px = float(ctx.get("markPx", 1.0))
                 pct_change = ((mark_px - prev_day_px) / prev_day_px) * 100.0
 
                 if pct_change >= 5.0 and coin_name not in active_coins:
-                    # Check active cooldowns
                     cd_until = state.get("cooldown_blocklist", {}).get(coin_name, 0)
                     if cd_until > now_ts:
                         rem_mins = int((cd_until - now_ts) / 60)
@@ -375,7 +391,6 @@ def execute_engine():
             top_gapper_names = [f"{g['coin']} (+{g['change']:.2f}%)" for g in gappers[:5]]
             audit_logs.append(f"TOP EXPLOSIVE GAPPERS (#20-#300+): {', '.join(top_gapper_names)}")
 
-            # Evaluate Candle Triggers for Candidates
             for gapper in gappers:
                 coin_name = gapper["coin"]
                 candle_res = api_retry(requests.post, BASE_URL, json={"type": "candleSnapshot", "req": {"coin": coin_name, "interval": "15m", "startTime": int((now_ts - 28800) * 1000)}})
@@ -395,7 +410,6 @@ def execute_engine():
                 prev_high = highs[-2]
                 prev_low = lows[-2]
 
-                # Intrabar Paced RVOL Formula
                 bar_start_dt = datetime.fromtimestamp(candles[-1]["t"] / 1000.0, tz=timezone.utc)
                 elapsed_mins = max(0.5, (datetime.now(timezone.utc) - bar_start_dt).total_seconds() / 60.0)
                 extrap_mult = min(3.0, 15.0 / elapsed_mins)
@@ -412,7 +426,6 @@ def execute_engine():
                 vwap = ind["vwap"]
                 macd_hist = ind["macd_hist"]
 
-                # FIX 1 & 2: HIGH Risk RVOL Gate & VWAP Extension Cap
                 required_vol_ratio = 2.50 if gemini_risk == "HIGH" else 1.50
                 max_vwap_extension = 1.0050 if gemini_risk == "HIGH" else 1.0150
                 vwap_dist = curr_px / vwap
@@ -423,7 +436,7 @@ def execute_engine():
 
                 is_breakout = (curr_px >= prev_high) and (vol_ratio >= required_vol_ratio) and (vwap_dist <= max_vwap_extension)
 
-                if spy_green if 'spy_green' in locals() else True and is_above_ema9 and is_above_vwap and is_macd_frontside and is_breakout:
+                if is_above_ema9 and is_above_vwap and is_macd_frontside and is_breakout:
                     score = vol_ratio * 1.5
                     market_candidates.append({
                         "coin": coin_name, "close": curr_px, "score": score, "entry_candle_low": prev_low
