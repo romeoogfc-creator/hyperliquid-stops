@@ -413,15 +413,14 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-21 15:35:42",
-  "last_email_timestamp": 1792614043.8786407,
-  "last_scan_timestamp": 1792614929.0404918,
+  "last_run_timestamp": "2026-10-21 15:40:43",
+  "last_email_timestamp": 1792615229.6771467,
+  "last_scan_timestamp": 1792615229.6771467,
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
     "2026-10-21": 110.9460072
   },
   "seen_fill_ids": {
-    "968647138185035": 1792442139148,
     "1092103979276257": 1792444906087,
     "820652701755969": 1792444906087,
     "730934322898077": 1792446030545,
