@@ -19,7 +19,7 @@ from hyperliquid.info import Info
 from hyperliquid.exchange import Exchange
 from hyperliquid.utils import constants
 
-BOT_VERSION = "V4.9.0"
+BOT_VERSION = "V4.9.1"
 BOT_TITLE = f"TR-GC-Crypto-LS-23-{BOT_VERSION}"
 
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
@@ -56,6 +56,8 @@ BLOCK_ENTRIES_WHEN_RISK_OFF = True     # long-only alt scalps rarely work while 
 SKIP_COINS = set()                     # add tickers here to never trade them
 MIN_24H_VOLUME_USD = 500000.0
 SCAN_TOP_N = 60
+NEAR_MISS_MAX_FAILS = 2                # log coins that missed a setup by this many rules or fewer
+NEAR_MISS_SHOW = 3                     # how many near misses to list per run
 
 
 def ct_tz():
@@ -524,6 +526,21 @@ def calculate_15m_ross_indicators(candles):
     }
 
 
+def setup_misses(checks):
+    """checks: [(passed, rule_name, detail)] for one setup. Returns (rule_name, detail) for each failed rule."""
+    return [(name, detail) for passed, name, detail in checks if not passed]
+
+
+def record_blockers(state, today_str, labels):
+    """Daily tally of which single rule blocked a coin that passed everything else (kept 7 days)."""
+    stats = state.setdefault("near_miss_stats", {})
+    day = stats.setdefault(today_str, {})
+    for key in labels:
+        day[key] = day.get(key, 0) + 1
+    for d in sorted(stats)[:-7]:
+        stats.pop(d, None)
+
+
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle_low, peak_roe=0.0, upper_wick_pct=0.0):
     roe = ((current_px - entry_px) / entry_px * LEVERAGE) if is_long else ((entry_px - current_px) / entry_px * LEVERAGE)
 
@@ -885,6 +902,7 @@ def execute_engine():
         top_gapper_str = ", ".join([f"{g['coin']} ({g['change_24h']:+.2f}%)" for g in all_eligible_coins[:5]])
         audit_logs.append(f"🔥 TOP GAPPERS (scanning top {SCAN_TOP_N}): {top_gapper_str if top_gapper_str else 'None'}")
 
+        near_misses = []
         for item in all_eligible_coins[:SCAN_TOP_N]:
             coin = item["coin"]
 
@@ -927,6 +945,7 @@ def execute_engine():
                 extension_from_ema = (curr_live_px - ema9) / ema9
                 if extension_from_ema > 0.0100:
                     audit_logs.append(f"🔍 [{coin}] Skipped: Too extended from EMA9 (+{extension_from_ema*100:.2f}%)")
+                    record_blockers(state, today_str, ["Too extended from EMA9"])
                     continue
 
                 live_volume_raw = volumes[-1]
@@ -958,6 +977,32 @@ def execute_engine():
 
                 is_v_bottom = (is_capitulation_low and lower_wick_ratio >= 0.45 and vol_ratio >= required_vol_ratio and (vwap_dist <= max_vwap_extension) and curr_live_px > ema9 and is_macd_positive)
 
+                if not (is_breakout or is_bullish_reclaim or is_v_bottom):
+                    # Near-miss diagnostics only; does not change what the bot trades.
+                    rvol_c = (vol_ratio >= required_vol_ratio, "RVOL", f"RVOL {vol_ratio:.2f}x (need {required_vol_ratio}x)")
+                    vwap_c = (vwap_dist <= max_vwap_extension, "VWAP stretch", f"VWAP stretch +{(vwap_dist-1)*100:.2f}% (max +{(max_vwap_extension-1)*100:.2f}%)")
+                    ema_c = (is_above_ema9, "Below EMA9", f"below EMA9 ({(curr_live_px/ema9-1)*100:+.2f}%)")
+                    macd_c = (is_macd_positive, "MACD negative", "MACD histogram negative")
+                    setups = {
+                        "HOD_BREAKOUT": setup_misses([
+                            (is_near_hod, "Not near day high", f"not near day high ({(curr_live_px/day_high-1)*100:+.2f}% vs HOD)"),
+                            rvol_c, vwap_c, ema_c, (is_above_vwap, "Below VWAP", "below VWAP"), macd_c]),
+                        "BULLISH_RECLAIM": setup_misses([
+                            (is_reclaim_cross, "No reclaim cross", "no EMA9/VWAP reclaim cross"),
+                            (is_pullback_proximity, "Not a pullback", f"too far above EMA9 for a pullback (+{extension_from_ema*100:.2f}%)"),
+                            rvol_c, vwap_c, ema_c, macd_c]),
+                        "V_BOTTOM_RECLAIM": setup_misses([
+                            (is_capitulation_low, "No fresh low", "no fresh 45m low"),
+                            (lower_wick_ratio >= 0.45, "Wick too small", f"lower wick {lower_wick_ratio*100:.0f}% (need 45%)"),
+                            rvol_c, vwap_c, ema_c, macd_c]),
+                    }
+                    best_setup, best_fails = min(setups.items(), key=lambda kv: len(kv[1]))
+                    if len(best_fails) <= NEAR_MISS_MAX_FAILS:
+                        near_misses.append((len(best_fails), -vol_ratio, coin, best_setup, [d for _, d in best_fails]))
+                        if len(best_fails) == 1:
+                            record_blockers(state, today_str, [best_fails[0][0]])
+                    continue
+
                 if is_breakout or is_bullish_reclaim or is_v_bottom:
                     is_liquid, spread_msg = check_liquidity_and_spread(info, coin, max_spread=0.0008, min_depth_usd=1500.0)
                     if not is_liquid:
@@ -982,6 +1027,10 @@ def execute_engine():
             except Exception as e:
                 audit_logs.append(f"⚠️ [{coin}] scan error: {e}")
                 continue
+
+        for n_fail, _, coin, setup_name, fails in sorted(near_misses)[:NEAR_MISS_SHOW]:
+            tag = "everything else passed" if n_fail == 1 else f"{n_fail} rules short"
+            audit_logs.append(f"🎯 NEAR MISS [{coin}] {setup_name}: {'; '.join(fails)} — {tag}")
 
         if not market_candidates:
             audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met {BOT_VERSION} trigger rules on this candle.")
@@ -1054,6 +1103,9 @@ def execute_engine():
     win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
     net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
     fees_today_usd = sum(float(t.get("fees_usd", 0)) for t in trades_today)
+
+    blocker_counts = state.get("near_miss_stats", {}).get(today_str, {})
+    blockers_line = " &bull; ".join(f"{k}: <b>{v}</b>" for k, v in sorted(blocker_counts.items(), key=lambda kv: -kv[1])) or "None yet today"
 
     text_fallback = (f"{BOT_TITLE}\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\n"
                      f"Active Positions: {active_count}/{MAX_CRYPTO_SLOTS}\nToday net (after fees): ${net_today_usd:+.2f}\n\n" + "\n".join(audit_logs))
@@ -1158,6 +1210,11 @@ def execute_engine():
           <div style="font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase;">📊 Today's Realized Performance ({today_str})</div>
           <div style="font-size: 11px; color: #166534;">Trades: <b>{total_today}</b> &bull; Win Rate: <b>{win_count}W / {loss_count}L ({win_rate_today:.1f}%)</b></div>
           <div style="font-size: 11px; color: #166534; font-weight: 700; margin-top: 4px;">Net P&amp;L after fees: <span style="color: {'#15803d' if net_today_usd >= 0 else '#b91c1c'};">${net_today_usd:+.3f}</span> &bull; Fees paid: ${fees_today_usd:.3f}</div>
+        </div>
+
+        <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #1e3a8a; line-height: 1.5;">
+          <div style="font-weight: 700; text-transform: uppercase; font-size: 10px;">🎯 Today's Blockers (how often each rule stopped a coin that passed everything else)</div>
+          <div>{blockers_line}</div>
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
