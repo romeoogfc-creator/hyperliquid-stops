@@ -140,11 +140,11 @@
   "active_position_cache": {
     "SKY": {
       "entry_px": 0.076507,
-      "current_px": 0.076513,
+      "current_px": 0.076555,
       "szi": 309.0,
-      "margin": 23.643444,
+      "margin": 23.653641,
       "side": "LONG",
-      "peak_roe": 0.0003921209823932531,
+      "peak_roe": 0.0031369678591496525,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.076022,
       "entry_time_sec": 1792570231.773548
@@ -153,13 +153,13 @@
   "previous_active_coins": [
     "SKY"
   ],
-  "last_run_timestamp": "2026-10-21 03:15:34",
+  "last_run_timestamp": "2026-10-21 03:20:41",
   "last_email_timestamp": 1792570231.773548,
-  "last_scan_timestamp": 1792570525.7298431,
+  "last_scan_timestamp": 1792570830.5816197,
   "gemini_cache": {
-    "timestamp": 1792570525.7298431,
+    "timestamp": 1792570830.5816197,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nDriven by persistent macroeconomic uncertainty, potential regulatory crackdowns, and heightened market volatility, current cryptocurrency markets face severe downside vulnerability."
+    "briefing": "**Risk Level: HIGH** \n\nDriven by aggressive macroeconomic tightening, persistent regulatory headwinds, and fragile market liquidity, current crypto market conditions expose investors to severe downside volatility and systemic contagion risks."
   },
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
