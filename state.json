@@ -445,11 +445,11 @@
   "active_position_cache": {
     "WLFI": {
       "entry_px": 0.056623,
-      "current_px": 0.056707,
+      "current_px": 0.056747,
       "szi": 417.0,
-      "margin": 4.72978,
+      "margin": 4.733283,
       "side": "LONG",
-      "peak_roe": 0.011037917454038123,
+      "peak_roe": 0.014746657718594961,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.056487,
       "entry_time_sec": 1792621849.231
@@ -458,9 +458,9 @@
   "previous_active_coins": [
     "WLFI"
   ],
-  "last_run_timestamp": "2026-10-21 17:45:47",
-  "last_email_timestamp": 1792621836.4101696,
-  "last_scan_timestamp": 1792622730.309583,
+  "last_run_timestamp": "2026-10-21 17:50:48",
+  "last_email_timestamp": 1792623033.479121,
+  "last_scan_timestamp": 1792623033.479121,
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
     "2026-10-21": 110.9460072
@@ -547,11 +547,11 @@
     "2026-10-21": {
       "Too extended from EMA9": 68,
       "MACD negative": 107,
-      "RVOL": 37,
-      "VWAP stretch": 69,
-      "Not near day high": 28,
+      "RVOL": 38,
+      "VWAP stretch": 70,
+      "Not near day high": 29,
       "No reclaim cross": 3,
-      "Below VWAP": 11,
+      "Below VWAP": 12,
       "Below EMA9": 6
     }
   }
