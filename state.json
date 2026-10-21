@@ -18,7 +18,8 @@
     "WLD": 1792570832.6659703,
     "ENA": 1792560332.14563,
     "USELESS": 1792575034.9177172,
-    "PENGU": 1792609232.4740424
+    "PENGU": 1792609232.4740424,
+    "XLM": 1792622426.9219255
   },
   "last_traded_candle": {
     "WLD": 1792555200000,
@@ -33,6 +34,17 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "XLM",
+      "entry_price": 0.18657,
+      "exit_price": 0.186685,
+      "pnl_usd": 0.0127,
+      "roe_pct": 0.30819531543114176,
+      "side": "LONG",
+      "exit_reason": "30M flat exit (0.31% ROE after 35m)",
+      "timestamp": "2026-10-21 18:40:26",
+      "ts_sec": 1792608026.9219255
+    },
     {
       "coin": "PENGU",
       "entry_price": 0.00813,
@@ -144,29 +156,15 @@
       "ts_sec": 1792556216.926
     }
   ],
-  "active_position_cache": {
-    "XLM": {
-      "entry_px": 0.18657,
-      "current_px": 0.186735,
-      "szi": 127.0,
-      "margin": 23.711027,
-      "side": "LONG",
-      "peak_roe": 0.011925818727554622,
-      "strategy": "HOD_BREAKOUT",
-      "entry_candle_low": 0.18553,
-      "entry_time_sec": 1792605933.865068
-    }
-  },
-  "previous_active_coins": [
-    "XLM"
-  ],
-  "last_run_timestamp": "2026-10-21 13:35:42",
-  "last_email_timestamp": 1792607129.6206522,
-  "last_scan_timestamp": 1792607724.5317304,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-21 13:40:46",
+  "last_email_timestamp": 1792608026.9219255,
+  "last_scan_timestamp": 1792608026.9219255,
   "gemini_cache": {
-    "timestamp": 1792607724.5317304,
+    "timestamp": 1792608026.9219255,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nCurrent crypto markets face acute vulnerability due to heightened macroeconomic uncertainty, persistent regulatory headwinds, and fragile liquidity conditions that leave digital assets prone to sudden, severe deleveraging events."
+    "briefing": "**Risk Level: HIGH** \n\nDriven by persistent macroeconomic uncertainty, potential regulatory crackdowns, and fragile market liquidity, current crypto markets remain highly vulnerable to sudden, severe downside volatility and systemic shocks."
   },
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
