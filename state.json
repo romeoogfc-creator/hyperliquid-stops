@@ -8,7 +8,8 @@
     "DOT": 1792542035.6810253,
     "ZRO": 1792542035.6810253,
     "ALGO": 1792542035.6810253,
-    "WLD": 1792542035.6810253
+    "WLD": 1792542035.6810253,
+    "PUMP": 1792542630.4161174
   },
   "last_traded_candle": {
     "PUMP": 1792539900000
@@ -16,6 +17,17 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "PUMP",
+      "entry_price": 0.004852,
+      "exit_price": 0.004958,
+      "pnl_usd": 0.511875,
+      "roe_pct": 10.923330585325568,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Retention Ratchet Triggered (10.92% ROE)",
+      "timestamp": "2026-10-21 00:15:30",
+      "ts_sec": 1792541730.4161174
+    },
     {
       "coin": "JTO",
       "entry_price": 0.48624,
@@ -128,40 +140,28 @@
     }
   ],
   "active_position_cache": {
-    "PUMP": {
-      "entry_px": 0.004852,
-      "current_px": 0.00491,
-      "szi": 4875.0,
-      "margin": 23.93625,
-      "side": "LONG",
-      "peak_roe": 0.05976916735366848,
-      "strategy": "HOD_BREAKOUT",
-      "entry_candle_low": 0.004786,
-      "entry_time_sec": 1792540233.4839768
-    },
     "LIT": {
       "entry_px": 3.3916,
-      "current_px": 3.3864,
+      "current_px": 3.39985,
       "szi": 7.0,
-      "margin": 4.74117,
+      "margin": 4.76154,
       "side": "LONG",
-      "peak_roe": -0.0076659983488617045,
+      "peak_roe": 0.012162401226559542,
       "strategy": "BULLISH_RECLAIM",
       "entry_candle_low": 3.3678588,
       "entry_time_sec": 1792540233.4839768
     }
   },
   "previous_active_coins": [
-    "PUMP",
     "LIT"
   ],
-  "last_run_timestamp": "2026-10-20 19:10:47",
-  "last_email_timestamp": 1792541434.2413635,
-  "last_scan_timestamp": 1792541434.2413635,
+  "last_run_timestamp": "2026-10-20 19:16:00",
+  "last_email_timestamp": 1792541730.4161174,
+  "last_scan_timestamp": 1792541730.4161174,
   "gemini_cache": {
-    "timestamp": 1792541434.2413635,
+    "timestamp": 1792541730.4161174,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets remain highly sensitive to macroeconomic uncertainty, shifting regulatory landscapes, and extreme volatility typical of the current post-halving transition period."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces heightened volatility driven by macroeconomic uncertainty regarding interest rate policy, evolving regulatory scrutiny, and significant technical resistance levels that leave assets susceptible to sharp corrections."
   },
   "daily_starting_equity": {
     "2026-10-20": 111.2514322
