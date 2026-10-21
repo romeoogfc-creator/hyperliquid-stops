@@ -19,7 +19,7 @@ from hyperliquid.info import Info
 from hyperliquid.exchange import Exchange
 from hyperliquid.utils import constants
 
-BOT_VERSION = "V4.9.2"
+BOT_VERSION = "V4.10.1"
 BOT_TITLE = f"TR-GC-Crypto-LS-23-{BOT_VERSION}"
 
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
@@ -35,13 +35,25 @@ MAX_CRYPTO_SLOTS = 3
 POSITION_FRACTION = 0.25 * 0.85        # notional per trade as a fraction of account value
 MIN_NOTIONAL_USD = 10.50
 
-HARD_CAP_ROE = -0.0250                 # -2.5% ROE = -0.5% price at 5x
-TRAIL_ACTIVATE_ROE = 0.0250            # trail starts after +2.5% ROE peak
-TRAIL_GIVEBACK_ROE = 0.0125
-CLIMAX_GIVEBACK_ROE = 0.0100
-MIN_LOCK_ROE = 0.0075                  # was 0.40% ROE (0.08% price) which is below round-trip taker fees (~0.087%)
+# Trade management = the V4.8.12 "profit-lock" rules that won 5/6 on the night of Oct 20-21.
+HARD_CAP_ROE = -0.0350                 # fixed -3.5% ROE stop (-0.7% price at 5x): room to breathe, no candle-low stop
+FIRST_LOCK_TRIGGER_ROE = 0.0120        # once peak hits +1.2% ROE...
+FIRST_LOCK_ROE = 0.0050                # ...lock +0.5% ROE (V4.8.12 used +0.4%, which is below round-trip fees of ~0.43% ROE)
+# Peak ROE tier -> keep this share of the peak (or give back at most this much ROE, whichever locks more)
+LOCK_TIERS = [
+    (0.1200, 0.93, 0.0080, "🔒 DEEP LOCK 93%"),
+    (0.0800, 0.90, 0.0100, "🚀 STRONG LOCK 90%"),
+    (0.0500, 0.85, 0.0120, "🎯 GOOD LOCK 85%"),
+    (0.0250, 0.80, None,   "🛡 EARLY LOCK 80%"),   # +2.5% peak: keep 80%, never below +0.8% ROE
+]
+EARLY_LOCK_MIN_ROE = 0.0080
+CLIMAX_TRIGGER_ROE = 0.0450            # peak >= +4.5% and a 0.6% pullback or 45% upper wick -> give back only 0.4%
+CLIMAX_DRAWDOWN_ROE = 0.0060
+CLIMAX_GIVEBACK_ROE = 0.0040
 
-FLAT_EXIT_MINS = 30.0
+SCRATCH_MINS = 15.0                    # 15m negative scratch: still below -0.5% ROE after 15 minutes -> out
+SCRATCH_ROE = -0.0050
+FLAT_EXIT_MINS = 30.0                  # 30m stagnation: still below +0.4% ROE after 30 minutes -> out
 FLAT_EXIT_ROE = 0.0040
 
 LOSS_COOLDOWN_SEC = 1800
@@ -55,7 +67,16 @@ DAILY_LOSS_LIMIT_PCT = 0.03            # realized net loss today >= 3% of start 
 BLOCK_ENTRIES_WHEN_RISK_OFF = True     # long-only alt scalps rarely work while BTC trends down
 SKIP_COINS = set()                     # add tickers here to never trade them
 MIN_24H_VOLUME_USD = 500000.0
-SCAN_TOP_N = 60
+SCAN_TOP_N = 60                        # wide net: top 60 24h gainers (V4.8.12 used 20, which rarely triggers)...
+SKIP_FIRST_LISTED = 20                 # ...never the first 20 coins Hyperliquid listed (BTC, ETH, SOL, BNB, ...)...
+MIN_24H_CHANGE_PCT = 2.0               # ...must actually be moving today...
+# ...and must FIT the trade plan: the stop is 0.7% below entry and the first lock needs +0.24%.
+# Typical 15m candle range (ATR%) below 0.30% = too slow to reach the lock before the 15/30m time exits (BNB, GRAM).
+# Above 1.20% = ordinary noise is bigger than the 0.7% stop, so wicks stop you out (USELESS-type -5%).
+MIN_ATR_PCT = 0.30
+MAX_ATR_PCT = 1.20
+ATR_CANDLES = 14
+CANDLE_LOOKBACK_MS = 8 * 3600000       # V4.8.12: indicators and "day high" on the last 8h of 15m candles
 NEAR_MISS_MAX_FAILS = 2                # log coins that missed a setup by this many rules or fewer
 NEAR_MISS_SHOW = 3                     # how many near misses to list per run
 
@@ -563,46 +584,31 @@ def record_blockers(state, today_str, labels):
 
 
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle_low, peak_roe=0.0, upper_wick_pct=0.0):
+    """V4.8.12 profit-lock ladder. Fixed -3.5% ROE stop until the trade works; then lock 80-93% of the peak.
+    entry_candle_low is kept for logging only: the tight candle-low stop (V4.8.14+) caused noise stop-outs."""
     roe = ((current_px - entry_px) / entry_px * LEVERAGE) if is_long else ((entry_px - current_px) / entry_px * LEVERAGE)
 
-    if peak_roe >= TRAIL_ACTIVATE_ROE:
-        target_floor_roe = max(peak_roe - TRAIL_GIVEBACK_ROE, MIN_LOCK_ROE)
-        leash_status = f"PENNY TRAIL [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
+    target_floor_roe = HARD_CAP_ROE
+    leash_status = f"🛡 HARD STOP ({HARD_CAP_ROE*100:.2f}% ROE) until +{FIRST_LOCK_TRIGGER_ROE*100:.1f}% peak"
+    for min_peak, keep_share, max_giveback, label in LOCK_TIERS:
+        if peak_roe >= min_peak:
+            if max_giveback is None:
+                target_floor_roe = max(peak_roe * keep_share, EARLY_LOCK_MIN_ROE)
+            else:
+                target_floor_roe = max(peak_roe * keep_share, peak_roe - max_giveback)
+            leash_status = f"{label} [Peak +{peak_roe*100:.2f}% → Floor +{target_floor_roe*100:.2f}%]"
+            break
     else:
-        target_floor_roe = HARD_CAP_ROE
-        leash_status = f"HARD CAP ({HARD_CAP_ROE*100:.2f}% ROE) until +{TRAIL_ACTIVATE_ROE*100:.2f}% peak"
-
-    try:
-        structure_low = float(entry_candle_low) if entry_candle_low else 0.0
-    except (TypeError, ValueError):
-        structure_low = 0.0
-
-    if is_long:
-        cap_px = entry_px * (1.0 + (HARD_CAP_ROE / LEVERAGE))
-        trail_px = entry_px * (1.0 + (target_floor_roe / LEVERAGE))
-        if 0 < structure_low < entry_px:
-            protective_px = max(structure_low * 0.9995, cap_px)
-        else:
-            protective_px = cap_px
-        if peak_roe >= TRAIL_ACTIVATE_ROE:
-            stop_px = max(trail_px, protective_px)
-        else:
-            stop_px = protective_px
-            if 0 < structure_low < entry_px and stop_px > cap_px * 1.0001:
-                leash_status = f"FAILED-V LOW @ ${stop_px:.6g} (cap {HARD_CAP_ROE*100:.2f}% ROE)"
-    else:
-        cap_px = entry_px * (1.0 - (HARD_CAP_ROE / LEVERAGE))
-        trail_px = entry_px * (1.0 - (target_floor_roe / LEVERAGE))
-        protective_px = min(structure_low * 1.0005, cap_px) if structure_low > entry_px else cap_px
-        stop_px = min(trail_px, protective_px) if peak_roe >= TRAIL_ACTIVATE_ROE else protective_px
+        if peak_roe >= FIRST_LOCK_TRIGGER_ROE:
+            target_floor_roe = FIRST_LOCK_ROE
+            leash_status = f"🛡 FEE LOCK (+{FIRST_LOCK_ROE*100:.2f}% ROE)"
 
     drawdown_from_peak = peak_roe - roe
-    if peak_roe >= TRAIL_ACTIVATE_ROE and (drawdown_from_peak >= CLIMAX_GIVEBACK_ROE or upper_wick_pct >= 0.45):
-        climax_roe = max(peak_roe - CLIMAX_GIVEBACK_ROE, MIN_LOCK_ROE)
-        climax_px = entry_px * (1.0 + (climax_roe / LEVERAGE)) if is_long else entry_px * (1.0 - (climax_roe / LEVERAGE))
-        stop_px = max(stop_px, climax_px) if is_long else min(stop_px, climax_px)
-        leash_status = f"CLIMAX LOCK [Peak +{peak_roe*100:.2f}% -> give back {CLIMAX_GIVEBACK_ROE*100:.2f}% ROE]"
+    if peak_roe >= CLIMAX_TRIGGER_ROE and (drawdown_from_peak >= CLIMAX_DRAWDOWN_ROE or upper_wick_pct >= 0.45):
+        target_floor_roe = max(target_floor_roe, peak_roe - CLIMAX_GIVEBACK_ROE)
+        leash_status = f"⚡ CLIMAX EXHAUSTION LOCK [Peak +{peak_roe*100:.2f}% → Floor +{target_floor_roe*100:.2f}%]"
 
+    stop_px = entry_px * (1.0 + target_floor_roe / LEVERAGE) if is_long else entry_px * (1.0 - target_floor_roe / LEVERAGE)
     return stop_px, roe, leash_status
 
 
@@ -774,7 +780,7 @@ def execute_engine():
     required_vol_ratio = 2.80 if strict else 1.80
     max_vwap_extension = 1.0040 if strict else 1.0080
     hod_proximity_pct = 0.0100
-    audit_logs.append(f"⚡ {BOT_VERSION}: Stop failed-V low or {HARD_CAP_ROE*100:.2f}% ROE cap | Trail after +{TRAIL_ACTIVATE_ROE*100:.2f}% (min lock +{MIN_LOCK_ROE*100:.2f}%) | RVOL Gate {required_vol_ratio}x (rolling 15m) | VWAP Cap +{(max_vwap_extension-1)*100:.2f}%")
+    audit_logs.append(f"⚡ {BOT_VERSION}: Stop {HARD_CAP_ROE*100:.1f}% ROE | Lock from +{FIRST_LOCK_TRIGGER_ROE*100:.1f}% peak (80-93%) | Scratch {SCRATCH_MINS:.0f}m / Flat {FLAT_EXIT_MINS:.0f}m | RVOL Gate {required_vol_ratio}x (rolling 15m) | VWAP Cap +{(max_vwap_extension-1)*100:.2f}%")
     if entries_blocked_reason:
         audit_logs.append(f"⛔ NEW ENTRIES BLOCKED: {entries_blocked_reason}")
 
@@ -841,18 +847,19 @@ def execute_engine():
 
         should_exit = False
         exit_reason = ""
-        if held_duration_mins >= FLAT_EXIT_MINS and current_roe < FLAT_EXIT_ROE and peak_roe < TRAIL_ACTIVATE_ROE:
+        if held_duration_mins >= SCRATCH_MINS and current_roe < SCRATCH_ROE:
             should_exit = True
-            exit_reason = f"{FLAT_EXIT_MINS:.0f}M flat exit ({current_roe*100:.2f}% ROE after {held_duration_mins:.0f}m)"
+            exit_reason = f"⏱️ {SCRATCH_MINS:.0f}M negative scratch ({current_roe*100:.2f}% ROE after {held_duration_mins:.0f}m)"
+        elif held_duration_mins >= FLAT_EXIT_MINS and current_roe < FLAT_EXIT_ROE:
+            should_exit = True
+            exit_reason = f"⏱️ {FLAT_EXIT_MINS:.0f}M flat stagnation exit ({current_roe*100:.2f}% ROE after {held_duration_mins:.0f}m)"
 
         if (is_long and current_px <= stop_px_calc) or ((not is_long) and current_px >= stop_px_calc):
             should_exit = True
-            if peak_roe >= TRAIL_ACTIVATE_ROE:
-                exit_reason = f"Penny trail hit ({current_roe*100:.2f}% ROE, peak {peak_roe*100:.2f}%)"
-            elif "FAILED-V" in leash_status:
-                exit_reason = f"Failed V through entry low ({current_roe*100:.2f}% ROE)"
+            if peak_roe >= FIRST_LOCK_TRIGGER_ROE:
+                exit_reason = f"🎯 Profit lock hit ({current_roe*100:.2f}% ROE, peak {peak_roe*100:.2f}%)"
             else:
-                exit_reason = f"Hard cap hit ({current_roe*100:.2f}% ROE)"
+                exit_reason = f"🛡️ Hard stop hit ({current_roe*100:.2f}% ROE)"
 
         if should_exit:
             audit_logs.append(f"🎯 EXIT TRIGGERED: Closing {coin} {side_str} @ ${current_px:.6g} ({exit_reason}).")
@@ -915,15 +922,18 @@ def execute_engine():
                     continue
                 if prev_px > 0 and mark_px > 0:
                     change_24h = ((mark_px - prev_px) / prev_px) * 100
-                    all_eligible_coins.append({"coin": coin, "change_24h": change_24h, "mark_px": mark_px, "vlm_24h": volume_24h_usd})
+                    all_eligible_coins.append({"coin": coin, "change_24h": change_24h, "mark_px": mark_px, "vlm_24h": volume_24h_usd, "rank": idx})
             except Exception:
                 continue
 
-        all_eligible_coins = sorted(all_eligible_coins, key=lambda x: x["change_24h"], reverse=True)
+        all_eligible_coins = sorted([c for c in all_eligible_coins
+                                     if c["rank"] >= SKIP_FIRST_LISTED and c["change_24h"] >= MIN_24H_CHANGE_PCT],
+                                    key=lambda x: x["change_24h"], reverse=True)
         top_gapper_str = ", ".join([f"{g['coin']} ({g['change_24h']:+.2f}%)" for g in all_eligible_coins[:5]])
-        audit_logs.append(f"🔥 TOP GAPPERS (scanning top {SCAN_TOP_N}): {top_gapper_str if top_gapper_str else 'None'}")
+        audit_logs.append(f"🔥 TOP GAPPERS (top {SCAN_TOP_N} up {MIN_24H_CHANGE_PCT:.0f}%+, majors skipped, {len(all_eligible_coins)} qualify): {top_gapper_str if top_gapper_str else 'None'}")
 
         near_misses = []
+        atr_skips = {"quiet": [], "wild": []}
         for item in all_eligible_coins[:SCAN_TOP_N]:
             coin = item["coin"]
 
@@ -937,9 +947,20 @@ def execute_engine():
                 if curr_live_px <= 0:
                     continue
 
-                # 24h of 15m candles so "HOD" really is the high of the day (8h window before).
-                candles = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 86400000, endTime=now_ms)
+                candles = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - CANDLE_LOOKBACK_MS, endTime=now_ms)
                 if not candles or len(candles) < 32:
+                    continue
+
+                # Volatility fit: average high-low range of the last completed 15m candles, as % of price.
+                done = candles[-(ATR_CANDLES + 1):-1]
+                atr_pct = float(np.mean([(float(c["h"]) - float(c["l"])) / float(c["c"]) for c in done])) * 100.0 if done else 0.0
+                if atr_pct < MIN_ATR_PCT:
+                    atr_skips["quiet"].append(f"{coin} {atr_pct:.2f}%")
+                    record_blockers(state, today_str, ["Too quiet (ATR)"])
+                    continue
+                if atr_pct > MAX_ATR_PCT:
+                    atr_skips["wild"].append(f"{coin} {atr_pct:.2f}%")
+                    record_blockers(state, today_str, ["Too wild (ATR)"])
                     continue
 
                 current_candle_ts = candles[-1]["t"]
@@ -951,7 +972,7 @@ def execute_engine():
                 highs = [float(c["h"]) for c in candles]
                 lows = [float(c["l"]) for c in candles]
                 volumes = [float(c.get("v", 0)) for c in candles]
-                day_high = max(highs[-96:])
+                day_high = max(highs)   # 8h high, as in V4.8.12
 
                 ross_ind = calculate_15m_ross_indicators(candles)
                 if not ross_ind:
@@ -1045,7 +1066,7 @@ def execute_engine():
                         setup_type, score = "HOD_BREAKOUT", vol_ratio * 1.0
 
                     target_limit_px = min(curr_live_px * 0.9990, max(ema9, vwap))
-                    audit_logs.append(f"🔥 [{coin}] TRIGGER [{setup_type}] @ ${curr_live_px:.6g} (RVOL {vol_ratio:.2f}x, req {required_vol_ratio}x)")
+                    audit_logs.append(f"🔥 [{coin}] TRIGGER [{setup_type}] @ ${curr_live_px:.6g} (RVOL {vol_ratio:.2f}x, req {required_vol_ratio}x, ATR {atr_pct:.2f}%)")
 
                     market_candidates.append({
                         "coin": coin, "close": curr_live_px, "limit_px": target_limit_px,
@@ -1056,6 +1077,10 @@ def execute_engine():
                 audit_logs.append(f"⚠️ [{coin}] scan error: {e}")
                 continue
 
+        if atr_skips["quiet"] or atr_skips["wild"]:
+            audit_logs.append(f"🔇 Volatility filter ({MIN_ATR_PCT:.2f}-{MAX_ATR_PCT:.2f}% ATR): {len(atr_skips['quiet'])} too quiet"
+                              f"{' (' + ', '.join(atr_skips['quiet'][:4]) + ')' if atr_skips['quiet'] else ''}, {len(atr_skips['wild'])} too wild"
+                              f"{' (' + ', '.join(atr_skips['wild'][:4]) + ')' if atr_skips['wild'] else ''}")
         for n_fail, _, coin, setup_name, fails in sorted(near_misses)[:NEAR_MISS_SHOW]:
             tag = "everything else passed" if n_fail == 1 else f"{n_fail} rules short"
             audit_logs.append(f"🎯 NEAR MISS [{coin}] {setup_name}: {'; '.join(fails)} — {tag}")
@@ -1219,7 +1244,7 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
 
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Failed-V Stop ({BOT_VERSION}){' — DRY RUN' if DRY_RUN else ''}</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Profit-Lock Scalper ({BOT_VERSION}){' — DRY RUN' if DRY_RUN else ''}</div>
         <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; BTC regime: {regime}</div>
       </div>
 
@@ -1248,8 +1273,10 @@ def execute_engine():
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
           <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active {BOT_VERSION} Rules</div>
           <div>&bull; <b>Stop attached to entry:</b> protected from the moment of fill</div>
-          <div>&bull; <b>Failed-V stop / hard cap {HARD_CAP_ROE*100:.2f}% ROE</b></div>
-          <div>&bull; <b>Trail after +{TRAIL_ACTIVATE_ROE*100:.2f}% peak</b> (peak from 1m highs), min lock +{MIN_LOCK_ROE*100:.2f}% ROE so wins cover fees</div>
+          <div>&bull; <b>Universe:</b> top {SCAN_TOP_N} gainers up {MIN_24H_CHANGE_PCT:.0f}%+ (majors skipped) that FIT the plan: 15m ATR {MIN_ATR_PCT:.2f}–{MAX_ATR_PCT:.2f}%</div>
+          <div>&bull; <b>V4.8.12 trade rules:</b> 8h candles, hard stop {HARD_CAP_ROE*100:.1f}% ROE</div>
+          <div>&bull; <b>Profit lock:</b> +{FIRST_LOCK_ROE*100:.2f}% after +{FIRST_LOCK_TRIGGER_ROE*100:.1f}% peak, then 80% / 85% / 90% / 93% of peak (peak from 1m highs), climax lock</div>
+          <div>&bull; <b>Time exits:</b> {SCRATCH_MINS:.0f}m negative scratch (&lt;{SCRATCH_ROE*100:.1f}% ROE), {FLAT_EXIT_MINS:.0f}m flat (&lt;+{FLAT_EXIT_ROE*100:.1f}% ROE)</div>
           <div>&bull; <b>BTC regime filter</b> replaces Gemini; RISK_OFF blocks new longs</div>
           <div>&bull; <b>Breakers:</b> {CB_MAX_LOSSES} losses/{CB_WINDOW_SEC // 60}m or -{DAILY_LOSS_LIMIT_PCT*100:.1f}% day → entries paused, positions still managed</div>
         </div>
@@ -1279,7 +1306,7 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing Failed-V Scalper cycle ({BOT_VERSION}){' [DRY RUN]' if DRY_RUN else ''}...", flush=True)
+    print(f"[{timestamp}] Executing Profit-Lock Scalper cycle ({BOT_VERSION}){' [DRY RUN]' if DRY_RUN else ''}...", flush=True)
     try:
         execute_engine()
         print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] {BOT_VERSION} cycle completed successfully.", flush=True)
