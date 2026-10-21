@@ -136,9 +136,9 @@
   "active_position_cache": {
     "JUP": {
       "entry_px": 0.31806,
-      "current_px": 0.31746,
+      "current_px": 0.316245,
       "szi": 75.0,
-      "margin": 23.802825,
+      "margin": 23.72025,
       "side": "LONG",
       "peak_roe": -0.009432182607055105,
       "strategy": "HOD_BREAKOUT",
@@ -149,13 +149,13 @@
   "previous_active_coins": [
     "JUP"
   ],
-  "last_run_timestamp": "2026-10-20 20:55:39",
+  "last_run_timestamp": "2026-10-20 21:00:38",
   "last_email_timestamp": 1792547423.872347,
-  "last_scan_timestamp": 1792547728.3495896,
+  "last_scan_timestamp": 1792548026.2405975,
   "gemini_cache": {
-    "timestamp": 1792547728.3495896,
+    "timestamp": 1792548026.2405975,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH**\n\nThe market is currently experiencing significant volatility driven by macroeconomic uncertainty, shifting regulatory signals, and speculative exhaustion following recent price peaks, necessitating extreme caution for leveraged positions."
+    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating significant volatility driven by shifting macroeconomic expectations, regulatory uncertainty, and the potential for rapid deleveraging following recent price breakouts."
   },
   "daily_starting_equity": {
     "2026-10-20": 111.1416772
