@@ -9,15 +9,27 @@
     "ZRO": 1792542035.6810253,
     "ALGO": 1792542035.6810253,
     "WLD": 1792542035.6810253,
-    "PUMP": 1792542630.4161174
+    "PUMP": 1792545629.0976796
   },
   "last_traded_candle": {
     "PUMP": 1792542600000,
-    "SKY": 1792541700000
+    "SKY": 1792541700000,
+    "TRUMP": 1792543500000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "PUMP",
+      "entry_price": 0.004926,
+      "exit_price": 0.004888,
+      "pnl_usd": -0.188019,
+      "roe_pct": -3.857084855866813,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Retention Ratchet Triggered (-3.86% ROE)",
+      "timestamp": "2026-10-21 00:50:29",
+      "ts_sec": 1792543829.0976796
+    },
     {
       "coin": "LIT",
       "entry_price": 3.3916,
@@ -130,40 +142,35 @@
     }
   ],
   "active_position_cache": {
-    "PUMP": {
-      "entry_px": 0.004926,
-      "current_px": 0.004922,
-      "szi": 4821.0,
-      "margin": 23.728962,
-      "side": "LONG",
-      "peak_roe": -0.0040600893219647416,
-      "strategy": "HOD_BREAKOUT",
-      "entry_candle_low": 0.00489,
-      "entry_time_sec": 1792543231.5512445
-    },
     "SKY": {
       "entry_px": 0.076741,
-      "current_px": 0.076963,
+      "current_px": 0.076981,
       "szi": 310.0,
-      "margin": 23.85946,
+      "margin": 23.85884,
       "side": "LONG",
       "peak_roe": 0.016809788770018264,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.076103,
       "entry_time_sec": 1792542331.5864146
+    },
+    "TRUMP": {
+      "strategy": "HOD_BREAKOUT",
+      "entry_px": 1.80405,
+      "side": "LONG",
+      "entry_candle_low": 1.7961,
+      "entry_time_sec": 1792543829.0976796
     }
   },
   "previous_active_coins": [
-    "SKY",
-    "PUMP"
+    "SKY"
   ],
-  "last_run_timestamp": "2026-10-20 19:45:34",
-  "last_email_timestamp": 1792543231.5512445,
-  "last_scan_timestamp": 1792543523.2404218,
+  "last_run_timestamp": "2026-10-20 19:50:44",
+  "last_email_timestamp": 1792543829.0976796,
+  "last_scan_timestamp": 1792543829.0976796,
   "gemini_cache": {
-    "timestamp": 1792543523.2404218,
+    "timestamp": 1792543829.0976796,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Increased market volatility driven by macroeconomic uncertainty, regulatory shifts, and significant leverage in derivatives markets creates a landscape prone to sudden, sharp corrections."
+    "briefing": "**Risk Level: HIGH**\n\nThe crypto market remains in a state of high volatility driven by shifting macroeconomic expectations, significant regulatory uncertainty, and heavy speculative positioning, making it susceptible to sharp corrections."
   },
   "daily_starting_equity": {
     "2026-10-20": 111.2514322
