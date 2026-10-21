@@ -139,35 +139,40 @@
     }
   ],
   "active_position_cache": {
+    "TRUMP": {
+      "entry_px": 1.8008,
+      "current_px": 1.80115,
+      "szi": 13.1,
+      "margin": 2.358917,
+      "side": "LONG",
+      "peak_roe": 0.0009717903154155722,
+      "strategy": "HOD_BREAKOUT",
+      "entry_candle_low": 1.7976,
+      "entry_time_sec": 1792571437.0221493
+    },
     "SKY": {
       "entry_px": 0.076507,
-      "current_px": 0.076626,
+      "current_px": 0.0767,
       "szi": 309.0,
-      "margin": 23.679597,
+      "margin": 23.695047,
       "side": "LONG",
       "peak_roe": 0.012613224933666118,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.076022,
       "entry_time_sec": 1792570231.773548
-    },
-    "TRUMP": {
-      "strategy": "HOD_BREAKOUT",
-      "entry_px": 1.80275,
-      "side": "LONG",
-      "entry_candle_low": 1.7976,
-      "entry_time_sec": 1792571437.0221493
     }
   },
   "previous_active_coins": [
-    "SKY"
+    "SKY",
+    "TRUMP"
   ],
-  "last_run_timestamp": "2026-10-21 03:34:07",
+  "last_run_timestamp": "2026-10-21 03:35:43",
   "last_email_timestamp": 1792571437.0221493,
-  "last_scan_timestamp": 1792571437.0221493,
+  "last_scan_timestamp": 1792571724.78805,
   "gemini_cache": {
-    "timestamp": 1792571437.0221493,
+    "timestamp": 1792571724.78805,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity cycles, all of which keep the potential for sharp, sudden price corrections elevated."
+    "briefing": "Risk Level: **HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic data, shifting regulatory landscapes, and high levels of leverage, making it highly susceptible to sharp, liquidity-driven corrections."
   },
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
