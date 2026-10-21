@@ -147,11 +147,11 @@
   "active_position_cache": {
     "XLM": {
       "entry_px": 0.18657,
-      "current_px": 0.18687,
+      "current_px": 0.187015,
       "szi": 127.0,
-      "margin": 23.73503,
+      "margin": 23.750016,
       "side": "LONG",
-      "peak_roe": 0.008039877793857392,
+      "peak_roe": 0.011925818727554622,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.18553,
       "entry_time_sec": 1792605933.865068
@@ -160,13 +160,13 @@
   "previous_active_coins": [
     "XLM"
   ],
-  "last_run_timestamp": "2026-10-21 13:20:38",
-  "last_email_timestamp": 1792605933.865068,
-  "last_scan_timestamp": 1792606824.2380798,
+  "last_run_timestamp": "2026-10-21 13:25:44",
+  "last_email_timestamp": 1792607129.6206522,
+  "last_scan_timestamp": 1792607129.6206522,
   "gemini_cache": {
-    "timestamp": 1792606824.2380798,
+    "timestamp": 1792607129.6206522,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nDriven by aggressive macroeconomic tightening, persistent regulatory scrutiny, and elevated market leverage, current crypto market conditions expose investors to severe downside volatility and systemic liquidity shocks."
+    "briefing": "**Risk Level: HIGH** \n\nDriven by persistent macroeconomic uncertainty, stringent regulatory headwinds, and ongoing vulnerabilities in market liquidity, current crypto markets face a precarious environment prone to sharp downside volatility."
   },
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
