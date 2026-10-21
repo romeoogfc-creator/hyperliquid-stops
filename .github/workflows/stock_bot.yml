@@ -2,15 +2,15 @@ name: TR-GC-Equities-LS-01
 
 on:
   schedule:
-    # Runs every 5 minutes Monday-Friday during active US Market hours (8 AM - 3 PM CT / 13:00 - 19:55 UTC)
-    - cron: '*/5 13-19 * * 1-5'
-    # Dedicated pre-close square-off trigger at 2:40 PM CT (19:40 UTC)
-    - cron: '40 19 * * 1-5'
+    # Every 5 min, Mon-Fri, 13:00-20:55 UTC. Covers 8:30 AM-3:00 PM CT both in summer (CDT, UTC-5)
+    # and after clocks fall back on Nov 1 (CST, UTC-6). Runs outside market hours exit in seconds.
+    - cron: '*/5 13-20 * * 1-5'
   workflow_dispatch:
 
 concurrency:
   group: stock-trading-bot-engine
-  cancel-in-progress: true
+  # false = a new run waits for the current one to finish instead of killing it mid-trade
+  cancel-in-progress: false
 
 jobs:
   run-stock-bot:
@@ -47,9 +47,15 @@ jobs:
           python bot_engine_stocks.py
 
       - name: Auto-commit State Updates
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: "Auto-update stock bot state and telemetry [skip ci]"
-          file_pattern: "stock_state.json"
-          skip_dirty_check: false
-          git_pull_args: "--rebase --autostash"
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add stock_state.json
+          if git diff --staged --quiet; then echo "No state changes"; exit 0; fi
+          git commit -m "Auto-update stock bot state and telemetry [skip ci]"
+          # The crypto bot pushes to main at the same times; pull its commit in and retry instead of failing.
+          for i in 1 2 3 4 5; do
+            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
+            echo "Push attempt $i rejected, retrying..."; sleep $((i * 3))
+          done
+          exit 1
