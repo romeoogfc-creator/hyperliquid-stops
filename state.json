@@ -9,7 +9,7 @@
     "JTO": 1792550135.6883337,
     "MON": 1792550135.6883337,
     "PONS": 1792550135.6883337,
-    "VVV": 1792550135.6883337,
+    "VVV": 1792596634.839354,
     "TIA": 1792550135.6883337,
     "DOT": 1792550135.6883337,
     "ZRO": 1792550135.6883337,
@@ -30,6 +30,17 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "VVV",
+      "entry_price": 25.892,
+      "exit_price": 26.034,
+      "pnl_usd": 0.13,
+      "roe_pct": 2.74,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Exchange Orderbook Fill (Profit Target)",
+      "timestamp": "2026-10-21 06:25:49",
+      "ts_sec": 1792581949.401
+    },
     {
       "coin": "USELESS",
       "entry_price": 0.15861,
@@ -128,69 +139,45 @@
       "exit_reason": "\ud83d\udee1\ufe0f Native Exchange Orderbook Fill (Penny Stop)",
       "timestamp": "2026-10-20 20:20:44",
       "ts_sec": 1792545644.697
-    },
-    {
-      "coin": "SKY",
-      "entry_price": 0.076741,
-      "exit_price": 0.07674,
-      "pnl_usd": -0.0,
-      "roe_pct": -0.01,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udee1\ufe0f Native Exchange Orderbook Fill (Penny Stop)",
-      "timestamp": "2026-10-20 20:11:25",
-      "ts_sec": 1792545085.956
     }
   ],
-  "active_position_cache": {
-    "VVV": {
-      "entry_px": 25.892,
-      "current_px": 26.0685,
-      "szi": 0.91,
-      "margin": 23.71005,
-      "side": "LONG",
-      "peak_roe": 0.03408388691487733,
-      "strategy": "BULLISH_RECLAIM",
-      "entry_candle_low": 25.832,
-      "entry_time_sec": 1792581631.2951696
-    }
-  },
-  "previous_active_coins": [
-    "VVV"
-  ],
-  "last_run_timestamp": "2026-10-21 06:25:36",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-21 06:30:39",
   "last_email_timestamp": 1792581631.2951696,
-  "last_scan_timestamp": 1792581924.943246,
+  "last_scan_timestamp": 1792582233.0335605,
   "gemini_cache": {
-    "timestamp": 1792581924.943246,
+    "timestamp": 1792582233.0335605,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Increased macroeconomic uncertainty, regulatory scrutiny, and high volatility driven by speculative leverage suggest a precarious environment for investors."
+    "briefing": "**Risk Level: HIGH** \n\nCrypto markets currently face severe vulnerability due to macroeconomic uncertainty, ongoing regulatory crackdowns, and fragile liquidity conditions that heighten the potential for sudden, sharp liquidations."
   },
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
     "2026-10-21": 110.9460072
   },
   "seen_fill_hashes": [
-    "0x16c9af80abba5d09184304470373a8020503006646bd7bdbba925ad36abe36f3",
-    "0x5ec5a8655df971e9603f0446f92575010600c04af8fc90bb028e53b81cfd4bd4",
+    "0xdfba41bd22613253e13304470a9a160000f559a2bd6451258382ed0fe1650c3e",
     "0x52025603b518ade5537c0447021d1d00003d6de9501bccb7f5cb0156741c87cf",
+    "0x81097d467151a8f482830446f9e9e802112d002c0c54c7c624d22899305582df",
     "0xf05985779aca44e4f1d30447028370020734005d35cd63b7942230ca59ce1ecf",
-    "0xa6f0a0db82e1c539a86a0446f8120402032200c11de4e40b4ab94c2e41e59f24",
-    "0x04d0418bff593e770649044708a1a701120059719a5c5d49a898ecdebe5d1861",
-    "0x1168a7bd9d3f119012e2044708af630201f400a338323062b53153105c32eb7a",
-    "0x0053ffef20b73d2d01cd0446f8c85e0202c500d4bbba5bffa41cab41dfbb1717",
-    "0x87e74a77fd32fff0896104470211f402055f005d98361ec22baff5cabc36d9db",
     "0x553c55584087fc3b56b60446f510a00000776d3ddb8b1b0df90500aaff8bd625",
+    "0xd1dc83a74a48b59dd356044702a45f020601008ce54bd46f75a52efa094c8f88",
+    "0xba1c8de0f2c4bf22bb960446f88014020a8000c68dc7ddf45de53933b1c8990d",
+    "0x8c158469dafc6cb18d8f044702c70f0202d4004f75ff8b832fde2fbc99f0469c",
+    "0x04d0418bff593e770649044708a1a701120059719a5c5d49a898ecdebe5d1861",
+    "0x16c9af80abba5d09184304470373a8020503006646bd7bdbba925ad36abe36f3",
+    "0x0053ffef20b73d2d01cd0446f8c85e0202c500d4bbba5bffa41cab41dfbb1717",
     "0x5c8284d3bf9d0e2d5dfc044702e5e00205d900b95a902cff004b30267e90e818",
     "0xc4ef09d341e82db9c6680447087a6101010021b8dceb4c8b68b7b52600ec07a4",
-    "0x8c158469dafc6cb18d8f044702c70f0202d4004f75ff8b832fde2fbc99f0469c",
-    "0x3c5b25112ff6b7a53dd4044705237f02027400f6caf9d677e023d063eefa918f",
+    "0x1168a7bd9d3f119012e2044708af630201f400a338323062b53153105c32eb7a",
+    "0x87e74a77fd32fff0896104470211f402055f005d98361ec22baff5cabc36d9db",
     "0xecada00159e6898fee270446fb26ee0000e8b7e6f4e9a86190764b5418ea637a",
-    "0xba1c8de0f2c4bf22bb960446f88014020a8000c68dc7ddf45de53933b1c8990d",
-    "0x81097d467151a8f482830446f9e9e802112d002c0c54c7c624d22899305582df",
-    "0x42ceb0d84e550d6444480446f400e6010700c8bde9582c36e6975c2b0d58e74e",
-    "0xe064e5373fbc1af5e1de04470591c602052d001cdabf39c7842d9089febff4e0",
-    "0x5012c73dde5fa2f3518c044701494100004ddf237952c1c5f3db72909d537cdd",
     "0x6fab33b156462c6171240446f5b28902046f0096f1494b331373df04154a064c",
-    "0xd1dc83a74a48b59dd356044702a45f020601008ce54bd46f75a52efa094c8f88"
+    "0xa6f0a0db82e1c539a86a0446f8120402032200c11de4e40b4ab94c2e41e59f24",
+    "0x5ec5a8655df971e9603f0446f92575010600c04af8fc90bb028e53b81cfd4bd4",
+    "0x5012c73dde5fa2f3518c044701494100004ddf237952c1c5f3db72909d537cdd",
+    "0xe064e5373fbc1af5e1de04470591c602052d001cdabf39c7842d9089febff4e0",
+    "0x3c5b25112ff6b7a53dd4044705237f02027400f6caf9d677e023d063eefa918f",
+    "0x42ceb0d84e550d6444480446f400e6010700c8bde9582c36e6975c2b0d58e74e"
   ]
 }
