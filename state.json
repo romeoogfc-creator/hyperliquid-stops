@@ -137,21 +137,27 @@
   ],
   "active_position_cache": {
     "ENA": {
-      "strategy": "HOD_BREAKOUT",
-      "entry_px": 0.199965,
+      "entry_px": 0.19999,
+      "current_px": 0.20037,
+      "szi": 118.0,
+      "margin": 23.63658,
       "side": "LONG",
+      "peak_roe": 0.009500475023750973,
+      "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.19927,
       "entry_time_sec": 1792557627.9129872
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-20 23:40:35",
+  "previous_active_coins": [
+    "ENA"
+  ],
+  "last_run_timestamp": "2026-10-20 23:45:30",
   "last_email_timestamp": 1792557627.9129872,
-  "last_scan_timestamp": 1792557627.9129872,
+  "last_scan_timestamp": 1792557922.524736,
   "gemini_cache": {
-    "timestamp": 1792557627.9129872,
-    "risk": "MODERATE",
-    "briefing": "Risk Level: **MODERATE** \u2014 While recent institutional adoption and upcoming macro catalysts provide underlying support, the market remains susceptible to heightened volatility driven by geopolitical tensions and shifting interest rate expectations."
+    "timestamp": 1792557922.524736,
+    "risk": "HIGH",
+    "briefing": "Risk Level: **HIGH**\n\nThe market is currently characterized by heightened volatility driven by shifting macroeconomic expectations, significant regulatory uncertainty, and the speculative nature of recent price swings, necessitating extreme caution for investors."
   },
   "daily_starting_equity": {
     "2026-10-20": 110.9460072
