@@ -16,7 +16,7 @@ try:
 except ImportError:
     ZoneInfo = None
 
-BOT_VERSION = "V4.9.0"
+BOT_VERSION = "V5.0.0"
 BOT_TITLE = f"TR-GC-Equities-LS-01-{BOT_VERSION}"
 
 API_KEY = os.getenv("APAL_API_KEY_ID")
@@ -44,21 +44,49 @@ EOD_FLATTEN_BEFORE_CLOSE_MINS = 20      # flatten to cash from 3:40 PM ET (2:40 
                                         # 20 min (not 10) because GitHub cron runs often start 5-15 min late.
 
 # ---------------- Risk / strategy settings ----------------
-MAX_STOCK_SLOTS = 3
+MAX_STOCK_SLOTS = 3               # total open positions (large + small)
+MAX_SMALLCAP_SLOTS = 2            # of which small caps at most
 MAX_NEW_ENTRIES_PER_RUN = 1
-POSITION_FRACTION = 0.15          # of equity per position
 MIN_POSITION_USD = 100.0
 
-HARD_STOP_PCT = -0.0150           # -1.5% price cap
-FEE_FLOOR_TRIGGER = 0.0050        # after +0.5% peak...
-FEE_FLOOR_LOCK = 0.0015           # ...lock +0.15%
-EXPANSION_TRIGGER = 0.0150
-MOONSHOT_TRIGGER = 0.0300
-CLIMAX_TRIGGER = 0.0150
+# Two rule sets. LARGE = the fixed watchlist of big liquid names (small % moves, tight stops).
+# SMALL = Ross-style $2-$20 gappers found live each run (big % moves, wider stops, smaller size).
+LARGE_CAP = {
+    "name": "large", "label": "🏛 LARGE",
+    "position_fraction": 0.15,    # of equity per position
+    "hard_stop": -0.0150,         # -1.5% price cap
+    "floor_trigger": 0.0050, "floor_lock": 0.0015,      # after +0.5% peak, lock +0.15%
+    "expansion": 0.0150, "expansion_give": 0.0040,      # +1.5% peak -> keep 80% (or give back 0.4%)
+    "moonshot": 0.0300, "moonshot_give": 0.0050,        # +3% peak -> keep 88% (or give back 0.5%)
+    "climax": 0.0150, "climax_dd": 0.0030, "climax_give": 0.0020,
+    "flat_pct": 0.0010,           # 30m flat exit if under +0.10%
+    "ema9_cap": 0.0100, "vwap_cap": (1.0080, 1.0040),   # (RISK_ON, strict)
+    "hod_prox": 0.0050, "max_spread": 0.0015, "rvol": (1.80, 2.50),
+    "obey_spy_risk_off": True,
+}
+SMALL_CAP = {
+    "name": "small", "label": "🚀 SMALL",
+    "position_fraction": 0.05,    # smaller size: halts and gaps can jump stops
+    "hard_stop": -0.0300,         # -3% price cap (small caps wick 1-2% routinely)
+    "floor_trigger": 0.0100, "floor_lock": 0.0030,      # after +1% peak, lock +0.3%
+    "expansion": 0.0300, "expansion_give": 0.0080,      # +3% peak -> keep 80%
+    "moonshot": 0.0600, "moonshot_give": 0.0100,        # +6% peak -> keep 88%; uncapped above
+    "climax": 0.0300, "climax_dd": 0.0060, "climax_give": 0.0040,
+    "flat_pct": 0.0020,
+    "ema9_cap": 0.0300, "vwap_cap": (1.0300, 1.0200),
+    "hod_prox": 0.0200, "max_spread": 0.0050, "rvol": (1.80, 2.50),
+    "obey_spy_risk_off": False,   # gappers run on their own news, not on SPY
+}
+
+SMALLCAP_SCAN_ENABLED = True
+SMALLCAP_MIN_PRICE = 2.0
+SMALLCAP_MAX_PRICE = 20.0
+SMALLCAP_MIN_GAIN_PCT = 10.0      # up at least 10% on the day
+SMALLCAP_MIN_IEX_VOLUME = 20000   # shares today on IEX alone (IEX is only ~2-3% of all volume)
+SMALLCAP_MAX_CANDIDATES = 20
+NEWS_SCORE_BONUS = 1.25           # gappers with a headline today rank higher (Ross: catalyst)
 
 FLAT_EXIT_MINS = 30.0
-FLAT_EXIT_PCT = 0.0010            # exit if still under +0.10% after 30m and never reached the fee-floor trigger
-
 LOSS_COOLDOWN_SEC = 1800
 WIN_COOLDOWN_SEC = 5400
 LEDGER_LOOKBACK_DAYS = 14         # trade history window (calendar days; weekends count)
@@ -68,9 +96,6 @@ CB_WINDOW_SEC = 3600              # ...60 minutes -> no new entries for the rest
 DAILY_LOSS_LIMIT_PCT = 0.020      # equity down 2% vs yesterday's close -> flatten to cash, done for the day
 
 BLOCK_ENTRIES_WHEN_RISK_OFF = True
-EMA9_MAX_EXTENSION = 0.0100
-HOD_PROXIMITY_PCT = 0.0050
-MAX_SPREAD_PCT = 0.0015
 
 WATCHLIST = [
     "NVDA", "TSLA", "AMD", "PLTR", "COIN", "MSTR", "HOOD", "SMCI", "AAPL", "MSFT",
@@ -249,6 +274,17 @@ def round_stock_px(px):
     return round(px, 2) if px >= 1.0 else round(px, 4)
 
 
+def profile_for(symbol, entry_px, state):
+    """Which rule set a symbol trades under: what the bot recorded at entry, else watchlist = large,
+    else price <= $30 = small."""
+    name = state.get("symbol_profile", {}).get(symbol)
+    if name == "small":
+        return SMALL_CAP
+    if name == "large" or symbol in WATCHLIST:
+        return LARGE_CAP
+    return SMALL_CAP if 0 < entry_px <= SMALLCAP_MAX_PRICE * 1.5 else LARGE_CAP
+
+
 # ---------------- Market data ----------------
 
 def fetch_bars(api, symbols, timeframe, start_dt, end_dt=None):
@@ -364,19 +400,78 @@ def check_spy_regime(api, now_utc):
 
 
 def check_spread(api, symbols):
-    """Returns {symbol: (ok, msg)}. Missing/one-sided IEX quotes pass (IEX shows only its own book)."""
-    out = {s: (True, "no quote") for s in symbols}
+    """Returns {symbol: spread fraction or None}. None = no usable IEX quote (IEX shows only its own book)."""
+    out = {s: None for s in symbols}
     try:
         res = api.get("/v2/stocks/quotes/latest", params={"symbols": ",".join(symbols), "feed": DATA_FEED}, data=True)
         if ok(res):
             for s, q in (res.json().get("quotes") or {}).items():
                 bp, ap = float(q.get("bp", 0) or 0), float(q.get("ap", 0) or 0)
                 if bp > 0 and ap > 0 and ap >= bp:
-                    spread = (ap - bp) / ((ap + bp) / 2.0)
-                    out[s] = (spread <= MAX_SPREAD_PCT, f"spread {spread*100:.3f}%")
+                    out[s] = (ap - bp) / ((ap + bp) / 2.0)
     except Exception:
         pass
     return out
+
+
+def clean_common_symbol(sym):
+    """Skip warrants (…W), units (…U), rights (…R), bankrupt (…Q) and anything with a dot/slash."""
+    if not sym or not sym.isalpha() or len(sym) > 5:
+        return False
+    return not (len(sym) == 5 and sym[-1] in "WURQ")
+
+
+def fetch_smallcap_gappers(api, now_utc, audit_logs):
+    """Ross-style gapper list: Alpaca's top % gainers, $2-$20, up 10%+, trading on IEX today.
+    Returns {symbol: {"price", "pct", "iex_vol", "news"}}."""
+    res = api.get("/v1beta1/screener/stocks/movers", params={"top": 50}, data=True)
+    if not ok(res):
+        audit_logs.append(f"⚠️ Small-cap scanner unavailable ({res.status_code if res is not None else 'ERR'}) — large caps only this run")
+        return {}
+    gainers = []
+    for g in (res.json().get("gainers") or []):
+        sym, px, pct = g.get("symbol"), float(g.get("price", 0) or 0), float(g.get("percent_change", 0) or 0)
+        if clean_common_symbol(sym) and SMALLCAP_MIN_PRICE <= px <= SMALLCAP_MAX_PRICE and pct >= SMALLCAP_MIN_GAIN_PCT and sym not in WATCHLIST:
+            gainers.append((sym, px, pct))
+    gainers = gainers[:SMALLCAP_MAX_CANDIDATES]
+    if not gainers:
+        audit_logs.append(f"🚀 SMALL-CAP GAPPERS: none ${SMALLCAP_MIN_PRICE:.0f}-${SMALLCAP_MAX_PRICE:.0f} up {SMALLCAP_MIN_GAIN_PCT:.0f}%+ right now")
+        return {}
+
+    syms = [g[0] for g in gainers]
+    vols = {}
+    snap = api.get("/v2/stocks/snapshots", params={"symbols": ",".join(syms), "feed": DATA_FEED}, data=True)
+    if ok(snap):
+        for sym, sd in (snap.json() or {}).items():
+            vols[sym] = float(((sd or {}).get("dailyBar") or {}).get("v", 0) or 0)
+
+    with_news = set()
+    start = (now_utc - timedelta(hours=20)).isoformat().replace("+00:00", "Z")
+    news = api.get("/v1beta1/news", params={"symbols": ",".join(syms), "start": start, "limit": 50}, data=True)
+    if ok(news):
+        for item in (news.json().get("news") or []):
+            with_news.update(item.get("symbols") or [])
+
+    out = {}
+    for sym, px, pct in gainers:
+        if vols and vols.get(sym, 0) < SMALLCAP_MIN_IEX_VOLUME:
+            continue
+        out[sym] = {"price": px, "pct": pct, "iex_vol": vols.get(sym, 0), "news": sym in with_news}
+    shown = ", ".join(f"{s}{'📰' if d['news'] else ''} ({d['pct']:+.0f}%, ${d['price']:.2f})" for s, d in list(out.items())[:8])
+    audit_logs.append(f"🚀 SMALL-CAP GAPPERS ({len(out)}): {shown or 'none passed the volume filter'}")
+    return out
+
+
+def asset_is_tradable(api, symbol):
+    res = api.get(f"/v2/assets/{symbol}")
+    if not ok(res):
+        return False, "asset lookup failed"
+    a = res.json() or {}
+    if not a.get("tradable") or a.get("status") != "active":
+        return False, "not tradable on Alpaca"
+    if str(a.get("exchange", "")).upper() == "OTC":
+        return False, "OTC listing"
+    return True, ""
 
 
 # ---------------- Ledger (rebuilt every run from Alpaca fills -> never duplicates) ----------------
@@ -450,6 +545,7 @@ def rebuild_ledger(api, state, now_ts):
         exit_px = g["proceeds"] / g["qty"]
         ledger.append({
             "symbol": g["symbol"], "qty": g["qty"],
+            "profile": profile_for(g["symbol"], entry_px, state)["name"],
             "entry_price": round_sig_figs(entry_px, 6), "exit_price": round_sig_figs(exit_px, 6),
             "realized_pnl": round(pnl, 2), "pct": round((exit_px / entry_px - 1) * 100, 2),
             "exit_reason": reason, "timestamp": fmt_ct(g["ts"]), "ts_sec": g["ts"]
@@ -570,31 +666,30 @@ def place_entry_with_stop(api, symbol, qty, is_market, limit_px, stop_px, audit_
     return False
 
 
-def calculate_stock_retention_targets(entry_px, current_px, entry_candle_low, peak_pct=0.0, upper_wick_pct=0.0):
-    """Long-only. Same ladder as before, plus the crypto bot's failed-V structure stop.
-    Fix: the old code did max(stop, entry_candle_low) unconditionally, so a candle low ABOVE the entry put the
-    stop above the entry price (instant loss exit)."""
+def calculate_stock_retention_targets(entry_px, current_px, entry_candle_low, peak_pct=0.0, upper_wick_pct=0.0, prof=LARGE_CAP):
+    """Long-only ratchet ladder (per-profile numbers) plus the crypto bot's failed-V structure stop.
+    The candle low is only used when it's BELOW the entry, so the stop can't start above the buy price."""
     pct = (current_px - entry_px) / entry_px
     drawdown_from_peak = peak_pct - pct
-    is_exhaustion = (peak_pct >= CLIMAX_TRIGGER) and (drawdown_from_peak >= 0.0030 or upper_wick_pct >= 0.45)
+    is_exhaustion = (peak_pct >= prof["climax"]) and (drawdown_from_peak >= prof["climax_dd"] or upper_wick_pct >= 0.45)
 
     if is_exhaustion:
-        floor_pct = max(peak_pct - 0.0020, pct)
+        floor_pct = max(peak_pct - prof["climax_give"], pct)
         status = f"⚡ CLIMAX EXHAUSTION LOCK [Peak +{peak_pct*100:.2f}% -> Stop +{floor_pct*100:.2f}%]"
-    elif peak_pct >= MOONSHOT_TRIGGER:
-        floor_pct = max(peak_pct * 0.88, peak_pct - 0.0050)
+    elif peak_pct >= prof["moonshot"]:
+        floor_pct = max(peak_pct * 0.88, peak_pct - prof["moonshot_give"])
         status = f"🚀 MOONSHOT (88% LOCKED) [Peak +{peak_pct*100:.2f}% -> Stop +{floor_pct*100:.2f}%]"
-    elif peak_pct >= EXPANSION_TRIGGER:
-        floor_pct = max(peak_pct * 0.80, peak_pct - 0.0040)
+    elif peak_pct >= prof["expansion"]:
+        floor_pct = max(peak_pct * 0.80, peak_pct - prof["expansion_give"])
         status = f"🎯 EXPANSION RATCHET (80% LOCKED) [Peak +{peak_pct*100:.2f}% -> Stop +{floor_pct*100:.2f}%]"
-    elif peak_pct >= FEE_FLOOR_TRIGGER:
-        floor_pct = FEE_FLOOR_LOCK
-        status = f"🛡 PROFIT FLOOR LOCKED (+{FEE_FLOOR_LOCK*100:.2f}%)"
+    elif peak_pct >= prof["floor_trigger"]:
+        floor_pct = prof["floor_lock"]
+        status = f"🛡 PROFIT FLOOR LOCKED (+{prof['floor_lock']*100:.2f}%)"
     else:
         floor_pct = None
-        status = f"🛡 HARD STOP ({HARD_STOP_PCT*100:.2f}%)"
+        status = f"🛡 HARD STOP ({prof['hard_stop']*100:.2f}%)"
 
-    cap_px = entry_px * (1 + HARD_STOP_PCT)
+    cap_px = entry_px * (1 + prof["hard_stop"])
     try:
         structure_low = float(entry_candle_low) if entry_candle_low else 0.0
     except (TypeError, ValueError):
@@ -603,7 +698,7 @@ def calculate_stock_retention_targets(entry_px, current_px, entry_candle_low, pe
     if floor_pct is None:
         stop_px = protective_px
         if protective_px > cap_px * 1.0001:
-            status = f"🛡 FAILED-V LOW @ ${protective_px:.2f} (cap {HARD_STOP_PCT*100:.2f}%)"
+            status = f"🛡 FAILED-V LOW @ ${protective_px:.2f} (cap {prof['hard_stop']*100:.2f}%)"
     else:
         stop_px = max(entry_px * (1 + floor_pct), protective_px)
     return stop_px, status
@@ -741,7 +836,8 @@ def execute_stock_engine():
         current_pct = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
 
         cache_info = current_active_cache.get(symbol, {})
-        entry_candle_low = cache_info.get("entry_candle_low", entry_px * 0.9930)
+        prof = profile_for(symbol, entry_px, state)
+        entry_candle_low = cache_info.get("entry_candle_low", entry_px * (1 + prof["hard_stop"] / 2))
         # Entry time: bot's own record, else Alpaca's latest buy fill (covers a lost state save), else now.
         entry_ts = float(cache_info.get("entry_time_sec") or state.get("last_buy_fill_ts", {}).get(symbol) or now_ts)
         held_mins = (now_ts - entry_ts) / 60.0
@@ -777,7 +873,7 @@ def execute_stock_engine():
         peak_pct = max(current_pct, (peak_px - entry_px) / entry_px, float(cache_info.get("peak_roe", current_pct)))
 
         stop_px_calc, leash_status = calculate_stock_retention_targets(
-            entry_px, current_px, entry_candle_low, peak_pct=peak_pct, upper_wick_pct=upper_wick_ratio
+            entry_px, current_px, entry_candle_low, peak_pct=peak_pct, upper_wick_pct=upper_wick_ratio, prof=prof
         )
 
         exit_reason = ""
@@ -785,7 +881,7 @@ def execute_stock_engine():
             exit_reason = "Overnight leftover — closing at open"
         elif current_px <= stop_px_calc:
             exit_reason = f"🎯 Stop/ratchet hit ({current_pct*100:+.2f}%, peak +{peak_pct*100:.2f}%)"
-        elif held_mins >= FLAT_EXIT_MINS and current_pct < FLAT_EXIT_PCT and peak_pct < FEE_FLOOR_TRIGGER:
+        elif held_mins >= FLAT_EXIT_MINS and current_pct < prof["flat_pct"] and peak_pct < prof["floor_trigger"]:
             exit_reason = f"⏱ {FLAT_EXIT_MINS:.0f}m flat exit ({current_pct*100:+.2f}% after {held_mins:.0f}m)"
 
         if exit_reason:
@@ -803,10 +899,10 @@ def execute_stock_engine():
         new_active_cache[symbol] = {
             "entry_px": entry_px, "current_px": current_px, "qty": qty, "peak_roe": peak_pct,
             "entry_candle_low": entry_candle_low, "entry_time_sec": entry_ts,
-            "strategy": cache_info.get("strategy", "UNKNOWN")
+            "strategy": cache_info.get("strategy", "UNKNOWN"), "profile": prof["name"]
         }
         positions_data.append({
-            "symbol": symbol, "side": "LONG", "qty": qty, "entry": entry_px, "current": current_px,
+            "symbol": symbol, "side": "LONG", "qty": qty, "label": prof["label"], "entry": entry_px, "current": current_px,
             "market_value": market_value, "pnl": unrealized_pnl, "roe": current_pct * 100,
             "stop": round_stock_px(stop_px_calc), "status": leash_status
         })
@@ -820,12 +916,10 @@ def execute_stock_engine():
     if is_open:
         regime, regime_desc = check_spy_regime(api, now_utc)
         audit_logs.append(f"📈 SPY Regime: **{regime}** — {regime_desc}")
-        if not entries_blocked_reason and regime == "RISK_OFF" and BLOCK_ENTRIES_WHEN_RISK_OFF:
-            entries_blocked_reason = "SPY RISK_OFF (below prior close and VWAP)"
-
+    large_blocked_by_spy = regime == "RISK_OFF" and BLOCK_ENTRIES_WHEN_RISK_OFF
+    if large_blocked_by_spy and is_open:
+        audit_logs.append("⛔ SPY RISK_OFF: large-cap entries blocked; small-cap gappers still allowed (strict gates)")
     strict = regime != "RISK_ON"
-    required_vol_ratio = 2.50 if strict else 1.80
-    max_vwap_extension = 1.0040 if strict else 1.0080
 
     if not entries_window and is_open and not is_eod:
         if minutes_since_open < NO_ENTRY_FIRST_MINS:
@@ -836,18 +930,27 @@ def execute_stock_engine():
         audit_logs.append(f"⛔ NEW ENTRIES BLOCKED: {entries_blocked_reason}")
 
     available_slots = MAX_STOCK_SLOTS - active_count
+    small_open = sum(1 for p in positions_data if p.get("label") == SMALL_CAP["label"])
+    gappers = {}
     if entries_window and not entries_blocked_reason and available_slots > 0:
-        audit_logs.append(f"⚡ {BOT_VERSION}: RVOL gate {required_vol_ratio}x (time-of-day) | VWAP cap +{(max_vwap_extension-1)*100:.2f}% | EMA9 cap +{EMA9_MAX_EXTENSION*100:.1f}% | Hard stop {HARD_STOP_PCT*100:.1f}%")
-        symbols_to_scan = [s for s in WATCHLIST if s not in active_symbols]
-        all_bars = fetch_bars(api, symbols_to_scan, "15Min", now_utc - timedelta(days=7))
+        audit_logs.append(f"⚡ {BOT_VERSION} gates ({'strict' if strict else 'normal'}): LARGE RVOL {LARGE_CAP['rvol'][strict]}x, VWAP +{(LARGE_CAP['vwap_cap'][strict]-1)*100:.1f}%, stop {LARGE_CAP['hard_stop']*100:.1f}% | SMALL RVOL {SMALL_CAP['rvol'][strict]}x, VWAP +{(SMALL_CAP['vwap_cap'][strict]-1)*100:.1f}%, stop {SMALL_CAP['hard_stop']*100:.1f}%")
+        if SMALLCAP_SCAN_ENABLED and small_open < MAX_SMALLCAP_SLOTS:
+            gappers = fetch_smallcap_gappers(api, now_utc, audit_logs)
+        large_syms = [] if large_blocked_by_spy else [s for s in WATCHLIST if s not in active_symbols]
+        small_syms = [s for s in gappers if s not in active_symbols]
+        symbols_to_scan = large_syms + small_syms
+        all_bars = fetch_bars(api, symbols_to_scan, "15Min", now_utc - timedelta(days=7)) if symbols_to_scan else {}
 
         for symbol in symbols_to_scan:
+            prof = SMALL_CAP if symbol in gappers else LARGE_CAP
             cooldown_until = float(state["cooldown_blocklist"].get(symbol, 0))
             if now_ts < cooldown_until:
                 audit_logs.append(f"🔍 [{symbol}] Skipped: Cooldown ({(cooldown_until - now_ts) / 60:.0f}m left)")
                 continue
             rth = [b for b in all_bars.get(symbol, []) if is_rth_bar(b)]
             if len(rth) < 30:
+                if prof is SMALL_CAP:
+                    audit_logs.append(f"🔍 [{symbol}] Skipped: not enough bar history ({len(rth)} bars)")
                 continue
             session = [b for b in rth if bar_et(b).date() == today_et]
             if not session:
@@ -866,10 +969,12 @@ def execute_stock_engine():
                 curr_px = closes[-1]
                 ema9, vwap, macd_hist = ind["ema9"], ind["vwap"], ind["macd_hist"]
                 day_high = max(float(b["h"]) for b in session)
+                required_vol_ratio = prof["rvol"][strict]
+                max_vwap_extension = prof["vwap_cap"][strict]
 
                 extension = (curr_px - ema9) / ema9
-                if extension > EMA9_MAX_EXTENSION:
-                    audit_logs.append(f"🔍 [{symbol}] Skipped: Too extended from EMA9 (+{extension*100:.2f}%)")
+                if extension > prof["ema9_cap"]:
+                    audit_logs.append(f"🔍 [{symbol}] Skipped: Too extended from EMA9 (+{extension*100:.2f}% > {prof['ema9_cap']*100:.0f}%)")
                     continue
 
                 vol_ratio, _ = time_of_day_rvol(rth, now_utc)
@@ -877,7 +982,7 @@ def execute_stock_engine():
                 above_ema9, above_vwap, macd_pos = curr_px > ema9, curr_px > vwap, macd_hist > 0.0
                 vwap_ok = vwap_dist <= max_vwap_extension
 
-                is_breakout = curr_px >= day_high * (1 - HOD_PROXIMITY_PCT) and vol_ratio >= required_vol_ratio and vwap_ok and above_ema9 and above_vwap and macd_pos
+                is_breakout = curr_px >= day_high * (1 - prof["hod_prox"]) and vol_ratio >= required_vol_ratio and vwap_ok and above_ema9 and above_vwap and macd_pos
 
                 reclaim_cross = (ind["prev_close"] <= ind["prev_ema9"] or ind["prev_close"] <= vwap) and above_ema9 and above_vwap
                 is_reclaim = reclaim_cross and curr_px <= ema9 * 1.0025 and vol_ratio >= required_vol_ratio and vwap_ok and macd_pos
@@ -888,6 +993,19 @@ def execute_stock_engine():
                 is_v_bottom = lows[-1] <= prev_45 and lower_wick >= 0.45 and vol_ratio >= required_vol_ratio and vwap_ok and above_ema9 and macd_pos
 
                 if not (is_breakout or is_reclaim or is_v_bottom):
+                    if prof is SMALL_CAP:
+                        why = []
+                        if vol_ratio < required_vol_ratio:
+                            why.append(f"RVOL {vol_ratio:.1f}x<{required_vol_ratio}x")
+                        if not above_ema9:
+                            why.append("below EMA9")
+                        if not above_vwap:
+                            why.append("below VWAP")
+                        if not vwap_ok:
+                            why.append(f"+{(vwap_dist-1)*100:.1f}% over VWAP")
+                        if not macd_pos:
+                            why.append("MACD<0")
+                        audit_logs.append(f"🔍 [{symbol}] No setup: {', '.join(why) or 'no breakout/reclaim/V pattern'}")
                     continue
                 if is_v_bottom:
                     setup, score = "V_BOTTOM_RECLAIM", vol_ratio * 3.2
@@ -895,16 +1013,20 @@ def execute_stock_engine():
                     setup, score = "BULLISH_RECLAIM", vol_ratio * 2.4
                 else:
                     setup, score = "HOD_BREAKOUT", vol_ratio * 1.0
+                has_news = gappers.get(symbol, {}).get("news", False)
+                if has_news:
+                    score *= NEWS_SCORE_BONUS
 
                 market_candidates.append({
                     "symbol": symbol, "close": curr_px, "limit_px": min(curr_px * 0.9985, max(ema9, vwap)),
-                    "score": score, "entry_candle_low": min(lows[-1], lows[-2]), "strategy": setup, "candle_ts": rth[-1]["t"]
+                    "score": score, "entry_candle_low": min(lows[-1], lows[-2]), "strategy": setup,
+                    "candle_ts": rth[-1]["t"], "prof": prof
                 })
-                audit_logs.append(f"🔥 TRIGGER [{setup}] {symbol} @ ${curr_px:.2f} (RVOL {vol_ratio:.2f}x, req {required_vol_ratio}x)")
+                audit_logs.append(f"🔥 TRIGGER {prof['label']} [{setup}] {symbol}{' 📰' if has_news else ''} @ ${curr_px:.2f} (RVOL {vol_ratio:.2f}x, req {required_vol_ratio}x)")
             except Exception as e:
                 audit_logs.append(f"⚠️ [{symbol}] scan error: {e}")
 
-        audit_logs.append(f"ℹ️ SCAN COMPLETE: {scanned_count} symbols evaluated, {len(market_candidates)} trigger(s).")
+        audit_logs.append(f"ℹ️ SCAN COMPLETE: {scanned_count} symbols evaluated ({len(large_syms)} large, {len(small_syms)} small), {len(market_candidates)} trigger(s).")
 
         market_candidates.sort(key=lambda x: x["score"], reverse=True)
         if market_candidates:
@@ -914,25 +1036,40 @@ def execute_stock_engine():
             for c in market_candidates:
                 if entries >= min(MAX_NEW_ENTRIES_PER_RUN, available_slots):
                     break
-                sp_ok, sp_msg = spreads.get(c["symbol"], (True, "unchecked"))
-                if not sp_ok:
-                    audit_logs.append(f"🔍 [{c['symbol']}] Skipped: {sp_msg}")
+                prof = c["prof"]
+                if prof is SMALL_CAP and small_open >= MAX_SMALLCAP_SLOTS:
+                    audit_logs.append(f"🔍 [{c['symbol']}] Skipped: small-cap slots full ({small_open}/{MAX_SMALLCAP_SLOTS})")
                     continue
+                spread = spreads.get(c["symbol"])
+                if spread is not None and spread > prof["max_spread"]:
+                    audit_logs.append(f"🔍 [{c['symbol']}] Skipped: spread {spread*100:.2f}% > {prof['max_spread']*100:.2f}%")
+                    continue
+                if prof is SMALL_CAP:
+                    tradable, why = asset_is_tradable(api, c["symbol"])
+                    if not tradable:
+                        audit_logs.append(f"🔍 [{c['symbol']}] Skipped: {why}")
+                        continue
                 is_market = c["strategy"] == "HOD_BREAKOUT"
                 entry_px = c["close"] if is_market else c["limit_px"]
-                target_usd = min(max(MIN_POSITION_USD, equity * POSITION_FRACTION), buying_power * 0.95)
+                target_usd = min(max(MIN_POSITION_USD, equity * prof["position_fraction"]), buying_power * 0.95)
                 qty = int(target_usd / entry_px)
                 if qty < 1:
                     audit_logs.append(f"🔍 [{c['symbol']}] Skipped: not enough buying power for 1 share")
                     continue
-                stop_px, _ = calculate_stock_retention_targets(entry_px, entry_px, c["entry_candle_low"])
+                stop_px, _ = calculate_stock_retention_targets(entry_px, entry_px, c["entry_candle_low"], prof=prof)
                 if place_entry_with_stop(api, c["symbol"], qty, is_market, c["limit_px"], stop_px, audit_logs):
                     entries += 1
                     trades_executed = True
+                    if prof is SMALL_CAP:
+                        small_open += 1
                     state.setdefault("last_traded_candle", {})[c["symbol"]] = c["candle_ts"]
+                    sp = state.setdefault("symbol_profile", {})
+                    sp[c["symbol"]] = prof["name"]
+                    if len(sp) > 300:
+                        state["symbol_profile"] = dict(list(sp.items())[-300:])
                     state["active_position_cache"][c["symbol"]] = {
                         "entry_px": entry_px, "entry_candle_low": c["entry_candle_low"], "qty": qty,
-                        "strategy": c["strategy"], "entry_time_sec": now_ts
+                        "strategy": c["strategy"], "entry_time_sec": now_ts, "profile": prof["name"]
                     }
 
     if trade_closed_this_run and not DRY_RUN:
@@ -968,7 +1105,7 @@ def execute_stock_engine():
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
                 <div>
                   <span style="font-weight: 700; font-size: 13px; color: #0f172a;">{p['symbol']}</span>
-                  <span style="font-size: 10px; color: #2e7d32; font-weight: 700; margin-left: 6px;">{p['side']} {p['qty']:g} sh</span>
+                  <span style="font-size: 10px; color: #2e7d32; font-weight: 700; margin-left: 6px;">{p['side']} {p['qty']:g} sh {p.get('label', '')}</span>
                 </div>
                 <span style="font-weight: 700; font-size: 13px; color: {pnl_color};">${p['pnl']:+.2f} ({p['roe']:+.2f}%)</span>
               </div>
@@ -992,7 +1129,7 @@ def execute_stock_engine():
             closed_cards += f"""
             <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 8px; box-sizing: border-box;">
               <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <span style="font-weight: 700; font-size: 13px; color: #0f172a;">{t['symbol']} <span style="font-size: 10px; color: #64748b;">{t['qty']:g} sh</span></span>
+                <span style="font-weight: 700; font-size: 13px; color: #0f172a;">{t['symbol']} <span style="font-size: 10px; color: #64748b;">{t['qty']:g} sh {SMALL_CAP['label'] if t.get('profile') == 'small' else LARGE_CAP['label']}</span></span>
                 <span style="font-weight: 700; font-size: 13px; color: {pnl_color};">${t['realized_pnl']:+.2f} ({t['pct']:+.2f}%)</span>
               </div>
               <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">
@@ -1007,6 +1144,21 @@ def execute_stock_engine():
     else:
         closed_cards = '<div style="padding: 12px; text-align: center; color: #666666; font-size: 11px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px;">No recent exits recorded yet.</div>'
     total_pnl_color = '#2e7d32' if total_realized_pnl >= 0 else '#c62828'
+
+    # Scorecard per group over the whole ledger window: which half of "both worlds" is actually making money.
+    group_rows = ""
+    for prof in (LARGE_CAP, SMALL_CAP):
+        g = [t for t in ledger if t.get("profile") == prof["name"]]
+        if not g:
+            group_rows += f"<div>{prof['label']}: no trades yet</div>"
+            continue
+        wins = [t for t in g if t["realized_pnl"] > 0]
+        losses = [t for t in g if t["realized_pnl"] <= 0]
+        avg_w = sum(t["realized_pnl"] for t in wins) / len(wins) if wins else 0.0
+        avg_l = sum(t["realized_pnl"] for t in losses) / len(losses) if losses else 0.0
+        net = sum(t["realized_pnl"] for t in g)
+        group_rows += (f"<div>{prof['label']}: <b>{len(g)}</b> trades &bull; {len(wins)}W/{len(losses)}L &bull; "
+                       f"avg win ${avg_w:+.2f} / avg loss ${avg_l:+.2f} &bull; net <b style=\"color: {'#15803d' if net >= 0 else '#b91c1c'};\">${net:+.2f}</b></div>")
 
     audit_section = ""
     if VERBOSE_TEST_MODE:
@@ -1062,9 +1214,15 @@ def execute_stock_engine():
           <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active {BOT_VERSION} Rules</div>
           <div>&bull; <b>Hours:</b> Mon–Fri 8:30–3:00 CT (9:30–4:00 ET); entries 8:45–2:30 CT; flat from 2:40 CT; holidays/half days via Alpaca clock</div>
           <div>&bull; <b>Stop attached to entry</b> (OTO), moved by replace — never unprotected</div>
-          <div>&bull; <b>Failed-V low or {HARD_STOP_PCT*100:.1f}% cap</b>, ratchet +{FEE_FLOOR_LOCK*100:.2f}% / 80% / 88% locks, climax lock, {FLAT_EXIT_MINS:.0f}m flat exit</div>
+          <div>&bull; <b>Failed-V low or hard cap</b>, ratchet profit floor / 80% / 88% locks, climax lock, {FLAT_EXIT_MINS:.0f}m flat exit</div>
           <div>&bull; <b>Setups:</b> HOD breakout, EMA9/VWAP reclaim, V-bottom — session VWAP, time-of-day RVOL</div>
-          <div>&bull; <b>Breakers:</b> {CB_MAX_LOSSES} losses/{CB_WINDOW_SEC // 60}m → paused today; -{DAILY_LOSS_LIMIT_PCT*100:.1f}% day → flat for today; SPY RISK_OFF blocks longs</div>
+          <div>&bull; <b>Two universes:</b> 🏛 {len(WATCHLIST)} large caps (15% size, {LARGE_CAP['hard_stop']*100:.1f}% stop) + 🚀 live gappers ${SMALLCAP_MIN_PRICE:.0f}–${SMALLCAP_MAX_PRICE:.0f} up {SMALLCAP_MIN_GAIN_PCT:.0f}%+ (5% size, {SMALL_CAP['hard_stop']*100:.0f}% stop, max {MAX_SMALLCAP_SLOTS}, 📰 = news today)</div>
+          <div>&bull; <b>Breakers:</b> {CB_MAX_LOSSES} losses/{CB_WINDOW_SEC // 60}m → paused today; -{DAILY_LOSS_LIMIT_PCT*100:.1f}% day → flat for today; SPY RISK_OFF blocks large-cap longs</div>
+        </div>
+
+        <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #1e3a8a; line-height: 1.6;">
+          <div style="font-weight: 700; text-transform: uppercase; font-size: 10px;">⚖️ Scorecard by group (last {LEDGER_LOOKBACK_DAYS} days)</div>
+          {group_rows}
         </div>
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
