@@ -428,9 +428,9 @@
   "previous_active_coins": [
     "GRAM"
   ],
-  "last_run_timestamp": "2026-10-21 16:35:37",
+  "last_run_timestamp": "2026-10-21 16:37:27",
   "last_email_timestamp": 1792618235.181407,
-  "last_scan_timestamp": 1792618523.18355,
+  "last_scan_timestamp": 1792618635.1690207,
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
     "2026-10-21": 110.9460072
@@ -518,13 +518,13 @@
   "ledger_version": 2,
   "near_miss_stats": {
     "2026-10-21": {
-      "Too extended from EMA9": 37,
-      "MACD negative": 63,
-      "RVOL": 13,
-      "VWAP stretch": 34,
-      "Not near day high": 10,
+      "Too extended from EMA9": 45,
+      "MACD negative": 75,
+      "RVOL": 14,
+      "VWAP stretch": 37,
+      "Not near day high": 11,
       "No reclaim cross": 2,
-      "Below VWAP": 5
+      "Below VWAP": 6
     }
   }
 }
