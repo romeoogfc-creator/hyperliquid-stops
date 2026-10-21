@@ -18,6 +18,28 @@
   "stagnation_tracker": {},
   "closed_trades_ledger": [
     {
+      "coin": "LIT",
+      "entry_price": 3.3916,
+      "exit_price": 3.3928,
+      "pnl_usd": 0.0,
+      "roe_pct": 0.18,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Exchange Orderbook Fill (Profit Target)",
+      "timestamp": "2026-10-20 19:19:19",
+      "ts_sec": 1792541959.814
+    },
+    {
+      "coin": "PUMP",
+      "entry_price": 0.004852,
+      "exit_price": 0.004955,
+      "pnl_usd": 0.5,
+      "roe_pct": 10.61,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Native Exchange Orderbook Fill (Profit Target)",
+      "timestamp": "2026-10-20 19:15:57",
+      "ts_sec": 1792541757.454
+    },
+    {
       "coin": "PUMP",
       "entry_price": 0.004852,
       "exit_price": 0.004958,
@@ -104,78 +126,33 @@
       "exit_reason": "\ud83d\udee1\ufe0f Native Exchange Orderbook Fill (Penny Stop)",
       "timestamp": "2026-10-20 06:11:24",
       "ts_sec": 1792494684.685
-    },
-    {
-      "coin": "ALGO",
-      "entry_price": 0.11135,
-      "exit_price": 0.11076,
-      "pnl_usd": -0.13,
-      "roe_pct": -2.65,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udee1\ufe0f Native Exchange Orderbook Fill (Penny Stop)",
-      "timestamp": "2026-10-20 03:05:33",
-      "ts_sec": 1792483533.985
-    },
-    {
-      "coin": "DASH",
-      "entry_price": 50.008,
-      "exit_price": 50.014,
-      "pnl_usd": 0.0,
-      "roe_pct": 0.06,
-      "side": "LONG",
-      "exit_reason": "\ud83c\udfaf Native Exchange Orderbook Fill (Profit Target)",
-      "timestamp": "2026-10-20 02:16:12",
-      "ts_sec": 1792480572.481
-    },
-    {
-      "coin": "WLD",
-      "entry_price": 0.54083,
-      "exit_price": 0.53894,
-      "pnl_usd": -0.08,
-      "roe_pct": -1.75,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udee1\ufe0f Native Exchange Orderbook Fill (Penny Stop)",
-      "timestamp": "2026-10-20 00:52:48",
-      "ts_sec": 1792475568.215
     }
   ],
-  "active_position_cache": {
-    "LIT": {
-      "entry_px": 3.3916,
-      "current_px": 3.39985,
-      "szi": 7.0,
-      "margin": 4.76154,
-      "side": "LONG",
-      "peak_roe": 0.012162401226559542,
-      "strategy": "BULLISH_RECLAIM",
-      "entry_candle_low": 3.3678588,
-      "entry_time_sec": 1792540233.4839768
-    }
-  },
-  "previous_active_coins": [
-    "LIT"
-  ],
-  "last_run_timestamp": "2026-10-20 19:16:00",
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-20 19:20:43",
   "last_email_timestamp": 1792541730.4161174,
-  "last_scan_timestamp": 1792541730.4161174,
+  "last_scan_timestamp": 1792542035.4067628,
   "gemini_cache": {
-    "timestamp": 1792541730.4161174,
+    "timestamp": 1792542035.4067628,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces heightened volatility driven by macroeconomic uncertainty regarding interest rate policy, evolving regulatory scrutiny, and significant technical resistance levels that leave assets susceptible to sharp corrections."
+    "briefing": "**Risk Level: HIGH** \n\nDriven by persistent macroeconomic uncertainty, potential regulatory crackdowns, and elevated market leverage, the current crypto market remains highly vulnerable to sudden liquidity shocks and sharp downside volatility."
   },
   "daily_starting_equity": {
     "2026-10-20": 111.2514322
   },
   "seen_fill_hashes": [
-    "0x42ceb0d84e550d6444480446f400e6010700c8bde9582c36e6975c2b0d58e74e",
-    "0x6fab33b156462c6171240446f5b28902046f0096f1494b331373df04154a064c",
     "0x553c55584087fc3b56b60446f510a00000776d3ddb8b1b0df90500aaff8bd625",
-    "0xba1c8de0f2c4bf22bb960446f88014020a8000c68dc7ddf45de53933b1c8990d",
     "0x0053ffef20b73d2d01cd0446f8c85e0202c500d4bbba5bffa41cab41dfbb1717",
-    "0xa6f0a0db82e1c539a86a0446f8120402032200c11de4e40b4ab94c2e41e59f24",
+    "0x87e74a77fd32fff0896104470211f402055f005d98361ec22baff5cabc36d9db",
+    "0x5ec5a8655df971e9603f0446f92575010600c04af8fc90bb028e53b81cfd4bd4",
     "0x81097d467151a8f482830446f9e9e802112d002c0c54c7c624d22899305582df",
     "0xecada00159e6898fee270446fb26ee0000e8b7e6f4e9a86190764b5418ea637a",
-    "0x5ec5a8655df971e9603f0446f92575010600c04af8fc90bb028e53b81cfd4bd4",
-    "0x5012c73dde5fa2f3518c044701494100004ddf237952c1c5f3db72909d537cdd"
+    "0x6fab33b156462c6171240446f5b28902046f0096f1494b331373df04154a064c",
+    "0x42ceb0d84e550d6444480446f400e6010700c8bde9582c36e6975c2b0d58e74e",
+    "0xa6f0a0db82e1c539a86a0446f8120402032200c11de4e40b4ab94c2e41e59f24",
+    "0x5012c73dde5fa2f3518c044701494100004ddf237952c1c5f3db72909d537cdd",
+    "0x52025603b518ade5537c0447021d1d00003d6de9501bccb7f5cb0156741c87cf",
+    "0xba1c8de0f2c4bf22bb960446f88014020a8000c68dc7ddf45de53933b1c8990d"
   ]
 }
