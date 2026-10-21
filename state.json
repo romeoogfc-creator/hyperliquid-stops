@@ -130,20 +130,20 @@
   "active_position_cache": {
     "PUMP": {
       "entry_px": 0.004852,
-      "current_px": 0.004864,
+      "current_px": 0.00488,
       "szi": 4875.0,
-      "margin": 23.712,
+      "margin": 23.794875,
       "side": "LONG",
-      "peak_roe": 0.012366034624896802,
+      "peak_roe": 0.028854080791425575,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.004786,
       "entry_time_sec": 1792540233.4839768
     },
     "LIT": {
       "entry_px": 3.3916,
-      "current_px": 3.38345,
+      "current_px": 3.3839,
       "szi": 7.0,
-      "margin": 4.73739,
+      "margin": 4.7355,
       "side": "LONG",
       "peak_roe": -0.008992805755395676,
       "strategy": "BULLISH_RECLAIM",
@@ -152,16 +152,16 @@
     }
   },
   "previous_active_coins": [
-    "LIT",
-    "PUMP"
+    "PUMP",
+    "LIT"
   ],
-  "last_run_timestamp": "2026-10-20 19:00:48",
+  "last_run_timestamp": "2026-10-20 19:05:33",
   "last_email_timestamp": 1792540233.4839768,
-  "last_scan_timestamp": 1792540834.7639258,
+  "last_scan_timestamp": 1792541121.8183987,
   "gemini_cache": {
-    "timestamp": 1792540834.7639258,
+    "timestamp": 1792541121.8183987,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting interest rate expectations, and increased regulatory scrutiny, all of which continue to drive significant volatility across the asset class."
+    "briefing": "**Risk Level: HIGH** \n\nCrypto markets currently face severe vulnerability due to macroeconomic uncertainty, potential regulatory crackdowns, and fragile liquidity that could trigger cascading liquidations at any moment."
   },
   "daily_starting_equity": {
     "2026-10-20": 111.2514322
