@@ -60,6 +60,7 @@ FLAT_EXIT_PCT = 0.0010            # exit if still under +0.10% after 30m and nev
 
 LOSS_COOLDOWN_SEC = 1800
 WIN_COOLDOWN_SEC = 5400
+LEDGER_LOOKBACK_DAYS = 14         # trade history window (calendar days; weekends count)
 
 CB_MAX_LOSSES = 3                 # 3 losses within...
 CB_WINDOW_SEC = 3600              # ...60 minutes -> no new entries for the rest of the day
@@ -397,9 +398,9 @@ def fetch_fill_activities(api, after_dt):
 
 
 def rebuild_ledger(api, state, now_ts):
-    """FIFO-matches buy and sell fills from the last 5 days into closed trades, one per sell order.
+    """FIFO-matches buy and sell fills from the last LEDGER_LOOKBACK_DAYS days into closed trades, one per sell order.
     Covers bot exits, native stop fills and manual sells alike."""
-    fills = fetch_fill_activities(api, datetime.fromtimestamp(now_ts, tz=timezone.utc) - timedelta(days=5))
+    fills = fetch_fill_activities(api, datetime.fromtimestamp(now_ts, tz=timezone.utc) - timedelta(days=LEDGER_LOOKBACK_DAYS))
     lots, sells = {}, {}
     for f in sorted(fills, key=lambda x: x.get("transaction_time", "")):
         sym = f.get("symbol")
@@ -423,7 +424,7 @@ def rebuild_ledger(api, state, now_ts):
             if q[0][0] <= 1e-9:
                 q.pop(0)
         if matched_qty <= 0:
-            continue  # bought before the 5-day window
+            continue  # bought before the lookback window
         g = sells.setdefault(f.get("order_id"), {"symbol": sym, "qty": 0.0, "cost": 0.0, "proceeds": 0.0, "ts": ts})
         g["qty"] += matched_qty
         g["cost"] += cost
