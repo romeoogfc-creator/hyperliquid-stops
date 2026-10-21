@@ -40,7 +40,8 @@ HEADERS = {
 # ---------------- Session timing (New York time; Alpaca's clock handles holidays & half days) ----------------
 NO_ENTRY_FIRST_MINS = 15          # no entries 9:30-9:45 ET (8:30-8:45 CT): opening-bar volume fakes every RVOL signal
 NO_NEW_ENTRIES_BEFORE_CLOSE_MINS = 30   # last new entry 3:30 PM ET (2:30 PM CT)
-EOD_FLATTEN_BEFORE_CLOSE_MINS = 10      # flatten to cash at 3:50 PM ET (2:50 PM CT); 12:50 PM ET on half days
+EOD_FLATTEN_BEFORE_CLOSE_MINS = 20      # flatten to cash from 3:40 PM ET (2:40 PM CT); 12:40 PM ET on half days.
+                                        # 20 min (not 10) because GitHub cron runs often start 5-15 min late.
 
 # ---------------- Risk / strategy settings ----------------
 MAX_STOCK_SLOTS = 3
@@ -401,7 +402,7 @@ def rebuild_ledger(api, state, now_ts):
     """FIFO-matches buy and sell fills from the last LEDGER_LOOKBACK_DAYS days into closed trades, one per sell order.
     Covers bot exits, native stop fills and manual sells alike."""
     fills = fetch_fill_activities(api, datetime.fromtimestamp(now_ts, tz=timezone.utc) - timedelta(days=LEDGER_LOOKBACK_DAYS))
-    lots, sells = {}, {}
+    lots, sells, last_buy_ts = {}, {}, {}
     for f in sorted(fills, key=lambda x: x.get("transaction_time", "")):
         sym = f.get("symbol")
         qty = float(f.get("qty", 0) or 0)
@@ -409,6 +410,7 @@ def rebuild_ledger(api, state, now_ts):
         ts = parse_ts(f["transaction_time"]).timestamp()
         if f.get("side") == "buy":
             lots.setdefault(sym, []).append([qty, px])
+            last_buy_ts[sym] = ts
             continue
         if f.get("side") not in ("sell",):
             continue
@@ -455,6 +457,8 @@ def rebuild_ledger(api, state, now_ts):
 
     ledger.sort(key=lambda t: t["ts_sec"], reverse=True)
     state["closed_trades_ledger"] = ledger[:30]
+    # Real time of each symbol's latest buy fill. Backup for the entry time if the state file failed to save.
+    state["last_buy_fill_ts"] = last_buy_ts
 
     cutoff = now_ts - 7 * 86400
     state["order_reasons"] = {k: v for k, v in reasons.items() if isinstance(v, list) and v[1] >= cutoff}
@@ -734,7 +738,8 @@ def execute_stock_engine():
 
         cache_info = current_active_cache.get(symbol, {})
         entry_candle_low = cache_info.get("entry_candle_low", entry_px * 0.9930)
-        entry_ts = float(cache_info.get("entry_time_sec", now_ts))
+        # Entry time: bot's own record, else Alpaca's latest buy fill (covers a lost state save), else now.
+        entry_ts = float(cache_info.get("entry_time_sec") or state.get("last_buy_fill_ts", {}).get(symbol) or now_ts)
         held_mins = (now_ts - entry_ts) / 60.0
 
         if not is_open:
@@ -772,7 +777,7 @@ def execute_stock_engine():
         )
 
         exit_reason = ""
-        if entry_ts < open_dt.timestamp() and cache_info:
+        if entry_ts < open_dt.timestamp():
             exit_reason = "Overnight leftover — closing at open"
         elif current_px <= stop_px_calc:
             exit_reason = f"🎯 Stop/ratchet hit ({current_pct*100:+.2f}%, peak +{peak_pct*100:.2f}%)"
@@ -1052,7 +1057,7 @@ def execute_stock_engine():
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4; box-sizing: border-box;">
           <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active {BOT_VERSION} Rules</div>
-          <div>&bull; <b>Hours:</b> Mon–Fri 8:30–3:00 CT (9:30–4:00 ET); entries 8:45–2:30 CT; flat by 2:50 CT; holidays/half days via Alpaca clock</div>
+          <div>&bull; <b>Hours:</b> Mon–Fri 8:30–3:00 CT (9:30–4:00 ET); entries 8:45–2:30 CT; flat from 2:40 CT; holidays/half days via Alpaca clock</div>
           <div>&bull; <b>Stop attached to entry</b> (OTO), moved by replace — never unprotected</div>
           <div>&bull; <b>Failed-V low or {HARD_STOP_PCT*100:.1f}% cap</b>, ratchet +{FEE_FLOOR_LOCK*100:.2f}% / 80% / 88% locks, climax lock, {FLAT_EXIT_MINS:.0f}m flat exit</div>
           <div>&bull; <b>Setups:</b> HOD breakout, EMA9/VWAP reclaim, V-bottom — session VWAP, time-of-day RVOL</div>
