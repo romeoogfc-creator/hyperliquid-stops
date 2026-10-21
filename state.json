@@ -17,7 +17,8 @@
     "DASH": 1792562735.6883337,
     "WLD": 1792570832.6659703,
     "ENA": 1792560332.14563,
-    "USELESS": 1792575034.9177172
+    "USELESS": 1792575034.9177172,
+    "PENGU": 1792608929.384226
   },
   "last_traded_candle": {
     "WLD": 1792555200000,
@@ -31,6 +32,17 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "PENGU",
+      "entry_price": 0.00813,
+      "exit_price": 0.008199,
+      "pnl_usd": 0.20251,
+      "roe_pct": 4.243542435424331,
+      "side": "LONG",
+      "exit_reason": "\ud83c\udfaf Retention Ratchet Triggered (4.24% ROE)",
+      "timestamp": "2026-10-21 14:55:29",
+      "ts_sec": 1792594529.384226
+    },
     {
       "coin": "VVV",
       "entry_price": 25.892,
@@ -142,29 +154,15 @@
       "ts_sec": 1792545644.697
     }
   ],
-  "active_position_cache": {
-    "PENGU": {
-      "entry_px": 0.00813,
-      "current_px": 0.008214,
-      "szi": 2893.0,
-      "margin": 4.751463,
-      "side": "LONG",
-      "peak_roe": 0.051660516605166504,
-      "strategy": "HOD_BREAKOUT",
-      "entry_candle_low": 0.008106,
-      "entry_time_sec": 1792593924.6431828
-    }
-  },
-  "previous_active_coins": [
-    "PENGU"
-  ],
-  "last_run_timestamp": "2026-10-21 09:51:13",
-  "last_email_timestamp": 1792593924.6431828,
-  "last_scan_timestamp": 1792594228.4785495,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-21 09:55:40",
+  "last_email_timestamp": 1792594529.384226,
+  "last_scan_timestamp": 1792594529.384226,
   "gemini_cache": {
-    "timestamp": 1792594228.4785495,
+    "timestamp": 1792594529.384226,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and heightened sensitivity to liquidity fluctuations, making it prone to sharp, sudden corrections."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts, evolving regulatory scrutiny, and significant volatility surrounding global liquidity trends."
   },
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
