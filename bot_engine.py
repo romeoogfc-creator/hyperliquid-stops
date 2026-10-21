@@ -382,27 +382,36 @@ def calculate_15m_ross_indicators(candles):
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle_low, peak_roe=0.0, coin="ETH", setup_type="BULLISH_RECLAIM", upper_wick_pct=0.0):
     roe = ((current_px - entry_px) / entry_px * 5.0) if is_long else ((entry_px - current_px) / entry_px * 5.0)
 
-    # Reverted to tighter -3.50% ROE stop so we cut losses fast instead of taking deeper hits
-    initial_floor_roe = -0.0350
-    drawdown_from_peak = peak_roe - roe
+    # Hard floor - never lose more than this
+    initial_floor_roe = -0.0350   # -3.50% ROE
 
-    is_exhaustion = (peak_roe >= 0.0450) and (drawdown_from_peak >= 0.0050 or upper_wick_pct >= 0.45)
-
-    if is_exhaustion:
-        target_floor_roe = max(peak_roe - 0.0035, roe)
-        leash_status = f"⚡ CLIMAX EXHAUSTION LOCK [Peak +{peak_roe*100:.2f}% -> Stop +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.0800:
-        target_floor_roe = max(peak_roe * 0.88, peak_roe - 0.0150)
-        leash_status = f"🚀 UNCAPPED MOONSHOT (88% LOCKED) [Peak +{peak_roe*100:.2f}% -> Stop +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.0400:
-        target_floor_roe = max(peak_roe * 0.80, peak_roe - 0.0100)
-        leash_status = f"🎯 EXPANSION RATCHET (80% LOCKED) [Peak +{peak_roe*100:.2f}% -> Stop +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.0120:
-        target_floor_roe = 0.0030
-        leash_status = f"🛡 FEE FLOOR LOCKED (+0.30% ROE)"
+    # === PROFIT LOCKING LOGIC (locks 80-97% of peak) ===
+    if peak_roe >= 0.1200:          # +12% ROE or more → lock 93-97%
+        target_floor_roe = max(peak_roe * 0.93, peak_roe - 0.0080)
+        leash_status = f"🔒 DEEP LOCK 93% [Peak +{peak_roe*100:.2f}% → Floor +{target_floor_roe*100:.2f}%]"
+    elif peak_roe >= 0.0800:        # +8% to +12% → lock 90%
+        target_floor_roe = max(peak_roe * 0.90, peak_roe - 0.0100)
+        leash_status = f"🚀 STRONG LOCK 90% [Peak +{peak_roe*100:.2f}% → Floor +{target_floor_roe*100:.2f}%]"
+    elif peak_roe >= 0.0500:        # +5% to +8% → lock 85%
+        target_floor_roe = max(peak_roe * 0.85, peak_roe - 0.0120)
+        leash_status = f"🎯 GOOD LOCK 85% [Peak +{peak_roe*100:.2f}% → Floor +{target_floor_roe*100:.2f}%]"
+    elif peak_roe >= 0.0250:        # +2.5% to +5% → lock 80% + small buffer
+        target_floor_roe = max(peak_roe * 0.80, 0.0080)
+        leash_status = f"🛡 EARLY LOCK 80% [Peak +{peak_roe*100:.2f}% → Floor +{target_floor_roe*100:.2f}%]"
+    elif peak_roe >= 0.0120:        # Small profit → protect fees + tiny profit
+        target_floor_roe = 0.0040
+        leash_status = f"🛡 FEE + TINY PROFIT LOCK (+0.40% ROE)"
     else:
+        # Still underwater or tiny green → use structural stop
         target_floor_roe = initial_floor_roe
-        leash_status = f"🛡 STRUCTURAL 15M STOP ({target_floor_roe*100:.2f}% ROE)"
+        leash_status = f"🛡 STRUCTURAL STOP ({target_floor_roe*100:.2f}% ROE)"
+
+    # Optional climax / exhaustion protection
+    drawdown_from_peak = peak_roe - roe
+    is_exhaustion = (peak_roe >= 0.0450) and (drawdown_from_peak >= 0.0060 or upper_wick_pct >= 0.45)
+    if is_exhaustion:
+        target_floor_roe = max(target_floor_roe, peak_roe - 0.0040)
+        leash_status = f"⚡ CLIMAX EXHAUSTION LOCK [Peak +{peak_roe*100:.2f}%]"
 
     stop_px = entry_px * (1 + (target_floor_roe / 5.0)) if is_long else entry_px * (1 - (target_floor_roe / 5.0))
     return stop_px, None, roe / 5.0, target_floor_roe, leash_status
@@ -455,7 +464,7 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.8.10 Engine Started (High-Quality Filter Active).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.8.11 Engine Started (Profit-Lock + Stricter Entry).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -503,12 +512,12 @@ def execute_engine():
     gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_scan_window)
     audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] Risk Level: **{gemini_risk}** — {gemini_briefing}")
 
-    # V4.8.10 Stricter Quality Filters
-    required_vol_ratio = 3.00 if gemini_risk == "HIGH" else 1.80
-    max_vwap_extension = 1.0030 if gemini_risk == "HIGH" else 1.0100 # Clamped tighter (+0.3% max above VWAP)
+    # V4.8.11 Stricter Quality Filters
+    required_vol_ratio = 3.80 if gemini_risk == "HIGH" else 2.20
+    max_vwap_extension = 1.0020 if gemini_risk == "HIGH" else 1.0060
     hod_proximity_pct = 0.0100
     
-    audit_logs.append(f"⚡ V4.8.10 Engine: Stricter Quality Gate | Stop: -3.50% ROE | RVOL Gate: {required_vol_ratio}x | VWAP Cap: +{(max_vwap_extension-1)*100:.2f}%")
+    audit_logs.append(f"⚡ V4.8.11 Engine: Profit-Lock Trail | Stop: -3.50% ROE | RVOL Gate: {required_vol_ratio}x | VWAP Cap: +{(max_vwap_extension-1)*100:.2f}%")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -579,14 +588,14 @@ def execute_engine():
             strat_type = cache_info.get("strategy", "BULLISH_RECLAIM")
             entry_ts = float(cache_info.get("entry_time_sec", now_ts))
 
-            # Aggressive 10-Minute Negative Scratch to cut failed trades instantly
+            # Softened scratch rules (V4.8.11)
             held_duration_mins = (now_ts - entry_ts) / 60.0
-            if held_duration_mins >= 10.0 and current_roe < 0.0000:
+            if held_duration_mins >= 15.0 and current_roe < -0.0050:
                 should_exit = True
-                exit_reason = f"⏱️ 10M Fast Negative Scratch ({current_roe*100:.2f}% ROE after {held_duration_mins:.0f}m)"
-            elif held_duration_mins >= 25.0 and current_roe < 0.0030:
+                exit_reason = f"⏱️ 15M Negative Scratch ({current_roe*100:.2f}% ROE after {held_duration_mins:.0f}m)"
+            elif held_duration_mins >= 30.0 and current_roe < 0.0040:
                 should_exit = True
-                exit_reason = f"⏱️ 25M Flat Stagnation Exit ({current_roe*100:.2f}% ROE after {held_duration_mins:.0f}m)"
+                exit_reason = f"⏱️ 30M Flat Stagnation Exit ({current_roe*100:.2f}% ROE after {held_duration_mins:.0f}m)"
 
             upper_wick_ratio = 0.0
             try:
@@ -656,7 +665,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.8.10", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.8.11", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -748,9 +757,10 @@ def execute_engine():
                 prev_close = ross_ind["prev_close"]
                 prev_ema9 = ross_ind["prev_ema9"]
 
-                extension_pct = (curr_live_px - ema9) / ema9
-                if extension_pct > 0.0100:
-                    audit_logs.append(f"🔍 [{coin}] Skipped: Extended Peak Guard (+{extension_pct*100:.2f}% > +1.00% limit)")
+                # Extra hard extension guard (V4.8.11)
+                extension_from_ema = (curr_live_px - ema9) / ema9
+                if extension_from_ema > 0.0065:
+                    audit_logs.append(f"🔍 [{coin}] Skipped: Too extended from EMA9 (+{extension_from_ema*100:.2f}%)")
                     continue
 
                 live_volume_raw = float(candles[-1].get("v", 0))
@@ -769,7 +779,7 @@ def execute_engine():
                 vwap_dist = curr_live_px / vwap
                 is_near_hod = (curr_live_px >= day_high * (1.0 - hod_proximity_pct))
                 
-                # Stricter checks: requires higher RVOL and strict VWAP clamp
+                # Stricter checks
                 is_breakout = is_near_hod and (vol_ratio >= required_vol_ratio) and (vwap_dist <= max_vwap_extension) and is_above_ema9 and is_above_vwap and is_macd_positive
 
                 is_reclaim_cross = (prev_close <= prev_ema9 or prev_close <= vwap) and (curr_live_px > ema9 and curr_live_px > vwap)
@@ -806,7 +816,7 @@ def execute_engine():
                 continue
 
         if not market_candidates:
-            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.8.10 high-quality trigger rules on this candle.")
+            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.8.11 high-quality trigger rules on this candle.")
         else:
             audit_logs.append(f"🚀 SCAN COMPLETED: {len(market_candidates)} high-quality candidate(s) triggered entry setup!")
 
@@ -895,7 +905,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.8.10 | High-Quality Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.8.11 | Profit-Lock Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -975,8 +985,8 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | High-Quality Scalper (V4.8.10)</div>
-        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; V4.8.10 Active</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Profit-Lock Scalper (V4.8.11)</div>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; V4.8.11 Active</div>
       </div>
 
       <div style="padding: 12px;">
@@ -996,11 +1006,12 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.8.10 Quality Calibrations</div>
-          <div>&bull; <b>Stricter RVOL Gate (&ge; 3.0x):</b> Rejects fake-out volume and demands true institutional momentum</div>
-          <div>&bull; <b>Tighter VWAP Extension Cap (+0.3%):</b> Prevents buying late-stage exhaustion peaks</div>
-          <div>&bull; <b>Fast 10M Negative Scratch:</b> Cuts non-performing trades instantly before they become deeper losses</div>
-          <div>&bull; <b>Restored Stop (-3.50% ROE):</b> Keeps maximum risk tightly controlled per position</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.8.11 Quality Calibrations</div>
+          <div>&bull; <b>Profit-Lock Trail (80-97%):</b> Aggressively locks most of peak ROE once trade is working</div>
+          <div>&bull; <b>Stricter RVOL Gate (≥ 3.8x HIGH / 2.2x normal):</b> Higher quality momentum required</div>
+          <div>&bull; <b>Tighter Extension Caps:</b> Stops buying late peaks (EMA9 +0.65% hard limit)</div>
+          <div>&bull; <b>Softened 15M Scratch:</b> Gives trades more room before cutting</div>
+          <div>&bull; <b>Hard Stop still -3.50% ROE:</b> Maximum risk controlled</div>
         </div>
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
@@ -1017,7 +1028,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.8.10 Active
+        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.8.11 Active
       </div>
     </div>
   </body>
@@ -1030,10 +1041,10 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing High-Quality Scalper cycle...", flush=True)
+    print(f"[{timestamp}] Executing Profit-Lock Scalper cycle (V4.8.11)...", flush=True)
     try:
         execute_engine()
-        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] High-quality cycle completed successfully.", flush=True)
+        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] V4.8.11 cycle completed successfully.", flush=True)
     except Exception as e:
         err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Engine execution error: {e}"
         print(err_msg, flush=True)
