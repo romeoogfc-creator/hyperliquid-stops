@@ -30,14 +30,14 @@ def get_central_time():
             return datetime.now(ZoneInfo("America/Chicago")).replace(tzinfo=None)
         except Exception:
             pass
-            
+
     utc_now = datetime.now(timezone.utc).replace(tzinfo=None)
     year = utc_now.year
     dst_start = datetime(year, 3, 8, 7, 0, 0)
     dst_start += timedelta(days=(6 - dst_start.weekday()) % 7)
     dst_end = datetime(year, 11, 1, 6, 0, 0)
     dst_end += timedelta(days=(6 - dst_end.weekday()) % 7)
-    
+
     is_dst = dst_start <= utc_now < dst_end
     offset = -5 if is_dst else -6
     return utc_now + timedelta(hours=offset)
@@ -45,17 +45,17 @@ def get_central_time():
 def get_central_midnight_timestamp():
     ct_now = get_central_time()
     ct_midnight = datetime(ct_now.year, ct_now.month, ct_now.day, 0, 0, 0)
-    
+
     utc_now = datetime.now(timezone.utc).replace(tzinfo=timezone.utc).replace(tzinfo=None)
     year = utc_now.year
     dst_start = datetime(year, 3, 8, 7, 0, 0)
     dst_start += timedelta(days=(6 - dst_start.weekday()) % 7)
     dst_end = datetime(year, 11, 1, 6, 0, 0)
     dst_end += timedelta(days=(6 - dst_end.weekday()) % 7)
-    
+
     is_dst = dst_start <= utc_now < dst_end
     offset_hours = 5 if is_dst else 6
-    
+
     utc_midnight = ct_midnight + timedelta(hours=offset_hours)
     return utc_midnight.replace(tzinfo=timezone.utc).timestamp()
 
@@ -65,7 +65,7 @@ def load_state():
         "last_traded_candle": {},
         "hibernating_until": 0,
         "stagnation_tracker": {},
-        "closed_trades_ledger": [], 
+        "closed_trades_ledger": [],
         "active_position_cache": {},
         "previous_active_coins": [],
         "last_run_timestamp": "",
@@ -205,7 +205,7 @@ def sync_native_trigger_orders(exchange, info, coin, is_long, sz, stop_px, tp_px
 
         open_orders = api_retry(info.frontend_open_orders, account_address)
         coin_trigger_orders = []
-        
+
         for o in open_orders:
             if o.get("coin") == coin:
                 o_type = o.get("orderType", {})
@@ -335,11 +335,11 @@ def sync_closed_trades_from_exchange(info, account_address, state, audit_logs, c
                 k = f"{t.get('coin')}_{t.get('ts_sec', 0)}"
                 if k not in dedup_map:
                     dedup_map[k] = t
-            
+
             sorted_ledger = sorted(list(dedup_map.values()), key=lambda x: float(x.get("ts_sec", 0)), reverse=True)
             state["closed_trades_ledger"] = sorted_ledger[:10]
             state["seen_fill_hashes"] = list(seen_hashes)[-100:]
-            
+
             if cooldown_added:
                 save_state(state)
     except Exception as e:
@@ -359,7 +359,7 @@ def calculate_15m_ross_indicators(candles):
 
     typical_prices = (highs + lows + closes) / 3.0
     tp_v = typical_prices * vols
-    cum_tp_v = np.sum(tp_v[-32:]) 
+    cum_tp_v = np.sum(tp_v[-32:])
     cum_v = np.sum(vols[-32:])
     vwap = (cum_tp_v / cum_v) if cum_v > 0 else closes[-1]
 
@@ -382,38 +382,52 @@ def calculate_15m_ross_indicators(candles):
 def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle_low, peak_roe=0.0, coin="ETH", setup_type="BULLISH_RECLAIM", upper_wick_pct=0.0):
     roe = ((current_px - entry_px) / entry_px * 5.0) if is_long else ((entry_px - current_px) / entry_px * 5.0)
 
-    # Hard floor - never lose more than this
-    initial_floor_roe = -0.0350   # -3.50% ROE
+    hard_cap_roe = -0.0250
+    trail_giveback_roe = 0.0125
 
-    # === PROFIT LOCKING LOGIC (locks 80-97% of peak) ===
-    if peak_roe >= 0.1200:          # +12% ROE or more → lock 93-97%
-        target_floor_roe = max(peak_roe * 0.93, peak_roe - 0.0080)
-        leash_status = f"🔒 DEEP LOCK 93% [Peak +{peak_roe*100:.2f}% → Floor +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.0800:        # +8% to +12% → lock 90%
-        target_floor_roe = max(peak_roe * 0.90, peak_roe - 0.0100)
-        leash_status = f"🚀 STRONG LOCK 90% [Peak +{peak_roe*100:.2f}% → Floor +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.0500:        # +5% to +8% → lock 85%
-        target_floor_roe = max(peak_roe * 0.85, peak_roe - 0.0120)
-        leash_status = f"🎯 GOOD LOCK 85% [Peak +{peak_roe*100:.2f}% → Floor +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.0250:        # +2.5% to +5% → lock 80% + small buffer
-        target_floor_roe = max(peak_roe * 0.80, 0.0080)
-        leash_status = f"🛡 EARLY LOCK 80% [Peak +{peak_roe*100:.2f}% → Floor +{target_floor_roe*100:.2f}%]"
-    elif peak_roe >= 0.0120:        # Small profit → protect fees + tiny profit
-        target_floor_roe = 0.0040
-        leash_status = f"🛡 FEE + TINY PROFIT LOCK (+0.40% ROE)"
+    if peak_roe >= 0.0250:
+        target_floor_roe = max(peak_roe - trail_giveback_roe, 0.0040)
+        leash_status = f"PENNY TRAIL [Peak +{peak_roe*100:.2f}% -> Floor +{target_floor_roe*100:.2f}%]"
     else:
-        # Still underwater or tiny green → use structural stop
-        target_floor_roe = initial_floor_roe
-        leash_status = f"🛡 STRUCTURAL STOP ({target_floor_roe*100:.2f}% ROE)"
+        target_floor_roe = hard_cap_roe
+        leash_status = f"HARD CAP ({hard_cap_roe*100:.2f}% ROE) until +2.50% peak"
 
-    # Optional climax / exhaustion protection
+    try:
+        structure_low = float(entry_candle_low) if entry_candle_low else 0.0
+    except (TypeError, ValueError):
+        structure_low = 0.0
+
+    if is_long:
+        cap_px = entry_px * (1.0 + (hard_cap_roe / 5.0))
+        trail_px = entry_px * (1.0 + (target_floor_roe / 5.0))
+        if structure_low > 0 and structure_low < entry_px:
+            structure_px = structure_low * 0.9995
+            protective_px = max(structure_px, cap_px)
+        else:
+            protective_px = cap_px
+        if peak_roe >= 0.0250:
+            stop_px = max(trail_px, protective_px)
+        else:
+            stop_px = protective_px
+            if structure_low > 0 and structure_low < entry_px and stop_px > cap_px * 1.0001:
+                leash_status = f"FAILED-V LOW @ ${stop_px:.5f} (cap {hard_cap_roe*100:.2f}% ROE)"
+    else:
+        cap_px = entry_px * (1.0 - (hard_cap_roe / 5.0))
+        trail_px = entry_px * (1.0 - (target_floor_roe / 5.0))
+        if structure_low > entry_px:
+            structure_px = structure_low * 1.0005
+            protective_px = min(structure_px, cap_px)
+        else:
+            protective_px = cap_px
+        stop_px = min(trail_px, protective_px) if peak_roe >= 0.0250 else protective_px
+
     drawdown_from_peak = peak_roe - roe
-    is_exhaustion = (peak_roe >= 0.0450) and (drawdown_from_peak >= 0.0060 or upper_wick_pct >= 0.45)
-    if is_exhaustion:
-        target_floor_roe = max(target_floor_roe, peak_roe - 0.0040)
-        leash_status = f"⚡ CLIMAX EXHAUSTION LOCK [Peak +{peak_roe*100:.2f}%]"
+    if peak_roe >= 0.0250 and (drawdown_from_peak >= 0.0100 or upper_wick_pct >= 0.45):
+        climax_roe = max(peak_roe - 0.0100, 0.0040)
+        climax_px = entry_px * (1.0 + (climax_roe / 5.0)) if is_long else entry_px * (1.0 - (climax_roe / 5.0))
+        stop_px = max(stop_px, climax_px) if is_long else min(stop_px, climax_px)
+        leash_status = f"CLIMAX LOCK [Peak +{peak_roe*100:.2f}% -> give back 1.00% ROE]"
 
-    stop_px = entry_px * (1 + (target_floor_roe / 5.0)) if is_long else entry_px * (1 - (target_floor_roe / 5.0))
     return stop_px, None, roe / 5.0, target_floor_roe, leash_status
 
 def check_gemini_macro_shield(state, now_ts, is_scan_window):
@@ -429,7 +443,7 @@ def check_gemini_macro_shield(state, now_ts, is_scan_window):
         from google import genai
         client = genai.Client(api_key=GEMINI_API_KEY)
         model_cascade = ['gemini-3.1-flash-lite', 'gemini-3.5-flash-lite', 'gemini-3.6-flash']
-        
+
         for model_name in model_cascade:
             try:
                 response = client.models.generate_content(
@@ -438,7 +452,7 @@ def check_gemini_macro_shield(state, now_ts, is_scan_window):
                 )
                 text = response.text if response and response.text else "HIGH Risk"
                 risk_level = "HIGH" if "HIGH" in text.upper() else ("MODERATE" if "MODERATE" in text.upper() else "LOW")
-                
+
                 state["gemini_cache"] = {
                     "timestamp": now_ts,
                     "risk": risk_level,
@@ -464,7 +478,7 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.8.12 Engine Started (Balanced Ross-Style + Profit-Lock).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.8.13 Engine Started (Failed-V Stop + Noise Trail).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -501,23 +515,22 @@ def execute_engine():
 
     user_state = api_retry(info.user_state, ACCOUNT_ADDRESS)
     spot_state = api_retry(info.spot_user_state, ACCOUNT_ADDRESS)
-    
+
     meta_and_ctxs = api_retry(info.meta_and_asset_ctxs)
     meta = meta_and_ctxs[0]
     asset_ctxs = meta_and_ctxs[1]
-    
+
     all_mids = api_retry(info.all_mids)
     now_ms = int(now_ts * 1000)
 
     gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_scan_window)
     audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] Risk Level: **{gemini_risk}** — {gemini_briefing}")
 
-    # V4.8.12 Balanced Quality Filters (can take trades again)
     required_vol_ratio = 2.80 if gemini_risk == "HIGH" else 1.80
     max_vwap_extension = 1.0040 if gemini_risk == "HIGH" else 1.0080
     hod_proximity_pct = 0.0100
-    
-    audit_logs.append(f"⚡ V4.8.12 Engine: Balanced Ross-Style | Stop: -3.50% ROE | RVOL Gate: {required_vol_ratio}x | VWAP Cap: +{(max_vwap_extension-1)*100:.2f}%")
+
+    audit_logs.append(f"⚡ V4.8.13 Engine: Balanced Ross-Style | Stop: failed-V low or -2.50% ROE cap | RVOL Gate: {required_vol_ratio}x | VWAP Cap: +{(max_vwap_extension-1)*100:.2f}%")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -579,23 +592,16 @@ def execute_engine():
             pos_equity = abs(szi) * current_px
 
             current_roe = (((current_px - entry_px) / entry_px) * 5.0) if is_long else (((entry_px - current_px) / entry_px) * 5.0)
-            
+
             should_exit = False
             exit_reason = ""
-            
+
             cache_info = current_active_cache.get(coin, {})
             entry_candle_low = cache_info.get("entry_candle_low", entry_px * 0.9930)
             strat_type = cache_info.get("strategy", "BULLISH_RECLAIM")
             entry_ts = float(cache_info.get("entry_time_sec", now_ts))
 
-            # Softened scratch rules
             held_duration_mins = (now_ts - entry_ts) / 60.0
-            if held_duration_mins >= 15.0 and current_roe < -0.0050:
-                should_exit = True
-                exit_reason = f"⏱️ 15M Negative Scratch ({current_roe*100:.2f}% ROE after {held_duration_mins:.0f}m)"
-            elif held_duration_mins >= 30.0 and current_roe < 0.0040:
-                should_exit = True
-                exit_reason = f"⏱️ 30M Flat Stagnation Exit ({current_roe*100:.2f}% ROE after {held_duration_mins:.0f}m)"
 
             upper_wick_ratio = 0.0
             try:
@@ -612,13 +618,22 @@ def execute_engine():
             prev_peak = cache_info.get("peak_roe", current_roe)
             peak_roe = max(current_roe, prev_peak)
 
+            if held_duration_mins >= 30.0 and current_roe < 0.0040 and peak_roe < 0.0250:
+                should_exit = True
+                exit_reason = f"30M flat exit ({current_roe*100:.2f}% ROE after {held_duration_mins:.0f}m)"
+
             stop_px_calc, tp_px_calc, current_roe_norm, target_floor_roe, leash_status = calculate_smart_exchange_targets(
                 entry_px, is_long, current_px, entry_candle_low, peak_roe=peak_roe, coin=coin, setup_type=strat_type, upper_wick_pct=upper_wick_ratio
             )
 
-            if is_long and current_px <= stop_px_calc:
+            if (is_long and current_px <= stop_px_calc) or ((not is_long) and current_px >= stop_px_calc):
                 should_exit = True
-                exit_reason = f"🎯 Retention Ratchet Triggered ({current_roe*100:.2f}% ROE)"
+                if peak_roe >= 0.0250:
+                    exit_reason = f"Penny trail hit ({current_roe*100:.2f}% ROE, peak {peak_roe*100:.2f}%)"
+                elif "FAILED-V" in leash_status:
+                    exit_reason = f"Failed V through entry low ({current_roe*100:.2f}% ROE)"
+                else:
+                    exit_reason = f"Hard cap hit ({current_roe*100:.2f}% ROE)"
 
             if should_exit:
                 try:
@@ -658,14 +673,14 @@ def execute_engine():
             total_margin_used += margin_used
 
             new_active_cache[coin] = {
-                "entry_px": entry_px, "current_px": current_px, "szi": szi, 
+                "entry_px": entry_px, "current_px": current_px, "szi": szi,
                 "margin": margin_used, "side": "LONG" if is_long else "SHORT",
                 "peak_roe": peak_roe, "strategy": strat_type,
                 "entry_candle_low": entry_candle_low, "entry_time_sec": entry_ts
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.8.12", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.8.13", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -757,7 +772,6 @@ def execute_engine():
                 prev_close = ross_ind["prev_close"]
                 prev_ema9 = ross_ind["prev_ema9"]
 
-                # Balanced extension guard (V4.8.12) - allows up to +1.0%
                 extension_from_ema = (curr_live_px - ema9) / ema9
                 if extension_from_ema > 0.0100:
                     audit_logs.append(f"🔍 [{coin}] Skipped: Too extended from EMA9 (+{extension_from_ema*100:.2f}%)")
@@ -778,8 +792,7 @@ def execute_engine():
 
                 vwap_dist = curr_live_px / vwap
                 is_near_hod = (curr_live_px >= day_high * (1.0 - hod_proximity_pct))
-                
-                # Setup detection
+
                 is_breakout = is_near_hod and (vol_ratio >= required_vol_ratio) and (vwap_dist <= max_vwap_extension) and is_above_ema9 and is_above_vwap and is_macd_positive
 
                 is_reclaim_cross = (prev_close <= prev_ema9 or prev_close <= vwap) and (curr_live_px > ema9 and curr_live_px > vwap)
@@ -791,7 +804,7 @@ def execute_engine():
                 candle_range = max(1e-8, highs[-1] - lows[-1])
                 body_bottom = min(float(candles[-1]["o"]), curr_live_px)
                 lower_wick_ratio = (body_bottom - lows[-1]) / candle_range
-                
+
                 is_v_bottom = (is_capitulation_low and lower_wick_ratio >= 0.45 and vol_ratio >= required_vol_ratio and (vwap_dist <= max_vwap_extension) and curr_live_px > ema9 and is_macd_positive)
 
                 if is_breakout or is_bullish_reclaim or is_v_bottom:
@@ -800,7 +813,6 @@ def execute_engine():
                         audit_logs.append(f"🔍 [{coin}] Skipped: Liquidity/Spread Check Failed ({spread_msg})")
                         continue
 
-                    # Prefer Reclaim and V-Bottom over pure HOD Breakout (more Ross-style)
                     if is_v_bottom:
                         setup_type = "V_BOTTOM_RECLAIM"
                         score = vol_ratio * 3.2
@@ -815,16 +827,17 @@ def execute_engine():
 
                     audit_logs.append(f"🔥 [{coin}] HIGH-QUALITY TRIGGER [{setup_type}] @ Market:${curr_live_px:.4f} (RVOL: {vol_ratio:.2f}x [Req: {required_vol_ratio}x])")
 
+                    structure_low = min(lows[-1], prev_low)
                     market_candidates.append({
                         "coin": coin, "close": curr_live_px, "limit_px": target_limit_px,
                         "is_long": True, "score": score, "candle_ts": current_candle_ts,
-                        "strategy": setup_type, "entry_candle_low": prev_low
+                        "strategy": setup_type, "entry_candle_low": structure_low
                     })
             except Exception:
                 continue
 
         if not market_candidates:
-            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.8.12 high-quality trigger rules on this candle.")
+            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.8.13 high-quality trigger rules on this candle.")
         else:
             audit_logs.append(f"🚀 SCAN COMPLETED: {len(market_candidates)} high-quality candidate(s) triggered entry setup!")
 
@@ -840,10 +853,10 @@ def execute_engine():
         candle_ts = single_best_candidate["candle_ts"]
         strat_used = single_best_candidate["strategy"]
         e_candle_low = single_best_candidate["entry_candle_low"]
-        
+
         target_notional_usd = max(min_notional_usd, account_value * 0.25 * 0.85)
         decimals = sz_decimals_map.get(coin, 4)
-        
+
         entry_calc_px = curr_px if strat_used == "HOD_BREAKOUT" else limit_px
         raw_sz = target_notional_usd / entry_calc_px
 
@@ -907,13 +920,13 @@ def execute_engine():
         total_today = len(trades_today)
         wins_today = [t for t in trades_today if float(t.get("pnl_usd", 0)) > 0]
         losses_today = [t for t in trades_today if float(t.get("pnl_usd", 0)) <= 0]
-        
+
         win_count = len(wins_today)
         loss_count = len(losses_today)
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.8.12 | Balanced Ross-Style Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.8.13 | Failed-V Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -991,10 +1004,10 @@ def execute_engine():
   <head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
   <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 8px; color: #333333;">
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
-      
+
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Balanced Ross-Style (V4.8.12)</div>
-        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; V4.8.12 Active</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Failed-V Stop (V4.8.13)</div>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; V4.8.13 Active</div>
       </div>
 
       <div style="padding: 12px;">
@@ -1014,12 +1027,12 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.8.12 Quality Calibrations</div>
-          <div>&bull; <b>Profit-Lock Trail (80-97%):</b> Aggressively locks most of peak ROE once trade is working</div>
-          <div>&bull; <b>Balanced RVOL Gate (2.8× HIGH / 1.8× normal):</b> Can take trades again while staying selective</div>
-          <div>&bull; <b>Prefers Reclaim & V-Bottom:</b> More Ross-style pullback entries over chasing extended highs</div>
-          <div>&bull; <b>EMA9 Extension up to +1.0%:</b> Allows better entries without chasing extremes</div>
-          <div>&bull; <b>Softened 15M Scratch + Hard Stop -3.50% ROE</b></div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.8.13 Quality Calibrations</div>
+          <div>&bull; <b>Failed-V stop:</b> Exit when price trades through the entry-candle low</div>
+          <div>&bull; <b>Hard cap -2.50% ROE:</b> A wide candle cannot turn into a -4% loss</div>
+          <div>&bull; <b>Penny trail only after +2.50% peak ROE:</b> Then give back ~1.25% ROE, not the whole move</div>
+          <div>&bull; <b>Same entries:</b> RVOL 2.8x/1.8x, reclaim and V-bottom preferred, EMA9 cap +1.0%</div>
+          <div>&bull; <b>No 15m red scratch:</b> That was cutting inside normal wick noise</div>
         </div>
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
@@ -1027,7 +1040,7 @@ def execute_engine():
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 14px 0 6px 0; font-weight: 700;">Recently Closed Trades</div>
         {closed_cards}
-        
+
         <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; margin-top: 8px; text-align: right; font-weight: bold; font-size: 11px;">
           TOTAL RECENT REALIZED P&amp;L: <span style="color: {total_pnl_color};">${total_realized_pnl:+.2f}</span>
         </div>
@@ -1036,7 +1049,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.8.12 Active
+        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.8.13 Active
       </div>
     </div>
   </body>
@@ -1049,10 +1062,10 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing Balanced Ross-Style Scalper cycle (V4.8.12)...", flush=True)
+    print(f"[{timestamp}] Executing Failed-V Scalper cycle (V4.8.13)...", flush=True)
     try:
         execute_engine()
-        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] V4.8.12 cycle completed successfully.", flush=True)
+        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] V4.8.13 cycle completed successfully.", flush=True)
     except Exception as e:
         err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Engine execution error: {e}"
         print(err_msg, flush=True)
