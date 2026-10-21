@@ -12,7 +12,7 @@
     "PUMP": 1792545926.9977257,
     "ZEC": 1792546536.4482229,
     "SKY": 1792547131.3118637,
-    "TRUMP": 1792547430.3880856
+    "TRUMP": 1792547735.8108337
   },
   "last_traded_candle": {
     "PUMP": 1792542600000,
@@ -23,6 +23,17 @@
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "TRUMP",
+      "entry_price": 1.8041,
+      "exit_price": 1.7921,
+      "pnl_usd": -0.16,
+      "roe_pct": -3.33,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udee1\ufe0f Native Exchange Orderbook Fill (Penny Stop)",
+      "timestamp": "2026-10-20 20:20:44",
+      "ts_sec": 1792545644.697
+    },
     {
       "coin": "TRUMP",
       "entry_price": 1.8041,
@@ -121,58 +132,37 @@
       "exit_reason": "\ud83d\udee1\ufe0f Native Exchange Orderbook Fill (Penny Stop)",
       "timestamp": "2026-10-20 18:14:25",
       "ts_sec": 1792538065.459
-    },
-    {
-      "coin": "MON",
-      "entry_price": 0.021987,
-      "exit_price": 0.021846,
-      "pnl_usd": -0.15,
-      "roe_pct": -3.21,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udee1\ufe0f Native Exchange Orderbook Fill (Penny Stop)",
-      "timestamp": "2026-10-20 10:12:48",
-      "ts_sec": 1792509168.315
-    },
-    {
-      "coin": "PONS",
-      "entry_price": 0.26958,
-      "exit_price": 0.26898,
-      "pnl_usd": -0.05,
-      "roe_pct": -1.11,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udee1\ufe0f Native Exchange Orderbook Fill (Penny Stop)",
-      "timestamp": "2026-10-20 08:35:41",
-      "ts_sec": 1792503341.517
     }
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-20 20:20:47",
+  "last_run_timestamp": "2026-10-20 20:25:44",
   "last_email_timestamp": 1792545630.3880856,
-  "last_scan_timestamp": 1792545630.3880856,
+  "last_scan_timestamp": 1792545933.6577823,
   "gemini_cache": {
-    "timestamp": 1792545630.3880856,
+    "timestamp": 1792545933.6577823,
     "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nCurrent crypto markets face extreme vulnerability due to heightened macroeconomic uncertainty, shifting regulatory crackdowns, and fragile liquidity that could trigger sharp, cascading liquidations at any moment."
+    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic uncertainty, shifting regulatory sentiment, and potential liquidity volatility, necessitating extreme caution despite recent price momentum."
   },
   "daily_starting_equity": {
     "2026-10-20": 111.2514322
   },
   "seen_fill_hashes": [
-    "0x5ec5a8655df971e9603f0446f92575010600c04af8fc90bb028e53b81cfd4bd4",
-    "0x0053ffef20b73d2d01cd0446f8c85e0202c500d4bbba5bffa41cab41dfbb1717",
-    "0x5012c73dde5fa2f3518c044701494100004ddf237952c1c5f3db72909d537cdd",
-    "0x553c55584087fc3b56b60446f510a00000776d3ddb8b1b0df90500aaff8bd625",
     "0x87e74a77fd32fff0896104470211f402055f005d98361ec22baff5cabc36d9db",
-    "0x52025603b518ade5537c0447021d1d00003d6de9501bccb7f5cb0156741c87cf",
-    "0xba1c8de0f2c4bf22bb960446f88014020a8000c68dc7ddf45de53933b1c8990d",
-    "0xd1dc83a74a48b59dd356044702a45f020601008ce54bd46f75a52efa094c8f88",
-    "0x42ceb0d84e550d6444480446f400e6010700c8bde9582c36e6975c2b0d58e74e",
     "0x6fab33b156462c6171240446f5b28902046f0096f1494b331373df04154a064c",
     "0x81097d467151a8f482830446f9e9e802112d002c0c54c7c624d22899305582df",
+    "0x52025603b518ade5537c0447021d1d00003d6de9501bccb7f5cb0156741c87cf",
+    "0xf05985779aca44e4f1d30447028370020734005d35cd63b7942230ca59ce1ecf",
+    "0x5c8284d3bf9d0e2d5dfc044702e5e00205d900b95a902cff004b30267e90e818",
+    "0x5012c73dde5fa2f3518c044701494100004ddf237952c1c5f3db72909d537cdd",
     "0xa6f0a0db82e1c539a86a0446f8120402032200c11de4e40b4ab94c2e41e59f24",
     "0xecada00159e6898fee270446fb26ee0000e8b7e6f4e9a86190764b5418ea637a",
-    "0xf05985779aca44e4f1d30447028370020734005d35cd63b7942230ca59ce1ecf",
-    "0x8c158469dafc6cb18d8f044702c70f0202d4004f75ff8b832fde2fbc99f0469c"
+    "0x8c158469dafc6cb18d8f044702c70f0202d4004f75ff8b832fde2fbc99f0469c",
+    "0xba1c8de0f2c4bf22bb960446f88014020a8000c68dc7ddf45de53933b1c8990d",
+    "0x42ceb0d84e550d6444480446f400e6010700c8bde9582c36e6975c2b0d58e74e",
+    "0x5ec5a8655df971e9603f0446f92575010600c04af8fc90bb028e53b81cfd4bd4",
+    "0x0053ffef20b73d2d01cd0446f8c85e0202c500d4bbba5bffa41cab41dfbb1717",
+    "0x553c55584087fc3b56b60446f510a00000776d3ddb8b1b0df90500aaff8bd625",
+    "0xd1dc83a74a48b59dd356044702a45f020601008ce54bd46f75a52efa094c8f88"
   ]
 }
