@@ -415,9 +415,9 @@
   "active_position_cache": {
     "GRAM": {
       "entry_px": 1.3663,
-      "current_px": 1.36465,
+      "current_px": 1.36435,
       "szi": 18.0,
-      "margin": 4.91256,
+      "margin": 4.90968,
       "side": "LONG",
       "peak_roe": 0.0021957110444263115,
       "strategy": "HOD_BREAKOUT",
@@ -428,9 +428,9 @@
   "previous_active_coins": [
     "GRAM"
   ],
-  "last_run_timestamp": "2026-10-21 16:40:47",
+  "last_run_timestamp": "2026-10-21 16:45:39",
   "last_email_timestamp": 1792618235.181407,
-  "last_scan_timestamp": 1792618833.613309,
+  "last_scan_timestamp": 1792619123.830049,
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
     "2026-10-21": 110.9460072
@@ -515,13 +515,13 @@
   "ledger_version": 2,
   "near_miss_stats": {
     "2026-10-21": {
-      "Too extended from EMA9": 52,
-      "MACD negative": 87,
-      "RVOL": 16,
-      "VWAP stretch": 40,
-      "Not near day high": 12,
+      "Too extended from EMA9": 55,
+      "MACD negative": 90,
+      "RVOL": 17,
+      "VWAP stretch": 45,
+      "Not near day high": 13,
       "No reclaim cross": 2,
-      "Below VWAP": 7
+      "Below VWAP": 8
     }
   }
 }
