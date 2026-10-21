@@ -2,7 +2,7 @@ name: TR-GC-Crypto-LS-23
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '*/5 * * * *'
   repository_dispatch:
     types: [trigger-bot]
   workflow_dispatch:
