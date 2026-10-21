@@ -1,27 +1,37 @@
 {
   "cooldown_blocklist": {
-    "TRUMP": 1792548928.0050611,
-    "SKY": 1792548928.0050611,
-    "ZEC": 1792548928.0050611,
-    "PUMP": 1792561528.0050611,
-    "LIT": 1792561528.0050611,
-    "JTO": 1792548928.0050611,
-    "MON": 1792548928.0050611,
-    "PONS": 1792548928.0050611,
-    "VVV": 1792548928.0050611,
-    "TIA": 1792548928.0050611,
-    "DOT": 1792548928.0050611,
-    "ZRO": 1792548928.0050611,
-    "ALGO": 1792548928.0050611,
-    "DASH": 1792561528.0050611,
-    "WLD": 1792548928.0050611
+    "JUP": 1792550135.6883337,
+    "TRUMP": 1792550135.6883337,
+    "SKY": 1792550135.6883337,
+    "ZEC": 1792550135.6883337,
+    "PUMP": 1792562735.6883337,
+    "LIT": 1792562735.6883337,
+    "JTO": 1792550135.6883337,
+    "MON": 1792550135.6883337,
+    "PONS": 1792550135.6883337,
+    "VVV": 1792550135.6883337,
+    "TIA": 1792550135.6883337,
+    "DOT": 1792550135.6883337,
+    "ZRO": 1792550135.6883337,
+    "ALGO": 1792550135.6883337,
+    "DASH": 1792562735.6883337,
+    "WLD": 1792550135.6883337
   },
-  "last_traded_candle": {
-    "JUP": 1792547100000
-  },
+  "last_traded_candle": {},
   "hibernating_until": 0,
   "stagnation_tracker": {},
   "closed_trades_ledger": [
+    {
+      "coin": "JUP",
+      "entry_price": 0.31806,
+      "exit_price": 0.31574,
+      "pnl_usd": -0.13,
+      "roe_pct": -3.65,
+      "side": "LONG",
+      "exit_reason": "\ud83d\udee1\ufe0f Native Exchange Orderbook Fill (Penny Stop)",
+      "timestamp": "2026-10-20 21:04:18",
+      "ts_sec": 1792548258.057
+    },
     {
       "coin": "TRUMP",
       "entry_price": 1.8041,
@@ -120,78 +130,38 @@
       "exit_reason": "\ud83d\udee1\ufe0f Native Exchange Orderbook Fill (Penny Stop)",
       "timestamp": "2026-10-20 08:35:41",
       "ts_sec": 1792503341.517
-    },
-    {
-      "coin": "VVV",
-      "entry_price": 24.315,
-      "exit_price": 24.24,
-      "pnl_usd": -0.07,
-      "roe_pct": -1.54,
-      "side": "LONG",
-      "exit_reason": "\ud83d\udee1\ufe0f Native Exchange Orderbook Fill (Penny Stop)",
-      "timestamp": "2026-10-20 07:35:38",
-      "ts_sec": 1792499738.208
     }
   ],
-  "active_position_cache": {
-    "JUP": {
-      "entry_px": 0.31806,
-<<<<<<< Updated upstream
-      "current_px": 0.316245,
-      "szi": 75.0,
-      "margin": 23.72025,
-=======
-      "current_px": 0.316335,
-      "szi": 75.0,
-      "margin": 23.71725,
->>>>>>> Stashed changes
-      "side": "LONG",
-      "peak_roe": -0.009432182607055105,
-      "strategy": "HOD_BREAKOUT",
-      "entry_candle_low": 0.31511,
-      "entry_time_sec": 1792547423.872347
-    }
-  },
-  "previous_active_coins": [
-    "JUP"
-  ],
-<<<<<<< Updated upstream
-  "last_run_timestamp": "2026-10-20 21:00:38",
-  "last_email_timestamp": 1792547423.872347,
-  "last_scan_timestamp": 1792548026.2405975,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-20 21:05:44",
+  "last_email_timestamp": 1792548334.0834818,
+  "last_scan_timestamp": 1792548334.0834818,
   "gemini_cache": {
-    "timestamp": 1792548026.2405975,
+    "timestamp": 1792548334.0834818,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating significant volatility driven by shifting macroeconomic expectations, regulatory uncertainty, and the potential for rapid deleveraging following recent price breakouts."
-=======
-  "last_run_timestamp": "2026-10-20 21:01:16",
-  "last_email_timestamp": 1792547423.872347,
-  "last_scan_timestamp": 1792548066.8729262,
-  "gemini_cache": {
-    "timestamp": 1792548066.8729262,
-    "risk": "HIGH",
-    "briefing": "**Risk Level: HIGH** \n\nPersistent macroeconomic headwinds, regulatory uncertainty, and fragile market liquidity create a volatile environment vulnerable to sudden downside shocks."
->>>>>>> Stashed changes
+    "briefing": "Risk Level: **HIGH** \u2014 Crypto markets are currently navigating significant macroeconomic uncertainty, heightened regulatory scrutiny, and volatile liquidity conditions, creating a high-risk environment for short-term price swings."
   },
   "daily_starting_equity": {
-    "2026-10-20": 111.1416772
+    "2026-10-20": 110.9460072
   },
   "seen_fill_hashes": [
-    "0x553c55584087fc3b56b60446f510a00000776d3ddb8b1b0df90500aaff8bd625",
-    "0x52025603b518ade5537c0447021d1d00003d6de9501bccb7f5cb0156741c87cf",
-    "0xf05985779aca44e4f1d30447028370020734005d35cd63b7942230ca59ce1ecf",
     "0x42ceb0d84e550d6444480446f400e6010700c8bde9582c36e6975c2b0d58e74e",
-    "0xba1c8de0f2c4bf22bb960446f88014020a8000c68dc7ddf45de53933b1c8990d",
-    "0xa6f0a0db82e1c539a86a0446f8120402032200c11de4e40b4ab94c2e41e59f24",
+    "0xd1dc83a74a48b59dd356044702a45f020601008ce54bd46f75a52efa094c8f88",
     "0x5012c73dde5fa2f3518c044701494100004ddf237952c1c5f3db72909d537cdd",
-    "0xecada00159e6898fee270446fb26ee0000e8b7e6f4e9a86190764b5418ea637a",
-    "0x81097d467151a8f482830446f9e9e802112d002c0c54c7c624d22899305582df",
-    "0x0053ffef20b73d2d01cd0446f8c85e0202c500d4bbba5bffa41cab41dfbb1717",
-    "0x5c8284d3bf9d0e2d5dfc044702e5e00205d900b95a902cff004b30267e90e818",
+    "0x52025603b518ade5537c0447021d1d00003d6de9501bccb7f5cb0156741c87cf",
     "0x87e74a77fd32fff0896104470211f402055f005d98361ec22baff5cabc36d9db",
     "0x5ec5a8655df971e9603f0446f92575010600c04af8fc90bb028e53b81cfd4bd4",
-    "0xd1dc83a74a48b59dd356044702a45f020601008ce54bd46f75a52efa094c8f88",
+    "0x5c8284d3bf9d0e2d5dfc044702e5e00205d900b95a902cff004b30267e90e818",
+    "0x16c9af80abba5d09184304470373a8020503006646bd7bdbba925ad36abe36f3",
+    "0x81097d467151a8f482830446f9e9e802112d002c0c54c7c624d22899305582df",
+    "0xba1c8de0f2c4bf22bb960446f88014020a8000c68dc7ddf45de53933b1c8990d",
+    "0x6fab33b156462c6171240446f5b28902046f0096f1494b331373df04154a064c",
     "0x8c158469dafc6cb18d8f044702c70f0202d4004f75ff8b832fde2fbc99f0469c",
-    "0x6fab33b156462c6171240446f5b28902046f0096f1494b331373df04154a064c"
+    "0x553c55584087fc3b56b60446f510a00000776d3ddb8b1b0df90500aaff8bd625",
+    "0xf05985779aca44e4f1d30447028370020734005d35cd63b7942230ca59ce1ecf",
+    "0x0053ffef20b73d2d01cd0446f8c85e0202c500d4bbba5bffa41cab41dfbb1717",
+    "0xa6f0a0db82e1c539a86a0446f8120402032200c11de4e40b4ab94c2e41e59f24",
+    "0xecada00159e6898fee270446fb26ee0000e8b7e6f4e9a86190764b5418ea637a"
   ]
 }
