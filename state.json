@@ -21,7 +21,8 @@
     "PENGU": 1792609232.4740424,
     "XLM": 1792622729.2220936,
     "GRAM": 1792621230.111,
-    "BNB": 1792622007.106
+    "BNB": 1792622007.106,
+    "WLFI": 1792625633.696
   },
   "last_traded_candle": {
     "WLD": 1792555200000,
@@ -38,6 +39,19 @@
   },
   "hibernating_until": 0,
   "closed_trades_ledger": [
+    {
+      "coin": "WLFI",
+      "entry_price": 0.056623,
+      "exit_price": 0.056615,
+      "gross_pnl_usd": -0.0033,
+      "fees_usd": 0.0204,
+      "pnl_usd": -0.0237,
+      "roe_pct": -0.5,
+      "side": "LONG",
+      "exit_reason": "\ud83e\udd16 \ud83c\udfaf Profit lock hit (-0.07% ROE, peak 1.66%)",
+      "timestamp": "2026-10-21 18:03:53",
+      "ts_sec": 1792623833.696
+    },
     {
       "coin": "BNB",
       "entry_price": 750.74,
@@ -442,25 +456,11 @@
       "ts_sec": 1792442139.148
     }
   ],
-  "active_position_cache": {
-    "WLFI": {
-      "entry_px": 0.056623,
-      "current_px": 0.056657,
-      "szi": 417.0,
-      "margin": 4.72486,
-      "side": "LONG",
-      "peak_roe": 0.01660102785087338,
-      "strategy": "HOD_BREAKOUT",
-      "entry_candle_low": 0.056487,
-      "entry_time_sec": 1792621849.231
-    }
-  },
-  "previous_active_coins": [
-    "WLFI"
-  ],
-  "last_run_timestamp": "2026-10-21 18:00:44",
-  "last_email_timestamp": 1792623033.479121,
-  "last_scan_timestamp": 1792623631.852853,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-21 18:04:02",
+  "last_email_timestamp": 1792623828.7207468,
+  "last_scan_timestamp": 1792623828.7207468,
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
     "2026-10-21": 110.9460072
@@ -533,14 +533,11 @@
     "1034239100468482": 1792619430111,
     "1041213409570021": 1792619752829,
     "974001781105935": 1792620207106,
-    "700716708585503": 1792621849231
+    "700716708585503": 1792621849231,
+    "599170280802527": 1792623833696
   },
-  "open_fee_accum": {
-    "WLFI": 0.0102
-  },
-  "entry_fill_times": {
-    "WLFI": 1792621849.231
-  },
+  "open_fee_accum": {},
+  "entry_fill_times": {},
   "pending_exit_reasons": {},
   "ledger_version": 2,
   "near_miss_stats": {
@@ -548,11 +545,13 @@
       "Too extended from EMA9": 68,
       "MACD negative": 109,
       "RVOL": 40,
-      "VWAP stretch": 73,
+      "VWAP stretch": 74,
       "Not near day high": 29,
       "No reclaim cross": 3,
       "Below VWAP": 14,
-      "Below EMA9": 6
+      "Below EMA9": 6,
+      "Too wild (ATR)": 6,
+      "Too quiet (ATR)": 1
     }
   }
 }
