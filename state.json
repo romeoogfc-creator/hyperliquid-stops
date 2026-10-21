@@ -19,7 +19,8 @@
     "ENA": 1792560332.14563,
     "USELESS": 1792575034.9177172,
     "PENGU": 1792609232.4740424,
-    "XLM": 1792622729.2220936
+    "XLM": 1792622729.2220936,
+    "GRAM": 1792621230.111
   },
   "last_traded_candle": {
     "WLD": 1792555200000,
@@ -34,6 +35,19 @@
   },
   "hibernating_until": 0,
   "closed_trades_ledger": [
+    {
+      "coin": "GRAM",
+      "entry_price": 1.3663,
+      "exit_price": 1.3633,
+      "gross_pnl_usd": -0.054,
+      "fees_usd": 0.0212,
+      "pnl_usd": -0.0752,
+      "roe_pct": -1.53,
+      "side": "LONG",
+      "exit_reason": "\ud83e\udd16 30M flat exit (-1.08% ROE after 35m)",
+      "timestamp": "2026-10-21 16:50:30",
+      "ts_sec": 1792619430.111
+    },
     {
       "coin": "XLM",
       "entry_price": 0.18657,
@@ -412,25 +426,11 @@
       "ts_sec": 1792442139.148
     }
   ],
-  "active_position_cache": {
-    "GRAM": {
-      "entry_px": 1.3663,
-      "current_px": 1.36435,
-      "szi": 18.0,
-      "margin": 4.90968,
-      "side": "LONG",
-      "peak_roe": 0.0021957110444263115,
-      "strategy": "HOD_BREAKOUT",
-      "entry_candle_low": 1.3533,
-      "entry_time_sec": 1792617347.116
-    }
-  },
-  "previous_active_coins": [
-    "GRAM"
-  ],
-  "last_run_timestamp": "2026-10-21 16:45:39",
-  "last_email_timestamp": 1792618235.181407,
-  "last_scan_timestamp": 1792619123.830049,
+  "active_position_cache": {},
+  "previous_active_coins": [],
+  "last_run_timestamp": "2026-10-21 16:50:57",
+  "last_email_timestamp": 1792619425.3963206,
+  "last_scan_timestamp": 1792619425.3963206,
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
     "2026-10-21": 110.9460072
@@ -503,25 +503,22 @@
     "936787901789166": 1792605945974,
     "588757823231594": 1792605945974,
     "634143666353011": 1792608038000,
-    "893370746735142": 1792617347116
+    "893370746735142": 1792617347116,
+    "1034239100468482": 1792619430111
   },
-  "open_fee_accum": {
-    "GRAM": 0.010624
-  },
-  "entry_fill_times": {
-    "GRAM": 1792617347.116
-  },
+  "open_fee_accum": {},
+  "entry_fill_times": {},
   "pending_exit_reasons": {},
   "ledger_version": 2,
   "near_miss_stats": {
     "2026-10-21": {
-      "Too extended from EMA9": 55,
-      "MACD negative": 90,
-      "RVOL": 17,
-      "VWAP stretch": 45,
-      "Not near day high": 13,
+      "Too extended from EMA9": 59,
+      "MACD negative": 94,
+      "RVOL": 19,
+      "VWAP stretch": 50,
+      "Not near day high": 14,
       "No reclaim cross": 2,
-      "Below VWAP": 8
+      "Below VWAP": 9
     }
   }
 }
