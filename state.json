@@ -12,7 +12,7 @@
     "PUMP": 1792542630.4161174
   },
   "last_traded_candle": {
-    "PUMP": 1792539900000,
+    "PUMP": 1792542600000,
     "SKY": 1792541700000
   },
   "hibernating_until": 0,
@@ -132,26 +132,33 @@
   "active_position_cache": {
     "SKY": {
       "entry_px": 0.076741,
-      "current_px": 0.076943,
+      "current_px": 0.076999,
       "szi": 310.0,
-      "margin": 23.85419,
+      "margin": 23.86969,
       "side": "LONG",
-      "peak_roe": 0.013161152447843645,
+      "peak_roe": 0.016809788770018264,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.076103,
       "entry_time_sec": 1792542331.5864146
+    },
+    "PUMP": {
+      "strategy": "HOD_BREAKOUT",
+      "entry_px": 0.00493,
+      "side": "LONG",
+      "entry_candle_low": 0.00489,
+      "entry_time_sec": 1792543231.5512445
     }
   },
   "previous_active_coins": [
     "SKY"
   ],
-  "last_run_timestamp": "2026-10-20 19:35:42",
-  "last_email_timestamp": 1792542331.5864146,
-  "last_scan_timestamp": 1792542934.694456,
+  "last_run_timestamp": "2026-10-20 19:40:43",
+  "last_email_timestamp": 1792543231.5512445,
+  "last_scan_timestamp": 1792543231.5512445,
   "gemini_cache": {
-    "timestamp": 1792542934.694456,
-    "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH** \u2014 The market remains highly sensitive to macroeconomic shifts and regulatory uncertainty, leading to significant volatility that can trigger rapid liquidations in either direction."
+    "timestamp": 1792543231.5512445,
+    "risk": "MODERATE",
+    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional interest and upcoming macroeconomic shifts, the potential for volatility persists due to lingering regulatory uncertainty and sensitive reactions to central bank policy updates."
   },
   "daily_starting_equity": {
     "2026-10-20": 111.2514322
