@@ -22,7 +22,8 @@
     "WLD": 1792555200000,
     "ENA": 1792557000000,
     "SKY": 1792569600000,
-    "TRUMP": 1792571400000
+    "TRUMP": 1792571400000,
+    "USELESS": 1792572300000
   },
   "hibernating_until": 0,
   "stagnation_tracker": {},
@@ -141,26 +142,33 @@
   "active_position_cache": {
     "TRUMP": {
       "entry_px": 1.8008,
-      "current_px": 1.80335,
+      "current_px": 1.80985,
       "szi": 13.1,
-      "margin": 2.362454,
+      "margin": 2.370772,
       "side": "LONG",
-      "peak_roe": 0.007080186583740705,
+      "peak_roe": 0.025127721012883172,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 1.7976,
       "entry_time_sec": 1792571437.0221493
+    },
+    "USELESS": {
+      "strategy": "BULLISH_RECLAIM",
+      "entry_px": 0.15861,
+      "side": "LONG",
+      "entry_candle_low": 0.15717,
+      "entry_time_sec": 1792572630.8209808
     }
   },
   "previous_active_coins": [
     "TRUMP"
   ],
-  "last_run_timestamp": "2026-10-21 03:45:45",
-  "last_email_timestamp": 1792572337.674949,
-  "last_scan_timestamp": 1792572337.674949,
+  "last_run_timestamp": "2026-10-21 03:50:41",
+  "last_email_timestamp": 1792572630.8209808,
+  "last_scan_timestamp": 1792572630.8209808,
   "gemini_cache": {
-    "timestamp": 1792572337.674949,
+    "timestamp": 1792572630.8209808,
     "risk": "HIGH",
-    "briefing": "Risk Level: **MODERATE**\n\nWhile market sentiment remains buoyed by institutional inflows and expectations of monetary easing, the asset class remains highly sensitive to macroeconomic volatility and sudden shifts in regulatory or liquidity conditions."
+    "briefing": "Risk Level: **HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and elevated leverage, leaving it highly susceptible to sharp, liquidity-driven corrections."
   },
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
