@@ -131,21 +131,27 @@
   ],
   "active_position_cache": {
     "SKY": {
-      "strategy": "HOD_BREAKOUT",
-      "entry_px": 0.076732,
+      "entry_px": 0.076741,
+      "current_px": 0.076857,
+      "szi": 310.0,
+      "margin": 23.82815,
       "side": "LONG",
+      "peak_roe": 0.007557889524503923,
+      "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 0.076103,
       "entry_time_sec": 1792542331.5864146
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-20 19:25:43",
+  "previous_active_coins": [
+    "SKY"
+  ],
+  "last_run_timestamp": "2026-10-20 19:30:39",
   "last_email_timestamp": 1792542331.5864146,
-  "last_scan_timestamp": 1792542331.5864146,
+  "last_scan_timestamp": 1792542631.753345,
   "gemini_cache": {
-    "timestamp": 1792542331.5864146,
+    "timestamp": 1792542631.753345,
     "risk": "HIGH",
-    "briefing": "Risk Level: **HIGH**\n\nThe crypto market currently faces significant uncertainty due to volatile macroeconomic conditions, shifting regulatory pressures, and elevated leverage, all of which leave prices susceptible to sharp, sentiment-driven corrections."
+    "briefing": "**Risk Level: HIGH** \n\nPersistent macroeconomic uncertainty, stringent global regulatory headwinds, and ongoing liquidity concerns create a precarious environment for crypto markets, leaving them highly vulnerable to sudden downward corrections."
   },
   "daily_starting_equity": {
     "2026-10-20": 111.2514322
