@@ -415,11 +415,11 @@
   "active_position_cache": {
     "GRAM": {
       "entry_px": 1.3663,
-      "current_px": 1.36565,
+      "current_px": 1.36685,
       "szi": 18.0,
-      "margin": 4.91616,
+      "margin": 4.92048,
       "side": "LONG",
-      "peak_roe": -0.0007319036814754372,
+      "peak_roe": 0.0021957110444263115,
       "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 1.3533,
       "entry_time_sec": 1792617347.116
@@ -428,16 +428,14 @@
   "previous_active_coins": [
     "GRAM"
   ],
-  "last_run_timestamp": "2026-10-21 16:20:47",
+  "last_run_timestamp": "2026-10-21 16:25:47",
   "last_email_timestamp": 1792617332.44341,
-  "last_scan_timestamp": 1792617633.0386407,
+  "last_scan_timestamp": 1792617935.0109646,
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
     "2026-10-21": 110.9460072
   },
   "seen_fill_ids": {
-    "1092103979276257": 1792444906087,
-    "820652701755969": 1792444906087,
     "730934322898077": 1792446030545,
     "222567483718974": 1792446030545,
     "251915518601234": 1792446030545,
@@ -520,13 +518,13 @@
   "ledger_version": 2,
   "near_miss_stats": {
     "2026-10-21": {
-      "Too extended from EMA9": 26,
-      "MACD negative": 30,
-      "RVOL": 9,
-      "VWAP stretch": 18,
-      "Not near day high": 7,
+      "Too extended from EMA9": 28,
+      "MACD negative": 41,
+      "RVOL": 10,
+      "VWAP stretch": 23,
+      "Not near day high": 8,
       "No reclaim cross": 1,
-      "Below VWAP": 2
+      "Below VWAP": 3
     }
   }
 }
