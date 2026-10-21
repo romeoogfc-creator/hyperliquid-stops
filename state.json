@@ -458,9 +458,9 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-21 18:30:38",
+  "last_run_timestamp": "2026-10-21 18:35:39",
   "last_email_timestamp": 1792624832.5853689,
-  "last_scan_timestamp": 1792625430.0367973,
+  "last_scan_timestamp": 1792625731.4784899,
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
     "2026-10-21": 110.9460072
@@ -543,14 +543,14 @@
   "near_miss_stats": {
     "2026-10-21": {
       "Too extended from EMA9": 68,
-      "MACD negative": 109,
+      "MACD negative": 110,
       "RVOL": 40,
       "VWAP stretch": 78,
       "Not near day high": 29,
       "No reclaim cross": 3,
       "Below VWAP": 14,
       "Below EMA9": 6,
-      "Too wild (ATR)": 33,
+      "Too wild (ATR)": 37,
       "Too quiet (ATR)": 7
     }
   }
