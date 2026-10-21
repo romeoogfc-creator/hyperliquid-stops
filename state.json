@@ -429,24 +429,28 @@
   ],
   "active_position_cache": {
     "BNB": {
-      "strategy": "HOD_BREAKOUT",
-      "entry_px": 750.56,
+      "entry_px": 750.74,
+      "current_px": 750.315,
+      "szi": 0.032,
+      "margin": 4.802048,
       "side": "LONG",
+      "peak_roe": -6.660095372559678e-05,
+      "strategy": "HOD_BREAKOUT",
       "entry_candle_low": 749.93,
-      "entry_time_sec": 1792619735.9204903
+      "entry_time_sec": 1792619752.829
     }
   },
-  "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-21 16:55:53",
+  "previous_active_coins": [
+    "BNB"
+  ],
+  "last_run_timestamp": "2026-10-21 17:00:50",
   "last_email_timestamp": 1792619735.9204903,
-  "last_scan_timestamp": 1792619735.9204903,
+  "last_scan_timestamp": 1792620034.3509264,
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
     "2026-10-21": 110.9460072
   },
   "seen_fill_ids": {
-    "852276620281907": 1792447140780,
-    "1063118074960660": 1792447140780,
     "517640255102425": 1792447897356,
     "807195054791597": 1792447897356,
     "61493509012631": 1792470308830,
@@ -513,19 +517,24 @@
     "588757823231594": 1792605945974,
     "634143666353011": 1792608038000,
     "893370746735142": 1792617347116,
-    "1034239100468482": 1792619430111
+    "1034239100468482": 1792619430111,
+    "1041213409570021": 1792619752829
   },
-  "open_fee_accum": {},
-  "entry_fill_times": {},
+  "open_fee_accum": {
+    "BNB": 0.010378
+  },
+  "entry_fill_times": {
+    "BNB": 1792619752.829
+  },
   "pending_exit_reasons": {},
   "ledger_version": 2,
   "near_miss_stats": {
     "2026-10-21": {
-      "Too extended from EMA9": 62,
-      "MACD negative": 97,
-      "RVOL": 20,
-      "VWAP stretch": 55,
-      "Not near day high": 15,
+      "Too extended from EMA9": 64,
+      "MACD negative": 99,
+      "RVOL": 22,
+      "VWAP stretch": 60,
+      "Not near day high": 18,
       "No reclaim cross": 3,
       "Below VWAP": 10
     }
