@@ -464,7 +464,7 @@ def execute_engine():
     ct_midnight_ts = get_central_midnight_timestamp()
 
     audit_logs = []
-    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.8.11 Engine Started (Profit-Lock + Stricter Entry).")
+    audit_logs.append(f"[{timestamp}] TR-GC-Crypto-LS-23-V4.8.12 Engine Started (Balanced Ross-Style + Profit-Lock).")
 
     if not SECRET_KEY or not ACCOUNT_ADDRESS:
         raise ValueError("Missing HL_SECRET_KEY or HL_ACCOUNT_ADDRESS environment variables.")
@@ -512,12 +512,12 @@ def execute_engine():
     gemini_risk, gemini_briefing = check_gemini_macro_shield(state, now_ts, is_scan_window)
     audit_logs.append(f"Gemini AI Shield: [{gemini_risk}] Risk Level: **{gemini_risk}** — {gemini_briefing}")
 
-    # V4.8.11 Stricter Quality Filters
-    required_vol_ratio = 3.80 if gemini_risk == "HIGH" else 2.20
-    max_vwap_extension = 1.0020 if gemini_risk == "HIGH" else 1.0060
+    # V4.8.12 Balanced Quality Filters (can take trades again)
+    required_vol_ratio = 2.80 if gemini_risk == "HIGH" else 1.80
+    max_vwap_extension = 1.0040 if gemini_risk == "HIGH" else 1.0080
     hod_proximity_pct = 0.0100
     
-    audit_logs.append(f"⚡ V4.8.11 Engine: Profit-Lock Trail | Stop: -3.50% ROE | RVOL Gate: {required_vol_ratio}x | VWAP Cap: +{(max_vwap_extension-1)*100:.2f}%")
+    audit_logs.append(f"⚡ V4.8.12 Engine: Balanced Ross-Style | Stop: -3.50% ROE | RVOL Gate: {required_vol_ratio}x | VWAP Cap: +{(max_vwap_extension-1)*100:.2f}%")
 
     sz_decimals_map = {}
     for asset in meta.get("universe", []):
@@ -588,7 +588,7 @@ def execute_engine():
             strat_type = cache_info.get("strategy", "BULLISH_RECLAIM")
             entry_ts = float(cache_info.get("entry_time_sec", now_ts))
 
-            # Softened scratch rules (V4.8.11)
+            # Softened scratch rules
             held_duration_mins = (now_ts - entry_ts) / 60.0
             if held_duration_mins >= 15.0 and current_roe < -0.0050:
                 should_exit = True
@@ -665,7 +665,7 @@ def execute_engine():
             }
 
             positions_data.append({
-                "bot_title": "TR-GC-Crypto-LS-23-V4.8.11", "coin": coin,
+                "bot_title": "TR-GC-Crypto-LS-23-V4.8.12", "coin": coin,
                 "side": "LONG" if is_long else "SHORT", "sz": abs(szi),
                 "entry": entry_px, "current": current_px, "leverage": 5,
                 "collateral": margin_used, "position_usd": pos_equity,
@@ -757,9 +757,9 @@ def execute_engine():
                 prev_close = ross_ind["prev_close"]
                 prev_ema9 = ross_ind["prev_ema9"]
 
-                # Extra hard extension guard (V4.8.11)
+                # Balanced extension guard (V4.8.12) - allows up to +1.0%
                 extension_from_ema = (curr_live_px - ema9) / ema9
-                if extension_from_ema > 0.0065:
+                if extension_from_ema > 0.0100:
                     audit_logs.append(f"🔍 [{coin}] Skipped: Too extended from EMA9 (+{extension_from_ema*100:.2f}%)")
                     continue
 
@@ -779,11 +779,11 @@ def execute_engine():
                 vwap_dist = curr_live_px / vwap
                 is_near_hod = (curr_live_px >= day_high * (1.0 - hod_proximity_pct))
                 
-                # Stricter checks
+                # Setup detection
                 is_breakout = is_near_hod and (vol_ratio >= required_vol_ratio) and (vwap_dist <= max_vwap_extension) and is_above_ema9 and is_above_vwap and is_macd_positive
 
                 is_reclaim_cross = (prev_close <= prev_ema9 or prev_close <= vwap) and (curr_live_px > ema9 and curr_live_px > vwap)
-                is_pullback_proximity = (curr_live_px <= ema9 * 1.0020)
+                is_pullback_proximity = (curr_live_px <= ema9 * 1.0025)
                 is_bullish_reclaim = (is_reclaim_cross and is_pullback_proximity and vol_ratio >= required_vol_ratio and (vwap_dist <= max_vwap_extension) and is_above_ema9 and is_macd_positive)
 
                 prev_45_min = min(lows[-4:-1])
@@ -792,7 +792,7 @@ def execute_engine():
                 body_bottom = min(float(candles[-1]["o"]), curr_live_px)
                 lower_wick_ratio = (body_bottom - lows[-1]) / candle_range
                 
-                is_v_bottom = (is_capitulation_low and lower_wick_ratio >= 0.50 and vol_ratio >= required_vol_ratio and (vwap_dist <= max_vwap_extension) and curr_live_px > ema9 and is_macd_positive)
+                is_v_bottom = (is_capitulation_low and lower_wick_ratio >= 0.45 and vol_ratio >= required_vol_ratio and (vwap_dist <= max_vwap_extension) and curr_live_px > ema9 and is_macd_positive)
 
                 if is_breakout or is_bullish_reclaim or is_v_bottom:
                     is_liquid, spread_msg = check_liquidity_and_spread(info, coin, max_spread=0.0008, min_depth_usd=1500.0)
@@ -800,8 +800,16 @@ def execute_engine():
                         audit_logs.append(f"🔍 [{coin}] Skipped: Liquidity/Spread Check Failed ({spread_msg})")
                         continue
 
-                    setup_type = "V_BOTTOM_RECLAIM" if is_v_bottom else ("HOD_BREAKOUT" if is_breakout else "BULLISH_RECLAIM")
-                    score = vol_ratio * (3.0 if setup_type == "V_BOTTOM_RECLAIM" else (1.5 if setup_type == "BULLISH_RECLAIM" else 1.0))
+                    # Prefer Reclaim and V-Bottom over pure HOD Breakout (more Ross-style)
+                    if is_v_bottom:
+                        setup_type = "V_BOTTOM_RECLAIM"
+                        score = vol_ratio * 3.2
+                    elif is_bullish_reclaim:
+                        setup_type = "BULLISH_RECLAIM"
+                        score = vol_ratio * 2.4
+                    else:
+                        setup_type = "HOD_BREAKOUT"
+                        score = vol_ratio * 1.0
 
                     target_limit_px = min(curr_live_px * 0.9990, max(ema9, vwap))
 
@@ -816,7 +824,7 @@ def execute_engine():
                 continue
 
         if not market_candidates:
-            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.8.11 high-quality trigger rules on this candle.")
+            audit_logs.append(f"ℹ️ SCAN COMPLETED: 0 coins met V4.8.12 high-quality trigger rules on this candle.")
         else:
             audit_logs.append(f"🚀 SCAN COMPLETED: {len(market_candidates)} high-quality candidate(s) triggered entry setup!")
 
@@ -905,7 +913,7 @@ def execute_engine():
         win_rate_today = (win_count / total_today * 100) if total_today > 0 else 0.0
         net_today_usd = sum(float(t.get("pnl_usd", 0)) for t in trades_today)
 
-        text_fallback = f"TR-GC-Crypto-LS-23-V4.8.11 | Profit-Lock Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
+        text_fallback = f"TR-GC-Crypto-LS-23-V4.8.12 | Balanced Ross-Style Scalper\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\nActive Positions: {active_count}/3"
 
         positions_cards = ""
         if positions_data:
@@ -985,8 +993,8 @@ def execute_engine():
     <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
       
       <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Profit-Lock Scalper (V4.8.11)</div>
-        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; V4.8.11 Active</div>
+        <div style="font-size: 15px; font-weight: 700; color: #ffffff;">TR-GC-Crypto-LS-23 | Balanced Ross-Style (V4.8.12)</div>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">Timestamp: {timestamp} &bull; V4.8.12 Active</div>
       </div>
 
       <div style="padding: 12px;">
@@ -1006,12 +1014,12 @@ def execute_engine():
         </div>
 
         <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.8.11 Quality Calibrations</div>
+          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active V4.8.12 Quality Calibrations</div>
           <div>&bull; <b>Profit-Lock Trail (80-97%):</b> Aggressively locks most of peak ROE once trade is working</div>
-          <div>&bull; <b>Stricter RVOL Gate (≥ 3.8x HIGH / 2.2x normal):</b> Higher quality momentum required</div>
-          <div>&bull; <b>Tighter Extension Caps:</b> Stops buying late peaks (EMA9 +0.65% hard limit)</div>
-          <div>&bull; <b>Softened 15M Scratch:</b> Gives trades more room before cutting</div>
-          <div>&bull; <b>Hard Stop still -3.50% ROE:</b> Maximum risk controlled</div>
+          <div>&bull; <b>Balanced RVOL Gate (2.8× HIGH / 1.8× normal):</b> Can take trades again while staying selective</div>
+          <div>&bull; <b>Prefers Reclaim & V-Bottom:</b> More Ross-style pullback entries over chasing extended highs</div>
+          <div>&bull; <b>EMA9 Extension up to +1.0%:</b> Allows better entries without chasing extremes</div>
+          <div>&bull; <b>Softened 15M Scratch + Hard Stop -3.50% ROE</b></div>
         </div>
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
@@ -1028,7 +1036,7 @@ def execute_engine():
 
       </div>
       <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.8.11 Active
+        Hyperliquid 15M Scalper Autonomous Engine &bull; V4.8.12 Active
       </div>
     </div>
   </body>
@@ -1041,10 +1049,10 @@ def execute_engine():
 
 if __name__ == "__main__":
     timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    print(f"[{timestamp}] Executing Profit-Lock Scalper cycle (V4.8.11)...", flush=True)
+    print(f"[{timestamp}] Executing Balanced Ross-Style Scalper cycle (V4.8.12)...", flush=True)
     try:
         execute_engine()
-        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] V4.8.11 cycle completed successfully.", flush=True)
+        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] V4.8.12 cycle completed successfully.", flush=True)
     except Exception as e:
         err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Engine execution error: {e}"
         print(err_msg, flush=True)
