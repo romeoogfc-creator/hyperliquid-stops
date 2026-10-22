@@ -19,7 +19,7 @@ from hyperliquid.info import Info
 from hyperliquid.exchange import Exchange
 from hyperliquid.utils import constants
 
-BOT_VERSION = "V4.10.1"
+BOT_VERSION = "V4.11.0"
 BOT_TITLE = f"TR-GC-Crypto-LS-23-{BOT_VERSION}"
 
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
@@ -76,7 +76,20 @@ MIN_24H_CHANGE_PCT = 2.0               # ...must actually be moving today...
 MIN_ATR_PCT = 0.30
 MAX_ATR_PCT = 1.20
 ATR_CANDLES = 14
-CANDLE_LOOKBACK_MS = 8 * 3600000       # V4.8.12: indicators and "day high" on the last 8h of 15m candles
+CANDLE_LOOKBACK_MS = 8 * 3600000
+
+# ---------------- Shadow shorts (PAPER ONLY: never sends an order) ----------------
+# While BTC is RISK_OFF, scan the top losers for mirrored short setups and track each pretend trade with the same
+# stop / profit-lock / time-exit rules on live prices. Results show up as a scorecard in the email.
+SHADOW_SHORTS_ENABLED = True
+SHADOW_MAX_OPEN = 3
+SHADOW_SCAN_TOP_N = 60
+SHADOW_MIN_24H_DROP_PCT = 2.0          # coin must be down at least 2% on the day
+SHADOW_LOD_PROXIMITY = 0.0100          # breakdown = within 1% of the 8h low
+SHADOW_RVOL = 1.80                     # RISK_OFF is the favourable regime for shorts -> normal (not strict) gates
+SHADOW_VWAP_CAP = 1.0080               # not more than 0.8% below VWAP (mirror of the long VWAP stretch cap)
+SHADOW_TAKER_FEE = 0.000432            # per side, as shown on Hyperliquid
+SHADOW_HISTORY_DAYS = 14       # V4.8.12: indicators and "day high" on the last 8h of 15m candles
 NEAR_MISS_MAX_FAILS = 2                # log coins that missed a setup by this many rules or fewer
 NEAR_MISS_SHOW = 3                     # how many near misses to list per run
 
@@ -612,6 +625,170 @@ def calculate_smart_exchange_targets(entry_px, is_long, current_px, entry_candle
     return stop_px, roe, leash_status
 
 
+def shadow_stop_label(peak_roe):
+    return "🎯 Profit lock" if peak_roe >= FIRST_LOCK_TRIGGER_ROE else "🛡️ Hard stop"
+
+
+def close_shadow_short(state, coin, pos, exit_px, reason, now_ts, audit_logs):
+    """Records a paper short result, net of estimated taker fees on both sides."""
+    entry = pos["entry_px"]
+    move = (entry - exit_px) / entry
+    pnl = pos["notional"] * move - pos["notional"] * SHADOW_TAKER_FEE * 2
+    roe_pct = pnl / (pos["notional"] / LEVERAGE) * 100.0 if pos["notional"] > 0 else 0.0
+    shadow = state.setdefault("shadow_shorts", {"open": {}, "closed": []})
+    shadow["closed"].insert(0, {
+        "coin": coin, "setup": pos.get("setup", "?"), "entry_px": entry, "exit_px": exit_px,
+        "pnl_usd": round(pnl, 4), "roe_pct": round(roe_pct, 2), "reason": reason,
+        "opened": format_ct(pos["opened_ts"]), "timestamp": format_ct(now_ts), "ts_sec": now_ts
+    })
+    shadow["closed"] = [t for t in shadow["closed"] if t["ts_sec"] >= now_ts - SHADOW_HISTORY_DAYS * 86400][:100]
+    shadow["open"].pop(coin, None)
+    cd = WIN_COOLDOWN_SEC if pnl > 0 else LOSS_COOLDOWN_SEC
+    shadow.setdefault("cooldown", {})[coin] = now_ts + cd
+    audit_logs.append(f"👻 SHADOW SHORT CLOSED [{coin}] @ ${exit_px:.6g}: {reason} | est. net ${pnl:+.3f} ({roe_pct:+.2f}% ROE)")
+
+
+def manage_shadow_shorts(info, state, all_mids, now_ms, now_ts, audit_logs):
+    """Follows open paper shorts. A stop that 'rests on the exchange' between runs is simulated by checking the
+    1m highs since the last run against the stop that was in force at that time."""
+    shadow = state.setdefault("shadow_shorts", {"open": {}, "closed": []})
+    for coin, pos in list(shadow["open"].items()):
+        try:
+            cur = float(all_mids.get(coin, 0) or 0)
+            if cur <= 0:
+                continue
+            entry = pos["entry_px"]
+            m1 = api_retry(info.candles_snapshot, name=coin, interval="1m",
+                           startTime=max(int(pos["opened_ts"] * 1000), now_ms - 6 * 3600000), endTime=now_ms) or []
+            since_last = [c for c in m1 if int(c["t"]) >= int(pos["last_check_ms"]) - 60000]
+            high_since = max([float(c["h"]) for c in since_last] + [cur])
+            if high_since >= pos["stop_px"]:
+                close_shadow_short(state, coin, pos, pos["stop_px"],
+                                   f"{shadow_stop_label(pos['peak_roe'])} hit (simulated resting stop)", now_ts, audit_logs)
+                continue
+
+            low_since_entry = min([float(c["l"]) for c in m1 if int(c["t"]) >= int(pos["opened_ts"] * 1000)] + [cur])
+            peak_roe = max(pos["peak_roe"], (entry - low_since_entry) / entry * LEVERAGE)
+            roe = (entry - cur) / entry * LEVERAGE
+            held_mins = (now_ts - pos["opened_ts"]) / 60.0
+
+            lower_wick = 0.0
+            c15 = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - 1800000, endTime=now_ms)
+            if c15:
+                h, l, o = float(c15[-1]["h"]), float(c15[-1]["l"]), float(c15[-1]["o"])
+                lower_wick = (min(o, cur) - l) / max(1e-12, h - l)
+            stop_px, _, status = calculate_smart_exchange_targets(entry, False, cur, 0, peak_roe=peak_roe, upper_wick_pct=lower_wick)
+
+            reason = ""
+            if held_mins >= SCRATCH_MINS and roe < SCRATCH_ROE:
+                reason = f"⏱️ {SCRATCH_MINS:.0f}M negative scratch ({roe*100:.2f}% ROE)"
+            elif held_mins >= FLAT_EXIT_MINS and roe < FLAT_EXIT_ROE:
+                reason = f"⏱️ {FLAT_EXIT_MINS:.0f}M flat exit ({roe*100:.2f}% ROE)"
+            elif cur >= stop_px:
+                reason = f"{shadow_stop_label(peak_roe)} hit ({roe*100:.2f}% ROE, peak {peak_roe*100:.2f}%)"
+            if reason:
+                close_shadow_short(state, coin, pos, cur, reason, now_ts, audit_logs)
+                continue
+
+            pos.update({"stop_px": stop_px, "peak_roe": peak_roe, "last_check_ms": now_ms,
+                        "current_px": cur, "roe": roe, "status": status})
+        except Exception as e:
+            audit_logs.append(f"⚠️ Shadow short tracking error [{coin}]: {e}")
+
+
+def scan_shadow_shorts(info, state, meta, asset_ctxs, all_mids, now_ms, now_ts, account_value, audit_logs):
+    """Mirror of the long scan on the top LOSERS. Opens at most one paper short per run. Never touches the exchange."""
+    shadow = state.setdefault("shadow_shorts", {"open": {}, "closed": []})
+    if len(shadow["open"]) >= SHADOW_MAX_OPEN:
+        return
+    cooldowns = shadow.setdefault("cooldown", {})
+    for c, until in list(cooldowns.items()):
+        if until <= now_ts:
+            cooldowns.pop(c, None)
+
+    losers = []
+    for idx, asset in enumerate(meta.get("universe", [])):
+        coin = asset.get("name")
+        if not coin or idx < SKIP_FIRST_LISTED or asset.get("isDelisted") or coin in SKIP_COINS or coin in shadow["open"]:
+            continue
+        try:
+            ctx = asset_ctxs[idx] if idx < len(asset_ctxs) else {}
+            prev_px, mark_px = float(ctx.get("prevDayPx", 0) or 0), float(ctx.get("markPx", 0) or 0)
+            if float(ctx.get("dayNtlVlm", 0) or 0) < MIN_24H_VOLUME_USD or prev_px <= 0 or mark_px <= 0:
+                continue
+            chg = (mark_px - prev_px) / prev_px * 100
+            if chg <= -SHADOW_MIN_24H_DROP_PCT:
+                losers.append((chg, coin))
+        except Exception:
+            continue
+    losers.sort()
+    audit_logs.append(f"👻 SHADOW SHORT SCAN (paper only): {len(losers)} losers down {SHADOW_MIN_24H_DROP_PCT:.0f}%+ — "
+                      + (", ".join(f"{c} ({p:+.1f}%)" for p, c in losers[:5]) or "none"))
+
+    candidates = []
+    for chg, coin in losers[:SHADOW_SCAN_TOP_N]:
+        if now_ts < float(cooldowns.get(coin, 0)):
+            continue
+        try:
+            px = float(all_mids.get(coin, 0) or 0)
+            if px <= 0:
+                continue
+            candles = api_retry(info.candles_snapshot, name=coin, interval="15m", startTime=now_ms - CANDLE_LOOKBACK_MS, endTime=now_ms)
+            if not candles or len(candles) < 32:
+                continue
+            done = candles[-(ATR_CANDLES + 1):-1]
+            atr_pct = float(np.mean([(float(c["h"]) - float(c["l"])) / float(c["c"]) for c in done])) * 100.0
+            if not (MIN_ATR_PCT <= atr_pct <= MAX_ATR_PCT):
+                continue
+            ind = calculate_15m_ross_indicators(candles)
+            if not ind:
+                continue
+            ema9, vwap, macd_hist = ind["ema9"], ind["vwap"], ind["macd_hist"]
+            if (ema9 - px) / ema9 > 0.0100:
+                continue   # too extended BELOW EMA9 (mirror of the long chase guard)
+            highs = [float(c["h"]) for c in candles]
+            lows = [float(c["l"]) for c in candles]
+            day_low = min(lows)
+            below_ema9, below_vwap, macd_neg = px < ema9, px < vwap, macd_hist < 0
+            vwap_ok = (vwap / px) <= SHADOW_VWAP_CAP
+            near_lod = px <= day_low * (1 + SHADOW_LOD_PROXIMITY)
+            rejection_cross = (ind["prev_close"] >= ind["prev_ema9"] or ind["prev_close"] >= vwap) and below_ema9 and below_vwap
+            near_ema = px >= ema9 * 0.9975
+            fresh_high = highs[-1] >= max(highs[-4:-1])
+            c_range = max(1e-12, highs[-1] - lows[-1])
+            upper_wick = (highs[-1] - max(float(candles[-1]["o"]), px)) / c_range
+
+            pre = vwap_ok and below_ema9 and macd_neg and ((near_lod and below_vwap) or (rejection_cross and near_ema) or (fresh_high and upper_wick >= 0.45))
+            if not pre:
+                continue
+            avg_vol = np.mean([float(c.get("v", 0)) for c in candles][-12:-2])
+            rolling = rolling_15m_volume(info, coin, now_ms)
+            rvol = (rolling / avg_vol) if (rolling and avg_vol > 0) else 0.0
+            if rvol < SHADOW_RVOL:
+                continue
+
+            if fresh_high and upper_wick >= 0.45:
+                setup, score = "A_TOP_REJECTION", rvol * 3.2
+            elif rejection_cross and near_ema:
+                setup, score = "BEARISH_REJECTION", rvol * 2.4
+            else:
+                setup, score = "LOD_BREAKDOWN", rvol * 1.0
+            candidates.append((score, coin, px, setup, rvol, atr_pct))
+        except Exception as e:
+            audit_logs.append(f"⚠️ Shadow scan error [{coin}]: {e}")
+
+    if not candidates:
+        return
+    score, coin, px, setup, rvol, atr_pct = max(candidates)
+    stop_px, _, status = calculate_smart_exchange_targets(px, False, px, 0)
+    shadow["open"][coin] = {
+        "entry_px": px, "setup": setup, "opened_ts": now_ts, "last_check_ms": now_ms,
+        "stop_px": stop_px, "peak_roe": 0.0, "notional": max(MIN_NOTIONAL_USD, account_value * POSITION_FRACTION),
+        "current_px": px, "roe": 0.0, "status": status
+    }
+    audit_logs.append(f"👻 SHADOW SHORT OPENED [{coin}] {setup} @ ${px:.6g} (RVOL {rvol:.2f}x, ATR {atr_pct:.2f}%, paper stop ${stop_px:.6g}) — NO ORDER SENT")
+
+
 def check_btc_regime(info, now_ms):
     """Replaces the Gemini 'risk' prompt (the LLM had no market data, so its answer was effectively random).
     RISK_OFF: BTC below its 1h EMA50 and EMA20 < EMA50 (downtrend).
@@ -1124,6 +1301,12 @@ def execute_engine():
             except Exception as e:
                 audit_logs.append(f"ORDER PLACEMENT FAILED on {coin}: {e}")
 
+    # 5b) Shadow shorts: paper only. These functions are never given the exchange object.
+    if SHADOW_SHORTS_ENABLED:
+        manage_shadow_shorts(info, state, all_mids, now_ms, now_ts, audit_logs)
+        if regime == "RISK_OFF":
+            scan_shadow_shorts(info, state, meta, asset_ctxs, all_mids, now_ms, now_ts, account_value, audit_logs)
+
     # 6) Record this run's own exits (IOC closes fill immediately) so the ledger and email are current.
     if trade_closed_this_run and not DRY_RUN:
         time.sleep(1.0)
@@ -1158,6 +1341,25 @@ def execute_engine():
     fees_today_usd = sum(float(t.get("fees_usd", 0)) for t in trades_today)
 
     blocker_counts = state.get("near_miss_stats", {}).get(today_str, {})
+    shadow = state.get("shadow_shorts", {"open": {}, "closed": []})
+    sh_closed = [t for t in shadow.get("closed", []) if t["ts_sec"] >= now_ts - SHADOW_HISTORY_DAYS * 86400]
+    sh_wins = [t for t in sh_closed if t["pnl_usd"] > 0]
+    sh_losses = [t for t in sh_closed if t["pnl_usd"] <= 0]
+    sh_avg_w = sum(t["roe_pct"] for t in sh_wins) / len(sh_wins) if sh_wins else 0.0
+    sh_avg_l = sum(t["roe_pct"] for t in sh_losses) / len(sh_losses) if sh_losses else 0.0
+    sh_net = sum(t["pnl_usd"] for t in sh_closed)
+    sh_rows = "".join(f"<div>&bull; OPEN {c} {p.get('setup', '')} @ ${p['entry_px']:.6g} → now {p.get('roe', 0)*100:+.2f}% ROE ({p.get('status', '')})</div>"
+                      for c, p in shadow.get("open", {}).items())
+    sh_rows += "".join(f"<div>&bull; {t['coin']} {t['setup']}: <b style=\"color: {'#15803d' if t['pnl_usd'] > 0 else '#b91c1c'};\">${t['pnl_usd']:+.3f} ({t['roe_pct']:+.2f}%)</b> — {t['reason']} &bull; {t['timestamp']}</div>"
+                       for t in sh_closed[:5])
+    shadow_section = f"""
+        <div style="background-color: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #4c1d95; line-height: 1.5;">
+          <div style="font-weight: 700; text-transform: uppercase; font-size: 10px;">👻 Shadow Shorts — paper only, no orders (last {SHADOW_HISTORY_DAYS} days)</div>
+          <div>Trades: <b>{len(sh_closed)}</b> &bull; {len(sh_wins)}W / {len(sh_losses)}L &bull; avg win {sh_avg_w:+.2f}% / avg loss {sh_avg_l:+.2f}% ROE &bull; est. net after fees <b style="color: {'#15803d' if sh_net >= 0 else '#b91c1c'};">${sh_net:+.3f}</b></div>
+          {sh_rows or '<div>No shadow shorts yet (scans only while BTC is RISK_OFF).</div>'}
+        </div>
+    """ if SHADOW_SHORTS_ENABLED else ""
+
     blockers_line = " &bull; ".join(f"{k}: <b>{v}</b>" for k, v in sorted(blocker_counts.items(), key=lambda kv: -kv[1])) or "None yet today"
 
     text_fallback = (f"{BOT_TITLE}\nTimestamp: {timestamp}\nTotal Net Worth: USD ${account_value:.2f}\n"
@@ -1278,8 +1480,11 @@ def execute_engine():
           <div>&bull; <b>Profit lock:</b> +{FIRST_LOCK_ROE*100:.2f}% after +{FIRST_LOCK_TRIGGER_ROE*100:.1f}% peak, then 80% / 85% / 90% / 93% of peak (peak from 1m highs), climax lock</div>
           <div>&bull; <b>Time exits:</b> {SCRATCH_MINS:.0f}m negative scratch (&lt;{SCRATCH_ROE*100:.1f}% ROE), {FLAT_EXIT_MINS:.0f}m flat (&lt;+{FLAT_EXIT_ROE*100:.1f}% ROE)</div>
           <div>&bull; <b>BTC regime filter</b> replaces Gemini; RISK_OFF blocks new longs</div>
+          <div>&bull; <b>👻 Shadow shorts (paper only):</b> during RISK_OFF, top losers down {SHADOW_MIN_24H_DROP_PCT:.0f}%+ scanned for breakdown / rejection / A-top; tracked with the same stops, locks and time exits. No orders are ever sent.</div>
           <div>&bull; <b>Breakers:</b> {CB_MAX_LOSSES} losses/{CB_WINDOW_SEC // 60}m or -{DAILY_LOSS_LIMIT_PCT*100:.1f}% day → entries paused, positions still managed</div>
         </div>
+
+        {shadow_section}
 
         <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
         {positions_cards}
