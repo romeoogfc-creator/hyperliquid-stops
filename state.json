@@ -458,7 +458,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-22 07:05:55",
+  "last_run_timestamp": "2026-10-22 07:10:44",
   "last_email_timestamp": 1792670136.3108237,
   "last_scan_timestamp": 1792663188.3786373,
   "daily_starting_equity": {
@@ -467,7 +467,6 @@
     "2026-10-22": 110.8395182
   },
   "seen_fill_ids": {
-    "424441252725631": 1792498036538,
     "607449986529544": 1792499457321,
     "363140134314232": 1792499738208,
     "374817480436301": 1792503106851,
@@ -558,12 +557,12 @@
         "entry_px": 77.9245,
         "setup": "LOD_BREAKDOWN",
         "opened_ts": 1792670739.9547658,
-        "last_check_ms": 1792670739954,
+        "last_check_ms": 1792671028548,
         "stop_px": 78.46997149999999,
-        "peak_roe": 0.0,
+        "peak_roe": 0.007218525624161668,
         "notional": 23.5533976175,
-        "current_px": 77.9245,
-        "roe": 0.0,
+        "current_px": 78.063,
+        "roe": -0.00888680710174641,
         "status": "\ud83d\udee1 HARD STOP (-3.50% ROE) until +1.2% peak",
         "regime": "RISK_OFF"
       }
@@ -646,7 +645,8 @@
         "VIRTUAL",
         "BCH",
         "ALGO",
-        "RENDER"
+        "RENDER",
+        "2Z"
       ],
       "Above EMA9": [
         "AAVE",
