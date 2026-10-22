@@ -458,7 +458,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-22 05:50:40",
+  "last_run_timestamp": "2026-10-22 05:55:45",
   "last_email_timestamp": 1792665930.846486,
   "last_scan_timestamp": 1792663188.3786373,
   "daily_starting_equity": {
@@ -612,15 +612,19 @@
         "WIF",
         "TRUMP",
         "MORPHO",
-        "IO"
+        "IO",
+        "JTO",
+        "ETC"
       ],
       "Above EMA9": [
         "AAVE",
-        "MORPHO"
+        "MORPHO",
+        "SPX"
       ],
       "RVOL": [
         "SPX",
-        "AAVE"
+        "AAVE",
+        "MORPHO"
       ],
       "Too extended below EMA9": [
         "CC"
