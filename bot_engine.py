@@ -19,7 +19,7 @@ from hyperliquid.info import Info
 from hyperliquid.exchange import Exchange
 from hyperliquid.utils import constants
 
-BOT_VERSION = "V4.11.0"
+BOT_VERSION = "V4.11.1"
 BOT_TITLE = f"TR-GC-Crypto-LS-23-{BOT_VERSION}"
 
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
@@ -79,9 +79,10 @@ ATR_CANDLES = 14
 CANDLE_LOOKBACK_MS = 8 * 3600000
 
 # ---------------- Shadow shorts (PAPER ONLY: never sends an order) ----------------
-# While BTC is RISK_OFF, scan the top losers for mirrored short setups and track each pretend trade with the same
+# While BTC is RISK_OFF or CAUTION, scan the top losers for mirrored short setups and track each pretend trade with the same
 # stop / profit-lock / time-exit rules on live prices. Results show up as a scorecard in the email.
 SHADOW_SHORTS_ENABLED = True
+SHADOW_REGIMES = ("RISK_OFF", "CAUTION")   # paper-short whenever BTC isn't clearly rising; each trade is tagged
 SHADOW_MAX_OPEN = 3
 SHADOW_SCAN_TOP_N = 60
 SHADOW_MIN_24H_DROP_PCT = 2.0          # coin must be down at least 2% on the day
@@ -637,7 +638,7 @@ def close_shadow_short(state, coin, pos, exit_px, reason, now_ts, audit_logs):
     roe_pct = pnl / (pos["notional"] / LEVERAGE) * 100.0 if pos["notional"] > 0 else 0.0
     shadow = state.setdefault("shadow_shorts", {"open": {}, "closed": []})
     shadow["closed"].insert(0, {
-        "coin": coin, "setup": pos.get("setup", "?"), "entry_px": entry, "exit_px": exit_px,
+        "coin": coin, "setup": pos.get("setup", "?"), "regime": pos.get("regime", "RISK_OFF"), "entry_px": entry, "exit_px": exit_px,
         "pnl_usd": round(pnl, 4), "roe_pct": round(roe_pct, 2), "reason": reason,
         "opened": format_ct(pos["opened_ts"]), "timestamp": format_ct(now_ts), "ts_sec": now_ts
     })
@@ -696,7 +697,7 @@ def manage_shadow_shorts(info, state, all_mids, now_ms, now_ts, audit_logs):
             audit_logs.append(f"⚠️ Shadow short tracking error [{coin}]: {e}")
 
 
-def scan_shadow_shorts(info, state, meta, asset_ctxs, all_mids, now_ms, now_ts, account_value, audit_logs):
+def scan_shadow_shorts(info, state, meta, asset_ctxs, all_mids, now_ms, now_ts, account_value, audit_logs, regime):
     """Mirror of the long scan on the top LOSERS. Opens at most one paper short per run. Never touches the exchange."""
     shadow = state.setdefault("shadow_shorts", {"open": {}, "closed": []})
     if len(shadow["open"]) >= SHADOW_MAX_OPEN:
@@ -722,7 +723,7 @@ def scan_shadow_shorts(info, state, meta, asset_ctxs, all_mids, now_ms, now_ts, 
         except Exception:
             continue
     losers.sort()
-    audit_logs.append(f"👻 SHADOW SHORT SCAN (paper only): {len(losers)} losers down {SHADOW_MIN_24H_DROP_PCT:.0f}%+ — "
+    audit_logs.append(f"👻 SHADOW SHORT SCAN (paper only, {regime}): {len(losers)} losers down {SHADOW_MIN_24H_DROP_PCT:.0f}%+ — "
                       + (", ".join(f"{c} ({p:+.1f}%)" for p, c in losers[:5]) or "none"))
 
     candidates = []
@@ -784,9 +785,9 @@ def scan_shadow_shorts(info, state, meta, asset_ctxs, all_mids, now_ms, now_ts, 
     shadow["open"][coin] = {
         "entry_px": px, "setup": setup, "opened_ts": now_ts, "last_check_ms": now_ms,
         "stop_px": stop_px, "peak_roe": 0.0, "notional": max(MIN_NOTIONAL_USD, account_value * POSITION_FRACTION),
-        "current_px": px, "roe": 0.0, "status": status
+        "current_px": px, "roe": 0.0, "status": status, "regime": regime
     }
-    audit_logs.append(f"👻 SHADOW SHORT OPENED [{coin}] {setup} @ ${px:.6g} (RVOL {rvol:.2f}x, ATR {atr_pct:.2f}%, paper stop ${stop_px:.6g}) — NO ORDER SENT")
+    audit_logs.append(f"👻 SHADOW SHORT OPENED [{coin}] {setup} ({regime}) @ ${px:.6g} (RVOL {rvol:.2f}x, ATR {atr_pct:.2f}%, paper stop ${stop_px:.6g}) — NO ORDER SENT")
 
 
 def check_btc_regime(info, now_ms):
@@ -1304,8 +1305,10 @@ def execute_engine():
     # 5b) Shadow shorts: paper only. These functions are never given the exchange object.
     if SHADOW_SHORTS_ENABLED:
         manage_shadow_shorts(info, state, all_mids, now_ms, now_ts, audit_logs)
-        if regime == "RISK_OFF":
-            scan_shadow_shorts(info, state, meta, asset_ctxs, all_mids, now_ms, now_ts, account_value, audit_logs)
+        if regime in SHADOW_REGIMES:
+            scan_shadow_shorts(info, state, meta, asset_ctxs, all_mids, now_ms, now_ts, account_value, audit_logs, regime)
+        else:
+            audit_logs.append(f"👻 Shadow shorts idle: BTC {regime} (scans during {' / '.join(SHADOW_REGIMES)})")
 
     # 6) Record this run's own exits (IOC closes fill immediately) so the ledger and email are current.
     if trade_closed_this_run and not DRY_RUN:
@@ -1348,15 +1351,22 @@ def execute_engine():
     sh_avg_w = sum(t["roe_pct"] for t in sh_wins) / len(sh_wins) if sh_wins else 0.0
     sh_avg_l = sum(t["roe_pct"] for t in sh_losses) / len(sh_losses) if sh_losses else 0.0
     sh_net = sum(t["pnl_usd"] for t in sh_closed)
-    sh_rows = "".join(f"<div>&bull; OPEN {c} {p.get('setup', '')} @ ${p['entry_px']:.6g} → now {p.get('roe', 0)*100:+.2f}% ROE ({p.get('status', '')})</div>"
+    sh_by_regime = ""
+    for rg in SHADOW_REGIMES:
+        g = [t for t in sh_closed if t.get("regime", "RISK_OFF") == rg]
+        if g:
+            w = sum(1 for t in g if t["pnl_usd"] > 0)
+            sh_by_regime += f"<div>&nbsp;&nbsp;{rg}: {len(g)} trades &bull; {w}W/{len(g)-w}L &bull; net ${sum(t['pnl_usd'] for t in g):+.3f}</div>"
+    sh_rows = "".join(f"<div>&bull; OPEN {c} {p.get('setup', '')} [{p.get('regime', '')}] @ ${p['entry_px']:.6g} → now {p.get('roe', 0)*100:+.2f}% ROE ({p.get('status', '')})</div>"
                       for c, p in shadow.get("open", {}).items())
-    sh_rows += "".join(f"<div>&bull; {t['coin']} {t['setup']}: <b style=\"color: {'#15803d' if t['pnl_usd'] > 0 else '#b91c1c'};\">${t['pnl_usd']:+.3f} ({t['roe_pct']:+.2f}%)</b> — {t['reason']} &bull; {t['timestamp']}</div>"
+    sh_rows += "".join(f"<div>&bull; {t['coin']} {t['setup']} [{t.get('regime', 'RISK_OFF')}]: <b style=\"color: {'#15803d' if t['pnl_usd'] > 0 else '#b91c1c'};\">${t['pnl_usd']:+.3f} ({t['roe_pct']:+.2f}%)</b> — {t['reason']} &bull; {t['timestamp']}</div>"
                        for t in sh_closed[:5])
     shadow_section = f"""
         <div style="background-color: #f5f3ff; border: 1px solid #ddd6fe; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #4c1d95; line-height: 1.5;">
           <div style="font-weight: 700; text-transform: uppercase; font-size: 10px;">👻 Shadow Shorts — paper only, no orders (last {SHADOW_HISTORY_DAYS} days)</div>
           <div>Trades: <b>{len(sh_closed)}</b> &bull; {len(sh_wins)}W / {len(sh_losses)}L &bull; avg win {sh_avg_w:+.2f}% / avg loss {sh_avg_l:+.2f}% ROE &bull; est. net after fees <b style="color: {'#15803d' if sh_net >= 0 else '#b91c1c'};">${sh_net:+.3f}</b></div>
-          {sh_rows or '<div>No shadow shorts yet (scans only while BTC is RISK_OFF).</div>'}
+          {sh_by_regime}
+          {sh_rows or f'<div>No shadow shorts yet (scans while BTC is {" or ".join(SHADOW_REGIMES)}).</div>'}
         </div>
     """ if SHADOW_SHORTS_ENABLED else ""
 
@@ -1480,7 +1490,7 @@ def execute_engine():
           <div>&bull; <b>Profit lock:</b> +{FIRST_LOCK_ROE*100:.2f}% after +{FIRST_LOCK_TRIGGER_ROE*100:.1f}% peak, then 80% / 85% / 90% / 93% of peak (peak from 1m highs), climax lock</div>
           <div>&bull; <b>Time exits:</b> {SCRATCH_MINS:.0f}m negative scratch (&lt;{SCRATCH_ROE*100:.1f}% ROE), {FLAT_EXIT_MINS:.0f}m flat (&lt;+{FLAT_EXIT_ROE*100:.1f}% ROE)</div>
           <div>&bull; <b>BTC regime filter</b> replaces Gemini; RISK_OFF blocks new longs</div>
-          <div>&bull; <b>👻 Shadow shorts (paper only):</b> during RISK_OFF, top losers down {SHADOW_MIN_24H_DROP_PCT:.0f}%+ scanned for breakdown / rejection / A-top; tracked with the same stops, locks and time exits. No orders are ever sent.</div>
+          <div>&bull; <b>👻 Shadow shorts (paper only):</b> during {" / ".join(SHADOW_REGIMES)}, top losers down {SHADOW_MIN_24H_DROP_PCT:.0f}%+ scanned for breakdown / rejection / A-top; tracked with the same stops, locks and time exits. No orders are ever sent.</div>
           <div>&bull; <b>Breakers:</b> {CB_MAX_LOSSES} losses/{CB_WINDOW_SEC // 60}m or -{DAILY_LOSS_LIMIT_PCT*100:.1f}% day → entries paused, positions still managed</div>
         </div>
 
