@@ -9,11 +9,11 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: "paper = update the paper books (daily) | backtest = replay history and email the results"
+        description: "paper = update the paper books (daily) | backtest = replay history | robust = stability check (same history, shuffled coin order)"
         required: true
         default: paper
         type: choice
-        options: [paper, backtest]
+        options: [paper, backtest, robust]
       backtest_days:
         description: "Backtest length in days"
         required: false
@@ -22,6 +22,14 @@ on:
         description: "Backtest starting balance per book in USD (e.g. 111 = your real account)"
         required: false
         default: "1000"
+      robust_runs:
+        description: "robust only: how many coin orders to try"
+        required: false
+        default: "20"
+      robust_books:
+        description: "robust only: books to check (comma separated)"
+        required: false
+        default: "A,D,K,O"
 
 concurrency:
   group: gc-paper-trader
@@ -53,8 +61,10 @@ jobs:
           PYTHONUNBUFFERED: "1"
           MODE: ${{ github.event.inputs.mode || 'paper' }}
           BACKTEST_DAYS: ${{ github.event.inputs.backtest_days || '365' }}
-          # Only backtests use it: the daily paper books keep the balance they started with.
-          START_NAV: ${{ (github.event.inputs.mode == 'backtest' && github.event.inputs.start_nav) || '1000' }}
+          # Only backtest / robust use it: the daily paper books keep the balance they started with.
+          START_NAV: ${{ (github.event.inputs.mode != 'paper' && github.event.inputs.start_nav) || '1000' }}
+          ROBUST_RUNS: ${{ github.event.inputs.robust_runs || '20' }}
+          ROBUST_BOOKS: ${{ github.event.inputs.robust_books || 'A,D,K,O' }}
           # Paper only: no Hyperliquid keys are passed to this job at all.
           SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
           SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
