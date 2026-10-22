@@ -15,6 +15,11 @@ runs it on two virtual accounts side by side:
   Book H  "LS-15 Max 3 @ 15% + Long Lock" - Book G plus the long-only profit lock (the proposed live combination)
   Book I  "LS-15 3L+3S @ 15%"     - separate slot pools: up to 3 longs AND up to 3 shorts, 15% of NAV each
   Book J  "LS-15 3L+3S @ 15% + Long Lock" - Book I plus the long-only profit lock
+  Book K  "LS-15 Max 6 @ 20%"     - at most 6 positions (long or short), 20% of NAV each (up to 120% in use = ~1.2x leverage)
+  Book L  "LS-15 Max 6 @ 20% + Long Lock" - Book K plus the long-only profit lock
+
+Every email also has a GROWTH CALCULATOR: each book's return so far, turned into average $ per day at $1k / $10k / $50k /
+$200k and the capital that would have been needed for $200 and $400 a day.
 
 Modes (env MODE):
   paper    (default) process every daily candle closed since the last run, update both books, email the report
@@ -38,7 +43,7 @@ from email.mime.image import MIMEImage
 import numpy as np
 
 STRATEGY_ID = "TR-GC-Crypto-LS-15"
-ENGINE_VERSION = "GC-PAPER-1.5"
+ENGINE_VERSION = "GC-PAPER-1.6"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -89,6 +94,8 @@ BOOKS = [
     ("H", "LS-15 Max 3 @ 15% + Long Lock", "long", False),
     ("I", "LS-15 3L+3S @ 15%", False, False),
     ("J", "LS-15 3L+3S @ 15% + Long Lock", "long", False),
+    ("K", "LS-15 Max 6 @ 20%", False, False),
+    ("L", "LS-15 Max 6 @ 20% + Long Lock", "long", False),
 ]
 # Extra per-book settings (books not listed use the LS-15 defaults).
 #   size_mult: scales every entry and the top-up target.  max_pos / slot_size: at most N positions, each slot_size of NAV.
@@ -98,7 +105,16 @@ BOOK_OPTIONS = {
     "H": {"max_pos": 3, "slot_size": 0.15},
     "I": {"max_long": 3, "max_short": 3, "slot_size": 0.15},   # longs and shorts don't compete for slots
     "J": {"max_long": 3, "max_short": 3, "slot_size": 0.15},
+    # 6 x 20% = up to 120% of the account in use: perps allow it with margin (~1.2x, e.g. 2x isolated per position).
+    # gross_cap = most of NAV that may be in positions at once (cash may go negative = borrowed margin).
+    "K": {"max_pos": 6, "slot_size": 0.20, "gross_cap": 1.20},
+    "L": {"max_pos": 6, "slot_size": 0.20, "gross_cap": 1.20},
 }
+
+# Growth calculator (every email): account sizes to scale results to, and the daily-profit targets to size for.
+GROWTH_SIZES = [1000, 10000, 50000, 200000]
+GROWTH_TARGETS = [200, 400]
+GROWTH_MIN_DAYS = 30                   # below this, annualising a few days of results is meaningless
 
 
 def lock_applies(book, side):
@@ -169,6 +185,14 @@ def new_book(code, name, lock, guard=False):
     return book
 
 
+def buying_power(book, nav):
+    """Cash available for a new position. Books with gross_cap may borrow margin up to gross_cap x NAV in positions."""
+    cap = book.get("gross_cap")
+    if not cap:
+        return book["cash"]
+    return book["cash"] + max(0.0, (cap - 1.0) * nav)
+
+
 def slotted(book):
     return bool(book.get("max_pos") or book.get("max_long") or book.get("max_short"))
 
@@ -211,10 +235,11 @@ def lock_floor(peak_gain):
     return None
 
 
-def open_position(book, coin, side, usd, px, date, reason, log):
+def open_position(book, coin, side, usd, px, date, reason, log, budget=None):
+    budget = book["cash"] if budget is None else budget
     fee = usd * FEE_RATE
-    if usd + fee > book["cash"]:
-        usd = max(0.0, book["cash"] / (1 + FEE_RATE))
+    if usd + fee > budget:
+        usd = max(0.0, budget / (1 + FEE_RATE))
         fee = usd * FEE_RATE
     qty = usd / px
     book["cash"] -= usd + fee
@@ -346,13 +371,14 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips):
             skips.append((c, f"Long signal, all {slot_cap(book, 'LONG')} long slots in use")); continue
         recent = b.get("breakout") and (datetime.strptime(day, "%Y-%m-%d") - datetime.strptime(b["breakout"], "%Y-%m-%d")).days <= BREAKOUT_RECENT_DAYS
         want = entry_size(book, nav, LONG_SIZE_RECENT if recent else LONG_SIZE_OLD)
-        usd = min(want, book["cash"] / (1 + FEE_RATE))
+        power = buying_power(book, nav)
+        usd = min(want, power / (1 + FEE_RATE))
         if usd < MIN_ORDER_USD:
             skips.append((c, f"Long signal, ${usd:,.2f} is below Hyperliquid's ${MIN_ORDER_USD:.0f} minimum order")); continue
         if usd < nav * MIN_TRADE_NAV:
             skips.append((c, f"Long signal, not enough cash (${usd:,.2f} < 1% NAV)")); continue
         tag = f"band breakout ({'recent' if recent else 'old'} breakout, {want / nav * 100:.0f}% NAV{', downsized' if usd < want - 0.01 else ''})"
-        open_position(book, c, "LONG", usd, b["c"], day, tag, log)
+        open_position(book, c, "LONG", usd, b["c"], day, tag, log, power)
         entered.add(c)
 
     # 7) LONG TOP-UPS (rank order, free cash only)
@@ -386,12 +412,13 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips):
         if slots_full(book, "SHORT"):
             skips.append((c, f"Short signal, all {slot_cap(book, 'SHORT')} short slots in use")); continue
         want = entry_size(book, nav, HEDGE_SHORT_SIZE if hedge else BEAR_SHORT_SIZE)
-        usd = min(want, book["cash"] / (1 + FEE_RATE))
+        power = buying_power(book, nav)
+        usd = min(want, power / (1 + FEE_RATE))
         if usd < MIN_ORDER_USD:
             skips.append((c, f"Short signal, ${usd:,.2f} is below Hyperliquid's ${MIN_ORDER_USD:.0f} minimum order")); continue
         if usd < nav * MIN_TRADE_NAV:
             skips.append((c, f"Short signal, not enough cash (${usd:,.2f} < 1% NAV)")); continue
-        open_position(book, c, "SHORT", usd, b["c"], day, "hedge short (cross under filter)" if hedge else "bear short (rejected bounce, BTC down)", log)
+        open_position(book, c, "SHORT", usd, b["c"], day, "hedge short (cross under filter)" if hedge else "bear short (rejected bounce, BTC down)", log, power)
 
     # Update peaks with today's candle and (profit-lock books) set tomorrow's resting stop.
     for c, p in book["positions"].items():
@@ -506,7 +533,7 @@ def make_chart(books, btc_curve, title):
     except Exception:
         return None
     fig, ax = plt.subplots(figsize=(7, 3.2), dpi=110)
-    for book, color in zip(books, ["#2563eb", "#16a34a", "#9333ea", "#0891b2", "#db2777", "#64748b", "#ea580c", "#000000", "#65a30d", "#7c3aed"]):
+    for book, color in zip(books, ["#2563eb", "#16a34a", "#9333ea", "#0891b2", "#db2777", "#64748b", "#ea580c", "#000000", "#65a30d", "#7c3aed", "#be123c", "#0d9488"]):
         if book["equity"]:
             ax.plot([datetime.strptime(d, "%Y-%m-%d") for d, _ in book["equity"]], [v / book_start(book) * 100 - 100 for _, v in book["equity"]],
                     label=f"{book['code']}: {book['name']}", color=color, linewidth=1.6)
@@ -526,6 +553,50 @@ def make_chart(books, btc_curve, title):
     return path
 
 
+def fmt_usd_short(v):
+    return f"${v/1e6:,.2f}M" if v >= 1e6 else f"${v/1e3:,.0f}k" if v >= 1e4 else f"${v:,.0f}"
+
+
+def growth_section(books, prices):
+    """Growth calculator: each book's results scaled to bigger accounts, and the capital a $/day target would need."""
+    rows = ""
+    for book in books:
+        start = book_start(book)
+        s = book_stats(book)
+        nav = book_nav(book, prices) if prices else s["nav"]
+        days = len(book["equity"])
+        if not days or start <= 0:
+            continue
+        growth = nav / start
+        if days >= GROWTH_MIN_DAYS and growth > 0:
+            yearly = growth ** (365.0 / days) - 1
+            per_day = yearly / 365                             # average daily profit per $1 over a year at this pace
+            pace = f"{yearly*100:+.0f}%/yr"
+        else:
+            per_day = (growth - 1) / days                      # too early to annualise: plain average so far
+            pace = f"<span style='color:#b45309;'>too early ({days}d)</span>"
+        size_cells = "".join(f"<td style='color:{pct_color(per_day)};'>{'+' if per_day >= 0 else '-'}${abs(size*per_day):,.{2 if abs(size*per_day) < 10 else 0}f}</td>"
+                             for size in GROWTH_SIZES)
+        need = "".join(f"<td>{fmt_usd_short(t/per_day) if per_day > 0 else '—'}</td>" for t in GROWTH_TARGETS)
+        dip = (f"{s['mdd']:.0f}%" + (f" (≈-{fmt_usd_short(abs(s['mdd'])/100*GROWTH_TARGETS[0]/per_day)})" if per_day > 0 else ""))
+        rows += (f"<tr><td><b>{book['code']}</b></td><td style='color:{pct_color(growth-1)};'>{(growth-1)*100:+.1f}%</td><td>{pace}</td>"
+                 f"{size_cells}{need}<td style='color:#b91c1c;'>{dip}</td></tr>")
+    if not rows:
+        return ""
+    heads = "".join(f"<th align='left'>$/day @ {fmt_usd_short(x)}</th>" for x in GROWTH_SIZES)
+    heads += "".join(f"<th align='left'>Capital for ${t}/day</th>" for t in GROWTH_TARGETS)
+    return f"""
+    <div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px;font-size:11px;margin-bottom:14px;overflow-x:auto;">
+      <div style="font-weight:700;text-transform:uppercase;font-size:10px;color:#0f172a;">💰 Growth calculator</div>
+      <table style="width:100%;font-size:11px;border-collapse:collapse;" cellpadding="3">
+        <tr style="background:#f1f5f9;"><th align="left">Book</th><th align="left">Return</th><th align="left">Pace</th>{heads}<th align="left">Worst drop (at the $200/day size)</th></tr>
+        {rows}</table>
+      <div style="color:#64748b;margin-top:6px;">$/day = average over a year at this book's pace (30+ days of results), or the plain average so far
+        if it is younger. Real profit is lumpy: most days are flat or red and a few big winners make the month. Bigger accounts also get
+        worse fills on small coins. The last column shows the worst account drop in dollars at the size needed for $200/day.</div>
+    </div>"""
+
+
 def fmt_stop(p):
     return "—" if p.get("stop") is None else f"{p['stop']:.6g}"
 
@@ -534,14 +605,14 @@ def pct_color(v):
     return "#15803d" if v >= 0 else "#b91c1c"
 
 
-def render_email(title, subtitle, books, day_logs, skips, prices, btc_curve, regime_line, chart_cid, notes):
+def render_email(title, subtitle, books, day_logs, skips, prices, btc_curve, regime_line, chart_cid, notes, growth=""):
     cards = ""
     for book in books:
         s = book_stats(book)
         nav = book_nav(book, prices) if prices else s["nav"]
         long_usd = sum(pos_value(p, prices.get(c, p["last_px"])) for c, p in book["positions"].items() if p["side"] == "LONG")
         short_usd = sum(p["qty"] * prices.get(c, p["last_px"]) for c, p in book["positions"].items() if p["side"] == "SHORT")
-        flat_usd = book["cash"]
+        flat_usd = max(book["cash"], 0.0)                     # negative cash = margin in use (Books K/L)
         tot = max(long_usd + short_usd + flat_usd, 1e-9)
         bar = (f"<div style='display:flex;height:12px;border-radius:4px;overflow:hidden;margin:6px 0;'>"
                f"<div style='width:{long_usd/tot*100:.1f}%;background:#16a34a;'></div>"
@@ -597,6 +668,7 @@ def render_email(title, subtitle, books, day_logs, skips, prices, btc_curve, reg
     <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:8px;font-size:11px;color:#92400e;margin-bottom:12px;">
       📝 PAPER TRADING ONLY — this script holds no keys and cannot place orders. {regime_line}</div>
     {chart}
+    {growth}
     {cards}
     <div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px;font-size:11px;margin-bottom:12px;">
       <div style="font-weight:700;text-transform:uppercase;font-size:10px;color:#0f172a;">Activity (all books)</div>{activity or "<div style='color:#64748b;'>No new candles processed</div>"}</div>
@@ -640,6 +712,8 @@ NOTES = [
     "Book F = Book A with every position 60% as big. Book G = at most 3 positions (long or short), 15% of NAV each, filled in rank order, no top-ups. "
     "Book H = Book G plus the long-only profit lock (the proposed live setup: LS-15 signals, max 3 positions, profit lock).",
     "Book I = separate pools: up to 3 longs AND up to 3 shorts, 15% of NAV each (up to ~90% of the account in use). Book J = Book I plus the long-only profit lock.",
+    "Book K = at most 6 positions (long or short), 20% of NAV each, no top-ups: up to 120% of the account in use, which needs ~1.2x leverage "
+    "(margin; 'Flat' shows $0 while borrowed margin is in use). Book L = Book K plus the long-only profit lock.",
     "Gaussian Channel computed here from Hyperliquid daily candles (hlc3, 4 poles, period 144, x1.414) — close to SIGNUM's Trend Radar, not identical.",
     "Rank = Hyperliquid open-interest value (no market cap on Hyperliquid). breakoutDate = first close above the upper band since the channel turned Green.",
     "Fills at the daily close (lock stops at the stop price, or the open if it gapped through). 0.045% fee per side. Funding is not modelled.",
@@ -684,7 +758,7 @@ def run_backtest(info):
                      f"{blocked or 'none'}.", f"Backtest universe = today's top {UNIVERSE_SIZE} by open interest (coins that died earlier are missing, which flatters results slightly). "
                      "No drift-out exits in backtest (no historical ranks). Open positions are valued at the last close."]
     html = render_email(title, f"{days[0] if days else ''} → {last} • {summary}", books, [], [], prices, btc_curve,
-                        f"BTC buy & hold over the same period: {btc_ret:+.1f}%.", "gcchart" if chart else None, notes)
+                        f"BTC buy & hold over the same period: {btc_ret:+.1f}%.", "gcchart" if chart else None, notes, growth_section(books, prices))
     text = f"{title}\n{summary}\n" + "\n".join(f"{b['code']}: {book_stats(b)}" for b in books)
     print(text, flush=True)
     send_email(f"📊 {title} — {summary}", html, text, chart)
@@ -737,7 +811,7 @@ def run_paper(info):
     title = f"{STRATEGY_ID} PAPER — {latest}"
     summary = " | ".join(f"{b['code']} ${book_nav(b, prices):,.2f} ({(book_nav(b, prices)/book_start(b)-1)*100:+.2f}%)" for b in books)
     html = render_email(title, f"Paper since {state['started']} • processed: {', '.join(todo) or 'nothing new'} • {summary}", books, day_logs,
-                        all_skips, prices, btc_curve, regime_line, "gcchart" if chart else None, NOTES)
+                        all_skips, prices, btc_curve, regime_line, "gcchart" if chart else None, NOTES, growth_section(books, prices))
     text = f"{title}\n{summary}\n{regime_line}\n" + "\n".join(f"{d}: {e}" for d, e in day_logs)
     print(text, flush=True)
     send_email(f"📝 {title} — {summary}", html, text, chart)
