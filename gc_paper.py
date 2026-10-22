@@ -17,6 +17,19 @@ runs it on two virtual accounts side by side:
   Book J  "LS-15 3L+3S @ 15% + Long Lock" - Book I plus the long-only profit lock
   Book K  "LS-15 Max 6 @ 20%"     - at most 6 positions (long or short), 20% of NAV each (up to 120% in use = ~1.2x leverage)
   Book L  "LS-15 Max 6 @ 20% + Long Lock" - Book K plus the long-only profit lock
+  Book M  "LS-15 + Long Lock (4h)" - Book D, but the profit lock is ratcheted every 4 hours (6x a day) instead of once a day
+  Book N  "Max 6 @ 15% + Long Lock (4h)"  - at most 6 positions, 15% each (90% max in use), 4-hour lock
+  Book O  "Max 10 @ 15% + Long Lock (4h)" - at most 10 positions, 15% each (up to 150% in use = ~1.5x margin), 4-hour lock
+
+4-HOUR LOCK (Books M/N/O): entries and exits are still decided on the DAILY candle. Only the profit-lock stop is managed
+intraday: it walks through the day's six 4-hour candles in order - a candle whose low touches the stop sells there, otherwise
+its high raises the peak and the stop is moved up before the next candle. Live, that is a stop order on the exchange that
+the bot raises every 4 hours.
+
+SMART TRAIL (Books P/Q): instead of keeping a fixed % of the peak, the stop trails the highest price by 3x the coin's daily
+ATR (average true range = its normal daily swing). A coin that swings 10% a day gets ~30% room, a calm one ~6%, and the room
+grows with the price, so a 10,000% runner is not cut by normal pullbacks. Never goes red: after +5% the stop is at least +1%.
+Book Q also tightens to 1.5x ATR when the move goes parabolic (close more than 2 ATR above the upper band) to sell near the top.
 
 Every email also has a GROWTH CALCULATOR: each book's return so far, turned into average $ per day at $1k / $10k / $50k /
 $200k and the capital that would have been needed for $200 and $400 a day.
@@ -43,7 +56,7 @@ from email.mime.image import MIMEImage
 import numpy as np
 
 STRATEGY_ID = "TR-GC-Crypto-LS-15"
-ENGINE_VERSION = "GC-PAPER-1.6"
+ENGINE_VERSION = "GC-PAPER-1.8"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -96,6 +109,11 @@ BOOKS = [
     ("J", "LS-15 3L+3S @ 15% + Long Lock", "long", False),
     ("K", "LS-15 Max 6 @ 20%", False, False),
     ("L", "LS-15 Max 6 @ 20% + Long Lock", "long", False),
+    ("M", "LS-15 + Long Lock (4h)", "long", False),
+    ("N", "Max 6 @ 15% + Long Lock (4h)", "long", False),
+    ("O", "Max 10 @ 15% + Long Lock (4h)", "long", False),
+    ("P", "LS-15 + Smart Trail (4h)", "long", False),
+    ("Q", "LS-15 + Smart Trail + Climax (4h)", "long", False),
 ]
 # Extra per-book settings (books not listed use the LS-15 defaults).
 #   size_mult: scales every entry and the top-up target.  max_pos / slot_size: at most N positions, each slot_size of NAV.
@@ -109,7 +127,19 @@ BOOK_OPTIONS = {
     # gross_cap = most of NAV that may be in positions at once (cash may go negative = borrowed margin).
     "K": {"max_pos": 6, "slot_size": 0.20, "gross_cap": 1.20},
     "L": {"max_pos": 6, "slot_size": 0.20, "gross_cap": 1.20},
+    # lock_intraday: the profit-lock stop is checked and raised on every 4-hour candle instead of once a day.
+    "M": {"lock_intraday": True},
+    "N": {"max_pos": 6, "slot_size": 0.15, "lock_intraday": True},
+    "O": {"max_pos": 10, "slot_size": 0.15, "gross_cap": 1.50, "lock_intraday": True},
+    # trail: ATR trailing stop (chandelier) instead of the % ladder. k = ATRs below the peak; k_climax used when parabolic.
+    "P": {"lock_intraday": True, "trail": {"k": 3.0}},
+    "Q": {"lock_intraday": True, "trail": {"k": 3.0, "k_climax": 1.5}},
 }
+ATR_PERIOD = 14
+CLIMAX_ATR = 2.0                       # "parabolic" = daily close more than 2 ATR above the upper band
+INTRADAY_INTERVAL = "4h"               # candles used by lock_intraday books (Hyperliquid keeps the last 5000 = ~833 days)
+INTRADAY_MS = 4 * 3600 * 1000
+INTRADAY_MAX_DAYS = 830
 
 # Growth calculator (every email): account sizes to scale results to, and the daily-profit targets to size for.
 GROWTH_SIZES = [1000, 10000, 50000, 200000]
@@ -163,6 +193,7 @@ def enrich(bars):
     if len(bars) < 3:
         return bars
     filt, upper, trend = gaussian_channel(bars)
+    atr = None
     breakout = None
     for i, b in enumerate(bars):
         b["filter"], b["upper"], b["trend"] = float(filt[i]), float(upper[i]), trend[i]
@@ -172,6 +203,9 @@ def enrich(bars):
             breakout = b["date"]
         b["breakout"] = breakout
         b["valid"] = i >= GC_WARMUP_BARS
+        tr = b["h"] - b["l"] if i == 0 else max(b["h"] - b["l"], abs(b["h"] - bars[i - 1]["c"]), abs(b["l"] - bars[i - 1]["c"]))
+        atr = tr if atr is None else atr + (tr - atr) / ATR_PERIOD          # Wilder's ATR
+        b["atr"] = atr
     return bars
 
 
@@ -275,7 +309,42 @@ def close_position(book, coin, px, date, reason, log):
     log.append(("EXIT", coin, f"{p['side']} {reason} — {gain*100:+.2f}% (peak {max(peak_gain,0)*100:+.2f}%), ${pnl:+,.2f}"))
 
 
-def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips):
+def lock_label(book):
+    return "📈 Trailing stop" if book.get("trail") else "🔒 Profit lock"
+
+
+def set_lock_stop(book, p, high, low):
+    """Raise the position's peak with a candle's high (long) / low (short) and move the profit-lock stop to match."""
+    trail = book.get("trail")
+    if trail and not p.get("atr"):
+        p["peak_px"] = max(p["peak_px"], high) if p["side"] == "LONG" else min(p["peak_px"], low)
+        return                                                # no ATR yet (first day): just track the peak
+    if trail:
+        if p["side"] == "LONG":
+            p["peak_px"] = max(p["peak_px"], high)
+            if p["peak_px"] / p["entry"] - 1 >= LOCK_FIRST_TRIGGER:
+                k = trail["k_climax"] if trail.get("k_climax") and p.get("climax") else trail["k"]
+                room = k * p.get("atr", 0.0)
+                new = max(p["entry"] * (1 + LOCK_FIRST_FLOOR), p["peak_px"] - room)
+                p["stop"] = new if p["stop"] is None else max(p["stop"], new)      # a trailing stop only moves up
+        else:
+            p["peak_px"] = min(p["peak_px"], low)
+            if 1 - p["peak_px"] / p["entry"] >= LOCK_FIRST_TRIGGER:
+                k = trail["k_climax"] if trail.get("k_climax") and p.get("climax") else trail["k"]
+                new = min(p["entry"] * (1 - LOCK_FIRST_FLOOR), p["peak_px"] + k * p.get("atr", 0.0))
+                p["stop"] = new if p["stop"] is None else min(p["stop"], new)
+        return
+    if p["side"] == "LONG":
+        p["peak_px"] = max(p["peak_px"], high)
+        fl = lock_floor(p["peak_px"] / p["entry"] - 1)
+        p["stop"] = None if fl is None else p["entry"] * (1 + fl)
+    else:
+        p["peak_px"] = min(p["peak_px"], low)
+        fl = lock_floor(1 - p["peak_px"] / p["entry"])
+        p["stop"] = None if fl is None else p["entry"] * (1 - fl)
+
+
+def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=None):
     """Runs one LS-15 decision cycle on the daily candle `day` (YYYY-MM-DD) for one book."""
     bar = {c: data[c][day] for c in data if day in data[c]}
     prev_day = (datetime.strptime(day, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
@@ -290,16 +359,32 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips):
             p["last_px"] = closes[c]
 
     # Profit-lock books: resting stop (set at the end of yesterday) can fill during today's candle.
+    # lock_intraday books walk the day's 4-hour candles instead, raising the stop after each one.
     if book.get("lock"):
         for c in list(book["positions"]):
             p, b = book["positions"][c], bar.get(c)
-            if not b or p["stop"] is None or not lock_applies(book, p["side"]):
+            if not b or not lock_applies(book, p["side"]):
+                continue
+            intraday = (data4h or {}).get(c, {}).get(day) if book.get("lock_intraday") else None
+            if intraday:
+                for k in intraday:
+                    if p["stop"] is not None and p["side"] == "LONG" and k["l"] <= p["stop"]:
+                        close_position(book, c, min(k["o"], p["stop"]), day, f"{lock_label(book)} (stop {p['stop']:.6g}, 4h)", log)
+                        exited.add(c)
+                        break
+                    if p["stop"] is not None and p["side"] == "SHORT" and k["h"] >= p["stop"]:
+                        close_position(book, c, max(k["o"], p["stop"]), day, f"{lock_label(book)} (stop {p['stop']:.6g}, 4h)", log)
+                        exited.add(c)
+                        break
+                    set_lock_stop(book, p, k["h"], k["l"])    # this candle's high/low raises the peak, stop moves up
+                continue
+            if p["stop"] is None:
                 continue
             if p["side"] == "LONG" and b["l"] <= p["stop"]:
-                close_position(book, c, min(b["o"], p["stop"]), day, f"🔒 Profit lock (stop {p['stop']:.6g})", log)
+                close_position(book, c, min(b["o"], p["stop"]), day, f"{lock_label(book)} (stop {p['stop']:.6g})", log)
                 exited.add(c)
             elif p["side"] == "SHORT" and b["h"] >= p["stop"]:
-                close_position(book, c, max(b["o"], p["stop"]), day, f"🔒 Profit lock (stop {p['stop']:.6g})", log)
+                close_position(book, c, max(b["o"], p["stop"]), day, f"{lock_label(book)} (stop {p['stop']:.6g})", log)
                 exited.add(c)
 
     nav = book_nav(book, closes)
@@ -423,17 +508,17 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips):
     # Update peaks with today's candle and (profit-lock books) set tomorrow's resting stop.
     for c, p in book["positions"].items():
         b = bar.get(c)
-        if not b:
-            continue
-        if p["side"] == "LONG":
+        if b and b.get("atr"):
+            p["atr"] = b["atr"]                               # trail room for the next day comes from today's ATR
+            p["climax"] = p["side"] == "LONG" and b["c"] - b["upper"] > CLIMAX_ATR * b["atr"]
+        if not b or p["opened"] == day:
+            continue                                          # entered at today's close: today's high/low came BEFORE the entry
+        if lock_applies(book, p["side"]):
+            set_lock_stop(book, p, b["h"], b["l"])
+        elif p["side"] == "LONG":
             p["peak_px"] = max(p["peak_px"], b["h"])
-            peak_gain = p["peak_px"] / p["entry"] - 1
         else:
             p["peak_px"] = min(p["peak_px"], b["l"])
-            peak_gain = 1 - p["peak_px"] / p["entry"]
-        if lock_applies(book, p["side"]):
-            fl = lock_floor(peak_gain)
-            p["stop"] = None if fl is None else (p["entry"] * (1 + fl) if p["side"] == "LONG" else p["entry"] * (1 - fl))
 
     point = [day, round(book_nav(book, closes), 2)]
     if book["equity"] and book["equity"][-1][0] == day:
@@ -488,6 +573,39 @@ def fetch_market(info, history_days):
     return ranked, data
 
 
+def fetch_intraday(info, coins, history_days):
+    """{coin: {date: [4h bars in time order]}} for the lock_intraday books. Paced for Hyperliquid's 1200 weight/minute."""
+    days = min(history_days + 2, INTRADAY_MAX_DAYS)
+    now_ms = int(time.time() * 1000)
+    start_ms = now_ms - days * 86400000
+    weight = 20 + days * 6 / 60                               # candleSnapshot weight = 20 + candles/60
+    out = {}
+    for coin in coins:
+        time.sleep(max(0.5, weight / 1000 * 60))               # stay under ~1000 weight/minute
+        candles = None
+        for attempt in range(4):
+            try:
+                candles = info.candles_snapshot(coin, INTRADAY_INTERVAL, start_ms, now_ms)
+                break
+            except Exception:
+                time.sleep(15 * (attempt + 1))                 # 429 / network: back off
+        if not candles:
+            continue
+        by_day = {}
+        for k in sorted(candles, key=lambda k: int(k["t"])):
+            t = int(k["t"])
+            if t + INTRADAY_MS > now_ms:
+                continue
+            d = datetime.fromtimestamp(t / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
+            by_day.setdefault(d, []).append({"o": float(k["o"]), "h": float(k["h"]), "l": float(k["l"]), "c": float(k["c"])})
+        out[coin] = by_day
+    return out
+
+
+def needs_intraday(books):
+    return any(b.get("lock_intraday") for b in books)
+
+
 def btc_downtrend(data, day):
     b = data.get("BTC", {}).get(day)
     return bool(b and b.get("valid") and b["c"] < b["filter"])
@@ -533,7 +651,7 @@ def make_chart(books, btc_curve, title):
     except Exception:
         return None
     fig, ax = plt.subplots(figsize=(7, 3.2), dpi=110)
-    for book, color in zip(books, ["#2563eb", "#16a34a", "#9333ea", "#0891b2", "#db2777", "#64748b", "#ea580c", "#000000", "#65a30d", "#7c3aed", "#be123c", "#0d9488"]):
+    for book, color in zip(books, ["#2563eb", "#16a34a", "#9333ea", "#0891b2", "#db2777", "#64748b", "#ea580c", "#000000", "#65a30d", "#7c3aed", "#be123c", "#0d9488", "#a16207", "#4f46e5", "#15803d", "#c026d3", "#0369a1"]):
         if book["equity"]:
             ax.plot([datetime.strptime(d, "%Y-%m-%d") for d, _ in book["equity"]], [v / book_start(book) * 100 - 100 for _, v in book["equity"]],
                     label=f"{book['code']}: {book['name']}", color=color, linewidth=1.6)
@@ -714,6 +832,12 @@ NOTES = [
     "Book I = separate pools: up to 3 longs AND up to 3 shorts, 15% of NAV each (up to ~90% of the account in use). Book J = Book I plus the long-only profit lock.",
     "Book K = at most 6 positions (long or short), 20% of NAV each, no top-ups: up to 120% of the account in use, which needs ~1.2x leverage "
     "(margin; 'Flat' shows $0 while borrowed margin is in use). Book L = Book K plus the long-only profit lock.",
+    "Book M = Book D, but the profit-lock stop is checked and raised on every 4-hour candle (6x a day) instead of once a day — entries and "
+    "exits are still decided on the daily close. Book N = max 6 positions @ 15% with the 4-hour lock. Book O = max 10 @ 15% (up to 150% in use, "
+    "~1.5x margin) with the 4-hour lock. Within each 4-hour candle the stop is checked before the candle's high raises it (conservative).",
+    "Book P = LS-15 + SMART TRAIL on longs: stop = highest price since entry minus 3x the coin's daily ATR (its normal daily swing), raised every "
+    "4 hours, never below +1% once the trade has been +5%. Volatile coins get more room, and the room grows as the price grows, so big runners "
+    "are not cut by normal pullbacks. Book Q = Book P, but it tightens to 1.5x ATR when the coin goes parabolic (close > 2 ATR above the upper band).",
     "Gaussian Channel computed here from Hyperliquid daily candles (hlc3, 4 poles, period 144, x1.414) — close to SIGNUM's Trend Radar, not identical.",
     "Rank = Hyperliquid open-interest value (no market cap on Hyperliquid). breakoutDate = first close above the upper band since the channel turned Green.",
     "Fills at the daily close (lock stops at the stop price, or the open if it gapped through). 0.045% fee per side. Funding is not modelled.",
@@ -739,12 +863,13 @@ def run_backtest(info):
     all_days = sorted({d for c in data for d in data[c]})
     days = all_days[-BACKTEST_DAYS:]
     books = [new_book(code, name, lock, guard) for code, name, lock, guard in BOOKS]
+    data4h = fetch_intraday(info, universe, BACKTEST_DAYS) if needs_intraday(books) else {}
     min_order_skips = {b["code"]: 0 for b in books}
     for day in days:
         btc_down = btc_downtrend(data, day)
         for book in books:
             skips = []
-            step_day(book, day, data, universe, btc_down, False, [], skips)
+            step_day(book, day, data, universe, btc_down, False, [], skips, data4h)
             min_order_skips[book["code"]] += sum(1 for _, why in skips if "minimum order" in why or "minimum" in why)
     last = days[-1] if days else ""
     prices = {c: data[c][last]["c"] for c in data if last in data[c]}
@@ -786,12 +911,15 @@ def run_paper(info):
     if len(todo) > 7:
         todo = todo[-7:]                       # catch up at most a week after an outage
     day_logs, all_skips = [], []
+    held = {c for b in books for c in b["positions"]}
+    data4h = (fetch_intraday(info, [c for c in ranked[:DRIFT_OUT_RANK] if c in data or c in held], 10)
+              if todo and needs_intraday(books) else {})
     for day in todo:
         btc_down = btc_downtrend(data, day)
         entries = []
         for book in books:
             log, skips = [], []
-            step_day(book, day, data, ranked, btc_down, True, log, skips)
+            step_day(book, day, data, ranked, btc_down, True, log, skips, data4h)
             entries += [(book["code"], k, c, m) for k, c, m in log]
             all_skips += [(f"[{book['code']}] {day} {c}", why) for c, why in skips]
         day_logs.append((day, entries))
