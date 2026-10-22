@@ -30,7 +30,7 @@ concurrency:
 jobs:
   run-gc-paper:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 40   # 730-day backtests also download 4-hour candles (paced, ~10 min)
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
