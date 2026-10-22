@@ -18,6 +18,10 @@ on:
         description: "Backtest length in days"
         required: false
         default: "365"
+      start_nav:
+        description: "Backtest starting balance per book in USD (e.g. 111 = your real account)"
+        required: false
+        default: "1000"
 
 concurrency:
   group: gc-paper-trader
@@ -49,6 +53,8 @@ jobs:
           PYTHONUNBUFFERED: "1"
           MODE: ${{ github.event.inputs.mode || 'paper' }}
           BACKTEST_DAYS: ${{ github.event.inputs.backtest_days || '365' }}
+          # Only backtests use it: the daily paper books keep the balance they started with.
+          START_NAV: ${{ (github.event.inputs.mode == 'backtest' && github.event.inputs.start_nav) || '1000' }}
           # Paper only: no Hyperliquid keys are passed to this job at all.
           SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
           SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
