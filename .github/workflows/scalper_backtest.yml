@@ -1,0 +1,36 @@
+name: Scalper-vs-LS15-Backtest
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: scalper-backtest
+  cancel-in-progress: false
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt matplotlib
+
+      - name: Run Scalper vs LS-15 Backtest
+        env:
+          PYTHONUNBUFFERED: "1"
+          # Paper only: no Hyperliquid keys are passed to this job. Nothing is saved back to the repo.
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
+          RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
+        run: |
+          python scalper_backtest.py
