@@ -13,6 +13,8 @@ runs it on two virtual accounts side by side:
   Book F  "LS-15 @ 60% Size"      - Book A with every position 60% as big (less pain without touching the exits)
   Book G  "LS-15 Max 3 @ 15%"     - at most 3 positions (long or short), 15% of NAV each, filled in rank order
   Book H  "LS-15 Max 3 @ 15% + Long Lock" - Book G plus the long-only profit lock (the proposed live combination)
+  Book I  "LS-15 3L+3S @ 15%"     - separate slot pools: up to 3 longs AND up to 3 shorts, 15% of NAV each
+  Book J  "LS-15 3L+3S @ 15% + Long Lock" - Book I plus the long-only profit lock
 
 Modes (env MODE):
   paper    (default) process every daily candle closed since the last run, update both books, email the report
@@ -36,7 +38,7 @@ from email.mime.image import MIMEImage
 import numpy as np
 
 STRATEGY_ID = "TR-GC-Crypto-LS-15"
-ENGINE_VERSION = "GC-PAPER-1.4"
+ENGINE_VERSION = "GC-PAPER-1.5"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -85,6 +87,8 @@ BOOKS = [
     ("F", "LS-15 @ 60% Size", False, False),
     ("G", "LS-15 Max 3 @ 15%", False, False),
     ("H", "LS-15 Max 3 @ 15% + Long Lock", "long", False),
+    ("I", "LS-15 3L+3S @ 15%", False, False),
+    ("J", "LS-15 3L+3S @ 15% + Long Lock", "long", False),
 ]
 # Extra per-book settings (books not listed use the LS-15 defaults).
 #   size_mult: scales every entry and the top-up target.  max_pos / slot_size: at most N positions, each slot_size of NAV.
@@ -92,6 +96,8 @@ BOOK_OPTIONS = {
     "F": {"size_mult": 0.60},
     "G": {"max_pos": 3, "slot_size": 0.15},     # 15% each (14-17% range): $16.65 per position on a $111 account
     "H": {"max_pos": 3, "slot_size": 0.15},
+    "I": {"max_long": 3, "max_short": 3, "slot_size": 0.15},   # longs and shorts don't compete for slots
+    "J": {"max_long": 3, "max_short": 3, "slot_size": 0.15},
 }
 
 
@@ -163,15 +169,27 @@ def new_book(code, name, lock, guard=False):
     return book
 
 
+def slotted(book):
+    return bool(book.get("max_pos") or book.get("max_long") or book.get("max_short"))
+
+
 def entry_size(book, nav, base_fraction):
     """Position size in USD: a fixed slot (max-N books) or the LS-15 size scaled by size_mult."""
-    if book.get("max_pos"):
+    if slotted(book):
         return nav * book["slot_size"]
     return nav * base_fraction * book.get("size_mult", 1.0)
 
 
-def slots_full(book):
-    return bool(book.get("max_pos")) and len(book["positions"]) >= book["max_pos"]
+def slots_full(book, side):
+    """Max-N books: one shared pool (max_pos) or separate long / short pools (max_long / max_short)."""
+    if book.get("max_pos"):
+        return len(book["positions"]) >= book["max_pos"]
+    cap = book.get("max_long" if side == "LONG" else "max_short")
+    return bool(cap) and sum(1 for p in book["positions"].values() if p["side"] == side) >= cap
+
+
+def slot_cap(book, side):
+    return book.get("max_pos") or book.get("max_long" if side == "LONG" else "max_short")
 
 
 def pos_value(p, px):
@@ -324,8 +342,8 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips):
             skips.append((c, "Long signal, but exited earlier this run")); continue
         if c in book["positions"]:
             skips.append((c, f"Long signal, already holding {book['positions'][c]['side']}")); continue
-        if slots_full(book):
-            skips.append((c, f"Long signal, all {book['max_pos']} slots in use")); continue
+        if slots_full(book, "LONG"):
+            skips.append((c, f"Long signal, all {slot_cap(book, 'LONG')} long slots in use")); continue
         recent = b.get("breakout") and (datetime.strptime(day, "%Y-%m-%d") - datetime.strptime(b["breakout"], "%Y-%m-%d")).days <= BREAKOUT_RECENT_DAYS
         want = entry_size(book, nav, LONG_SIZE_RECENT if recent else LONG_SIZE_OLD)
         usd = min(want, book["cash"] / (1 + FEE_RATE))
@@ -340,7 +358,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips):
     # 7) LONG TOP-UPS (rank order, free cash only)
     for c in universe:
         p, b = book["positions"].get(c), bar.get(c)
-        if not p or p["side"] != "LONG" or c in entered or c in exited or not b or not b.get("valid") or book.get("max_pos"):
+        if not p or p["side"] != "LONG" or c in entered or c in exited or not b or not b.get("valid") or slotted(book):
             continue                                          # max-N books already hold full-size slots: no top-ups
         if b["c"] <= b["upper"]:
             continue
@@ -365,8 +383,8 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips):
             continue
         if c in exited:
             skips.append((c, "Short signal, but exited earlier this run")); continue
-        if slots_full(book):
-            skips.append((c, f"Short signal, all {book['max_pos']} slots in use")); continue
+        if slots_full(book, "SHORT"):
+            skips.append((c, f"Short signal, all {slot_cap(book, 'SHORT')} short slots in use")); continue
         want = entry_size(book, nav, HEDGE_SHORT_SIZE if hedge else BEAR_SHORT_SIZE)
         usd = min(want, book["cash"] / (1 + FEE_RATE))
         if usd < MIN_ORDER_USD:
@@ -488,7 +506,7 @@ def make_chart(books, btc_curve, title):
     except Exception:
         return None
     fig, ax = plt.subplots(figsize=(7, 3.2), dpi=110)
-    for book, color in zip(books, ["#2563eb", "#16a34a", "#9333ea", "#0891b2", "#db2777", "#64748b", "#ea580c", "#000000"]):
+    for book, color in zip(books, ["#2563eb", "#16a34a", "#9333ea", "#0891b2", "#db2777", "#64748b", "#ea580c", "#000000", "#65a30d", "#7c3aed"]):
         if book["equity"]:
             ax.plot([datetime.strptime(d, "%Y-%m-%d") for d, _ in book["equity"]], [v / book_start(book) * 100 - 100 for _, v in book["equity"]],
                     label=f"{book['code']}: {book['name']}", color=color, linewidth=1.6)
@@ -621,6 +639,7 @@ NOTES = [
     "Book D = profit lock on LONGS only (shorts keep the original stop / -35% take-profit). Book E = Book D plus the account guard.",
     "Book F = Book A with every position 60% as big. Book G = at most 3 positions (long or short), 15% of NAV each, filled in rank order, no top-ups. "
     "Book H = Book G plus the long-only profit lock (the proposed live setup: LS-15 signals, max 3 positions, profit lock).",
+    "Book I = separate pools: up to 3 longs AND up to 3 shorts, 15% of NAV each (up to ~90% of the account in use). Book J = Book I plus the long-only profit lock.",
     "Gaussian Channel computed here from Hyperliquid daily candles (hlc3, 4 poles, period 144, x1.414) — close to SIGNUM's Trend Radar, not identical.",
     "Rank = Hyperliquid open-interest value (no market cap on Hyperliquid). breakoutDate = first close above the upper band since the channel turned Green.",
     "Fills at the daily close (lock stops at the stop price, or the open if it gapped through). 0.045% fee per side. Funding is not modelled.",
