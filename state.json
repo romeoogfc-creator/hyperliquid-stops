@@ -458,7 +458,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-22 05:20:46",
+  "last_run_timestamp": "2026-10-22 05:25:43",
   "last_email_timestamp": 1792664050.774464,
   "last_scan_timestamp": 1792663188.3786373,
   "daily_starting_equity": {
@@ -564,12 +564,12 @@
         "entry_px": 0.074433,
         "setup": "LOD_BREAKDOWN",
         "opened_ts": 1792664131.375979,
-        "last_check_ms": 1792664431923,
+        "last_check_ms": 1792664729052,
         "stop_px": 0.07495403099999999,
         "peak_roe": 0.0030900272728497016,
         "notional": 23.5533976175,
-        "current_px": 0.07445,
-        "roe": -0.0011419666008358608,
+        "current_px": 0.074645,
+        "roe": -0.01424099525748014,
         "status": "\ud83d\udee1 HARD STOP (-3.50% ROE) until +1.2% peak",
         "regime": "RISK_OFF"
       }
@@ -588,7 +588,8 @@
         "SYRUP",
         "CHIP",
         "MORPHO",
-        "KAS"
+        "KAS",
+        "USELESS"
       ],
       "Too wild (ATR)": [
         "ALT"
@@ -602,10 +603,12 @@
         "SKY"
       ],
       "Above EMA9": [
-        "AAVE"
+        "AAVE",
+        "MORPHO"
       ],
       "RVOL": [
-        "SPX"
+        "SPX",
+        "AAVE"
       ]
     }
   }
