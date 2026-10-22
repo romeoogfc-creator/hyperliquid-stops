@@ -458,7 +458,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-22 07:20:44",
+  "last_run_timestamp": "2026-10-22 07:25:44",
   "last_email_timestamp": 1792671331.5476887,
   "last_scan_timestamp": 1792663188.3786373,
   "daily_starting_equity": {
@@ -553,29 +553,16 @@
   },
   "shadow_shorts": {
     "open": {
-      "HYPE": {
-        "entry_px": 77.9245,
-        "setup": "LOD_BREAKDOWN",
-        "opened_ts": 1792670739.9547658,
-        "last_check_ms": 1792671628815,
-        "stop_px": 78.46997149999999,
-        "peak_roe": 0.007218525624161668,
-        "notional": 23.5533976175,
-        "current_px": 78.1955,
-        "roe": -0.017388626170203262,
-        "status": "\ud83d\udee1 HARD STOP (-3.50% ROE) until +1.2% peak",
-        "regime": "RISK_OFF"
-      },
       "AAVE": {
         "entry_px": 146.985,
         "setup": "LOD_BREAKDOWN",
         "opened_ts": 1792671331.5476887,
-        "last_check_ms": 1792671628815,
+        "last_check_ms": 1792671931360,
         "stop_px": 148.013895,
         "peak_roe": 0.0,
         "notional": 23.5533976175,
-        "current_px": 147.185,
-        "roe": -0.006803415314487485,
+        "current_px": 147.005,
+        "roe": -0.0006803415314481685,
         "status": "\ud83d\udee1 HARD STOP (-3.50% ROE) until +1.2% peak",
         "regime": "RISK_OFF"
       },
@@ -583,17 +570,30 @@
         "entry_px": 0.57177,
         "setup": "LOD_BREAKDOWN",
         "opened_ts": 1792671628.8155968,
-        "last_check_ms": 1792671628815,
-        "stop_px": 0.5757723899999999,
-        "peak_roe": 0.0,
+        "last_check_ms": 1792671931360,
+        "stop_px": 0.57119823,
+        "peak_roe": 0.014166535495041318,
         "notional": 23.5533976175,
-        "current_px": 0.57177,
-        "roe": 0.0,
-        "status": "\ud83d\udee1 HARD STOP (-3.50% ROE) until +1.2% peak",
+        "current_px": 0.57061,
+        "roe": 0.010143938996450058,
+        "status": "\ud83d\udee1 FEE LOCK (+0.50% ROE)",
         "regime": "RISK_OFF"
       }
     },
     "closed": [
+      {
+        "coin": "HYPE",
+        "setup": "LOD_BREAKDOWN",
+        "regime": "RISK_OFF",
+        "entry_px": 77.9245,
+        "exit_px": 78.1175,
+        "pnl_usd": -0.0787,
+        "roe_pct": -1.67,
+        "reason": "\u23f1\ufe0f 15M negative scratch (-1.24% ROE)",
+        "opened": "2026-10-22 07:05:39",
+        "timestamp": "2026-10-22 07:25:31",
+        "ts_sec": 1792671931.3606136
+      },
       {
         "coin": "SKY",
         "setup": "LOD_BREAKDOWN",
@@ -608,7 +608,9 @@
         "ts_sec": 1792665331.0159743
       }
     ],
-    "cooldown": {}
+    "cooldown": {
+      "HYPE": 1792673731.3606136
+    }
   },
   "shadow_near_miss_stats": {
     "2026-10-22": {
@@ -676,7 +678,8 @@
         "ALGO",
         "RENDER",
         "2Z",
-        "ETHFI"
+        "ETHFI",
+        "ZEC"
       ],
       "Above EMA9": [
         "AAVE",
@@ -688,7 +691,8 @@
         "AAVE",
         "MORPHO",
         "CC",
-        "TIA"
+        "TIA",
+        "IO"
       ],
       "Too extended below EMA9": [
         "CC",
