@@ -458,7 +458,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-22 07:15:48",
+  "last_run_timestamp": "2026-10-22 07:20:44",
   "last_email_timestamp": 1792671331.5476887,
   "last_scan_timestamp": 1792663188.3786373,
   "daily_starting_equity": {
@@ -557,12 +557,12 @@
         "entry_px": 77.9245,
         "setup": "LOD_BREAKDOWN",
         "opened_ts": 1792670739.9547658,
-        "last_check_ms": 1792671331547,
+        "last_check_ms": 1792671628815,
         "stop_px": 78.46997149999999,
         "peak_roe": 0.007218525624161668,
         "notional": 23.5533976175,
-        "current_px": 78.0715,
-        "roe": -0.009432206815571841,
+        "current_px": 78.1955,
+        "roe": -0.017388626170203262,
         "status": "\ud83d\udee1 HARD STOP (-3.50% ROE) until +1.2% peak",
         "regime": "RISK_OFF"
       },
@@ -570,11 +570,24 @@
         "entry_px": 146.985,
         "setup": "LOD_BREAKDOWN",
         "opened_ts": 1792671331.5476887,
-        "last_check_ms": 1792671331547,
+        "last_check_ms": 1792671628815,
         "stop_px": 148.013895,
         "peak_roe": 0.0,
         "notional": 23.5533976175,
-        "current_px": 146.985,
+        "current_px": 147.185,
+        "roe": -0.006803415314487485,
+        "status": "\ud83d\udee1 HARD STOP (-3.50% ROE) until +1.2% peak",
+        "regime": "RISK_OFF"
+      },
+      "TIA": {
+        "entry_px": 0.57177,
+        "setup": "LOD_BREAKDOWN",
+        "opened_ts": 1792671628.8155968,
+        "last_check_ms": 1792671628815,
+        "stop_px": 0.5757723899999999,
+        "peak_roe": 0.0,
+        "notional": 23.5533976175,
+        "current_px": 0.57177,
         "roe": 0.0,
         "status": "\ud83d\udee1 HARD STOP (-3.50% ROE) until +1.2% peak",
         "regime": "RISK_OFF"
@@ -620,12 +633,14 @@
         "PONS"
       ],
       "Too wild (ATR)": [
-        "ALT"
+        "ALT",
+        "STRK"
       ],
       "Too quiet (ATR)": [
         "XLM",
         "kSHIB",
-        "ASTER"
+        "ASTER",
+        "BCH"
       ],
       "MACD positive": [
         "SKY",
@@ -660,7 +675,8 @@
         "BCH",
         "ALGO",
         "RENDER",
-        "2Z"
+        "2Z",
+        "ETHFI"
       ],
       "Above EMA9": [
         "AAVE",
