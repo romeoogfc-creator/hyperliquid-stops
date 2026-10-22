@@ -1,0 +1,77 @@
+name: TR-GC-Crypto-LS-15-Paper
+
+on:
+  schedule:
+    # Daily candles close at 00:00 UTC (7 PM CT in summer, 6 PM CT in winter). Run 20 minutes later,
+    # plus a backup run at 06:20 UTC in case GitHub skips one (a day is never processed twice).
+    - cron: '20 0 * * *'
+    - cron: '20 6 * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "paper = update the paper books (daily) | backtest = replay history and email the results"
+        required: true
+        default: paper
+        type: choice
+        options: [paper, backtest]
+      backtest_days:
+        description: "Backtest length in days"
+        required: false
+        default: "365"
+
+concurrency:
+  group: gc-paper-trader
+  cancel-in-progress: false
+
+jobs:
+  run-gc-paper:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt matplotlib
+
+      - name: Run LS-15 Paper Trader
+        env:
+          PYTHONUNBUFFERED: "1"
+          MODE: ${{ github.event.inputs.mode || 'paper' }}
+          BACKTEST_DAYS: ${{ github.event.inputs.backtest_days || '365' }}
+          # Paper only: no Hyperliquid keys are passed to this job at all.
+          SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
+          SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
+          RECEIVER_EMAIL: ${{ secrets.RECEIVER_EMAIL }}
+        run: |
+          python gc_paper.py
+
+      - name: Auto-commit Paper State
+        if: ${{ (github.event.inputs.mode || 'paper') == 'paper' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # gc_paper_state.json is written only by this job and this run's copy is the newest, so never merge it:
+          # put it on top of the latest main and push. Retries only if someone pushed in the same instant.
+          cp gc_paper_state.json "$RUNNER_TEMP/gc_paper_state.json"
+          for i in 1 2 3 4 5; do
+            git fetch -q origin main
+            git reset -q --hard origin/main
+            cp "$RUNNER_TEMP/gc_paper_state.json" gc_paper_state.json
+            git add gc_paper_state.json
+            if git diff --staged --quiet; then echo "No state changes"; exit 0; fi
+            git commit -q -m "Auto-update LS-15 paper state [skip ci]"
+            if git push -q origin HEAD:main; then echo "State saved (attempt $i)"; exit 0; fi
+            echo "Push attempt $i rejected, retrying..."; sleep $((i * 3))
+          done
+          exit 1
