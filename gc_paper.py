@@ -7,6 +7,9 @@ runs it on two virtual accounts side by side:
   Book B  "LS-15 + Profit Lock" - same entries/top-ups/exits, plus the profit-lock ladder (keep 80% -> 97% of peak)
   Book C  "LS-15 + Account Guard" - same as A, but if the ACCOUNT gives back 40% of a +4% run-up, close everything
                                      (the $500 -> $530 -> $495 problem: lock ~$518 instead)
+  Book D  "LS-15 + Long Lock"     - profit lock on LONGS only; shorts run on the original rules (backtest: the lock
+                                     helped longs +$149 -> +$259 but cut shorts +$229 -> +$48)
+  Book E  "LS-15 + Long Lock + Guard" - Book D plus the account guard
 
 Modes (env MODE):
   paper    (default) process every daily candle closed since the last run, update both books, email the report
@@ -30,7 +33,7 @@ from email.mime.image import MIMEImage
 import numpy as np
 
 STRATEGY_ID = "TR-GC-Crypto-LS-15"
-ENGINE_VERSION = "GC-PAPER-1.0"
+ENGINE_VERSION = "GC-PAPER-1.1"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -68,7 +71,20 @@ LOCK_FIRST_FLOOR = 0.01
 GUARD_TRIGGER = 0.04
 GUARD_KEEP = 0.60
 
-BOOKS = [("A", "LS-15 Original", False, False), ("B", "LS-15 + Profit Lock", True, False), ("C", "LS-15 + Account Guard", False, True)]
+# (code, name, profit lock: False / "all" / "long", account guard)
+BOOKS = [
+    ("A", "LS-15 Original", False, False),
+    ("B", "LS-15 + Profit Lock", "all", False),
+    ("C", "LS-15 + Account Guard", False, True),
+    ("D", "LS-15 + Long Lock", "long", False),
+    ("E", "LS-15 + Long Lock + Guard", "long", True),
+]
+
+
+def lock_applies(book, side):
+    """Profit lock on all positions ("all", or True from older saved state), on longs only ("long"), or off."""
+    mode = book.get("lock")
+    return mode is True or mode == "all" or (mode == "long" and side == "LONG")
 
 
 # ======================================================================================
@@ -203,11 +219,11 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips):
         if c in closes:
             p["last_px"] = closes[c]
 
-    # Book B: resting profit-lock stop (set at the end of yesterday) can fill during today's candle.
-    if book["lock"]:
+    # Profit-lock books: resting stop (set at the end of yesterday) can fill during today's candle.
+    if book.get("lock"):
         for c in list(book["positions"]):
             p, b = book["positions"][c], bar.get(c)
-            if not b or p["stop"] is None:
+            if not b or p["stop"] is None or not lock_applies(book, p["side"]):
                 continue
             if p["side"] == "LONG" and b["l"] <= p["stop"]:
                 close_position(book, c, min(b["o"], p["stop"]), day, f"🔒 Profit lock (stop {p['stop']:.6g})", log)
@@ -323,7 +339,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips):
             skips.append((c, f"Short signal, not enough cash (${usd:,.2f} < 1% NAV)")); continue
         open_position(book, c, "SHORT", usd, b["c"], day, "hedge short (cross under filter)" if hedge else "bear short (rejected bounce, BTC down)", log)
 
-    # Book B: update peaks with today's candle and set tomorrow's resting profit-lock stop.
+    # Update peaks with today's candle and (profit-lock books) set tomorrow's resting stop.
     for c, p in book["positions"].items():
         b = bar.get(c)
         if not b:
@@ -334,7 +350,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips):
         else:
             p["peak_px"] = min(p["peak_px"], b["l"])
             peak_gain = 1 - p["peak_px"] / p["entry"]
-        if book["lock"]:
+        if lock_applies(book, p["side"]):
             fl = lock_floor(peak_gain)
             p["stop"] = None if fl is None else (p["entry"] * (1 + fl) if p["side"] == "LONG" else p["entry"] * (1 - fl))
 
@@ -431,7 +447,7 @@ def make_chart(books, btc_curve, title):
     except Exception:
         return None
     fig, ax = plt.subplots(figsize=(7, 3.2), dpi=110)
-    for book, color in zip(books, ["#2563eb", "#16a34a", "#9333ea"]):
+    for book, color in zip(books, ["#2563eb", "#16a34a", "#9333ea", "#0891b2", "#db2777"]):
         if book["equity"]:
             ax.plot([datetime.strptime(d, "%Y-%m-%d") for d, _ in book["equity"]], [v / START_NAV * 100 - 100 for _, v in book["equity"]],
                     label=f"{book['code']}: {book['name']}", color=color, linewidth=1.6)
@@ -557,10 +573,11 @@ def send_email(subject, html, text, chart_path):
 
 
 NOTES = [
-    "Three virtual books start at $1,000 each. Book A = SIGNUM LS-15 rules as written. Book B = the same, plus a per-trade profit lock: "
+    "Five virtual books start at $1,000 each, all taking the same LS-15 entry signals. Book A = SIGNUM LS-15 rules as written. Book B = the same, plus a per-trade profit lock: "
     "after +5% the stop moves to +1%; after +10/20/35/60/100% it keeps 80/85/90/93/97% of the peak (resting stop, checked against each day's low/high).",
     "Book C = Book A plus an ACCOUNT guard: once the book is up 4%+ from where it was last flat, it closes everything if it falls back to keeping "
     "only 60% of that run-up (your $500 → $530 example would lock about $518 instead of $495).",
+    "Book D = profit lock on LONGS only (shorts keep the original stop / -35% take-profit). Book E = Book D plus the account guard.",
     "Gaussian Channel computed here from Hyperliquid daily candles (hlc3, 4 poles, period 144, x1.414) — close to SIGNUM's Trend Radar, not identical.",
     "Rank = Hyperliquid open-interest value (no market cap on Hyperliquid). breakoutDate = first close above the upper band since the channel turned Green.",
     "Fills at the daily close (lock stops at the stop price, or the open if it gapped through). 0.045% fee per side. Funding is not modelled.",
@@ -592,7 +609,7 @@ def run_backtest(info):
     last = days[-1] if days else ""
     prices = {c: data[c][last]["c"] for c in data if last in data[c]}
     btc_curve = btc_buy_hold(data, days)
-    chart = make_chart(books, btc_curve, f"Backtest {days[0] if days else ''} → {last} (three books vs BTC)")
+    chart = make_chart(books, btc_curve, f"Backtest {days[0] if days else ''} → {last} (all books vs BTC)")
     title = f"{STRATEGY_ID} BACKTEST — {len(days)} days"
     btc_ret = btc_curve[-1][1] if btc_curve else 0.0
     summary = " | ".join(f"{b['code']}: {book_stats(b)['ret']:+.1f}% (DD {book_stats(b)['mdd']:.1f}%)" for b in books) + f" | BTC {btc_ret:+.1f}%"
