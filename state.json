@@ -458,8 +458,8 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-22 07:10:44",
-  "last_email_timestamp": 1792670136.3108237,
+  "last_run_timestamp": "2026-10-22 07:15:48",
+  "last_email_timestamp": 1792671331.5476887,
   "last_scan_timestamp": 1792663188.3786373,
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
@@ -557,12 +557,25 @@
         "entry_px": 77.9245,
         "setup": "LOD_BREAKDOWN",
         "opened_ts": 1792670739.9547658,
-        "last_check_ms": 1792671028548,
+        "last_check_ms": 1792671331547,
         "stop_px": 78.46997149999999,
         "peak_roe": 0.007218525624161668,
         "notional": 23.5533976175,
-        "current_px": 78.063,
-        "roe": -0.00888680710174641,
+        "current_px": 78.0715,
+        "roe": -0.009432206815571841,
+        "status": "\ud83d\udee1 HARD STOP (-3.50% ROE) until +1.2% peak",
+        "regime": "RISK_OFF"
+      },
+      "AAVE": {
+        "entry_px": 146.985,
+        "setup": "LOD_BREAKDOWN",
+        "opened_ts": 1792671331.5476887,
+        "last_check_ms": 1792671331547,
+        "stop_px": 148.013895,
+        "peak_roe": 0.0,
+        "notional": 23.5533976175,
+        "current_px": 146.985,
+        "roe": 0.0,
         "status": "\ud83d\udee1 HARD STOP (-3.50% ROE) until +1.2% peak",
         "regime": "RISK_OFF"
       }
@@ -603,7 +616,8 @@
         "ZK",
         "FARTCOIN",
         "ZRO",
-        "ZEN"
+        "ZEN",
+        "PONS"
       ],
       "Too wild (ATR)": [
         "ALT"
