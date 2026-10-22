@@ -37,7 +37,48 @@ BARS_PER_DAY = 96
 WINDOW = 32                        # 8h of 15m candles, as the live bot
 TAKER_FEE = 0.00045
 MAKER_FEE = 0.00015
-MAX_COINS = 160                    # most-traded perps today (the scan picks the top gainers among them each bar)
+MAX_COINS = 120                    # most-traded perps today (the scan picks the top gainers among them each bar)
+WEIGHT_PER_MIN = 900               # Hyperliquid allows 1,200 request-weight per minute per IP; stay well below it
+
+
+class ThrottledInfo:
+    """Wraps Hyperliquid's Info client: paces every call by Hyperliquid's request weight and retries 429s.
+    candleSnapshot costs 20 + 1 per 60 candles returned, so 5,000 candles weigh ~104 (vs 20 for a normal call)."""
+
+    def __init__(self, info):
+        self.info = info
+        self.spent = []                           # (timestamp, weight) over the last 60 s
+        self.calls = 0
+        self.retries = 0
+
+    def _pace(self, weight):
+        while True:
+            now = time.time()
+            self.spent = [(t, w) for t, w in self.spent if now - t < 60]
+            if sum(w for _, w in self.spent) + weight <= WEIGHT_PER_MIN:
+                self.spent.append((now, weight))
+                return
+            time.sleep(max(0.5, 60 - (now - self.spent[0][0]) + 0.2))
+
+    def _call(self, fn, weight, *a, **k):
+        for attempt in range(6):
+            self._pace(weight)
+            try:
+                self.calls += 1
+                return fn(*a, **k)
+            except Exception as e:
+                if "429" not in str(e) or attempt == 5:
+                    raise
+                self.retries += 1
+                time.sleep(15 * (attempt + 1))       # rate limited: back off 15s, 30s, 45s...
+
+    def meta_and_asset_ctxs(self):
+        return self._call(self.info.meta_and_asset_ctxs, 20)
+
+    def candles_snapshot(self, name, interval, start, end):
+        mins = {"1m": 1, "5m": 5, "15m": 15, "1h": 60, "1d": 1440}.get(interval, 15)
+        n = min(5000, max(1, (end - start) // (mins * 60000)))
+        return self._call(self.info.candles_snapshot, 20 + n // 60 + 1, name, interval, start, end)
 
 
 # ======================================================================================
@@ -88,15 +129,16 @@ def fetch(info):
     now_ms = int(time.time() * 1000)
     start_ms = now_ms - 5000 * BAR_MS
     series = {}
+    missing = []
     for n in names:
-        time.sleep(0.4)
-        candles = None
-        for attempt in range(3):
-            try:
-                candles = info.candles_snapshot(n, "15m", start_ms, now_ms)
-                break
-            except Exception:
-                time.sleep(3 + attempt * 3)
+        try:
+            candles = info.candles_snapshot(n, "15m", start_ms, now_ms)
+        except Exception as e:
+            print(f"[WARN] {n}: no 15m candles ({e})", flush=True)
+            candles = None
+        if not candles:
+            missing.append(n)
+            continue
         if candles:
             series[n] = {int(k["t"]): (float(k["o"]), float(k["h"]), float(k["l"]), float(k["c"]), float(k["v"]))
                          for k in candles if int(k["t"]) + BAR_MS <= now_ms}
@@ -111,6 +153,7 @@ def fetch(info):
             if j is not None:
                 for k, v in zip("ohlcv", row):
                     arr[k][i, j] = v
+    print(f"15m data: {len(coins)} coins loaded, {len(missing)} missing {missing[:10]}", flush=True)
     return coins, listed_idx, times, arr
 
 
@@ -353,7 +396,7 @@ def stats_from(equity_vals, trades, fees, days):
 def main():
     from hyperliquid.info import Info
     from hyperliquid.utils import constants
-    info = Info(constants.MAINNET_API_URL, skip_ws=True)
+    info = ThrottledInfo(Info(constants.MAINNET_API_URL, skip_ws=True))   # LS-15's downloads go through it too
 
     coins, listed_idx, times, arr = fetch(info)
     regimes = btc_regimes(arr, coins, times)
@@ -386,10 +429,11 @@ def main():
         results["LS15-" + code] = {"name": f"LS-15 {code}: {name.replace('LS-15 ', '')}", "equity": eq,
                                    "stats": stats_from(eq, trades, 0.0, days), "exits": {}, "closed": book["closed"]}
 
-    report(results, start_ms, end_ms, days, regimes)
+    print(f"Hyperliquid calls: {info.calls}, rate-limit retries: {info.retries}", flush=True)
+    report(results, start_ms, end_ms, days, regimes, len(coins))
 
 
-def report(results, start_ms, end_ms, days, regimes):
+def report(results, start_ms, end_ms, days, regimes, n_coins=0):
     period = f"{datetime.fromtimestamp(start_ms/1000, tz=timezone.utc):%Y-%m-%d} → {datetime.fromtimestamp(end_ms/1000, tz=timezone.utc):%Y-%m-%d} ({days:.0f} days)"
     chart = None
     try:
@@ -466,7 +510,7 @@ def report(results, start_ms, end_ms, days, regimes):
     <div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:8px;font-size:10px;color:#64748b;">
       • Scalper replayed on 15m candles (Hyperliquid keeps ~52 days). Live bot checks every 5 minutes inside the forming candle; here signals use each closed 15m candle, peaks use 15m highs, resting stops fill at the stop (or the open if gapped through).<br>
       • S1 uses bot_engine.py's own stop / profit-lock function. Breakout entries fill at the close (taker 0.045%); reclaim / V-bottom entries are limit orders that fill on the next candle only if price trades through (maker 0.015%), else they are cancelled — like the live purge.<br>
-      • No order-book spread/depth check (no history) and no funding. Universe = today's {MAX_COINS} most-traded perps (coins that died are missing).<br>
+      • No order-book spread/depth check (no history) and no funding. Universe = today's {n_coins} most-traded perps with 15m history (coins that died are missing).<br>
       • S2 uses the same BTC regime filter as S1 (V4.8.12's Gemini answers can't be replayed). LS-15 = daily Gaussian Channel from gc_paper.py over the same dates.
     </div>
   </div>
