@@ -1,0 +1,232 @@
+{
+ "books": [
+  {
+   "code": "A",
+   "name": "LS-15 Original",
+   "lock": false,
+   "guard": false,
+   "cash": 899.9549999999999,
+   "positions": {
+    "ENA": {
+     "side": "LONG",
+     "qty": 93.58476440035562,
+     "entry": 0.21371,
+     "cost": 20.0,
+     "collateral": 0.0,
+     "fees": 0.009,
+     "opened": "2026-10-21",
+     "peak_px": 0.22608,
+     "stop": null,
+     "last_px": 0.21371,
+     "reason": "band breakout (old breakout, 2% NAV)"
+    },
+    "VVV": {
+     "side": "LONG",
+     "qty": 2.965049479263185,
+     "entry": 26.981,
+     "cost": 80.0,
+     "collateral": 0.0,
+     "fees": 0.036,
+     "opened": "2026-10-21",
+     "peak_px": 28.072,
+     "stop": null,
+     "last_px": 26.981,
+     "reason": "band breakout (recent breakout, 8% NAV)"
+    }
+   },
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-21",
+     999.95
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0
+  },
+  {
+   "code": "B",
+   "name": "LS-15 + Profit Lock",
+   "lock": "all",
+   "guard": false,
+   "cash": 899.9549999999999,
+   "positions": {
+    "ENA": {
+     "side": "LONG",
+     "qty": 93.58476440035562,
+     "entry": 0.21371,
+     "cost": 20.0,
+     "collateral": 0.0,
+     "fees": 0.009,
+     "opened": "2026-10-21",
+     "peak_px": 0.22608,
+     "stop": 0.21584710000000001,
+     "last_px": 0.21371,
+     "reason": "band breakout (old breakout, 2% NAV)"
+    },
+    "VVV": {
+     "side": "LONG",
+     "qty": 2.965049479263185,
+     "entry": 26.981,
+     "cost": 80.0,
+     "collateral": 0.0,
+     "fees": 0.036,
+     "opened": "2026-10-21",
+     "peak_px": 28.072,
+     "stop": null,
+     "last_px": 26.981,
+     "reason": "band breakout (recent breakout, 8% NAV)"
+    }
+   },
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-21",
+     999.95
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0
+  },
+  {
+   "code": "C",
+   "name": "LS-15 + Account Guard",
+   "lock": false,
+   "guard": true,
+   "cash": 899.9549999999999,
+   "positions": {
+    "ENA": {
+     "side": "LONG",
+     "qty": 93.58476440035562,
+     "entry": 0.21371,
+     "cost": 20.0,
+     "collateral": 0.0,
+     "fees": 0.009,
+     "opened": "2026-10-21",
+     "peak_px": 0.22608,
+     "stop": null,
+     "last_px": 0.21371,
+     "reason": "band breakout (old breakout, 2% NAV)"
+    },
+    "VVV": {
+     "side": "LONG",
+     "qty": 2.965049479263185,
+     "entry": 26.981,
+     "cost": 80.0,
+     "collateral": 0.0,
+     "fees": 0.036,
+     "opened": "2026-10-21",
+     "peak_px": 28.072,
+     "stop": null,
+     "last_px": 26.981,
+     "reason": "band breakout (recent breakout, 8% NAV)"
+    }
+   },
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-21",
+     999.95
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0
+  },
+  {
+   "code": "D",
+   "name": "LS-15 + Long Lock",
+   "lock": "long",
+   "guard": false,
+   "cash": 899.9549999999999,
+   "positions": {
+    "ENA": {
+     "side": "LONG",
+     "qty": 93.58476440035562,
+     "entry": 0.21371,
+     "cost": 20.0,
+     "collateral": 0.0,
+     "fees": 0.009,
+     "opened": "2026-10-21",
+     "peak_px": 0.22608,
+     "stop": 0.21584710000000001,
+     "last_px": 0.21371,
+     "reason": "band breakout (old breakout, 2% NAV)"
+    },
+    "VVV": {
+     "side": "LONG",
+     "qty": 2.965049479263185,
+     "entry": 26.981,
+     "cost": 80.0,
+     "collateral": 0.0,
+     "fees": 0.036,
+     "opened": "2026-10-21",
+     "peak_px": 28.072,
+     "stop": null,
+     "last_px": 26.981,
+     "reason": "band breakout (recent breakout, 8% NAV)"
+    }
+   },
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-21",
+     999.95
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0
+  },
+  {
+   "code": "E",
+   "name": "LS-15 + Long Lock + Guard",
+   "lock": "long",
+   "guard": true,
+   "cash": 899.9549999999999,
+   "positions": {
+    "ENA": {
+     "side": "LONG",
+     "qty": 93.58476440035562,
+     "entry": 0.21371,
+     "cost": 20.0,
+     "collateral": 0.0,
+     "fees": 0.009,
+     "opened": "2026-10-21",
+     "peak_px": 0.22608,
+     "stop": 0.21584710000000001,
+     "last_px": 0.21371,
+     "reason": "band breakout (old breakout, 2% NAV)"
+    },
+    "VVV": {
+     "side": "LONG",
+     "qty": 2.965049479263185,
+     "entry": 26.981,
+     "cost": 80.0,
+     "collateral": 0.0,
+     "fees": 0.036,
+     "opened": "2026-10-21",
+     "peak_px": 28.072,
+     "stop": null,
+     "last_px": 26.981,
+     "reason": "band breakout (recent breakout, 8% NAV)"
+    }
+   },
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-21",
+     999.95
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0
+  }
+ ],
+ "last_processed_day": "2026-10-21",
+ "engine": "GC-PAPER-1.1",
+ "started": "2026-10-21"
+}
