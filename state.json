@@ -458,7 +458,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-22 07:26:23",
+  "last_run_timestamp": "2026-10-22 07:30:42",
   "last_email_timestamp": 1792671331.5476887,
   "last_scan_timestamp": 1792663188.3786373,
   "daily_starting_equity": {
@@ -557,30 +557,43 @@
         "entry_px": 146.985,
         "setup": "LOD_BREAKDOWN",
         "opened_ts": 1792671331.5476887,
-        "last_check_ms": 1792671969041,
+        "last_check_ms": 1792672229833,
         "stop_px": 148.013895,
         "peak_roe": 0.0011905976800362283,
         "notional": 23.5533976175,
-        "current_px": 147.005,
-        "roe": -0.0006803415314481685,
+        "current_px": 147.125,
+        "roe": -0.004762390720141047,
         "status": "\ud83d\udee1 HARD STOP (-3.50% ROE) until +1.2% peak",
         "regime": "RISK_OFF"
       },
-      "TIA": {
-        "entry_px": 0.57177,
+      "ICP": {
+        "entry_px": 2.77915,
         "setup": "LOD_BREAKDOWN",
-        "opened_ts": 1792671628.8155968,
-        "last_check_ms": 1792671969041,
-        "stop_px": 0.57119823,
-        "peak_roe": 0.014166535495041318,
+        "opened_ts": 1792672229.8330579,
+        "last_check_ms": 1792672229833,
+        "stop_px": 2.79860405,
+        "peak_roe": 0.0,
         "notional": 23.5533976175,
-        "current_px": 0.57064,
-        "roe": 0.00988159574654113,
-        "status": "\ud83d\udee1 FEE LOCK (+0.50% ROE)",
+        "current_px": 2.77915,
+        "roe": 0.0,
+        "status": "\ud83d\udee1 HARD STOP (-3.50% ROE) until +1.2% peak",
         "regime": "RISK_OFF"
       }
     },
     "closed": [
+      {
+        "coin": "TIA",
+        "setup": "LOD_BREAKDOWN",
+        "regime": "RISK_OFF",
+        "entry_px": 0.57177,
+        "exit_px": 0.57119823,
+        "pnl_usd": 0.0032,
+        "roe_pct": 0.07,
+        "reason": "\ud83c\udfaf Profit lock hit (simulated resting stop)",
+        "opened": "2026-10-22 07:20:28",
+        "timestamp": "2026-10-22 07:30:29",
+        "ts_sec": 1792672229.8330579
+      },
       {
         "coin": "HYPE",
         "setup": "LOD_BREAKDOWN",
@@ -609,7 +622,8 @@
       }
     ],
     "cooldown": {
-      "HYPE": 1792673769.0417216
+      "HYPE": 1792673769.0417216,
+      "TIA": 1792686629.8330579
     }
   },
   "shadow_near_miss_stats": {
@@ -633,7 +647,8 @@
         "ZRO",
         "ZEN",
         "PONS",
-        "IO"
+        "IO",
+        "W"
       ],
       "Too wild (ATR)": [
         "ALT",
@@ -680,7 +695,8 @@
         "RENDER",
         "2Z",
         "ETHFI",
-        "ZEC"
+        "ZEC",
+        "AERO"
       ],
       "Above EMA9": [
         "AAVE",
@@ -701,6 +717,9 @@
       ],
       "No rejection cross": [
         "TIA"
+      ],
+      "Not near day low": [
+        "WLD"
       ]
     }
   }
