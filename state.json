@@ -458,8 +458,8 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-22 05:55:45",
-  "last_email_timestamp": 1792665930.846486,
+  "last_run_timestamp": "2026-10-22 06:00:43",
+  "last_email_timestamp": 1792666832.3278582,
   "last_scan_timestamp": 1792663188.3786373,
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
@@ -614,7 +614,8 @@
         "MORPHO",
         "IO",
         "JTO",
-        "ETC"
+        "ETC",
+        "S"
       ],
       "Above EMA9": [
         "AAVE",
