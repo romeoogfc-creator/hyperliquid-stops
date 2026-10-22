@@ -458,9 +458,9 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-21 20:45:37",
-  "last_email_timestamp": 1792632630.8252587,
-  "last_scan_timestamp": 1792633530.818434,
+  "last_run_timestamp": "2026-10-21 20:50:37",
+  "last_email_timestamp": 1792633829.7555768,
+  "last_scan_timestamp": 1792633829.7555768,
   "daily_starting_equity": {
     "2026-10-20": 110.9460072,
     "2026-10-21": 110.9460072
@@ -550,7 +550,7 @@
       "No reclaim cross": 31,
       "Below VWAP": 14,
       "Below EMA9": 10,
-      "Too wild (ATR)": 129,
+      "Too wild (ATR)": 133,
       "Too quiet (ATR)": 15,
       "No fresh low": 8
     }
