@@ -35,6 +35,9 @@ Every email also has a GROWTH CALCULATOR: each book's return so far, turned into
 $200k and the capital that would have been needed for $200 and $400 a day.
 
 Modes (env MODE):
+  robust   stability check: replay chosen books ROBUST_RUNS times over the same history, each time considering the coins in a
+           different random order (which coin fills a slot first). Shows the typical and worst result, so a lucky ordering
+           cannot pass for a real edge.
   paper    (default) process every daily candle closed since the last run, update both books, email the report
   backtest replay the same rules over the last BACKTEST_DAYS days and email the results (state is not touched)
 
@@ -47,6 +50,7 @@ import os
 import json
 import math
 import time
+import random
 import smtplib
 from datetime import datetime, timedelta, timezone
 from email.mime.multipart import MIMEMultipart
@@ -56,11 +60,13 @@ from email.mime.image import MIMEImage
 import numpy as np
 
 STRATEGY_ID = "TR-GC-Crypto-LS-15"
-ENGINE_VERSION = "GC-PAPER-1.8"
+ENGINE_VERSION = "GC-PAPER-1.9"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
 START_NAV = float(os.getenv("START_NAV", "1000") or 1000)   # starting balance of each NEW book (Run workflow option)
+ROBUST_RUNS = int(os.getenv("ROBUST_RUNS", "20") or 20)
+ROBUST_BOOKS = [c.strip().upper() for c in os.getenv("ROBUST_BOOKS", "A,D,K,O").split(",") if c.strip()]
 MIN_ORDER_USD = 10.0                   # Hyperliquid rejects orders under ~$10: entries / top-ups below this are skipped
 
 # ---------------- Gaussian Channel (DonovanWall defaults) ----------------
@@ -889,6 +895,70 @@ def run_backtest(info):
     send_email(f"📊 {title} — {summary}", html, text, chart)
 
 
+def run_robust(info):
+    """Same history, ROBUST_RUNS different coin orders. Run 1 = the normal open-interest order."""
+    ranked, data = fetch_market(info, BACKTEST_DAYS)
+    universe = ranked[:UNIVERSE_SIZE]
+    all_days = sorted({d for c in data for d in data[c]})
+    days = all_days[-BACKTEST_DAYS:]
+    specs = [b for b in BOOKS if b[0] in ROBUST_BOOKS]
+    if not specs:
+        raise RuntimeError(f"ROBUST_BOOKS {ROBUST_BOOKS} matches no book")
+    data4h = fetch_intraday(info, universe, BACKTEST_DAYS) if any(BOOK_OPTIONS.get(c, {}).get("lock_intraday") for c, *_ in specs) else {}
+    btc_down = {d: btc_downtrend(data, d) for d in days}
+    last = days[-1]
+    prices = {c: data[c][last]["c"] for c in data if last in data[c]}
+    results = {code: [] for code, *_ in specs}               # per run: (return %, worst drop %)
+    for run in range(ROBUST_RUNS):
+        order = list(universe)
+        if run:
+            random.Random(run).shuffle(order)                  # fixed seeds: the same check gives the same answer
+        for code, name, lock, guard in specs:
+            book = new_book(code, name, lock, guard)
+            for day in days:
+                step_day(book, day, data, order, btc_down[day], False, [], [], data4h)
+            st = book_stats(book)
+            results[code].append(((book_nav(book, prices) / book_start(book) - 1) * 100, st["mdd"]))
+        print(f"run {run + 1}/{ROBUST_RUNS}: " + " | ".join(f"{c} {r[-1][0]:+.1f}%" for c, r in results.items()), flush=True)
+    btc_curve = btc_buy_hold(data, days)
+    btc_ret = btc_curve[-1][1] if btc_curve else 0.0
+    ref = "D" if "D" in results else None
+    rows, summary = "", []
+    for code, name, *_ in specs:
+        rets = [r for r, _ in results[code]]
+        dds = [d for _, d in results[code]]
+        med = float(np.median(rets))
+        beat_ref = (sum(1 for a, b in zip(rets, results[ref]) if a > b[0]) if ref and code != ref else None)
+        rows += (f"<tr><td><b>{code}</b> {name}</td><td style='color:{pct_color(rets[0])};'>{rets[0]:+.1f}%</td>"
+                 f"<td style='color:{pct_color(med)};font-weight:700;'>{med:+.1f}%</td>"
+                 f"<td style='color:{pct_color(min(rets))};'>{min(rets):+.1f}%</td><td style='color:{pct_color(max(rets))};'>{max(rets):+.1f}%</td>"
+                 f"<td>{float(np.median(dds)):.1f}%</td><td style='color:#b91c1c;'>{min(dds):.1f}%</td>"
+                 f"<td>{sum(1 for r in rets if r > btc_ret)}/{len(rets)}</td>"
+                 f"<td>{'—' if beat_ref is None else f'{beat_ref}/{len(rets)}'}</td></tr>")
+        summary.append(f"{code}: median {med:+.0f}% (worst {min(rets):+.0f}%, DD {min(dds):.0f}%)")
+    every = "".join(f"<div><b>{code}</b>: " + ", ".join(f"{r:+.0f}%" for r, _ in results[code]) + "</div>" for code, *_ in specs)
+    title = f"{STRATEGY_ID} STABILITY CHECK — {len(days)} days from ${START_NAV:,.0f}, {ROBUST_RUNS} coin orders"
+    html = f"""<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f4f6f8;margin:0;padding:8px;color:#333;">
+<div style="max-width:680px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;">
+  <div style="background:#0f172a;color:#fff;padding:14px;"><div style="font-size:15px;font-weight:700;">{title}</div>
+    <div style="font-size:11px;color:#94a3b8;margin-top:3px;">{days[0]} → {last} • BTC buy &amp; hold {btc_ret:+.1f}%</div></div>
+  <div style="padding:12px;font-size:12px;">
+    <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:8px;font-size:11px;color:#92400e;margin-bottom:12px;">
+      📝 PAPER ONLY. Same coins, same candles, same rules — only the ORDER in which same-day signals are considered changes
+      (run 1 = normal open-interest order, runs 2-{ROBUST_RUNS} = shuffled). A real edge keeps a good MEDIAN and a tolerable WORST case;
+      a lucky one swings wildly.</div>
+    <div style="overflow-x:auto;"><table style="width:100%;font-size:11px;border-collapse:collapse;" cellpadding="4">
+      <tr style="background:#f1f5f9;"><th align="left">Book</th><th align="left">Normal order</th><th align="left">Median</th><th align="left">Worst</th>
+      <th align="left">Best</th><th align="left">Median drop</th><th align="left">Worst drop</th><th align="left">Beat BTC</th><th align="left">Beat D (same order)</th></tr>
+      {rows}</table></div>
+    <div style="font-weight:700;margin-top:12px;">Every run</div><div style="font-size:11px;color:#475569;">{every}</div>
+  </div></div></body></html>"""
+    text = f"{title}\n" + "\n".join(summary)
+    print(text, flush=True)
+    send_email(f"🎲 {title} — " + " | ".join(summary), html, text, None)
+
+
 def run_paper(info):
     state = {}
     if os.path.exists(STATE_FILE):
@@ -959,6 +1029,8 @@ def main():
         raise RuntimeError("Could not reach Hyperliquid")
     if MODE == "backtest":
         run_backtest(info)
+    elif MODE == "robust":
+        run_robust(info)
     else:
         run_paper(info)
 
