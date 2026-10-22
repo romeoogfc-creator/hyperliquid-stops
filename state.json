@@ -458,7 +458,7 @@
   ],
   "active_position_cache": {},
   "previous_active_coins": [],
-  "last_run_timestamp": "2026-10-22 07:25:44",
+  "last_run_timestamp": "2026-10-22 07:26:23",
   "last_email_timestamp": 1792671331.5476887,
   "last_scan_timestamp": 1792663188.3786373,
   "daily_starting_equity": {
@@ -557,9 +557,9 @@
         "entry_px": 146.985,
         "setup": "LOD_BREAKDOWN",
         "opened_ts": 1792671331.5476887,
-        "last_check_ms": 1792671931360,
+        "last_check_ms": 1792671969041,
         "stop_px": 148.013895,
-        "peak_roe": 0.0,
+        "peak_roe": 0.0011905976800362283,
         "notional": 23.5533976175,
         "current_px": 147.005,
         "roe": -0.0006803415314481685,
@@ -570,12 +570,12 @@
         "entry_px": 0.57177,
         "setup": "LOD_BREAKDOWN",
         "opened_ts": 1792671628.8155968,
-        "last_check_ms": 1792671931360,
+        "last_check_ms": 1792671969041,
         "stop_px": 0.57119823,
         "peak_roe": 0.014166535495041318,
         "notional": 23.5533976175,
-        "current_px": 0.57061,
-        "roe": 0.010143938996450058,
+        "current_px": 0.57064,
+        "roe": 0.00988159574654113,
         "status": "\ud83d\udee1 FEE LOCK (+0.50% ROE)",
         "regime": "RISK_OFF"
       }
@@ -586,13 +586,13 @@
         "setup": "LOD_BREAKDOWN",
         "regime": "RISK_OFF",
         "entry_px": 77.9245,
-        "exit_px": 78.1175,
-        "pnl_usd": -0.0787,
-        "roe_pct": -1.67,
-        "reason": "\u23f1\ufe0f 15M negative scratch (-1.24% ROE)",
+        "exit_px": 78.1395,
+        "pnl_usd": -0.0853,
+        "roe_pct": -1.81,
+        "reason": "\u23f1\ufe0f 15M negative scratch (-1.38% ROE)",
         "opened": "2026-10-22 07:05:39",
-        "timestamp": "2026-10-22 07:25:31",
-        "ts_sec": 1792671931.3606136
+        "timestamp": "2026-10-22 07:26:09",
+        "ts_sec": 1792671969.0417216
       },
       {
         "coin": "SKY",
@@ -609,7 +609,7 @@
       }
     ],
     "cooldown": {
-      "HYPE": 1792673731.3606136
+      "HYPE": 1792673769.0417216
     }
   },
   "shadow_near_miss_stats": {
@@ -632,7 +632,8 @@
         "FARTCOIN",
         "ZRO",
         "ZEN",
-        "PONS"
+        "PONS",
+        "IO"
       ],
       "Too wild (ATR)": [
         "ALT",
@@ -691,8 +692,7 @@
         "AAVE",
         "MORPHO",
         "CC",
-        "TIA",
-        "IO"
+        "TIA"
       ],
       "Too extended below EMA9": [
         "CC",
