@@ -31,6 +31,9 @@ ATR (average true range = its normal daily swing). A coin that swings 10% a day 
 grows with the price, so a 10,000% runner is not cut by normal pullbacks. Never goes red: after +5% the stop is at least +1%.
 Book Q also tightens to 1.5x ATR when the move goes parabolic (close more than 2 ATR above the upper band) to sell near the top.
 
+NO-MARGIN 10-SLOT BOOKS (1x, nothing borrowed): Book R = max 10 @ 15% (cash runs out after ~6 full slots, later entries are
+downsized or skipped), Book S = max 10 @ 10% (exactly fits 100%). Both with the 4-hour long lock. S is Book O scaled to 1x.
+
 Every email also has a GROWTH CALCULATOR: each book's return so far, turned into average $ per day at $1k / $10k / $50k /
 $200k and the capital that would have been needed for $200 and $400 a day.
 
@@ -60,13 +63,13 @@ from email.mime.image import MIMEImage
 import numpy as np
 
 STRATEGY_ID = "TR-GC-Crypto-LS-15"
-ENGINE_VERSION = "GC-PAPER-1.9"
+ENGINE_VERSION = "GC-PAPER-1.10"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
 START_NAV = float(os.getenv("START_NAV", "1000") or 1000)   # starting balance of each NEW book (Run workflow option)
 ROBUST_RUNS = int(os.getenv("ROBUST_RUNS", "20") or 20)
-ROBUST_BOOKS = [c.strip().upper() for c in os.getenv("ROBUST_BOOKS", "A,D,K,O").split(",") if c.strip()]
+ROBUST_BOOKS = [c.strip().upper() for c in os.getenv("ROBUST_BOOKS", "A,D,O,R,S").split(",") if c.strip()]
 MIN_ORDER_USD = 10.0                   # Hyperliquid rejects orders under ~$10: entries / top-ups below this are skipped
 
 # ---------------- Gaussian Channel (DonovanWall defaults) ----------------
@@ -120,6 +123,8 @@ BOOKS = [
     ("O", "Max 10 @ 15% + Long Lock (4h)", "long", False),
     ("P", "LS-15 + Smart Trail (4h)", "long", False),
     ("Q", "LS-15 + Smart Trail + Climax (4h)", "long", False),
+    ("R", "Max 10 @ 15% + Long Lock (4h), 1x", "long", False),
+    ("S", "Max 10 @ 10% + Long Lock (4h), 1x", "long", False),
 ]
 # Extra per-book settings (books not listed use the LS-15 defaults).
 #   size_mult: scales every entry and the top-up target.  max_pos / slot_size: at most N positions, each slot_size of NAV.
@@ -140,6 +145,9 @@ BOOK_OPTIONS = {
     # trail: ATR trailing stop (chandelier) instead of the % ladder. k = ATRs below the peak; k_climax used when parabolic.
     "P": {"lock_intraday": True, "trail": {"k": 3.0}},
     "Q": {"lock_intraday": True, "trail": {"k": 3.0, "k_climax": 1.5}},
+    # 1x (no gross_cap = only cash can be used, nothing borrowed)
+    "R": {"max_pos": 10, "slot_size": 0.15, "lock_intraday": True},
+    "S": {"max_pos": 10, "slot_size": 0.10, "lock_intraday": True},
 }
 ATR_PERIOD = 14
 CLIMAX_ATR = 2.0                       # "parabolic" = daily close more than 2 ATR above the upper band
@@ -657,7 +665,7 @@ def make_chart(books, btc_curve, title):
     except Exception:
         return None
     fig, ax = plt.subplots(figsize=(7, 3.2), dpi=110)
-    for book, color in zip(books, ["#2563eb", "#16a34a", "#9333ea", "#0891b2", "#db2777", "#64748b", "#ea580c", "#000000", "#65a30d", "#7c3aed", "#be123c", "#0d9488", "#a16207", "#4f46e5", "#15803d", "#c026d3", "#0369a1"]):
+    for book, color in zip(books, ["#2563eb", "#16a34a", "#9333ea", "#0891b2", "#db2777", "#64748b", "#ea580c", "#000000", "#65a30d", "#7c3aed", "#be123c", "#0d9488", "#a16207", "#4f46e5", "#15803d", "#c026d3", "#0369a1", "#9f1239", "#047857"]):
         if book["equity"]:
             ax.plot([datetime.strptime(d, "%Y-%m-%d") for d, _ in book["equity"]], [v / book_start(book) * 100 - 100 for _, v in book["equity"]],
                     label=f"{book['code']}: {book['name']}", color=color, linewidth=1.6)
@@ -844,6 +852,8 @@ NOTES = [
     "Book P = LS-15 + SMART TRAIL on longs: stop = highest price since entry minus 3x the coin's daily ATR (its normal daily swing), raised every "
     "4 hours, never below +1% once the trade has been +5%. Volatile coins get more room, and the room grows as the price grows, so big runners "
     "are not cut by normal pullbacks. Book Q = Book P, but it tightens to 1.5x ATR when the coin goes parabolic (close > 2 ATR above the upper band).",
+    "Books R and S = 1x, NO margin: max 10 positions with the 4-hour long lock. R = 15% each (cash runs out after ~6 full positions; later "
+    "entries are downsized or skipped). S = 10% each (10 positions fit exactly in 100%) — Book O scaled down to 1x.",
     "Gaussian Channel computed here from Hyperliquid daily candles (hlc3, 4 poles, period 144, x1.414) — close to SIGNUM's Trend Radar, not identical.",
     "Rank = Hyperliquid open-interest value (no market cap on Hyperliquid). breakoutDate = first close above the upper band since the channel turned Green.",
     "Fills at the daily close (lock stops at the stop price, or the open if it gapped through). 0.045% fee per side. Funding is not modelled.",
