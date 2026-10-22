@@ -50,12 +50,17 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add stock_state.json
-          if git diff --staged --quiet; then echo "No state changes"; exit 0; fi
-          git commit -m "Auto-update stock bot state and telemetry [skip ci]"
-          # The crypto bot pushes to main at the same times; pull its commit in and retry instead of failing.
+          # stock_state.json is written only by this bot and this run's copy is the newest, so never merge it:
+          # put it on top of the latest main and push. Retries only if someone pushed in the same instant.
+          cp stock_state.json "$RUNNER_TEMP/stock_state.json"
           for i in 1 2 3 4 5; do
-            git pull --rebase --autostash origin main && git push origin HEAD:main && exit 0
+            git fetch -q origin main
+            git reset -q --hard origin/main
+            cp "$RUNNER_TEMP/stock_state.json" stock_state.json
+            git add stock_state.json
+            if git diff --staged --quiet; then echo "No state changes"; exit 0; fi
+            git commit -q -m "Auto-update stock bot state and telemetry [skip ci]"
+            if git push -q origin HEAD:main; then echo "State saved (attempt $i)"; exit 0; fi
             echo "Push attempt $i rejected, retrying..."; sleep $((i * 3))
           done
           exit 1
