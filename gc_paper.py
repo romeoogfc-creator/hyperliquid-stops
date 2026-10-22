@@ -10,6 +10,9 @@ runs it on two virtual accounts side by side:
   Book D  "LS-15 + Long Lock"     - profit lock on LONGS only; shorts run on the original rules (backtest: the lock
                                      helped longs +$149 -> +$259 but cut shorts +$229 -> +$48)
   Book E  "LS-15 + Long Lock + Guard" - Book D plus the account guard
+  Book F  "LS-15 @ 60% Size"      - Book A with every position 60% as big (less pain without touching the exits)
+  Book G  "LS-15 Max 3 @ 15%"     - at most 3 positions (long or short), 15% of NAV each, filled in rank order
+  Book H  "LS-15 Max 3 @ 15% + Long Lock" - Book G plus the long-only profit lock (the proposed live combination)
 
 Modes (env MODE):
   paper    (default) process every daily candle closed since the last run, update both books, email the report
@@ -33,11 +36,12 @@ from email.mime.image import MIMEImage
 import numpy as np
 
 STRATEGY_ID = "TR-GC-Crypto-LS-15"
-ENGINE_VERSION = "GC-PAPER-1.1"
+ENGINE_VERSION = "GC-PAPER-1.4"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
-START_NAV = 1000.0                     # each paper book starts with $1,000 so results read as percentages
+START_NAV = float(os.getenv("START_NAV", "1000") or 1000)   # starting balance of each NEW book (Run workflow option)
+MIN_ORDER_USD = 10.0                   # Hyperliquid rejects orders under ~$10: entries / top-ups below this are skipped
 
 # ---------------- Gaussian Channel (DonovanWall defaults) ----------------
 GC_POLES = 4
@@ -78,7 +82,17 @@ BOOKS = [
     ("C", "LS-15 + Account Guard", False, True),
     ("D", "LS-15 + Long Lock", "long", False),
     ("E", "LS-15 + Long Lock + Guard", "long", True),
+    ("F", "LS-15 @ 60% Size", False, False),
+    ("G", "LS-15 Max 3 @ 15%", False, False),
+    ("H", "LS-15 Max 3 @ 15% + Long Lock", "long", False),
 ]
+# Extra per-book settings (books not listed use the LS-15 defaults).
+#   size_mult: scales every entry and the top-up target.  max_pos / slot_size: at most N positions, each slot_size of NAV.
+BOOK_OPTIONS = {
+    "F": {"size_mult": 0.60},
+    "G": {"max_pos": 3, "slot_size": 0.15},     # 15% each (14-17% range): $16.65 per position on a $111 account
+    "H": {"max_pos": 3, "slot_size": 0.15},
+}
 
 
 def lock_applies(book, side):
@@ -143,8 +157,21 @@ def enrich(bars):
 # Paper book
 # ======================================================================================
 def new_book(code, name, lock, guard=False):
-    return {"code": code, "name": name, "lock": lock, "guard": guard, "cash": START_NAV, "positions": {}, "closed": [], "equity": [],
-            "eq_base": START_NAV, "eq_hwm": START_NAV, "guard_hits": 0}
+    book = {"code": code, "name": name, "lock": lock, "guard": guard, "cash": START_NAV, "positions": {}, "closed": [], "equity": [],
+            "eq_base": START_NAV, "eq_hwm": START_NAV, "guard_hits": 0, "start_nav": START_NAV}
+    book.update(BOOK_OPTIONS.get(code, {}))
+    return book
+
+
+def entry_size(book, nav, base_fraction):
+    """Position size in USD: a fixed slot (max-N books) or the LS-15 size scaled by size_mult."""
+    if book.get("max_pos"):
+        return nav * book["slot_size"]
+    return nav * base_fraction * book.get("size_mult", 1.0)
+
+
+def slots_full(book):
+    return bool(book.get("max_pos")) and len(book["positions"]) >= book["max_pos"]
 
 
 def pos_value(p, px):
@@ -297,29 +324,34 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips):
             skips.append((c, "Long signal, but exited earlier this run")); continue
         if c in book["positions"]:
             skips.append((c, f"Long signal, already holding {book['positions'][c]['side']}")); continue
+        if slots_full(book):
+            skips.append((c, f"Long signal, all {book['max_pos']} slots in use")); continue
         recent = b.get("breakout") and (datetime.strptime(day, "%Y-%m-%d") - datetime.strptime(b["breakout"], "%Y-%m-%d")).days <= BREAKOUT_RECENT_DAYS
-        want = nav * (LONG_SIZE_RECENT if recent else LONG_SIZE_OLD)
+        want = entry_size(book, nav, LONG_SIZE_RECENT if recent else LONG_SIZE_OLD)
         usd = min(want, book["cash"] / (1 + FEE_RATE))
+        if usd < MIN_ORDER_USD:
+            skips.append((c, f"Long signal, ${usd:,.2f} is below Hyperliquid's ${MIN_ORDER_USD:.0f} minimum order")); continue
         if usd < nav * MIN_TRADE_NAV:
             skips.append((c, f"Long signal, not enough cash (${usd:,.2f} < 1% NAV)")); continue
-        tag = f"band breakout ({'recent' if recent else 'old'} breakout, {'8' if recent else '2'}% NAV{', downsized' if usd < want - 0.01 else ''})"
+        tag = f"band breakout ({'recent' if recent else 'old'} breakout, {want / nav * 100:.0f}% NAV{', downsized' if usd < want - 0.01 else ''})"
         open_position(book, c, "LONG", usd, b["c"], day, tag, log)
         entered.add(c)
 
     # 7) LONG TOP-UPS (rank order, free cash only)
     for c in universe:
         p, b = book["positions"].get(c), bar.get(c)
-        if not p or p["side"] != "LONG" or c in entered or c in exited or not b or not b.get("valid"):
-            continue
+        if not p or p["side"] != "LONG" or c in entered or c in exited or not b or not b.get("valid") or book.get("max_pos"):
+            continue                                          # max-N books already hold full-size slots: no top-ups
         if b["c"] <= b["upper"]:
             continue
         roe = (b["c"] - p["entry"]) / p["entry"]
         held = p["qty"] * b["c"]
-        if roe < TOPUP_MIN_ROE or held >= nav * TOPUP_TARGET:
+        target = nav * TOPUP_TARGET * book.get("size_mult", 1.0)
+        if roe < TOPUP_MIN_ROE or held >= target:
             continue
-        usd = min(nav * TOPUP_TARGET - held, book["cash"] / (1 + FEE_RATE))
-        if usd < nav * MIN_TRADE_NAV:
-            skips.append((c, f"Top-up wanted (ROE {roe*100:+.1f}%), not enough free cash")); continue
+        usd = min(target - held, book["cash"] / (1 + FEE_RATE))
+        if usd < max(nav * MIN_TRADE_NAV, MIN_ORDER_USD):
+            skips.append((c, f"Top-up wanted (ROE {roe*100:+.1f}%), ${usd:,.2f} is below 1% NAV / the ${MIN_ORDER_USD:.0f} minimum")); continue
         topup_position(book, c, usd, b["c"], day, log)
 
     # 8) SHORT ENTRIES (rank order)
@@ -333,8 +365,12 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips):
             continue
         if c in exited:
             skips.append((c, "Short signal, but exited earlier this run")); continue
-        want = nav * (HEDGE_SHORT_SIZE if hedge else BEAR_SHORT_SIZE)
+        if slots_full(book):
+            skips.append((c, f"Short signal, all {book['max_pos']} slots in use")); continue
+        want = entry_size(book, nav, HEDGE_SHORT_SIZE if hedge else BEAR_SHORT_SIZE)
         usd = min(want, book["cash"] / (1 + FEE_RATE))
+        if usd < MIN_ORDER_USD:
+            skips.append((c, f"Short signal, ${usd:,.2f} is below Hyperliquid's ${MIN_ORDER_USD:.0f} minimum order")); continue
         if usd < nav * MIN_TRADE_NAV:
             skips.append((c, f"Short signal, not enough cash (${usd:,.2f} < 1% NAV)")); continue
         open_position(book, c, "SHORT", usd, b["c"], day, "hedge short (cross under filter)" if hedge else "bear short (rejected bounce, BTC down)", log)
@@ -415,7 +451,12 @@ def btc_downtrend(data, day):
 # ======================================================================================
 # Reporting
 # ======================================================================================
-def book_stats(book, start_nav=START_NAV):
+def book_start(book):
+    return float(book.get("start_nav", 1000.0))           # books saved before GC-PAPER-1.3 started at $1,000
+
+
+def book_stats(book, start_nav=None):
+    start_nav = start_nav or book_start(book)
     closed = book["closed"]
     wins = [t for t in closed if t["pnl"] > 0]
     losses = [t for t in closed if t["pnl"] <= 0]
@@ -447,9 +488,9 @@ def make_chart(books, btc_curve, title):
     except Exception:
         return None
     fig, ax = plt.subplots(figsize=(7, 3.2), dpi=110)
-    for book, color in zip(books, ["#2563eb", "#16a34a", "#9333ea", "#0891b2", "#db2777"]):
+    for book, color in zip(books, ["#2563eb", "#16a34a", "#9333ea", "#0891b2", "#db2777", "#64748b", "#ea580c", "#000000"]):
         if book["equity"]:
-            ax.plot([datetime.strptime(d, "%Y-%m-%d") for d, _ in book["equity"]], [v / START_NAV * 100 - 100 for _, v in book["equity"]],
+            ax.plot([datetime.strptime(d, "%Y-%m-%d") for d, _ in book["equity"]], [v / book_start(book) * 100 - 100 for _, v in book["equity"]],
                     label=f"{book['code']}: {book['name']}", color=color, linewidth=1.6)
     if btc_curve:
         ax.plot([datetime.strptime(d, "%Y-%m-%d") for d, _ in btc_curve], [v for _, v in btc_curve], label="BTC buy & hold",
@@ -502,7 +543,7 @@ def render_email(title, subtitle, books, day_logs, skips, prices, btc_curve, reg
         cards += f"""
         <div style="border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:14px;background:#fff;">
           <div style="font-weight:700;font-size:14px;color:#0f172a;">Book {book['code']} — {book['name']}</div>
-          <div style="font-size:22px;font-weight:700;color:{pct_color(s['ret'])};margin-top:4px;">${nav:,.2f} <span style="font-size:13px;">({(nav/START_NAV-1)*100:+.2f}%)</span></div>
+          <div style="font-size:22px;font-weight:700;color:{pct_color(s['ret'])};margin-top:4px;">${nav:,.2f} <span style="font-size:13px;">({(nav/book_start(book)-1)*100:+.2f}%)</span></div>
           <div style="font-size:11px;color:#475569;">Trades {s['trades']} ({s['wins']}W/{s['losses']}L, {s['winrate']:.0f}%) &bull;
             Avg win {s['avg_w']:+.2f}% / avg loss {s['avg_l']:+.2f}% &bull; Profit factor {s['pf']:.2f} &bull;
             Biggest account give-back from a high {s['mdd']:.1f}% &bull;{f" Account guard fired {book.get('guard_hits', 0)}x &bull;" if book.get("guard") else ""}
@@ -573,14 +614,17 @@ def send_email(subject, html, text, chart_path):
 
 
 NOTES = [
-    "Five virtual books start at $1,000 each, all taking the same LS-15 entry signals. Book A = SIGNUM LS-15 rules as written. Book B = the same, plus a per-trade profit lock: "
+    "Virtual books (each with its own starting balance), all taking the same LS-15 entry signals. Book A = SIGNUM LS-15 rules as written. Book B = the same, plus a per-trade profit lock: "
     "after +5% the stop moves to +1%; after +10/20/35/60/100% it keeps 80/85/90/93/97% of the peak (resting stop, checked against each day's low/high).",
     "Book C = Book A plus an ACCOUNT guard: once the book is up 4%+ from where it was last flat, it closes everything if it falls back to keeping "
     "only 60% of that run-up (your $500 → $530 example would lock about $518 instead of $495).",
     "Book D = profit lock on LONGS only (shorts keep the original stop / -35% take-profit). Book E = Book D plus the account guard.",
+    "Book F = Book A with every position 60% as big. Book G = at most 3 positions (long or short), 15% of NAV each, filled in rank order, no top-ups. "
+    "Book H = Book G plus the long-only profit lock (the proposed live setup: LS-15 signals, max 3 positions, profit lock).",
     "Gaussian Channel computed here from Hyperliquid daily candles (hlc3, 4 poles, period 144, x1.414) — close to SIGNUM's Trend Radar, not identical.",
     "Rank = Hyperliquid open-interest value (no market cap on Hyperliquid). breakoutDate = first close above the upper band since the channel turned Green.",
     "Fills at the daily close (lock stops at the stop price, or the open if it gapped through). 0.045% fee per side. Funding is not modelled.",
+    "Orders under $10 are skipped, as Hyperliquid would reject them (matters for small accounts: 2% of $111 = $2.22).",
 ]
 
 
@@ -602,18 +646,23 @@ def run_backtest(info):
     all_days = sorted({d for c in data for d in data[c]})
     days = all_days[-BACKTEST_DAYS:]
     books = [new_book(code, name, lock, guard) for code, name, lock, guard in BOOKS]
+    min_order_skips = {b["code"]: 0 for b in books}
     for day in days:
         btc_down = btc_downtrend(data, day)
         for book in books:
-            step_day(book, day, data, universe, btc_down, False, [], [])
+            skips = []
+            step_day(book, day, data, universe, btc_down, False, [], skips)
+            min_order_skips[book["code"]] += sum(1 for _, why in skips if "minimum order" in why or "minimum" in why)
     last = days[-1] if days else ""
     prices = {c: data[c][last]["c"] for c in data if last in data[c]}
     btc_curve = btc_buy_hold(data, days)
     chart = make_chart(books, btc_curve, f"Backtest {days[0] if days else ''} → {last} (all books vs BTC)")
-    title = f"{STRATEGY_ID} BACKTEST — {len(days)} days"
+    title = f"{STRATEGY_ID} BACKTEST — {len(days)} days from ${START_NAV:,.0f}"
     btc_ret = btc_curve[-1][1] if btc_curve else 0.0
     summary = " | ".join(f"{b['code']}: {book_stats(b)['ret']:+.1f}% (DD {book_stats(b)['mdd']:.1f}%)" for b in books) + f" | BTC {btc_ret:+.1f}%"
-    notes = NOTES + [f"Backtest universe = today's top {UNIVERSE_SIZE} by open interest (coins that died earlier are missing, which flatters results slightly). "
+    blocked = ", ".join(f"{k}: {v}" for k, v in min_order_skips.items() if v)
+    notes = NOTES + [f"Starting balance ${START_NAV:,.2f} per book. Signals skipped because the order would be under ${MIN_ORDER_USD:.0f}: "
+                     f"{blocked or 'none'}.", f"Backtest universe = today's top {UNIVERSE_SIZE} by open interest (coins that died earlier are missing, which flatters results slightly). "
                      "No drift-out exits in backtest (no historical ranks). Open positions are valued at the last close."]
     html = render_email(title, f"{days[0] if days else ''} → {last} • {summary}", books, [], [], prices, btc_curve,
                         f"BTC buy & hold over the same period: {btc_ret:+.1f}%.", "gcchart" if chart else None, notes)
@@ -628,9 +677,12 @@ def run_paper(info):
         with open(STATE_FILE) as f:
             state = json.load(f)
     books = state.get("books") or [new_book(code, name, lock, guard) for code, name, lock, guard in BOOKS]
-    for code, name, lock, guard in BOOKS:                     # books added in later versions join with a fresh $1,000
+    for code, name, lock, guard in BOOKS:                     # books added in later versions join with a fresh balance
         if code not in {b["code"] for b in books}:
             books.append(new_book(code, name, lock, guard))
+    for b in books:                                           # settings changes (e.g. slot size) apply to saved books too
+        b.update(BOOK_OPTIONS.get(b["code"], {}))
+        b["name"] = next((n for c, n, _, _ in BOOKS if c == b["code"]), b["name"])
     last_done = state.get("last_processed_day")
     ranked, data = fetch_market(info, 60)
     btc_days = sorted(data.get("BTC", {}))
@@ -664,7 +716,7 @@ def run_paper(info):
     btc_curve = btc_buy_hold(data, eq_days) if len(eq_days) > 1 else []
     chart = make_chart(books, btc_curve, f"Paper since {state['started']}") if len(eq_days) > 1 else None
     title = f"{STRATEGY_ID} PAPER — {latest}"
-    summary = " | ".join(f"{b['code']} ${book_nav(b, prices):,.2f} ({(book_nav(b, prices)/START_NAV-1)*100:+.2f}%)" for b in books)
+    summary = " | ".join(f"{b['code']} ${book_nav(b, prices):,.2f} ({(book_nav(b, prices)/book_start(b)-1)*100:+.2f}%)" for b in books)
     html = render_email(title, f"Paper since {state['started']} • processed: {', '.join(todo) or 'nothing new'} • {summary}", books, day_logs,
                         all_skips, prices, btc_curve, regime_line, "gcchart" if chart else None, NOTES)
     text = f"{title}\n{summary}\n{regime_line}\n" + "\n".join(f"{d}: {e}" for d, e in day_logs)
