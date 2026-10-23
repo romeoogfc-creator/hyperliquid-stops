@@ -10,9 +10,11 @@ The rules are Book F from gc_paper.py (stocks backtest: beat SPY in 100/100 coin
   - SELL when the daily close is back below the upper band. No profit lock (it cut the stock trends short in the backtest)
   - long-only, cash only (no margin, no shorts) — exactly what a $1,000 account at Alpaca can do
 
-Timing: stock_bot.yml runs every 5 minutes on weekdays. Only ONE run per day acts: the first run in the last 30 minutes
-before the close (normally 3:30-3:55 PM ET / 2:30-2:55 PM CT). It uses the price at that moment as "today's close", so the
-orders fill close to the real close, like in the backtest. Positions are HELD OVERNIGHT (days to weeks). All other runs exit.
+Timing: stock_bot.yml runs every 5 minutes (external trigger + GitHub schedule as backup). Only ONE run per day acts: the
+first run in the last 45 minutes before the close (normally 3:15-3:57 PM ET / 2:15-2:57 PM CT). It uses the price at that
+moment as "today's close", so the orders fill close to the real close, like in the backtest. Positions are HELD OVERNIGHT.
+CATCH-UP: if GitHub skipped every run in that window, the next trading day's first run after 9:45 AM ET makes the missed
+day's decisions on that day's real closing bar (orders fill at that morning's price). All other runs exit in seconds.
 """
 import os
 import json
@@ -28,7 +30,7 @@ import requests
 
 import gc_paper as engine
 
-BOT_VERSION = "V6.0.0"
+BOT_VERSION = "V6.1.0"
 BOT_TITLE = f"TR-GC-Equities-LS-15-F {BOT_VERSION}"
 STATE_VERSION = "GCSTK-F-1"
 
@@ -48,7 +50,8 @@ TOPUP_MIN_ROE = engine.TOPUP_MIN_ROE                      # +10%
 MIN_TRADE_NAV = engine.MIN_TRADE_NAV                      # skip anything under 1% of the account
 MIN_ORDER_USD = 1.0                           # Alpaca fractional orders go down to $1
 UNIVERSE_SIZE = 100
-DECISION_WINDOW_MINS = (5, 30)                # act when the close is 5-30 minutes away
+DECISION_WINDOW_MINS = (3, 45)                # act when the close is 3-45 minutes away
+CATCHUP_AFTER_OPEN_MINS = 15                  # missed-day catch-up waits 15 minutes after the open
 
 HEADERS = {"APCA-API-KEY-ID": API_KEY or "", "APCA-API-SECRET-KEY": SECRET_KEY or "", "accept": "application/json"}
 
@@ -113,7 +116,7 @@ def save_state(state):
 # ======================================================================================
 # Market data: daily bars up to yesterday (SIP history) + today's bar so far (IEX snapshot)
 # ======================================================================================
-def build_market(now_utc, today_et):
+def build_market(now_utc, today_et, include_today=True):
     midnight_et = datetime(today_et.year, today_et.month, today_et.day, tzinfo=engine.ET_ZONE).astimezone(timezone.utc)
     end = min(now_utc - timedelta(minutes=16), midnight_et)
     raw = engine.alpaca_bars(engine.STOCK_UNIVERSE, "1Day", now_utc - timedelta(days=700), end)
@@ -134,9 +137,11 @@ def build_market(now_utc, today_et):
         sn = snaps.get(sym) or {}
         px = float((sn.get("latestTrade") or {}).get("p") or 0)
         db = sn.get("dailyBar") or {}
-        if px > 0 and db and engine._et(db["t"]).strftime("%Y-%m-%d") == today:
+        if include_today and px > 0 and db and engine._et(db["t"]).strftime("%Y-%m-%d") == today:
             rows.append({"date": today, "o": float(db["o"]), "h": max(float(db["h"]), px), "l": min(float(db["l"]), px), "c": px,
                          "v": float(db.get("v", 0))})
+            last_px[sym] = px
+        if px > 0 and not include_today:
             last_px[sym] = px
         if len(rows) < 3:
             continue
@@ -183,12 +188,17 @@ def sell_all(sym, open_orders, log):
 # ======================================================================================
 # Daily decisions (Book F rules, same order as gc_paper.step_day: exits, entries, top-ups)
 # ======================================================================================
-def decide(state, equity, cash, positions, open_orders, today, log, skips):
+def decide(state, equity, cash, positions, open_orders, today, log, skips, catchup=False):
+    """today = the trading day whose bar is decided on. catchup=True: a missed day, decided on its real closing bar."""
     now_utc = datetime.now(timezone.utc)
-    ranked, data, last_px = build_market(now_utc, now_utc.astimezone(engine.ET_ZONE))
+    ranked, data, last_px = build_market(now_utc, now_utc.astimezone(engine.ET_ZONE), include_today=not catchup)
     universe = ranked[:UNIVERSE_SIZE]
     bar = {s: data[s][today] for s in data if today in data[s]}
-    log.append(f"📅 Daily decisions on {today} ({len(bar)} stocks priced; price at {now_utc.astimezone(engine.ET_ZONE).strftime('%H:%M')} ET used as the close)")
+    if catchup:
+        log.append(f"⏪ CATCH-UP: the {today} decision window was missed (GitHub skipped the runs) — deciding on {today}'s real close "
+                   f"({len(bar)} stocks), orders fill at this morning's price")
+    else:
+        log.append(f"📅 Daily decisions on {today} ({len(bar)} stocks priced; price at {now_utc.astimezone(engine.ET_ZONE).strftime('%H:%M')} ET used as the close)")
     exited, entered = set(), set()
 
     # Exits: close back below the upper band
@@ -307,7 +317,8 @@ def report(state, equity, positions, spy_now, log, skips, decided, next_window):
    <th align="left">Stock</th><th align="left">Result</th><th align="left">$</th><th align="left">Bought</th></tr>{recent}</table>
   <div style="font-size:10px;color:#64748b;margin-top:10px;">Book F rules: daily Gaussian Channel on ~100 large US stocks. Buy on a close above the
    upper band (4.8% of the account if the breakout is ≤25 days old, else 1.2%), add up to 3.3% on +10% winners, sell on a close back below
-   the band. Long-only, cash only, held overnight. Decisions once a day in the last 30 minutes before the close.</div>
+   the band. Long-only, cash only, held overnight. Decisions once a day in the last 45 minutes before the close
+   (a missed day is caught up the next morning).</div>
  </div></div></body></html>"""
     text = f"{BOT_TITLE}\nEquity ${equity:,.2f} ({ret:+.2f}%)\n" + "\n".join(log)
     n_trades = sum(1 for x in log if x[:1] in "✅💰🔻➕")
@@ -330,7 +341,18 @@ def main():
     state = load_state()
     in_window = bool(clock.get("is_open")) and DECISION_WINDOW_MINS[0] <= mins_to_close <= DECISION_WINDOW_MINS[1]
     due = in_window and state.get("last_decision_day") != today
-    if not due and not IS_MANUAL:
+    catchup_day = None
+    base = state.get("last_decision_day") or state.get("started")    # last day already handled (or the start day)
+    if clock.get("is_open") and not due and base:
+        cal = call("get", "/v2/calendar", params={"start": (now_utc - timedelta(days=12)).strftime("%Y-%m-%d"), "end": today})
+        days = [d for d in (cal.json() if ok(cal) else []) if d.get("date")]
+        prev = [d["date"] for d in days if d["date"] < today]
+        todays = [d for d in days if d["date"] == today]
+        if prev and todays:
+            opened = datetime.strptime(f"{today} {todays[0]['open']}", "%Y-%m-%d %H:%M").replace(tzinfo=engine.ET_ZONE)
+            if prev[-1] > base and (now_utc - opened.astimezone(timezone.utc)).total_seconds() >= CATCHUP_AFTER_OPEN_MINS * 60:
+                catchup_day = prev[-1]
+    if not due and not catchup_day and not IS_MANUAL:
         print(f"Nothing to do ({'market closed' if not clock.get('is_open') else f'{mins_to_close:.0f} min to close'}; "
               f"decided today: {state.get('last_decision_day') == today})", flush=True)
         return
@@ -351,17 +373,18 @@ def main():
             state["positions"].pop(sym)
 
     spy_now = None
-    if due:
+    if due or catchup_day:
         for o in open_orders:                                    # leftovers from the old scalper (stops, limits)
             if not str(o.get("client_order_id", "")).startswith("gcf-"):
                 write("delete", f"/v2/orders/{o['id']}", log)
                 log.append(f"🧹 cancelled old order {o.get('symbol')} {o.get('type')} {o.get('side')}")
         open_orders = [o for o in open_orders if str(o.get("client_order_id", "")).startswith("gcf-")]
-        spy_now = decide(state, equity, cash, positions, open_orders, today, log, skips)
-        state["last_decision_day"] = today
+        decision_day = today if due else catchup_day
+        spy_now = decide(state, equity, cash, positions, open_orders, decision_day, log, skips, catchup=not due)
+        state["last_decision_day"] = decision_day
         if state.get("start_spy") is None and spy_now:
             state["start_spy"] = spy_now
-        state["nav_history"] = (state.get("nav_history", []) + [[today, round(equity, 2)]])[-400:]
+        state["nav_history"] = (state.get("nav_history", []) + [[decision_day, round(equity, 2)]])[-400:]
         if not DRY_RUN:
             time.sleep(3)
             acct = call("get", "/v2/account").json()
@@ -369,9 +392,9 @@ def main():
             positions = {p["symbol"]: p for p in (call("get", "/v2/positions").json() or []) if p.get("side", "long") == "long"}
     save_state(state)
     print("\n".join(log), flush=True)
-    next_window = "today in the last 30 min before the close" if clock.get("is_open") and state.get("last_decision_day") != today else \
-        f"next trading day, 30 min before the close (next open {parse_ts(clock['next_open']).astimezone(engine.ET_ZONE).strftime('%a %m-%d %H:%M ET')})"
-    report(state, equity, positions, spy_now, log, skips, due, next_window)
+    next_window = "today in the last 45 min before the close" if clock.get("is_open") and state.get("last_decision_day") != today else \
+        f"next trading day, 45 min before the close (next open {parse_ts(clock['next_open']).astimezone(engine.ET_ZONE).strftime('%a %m-%d %H:%M ET')})"
+    report(state, equity, positions, spy_now, log, skips, bool(due or catchup_day), next_window)
 
 
 if __name__ == "__main__":
