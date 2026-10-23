@@ -37,6 +37,9 @@ downsized or skipped), Book S = max 10 @ 10% (exactly fits 100%). Both with the 
 Book T "D @ 2x" = Book D with every LS-15 size doubled (16% / 4% longs, 6% / 10% shorts, top-ups to 11%) and up to 200% of the
 account in positions (2x margin). Built for small accounts: on $111 the doubled sizes clear Hyperliquid's $10 minimum more often.
 
+Book U "LIVE SETUP" = exactly what ls15_live.py trades: max 9 positions @ 15% (up to 135% in use, ~1.35x), 4-hour long lock,
+plus a disaster stop 35% against every position (long below entry x0.65 / short above entry x1.35).
+
 Every email also has a GROWTH CALCULATOR: each book's return so far, turned into average $ per day at $1k / $10k / $50k /
 $200k and the capital that would have been needed for $200 and $400 a day.
 
@@ -66,13 +69,13 @@ from email.mime.image import MIMEImage
 import numpy as np
 
 STRATEGY_ID = "TR-GC-Crypto-LS-15"
-ENGINE_VERSION = "GC-PAPER-1.11"
+ENGINE_VERSION = "GC-PAPER-1.12"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
 START_NAV = float(os.getenv("START_NAV", "1000") or 1000)   # starting balance of each NEW book (Run workflow option)
 ROBUST_RUNS = int(os.getenv("ROBUST_RUNS", "20") or 20)
-ROBUST_BOOKS = [c.strip().upper() for c in os.getenv("ROBUST_BOOKS", "A,D,O,R,S").split(",") if c.strip()]
+ROBUST_BOOKS = [c.strip().upper() for c in os.getenv("ROBUST_BOOKS", "D,O,U").split(",") if c.strip()]
 MIN_ORDER_USD = 10.0                   # Hyperliquid rejects orders under ~$10: entries / top-ups below this are skipped
 
 # ---------------- Gaussian Channel (DonovanWall defaults) ----------------
@@ -129,6 +132,7 @@ BOOKS = [
     ("R", "Max 10 @ 15% + Long Lock (4h), 1x", "long", False),
     ("S", "Max 10 @ 10% + Long Lock (4h), 1x", "long", False),
     ("T", "LS-15 + Long Lock @ 2x (D doubled)", "long", False),
+    ("U", "LIVE SETUP: Max 9 @ 15% + Long Lock (4h) + Disaster Stop", "long", False),
 ]
 # Extra per-book settings (books not listed use the LS-15 defaults).
 #   size_mult: scales every entry and the top-up target.  max_pos / slot_size: at most N positions, each slot_size of NAV.
@@ -153,6 +157,8 @@ BOOK_OPTIONS = {
     "R": {"max_pos": 10, "slot_size": 0.15, "lock_intraday": True},
     "S": {"max_pos": 10, "slot_size": 0.10, "lock_intraday": True},
     "T": {"size_mult": 2.0, "gross_cap": 2.0},                # Book D with 2x sizes and up to 2x margin
+    # U mirrors ls15_live.py: 9 slots x 15% (135% max), 4h long lock, disaster stop 35% from entry on every position.
+    "U": {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": 0.35},
 }
 ATR_PERIOD = 14
 CLIMAX_ATR = 2.0                       # "parabolic" = daily close more than 2 ATR above the upper band
@@ -406,6 +412,21 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
                 close_position(book, c, max(b["o"], p["stop"]), day, f"{lock_label(book)} (stop {p['stop']:.6g})", log)
                 exited.add(c)
 
+    # Disaster stop (Book U / live bot): a resting stop far from entry on every position, long or short.
+    if book.get("disaster"):
+        for c in list(book["positions"]):
+            p, b = book["positions"][c], bar.get(c)
+            if not b or p["opened"] == day:
+                continue
+            if p["side"] == "LONG" and b["l"] <= p["entry"] * (1 - book["disaster"]):
+                px = p["entry"] * (1 - book["disaster"])
+                close_position(book, c, min(b["o"], px), day, f"🧯 Disaster stop (-{book['disaster']*100:.0f}%)", log)
+                exited.add(c)
+            elif p["side"] == "SHORT" and b["h"] >= p["entry"] * (1 + book["disaster"]):
+                px = p["entry"] * (1 + book["disaster"])
+                close_position(book, c, max(b["o"], px), day, f"🧯 Disaster stop (+{book['disaster']*100:.0f}% against)", log)
+                exited.add(c)
+
     nav = book_nav(book, closes)
 
     # Book C: account guard on today's close.
@@ -549,8 +570,9 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
 # ======================================================================================
 # Data
 # ======================================================================================
-def fetch_market(info, history_days):
-    """Returns (ranked coin list, {coin: {date: bar}}). Rank = open-interest value, majors included."""
+def fetch_market(info, history_days, paced=False):
+    """Returns (ranked coin list, {coin: {date: bar}}). Rank = open-interest value, majors included.
+    paced=True (live bot): waits long enough between coins to stay well under Hyperliquid's 1200 weight/minute."""
     meta, ctxs = info.meta_and_asset_ctxs()
     rows = []
     for asset, ctx in zip(meta.get("universe", []), ctxs):
@@ -570,7 +592,7 @@ def fetch_market(info, history_days):
     start_ms = now_ms - (history_days + GC_WARMUP_BARS + 30) * 86400000
     data = {}
     for coin in ranked[:DRIFT_OUT_RANK]:
-        time.sleep(0.5)                        # ~120 coins: stay well inside Hyperliquid's request-weight limit
+        time.sleep(max(0.5, (20 + (history_days + GC_WARMUP_BARS + 30) / 60) * 0.05) if paced else 0.5)
         candles = None
         for attempt in range(3):
             try:
@@ -670,7 +692,7 @@ def make_chart(books, btc_curve, title):
     except Exception:
         return None
     fig, ax = plt.subplots(figsize=(7, 3.2), dpi=110)
-    for book, color in zip(books, ["#2563eb", "#16a34a", "#9333ea", "#0891b2", "#db2777", "#64748b", "#ea580c", "#000000", "#65a30d", "#7c3aed", "#be123c", "#0d9488", "#a16207", "#4f46e5", "#15803d", "#c026d3", "#0369a1", "#9f1239", "#047857", "#854d0e"]):
+    for book, color in zip(books, ["#2563eb", "#16a34a", "#9333ea", "#0891b2", "#db2777", "#64748b", "#ea580c", "#000000", "#65a30d", "#7c3aed", "#be123c", "#0d9488", "#a16207", "#4f46e5", "#15803d", "#c026d3", "#0369a1", "#9f1239", "#047857", "#854d0e", "#1d4ed8"]):
         if book["equity"]:
             ax.plot([datetime.strptime(d, "%Y-%m-%d") for d, _ in book["equity"]], [v / book_start(book) * 100 - 100 for _, v in book["equity"]],
                     label=f"{book['code']}: {book['name']}", color=color, linewidth=1.6)
@@ -860,6 +882,8 @@ NOTES = [
     "Books R and S = 1x, NO margin: max 10 positions with the 4-hour long lock. R = 15% each (cash runs out after ~6 full positions; later "
     "entries are downsized or skipped). S = 10% each (10 positions fit exactly in 100%) — Book O scaled down to 1x.",
     "Book T = Book D with every size doubled and up to 2x margin (200% of the account in positions) — gains AND losses roughly double.",
+    "Book U = THE LIVE SETUP (ls15_live.py): max 9 positions @ 15% (up to 135% in use, ~1.35x), 4-hour long lock, and a disaster stop "
+    "35% from entry on every position.",
     "Gaussian Channel computed here from Hyperliquid daily candles (hlc3, 4 poles, period 144, x1.414) — close to SIGNUM's Trend Radar, not identical.",
     "Rank = Hyperliquid open-interest value (no market cap on Hyperliquid). breakoutDate = first close above the upper band since the channel turned Green.",
     "Fills at the daily close (lock stops at the stop price, or the open if it gapped through). 0.045% fee per side. Funding is not modelled.",
