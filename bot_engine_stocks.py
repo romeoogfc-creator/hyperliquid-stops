@@ -1,1261 +1,387 @@
+"""
+bot_engine_stocks.py — TR-GC-Equities-LS-15 "Book F" (Alpaca)
+
+Replaces the old 15-minute scalper (V5.0.0) on the same account, workflow (stock_bot.yml) and state file (stock_state.json).
+The rules are Book F from gc_paper.py (stocks backtest: beat SPY in 100/100 coin orders over 2 years, long-only, 1x):
+  - Gaussian Channel (hlc3, 4 poles, period 144, x1.414) on DAILY bars, top 100 of ~110 large US stocks by dollar volume
+  - BUY when the daily close crosses above the upper band: 4.8% of the account if the breakout is 25 days old or less,
+    otherwise 1.2% (LS-15 sizes x 0.6)
+  - ADD up to 3.3% while the stock is +10% or more and still above the band
+  - SELL when the daily close is back below the upper band. No profit lock (it cut the stock trends short in the backtest)
+  - long-only, cash only (no margin, no shorts) — exactly what a $1,000 account at Alpaca can do
+
+Timing: stock_bot.yml runs every 5 minutes on weekdays. Only ONE run per day acts: the first run in the last 30 minutes
+before the close (normally 3:30-3:55 PM ET / 2:30-2:55 PM CT). It uses the price at that moment as "today's close", so the
+orders fill close to the real close, like in the backtest. Positions are HELD OVERNIGHT (days to weeks). All other runs exit.
+"""
 import os
 import json
+import math
 import time
 import uuid
-from datetime import datetime, timedelta, timezone
 import smtplib
+from datetime import datetime, timedelta, timezone
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from math import log10, floor
+
 import requests
-import pandas as pd
-import numpy as np
 
-try:
-    from zoneinfo import ZoneInfo
-except ImportError:
-    ZoneInfo = None
+import gc_paper as engine
 
-BOT_VERSION = "V5.0.0"
-BOT_TITLE = f"TR-GC-Equities-LS-01-{BOT_VERSION}"
+BOT_VERSION = "V6.0.0"
+BOT_TITLE = f"TR-GC-Equities-LS-15-F {BOT_VERSION}"
+STATE_VERSION = "GCSTK-F-1"
 
 API_KEY = os.getenv("APAL_API_KEY_ID")
 SECRET_KEY = os.getenv("APAL_SECRET_KEY")
-BASE_URL = os.getenv("APAL_BASE_URL", "https://paper-api.alpaca.markets")
+BASE_URL = os.getenv("APAL_BASE_URL") or "https://paper-api.alpaca.markets"
 DATA_URL = "https://data.alpaca.markets"
-DATA_FEED = os.getenv("APAL_DATA_FEED", "iex")   # free plan = iex; set to sip if you pay for full market data
-# DRY_RUN=1 -> reads live data, logs what it WOULD do, sends no orders, writes stock_state_dryrun.json, no email.
 DRY_RUN = os.getenv("DRY_RUN", "").lower() in ("1", "true", "yes")
 STATE_FILE = "stock_state_dryrun.json" if DRY_RUN else "stock_state.json"
-STARTING_CAPITAL = float(os.getenv("STARTING_CAPITAL", "100000"))
+IS_MANUAL = os.getenv("GITHUB_EVENT_NAME", "").lower() == "workflow_dispatch"
 
-VERBOSE_TEST_MODE = True
+SIZE_MULT = 0.60                              # Book F = LS-15 sizes x 0.6
+LONG_SIZE_RECENT = engine.LONG_SIZE_RECENT * SIZE_MULT    # 4.8% (breakout 25 days old or less)
+LONG_SIZE_OLD = engine.LONG_SIZE_OLD * SIZE_MULT          # 1.2%
+TOPUP_TARGET = engine.TOPUP_TARGET * SIZE_MULT            # 3.3%
+TOPUP_MIN_ROE = engine.TOPUP_MIN_ROE                      # +10%
+MIN_TRADE_NAV = engine.MIN_TRADE_NAV                      # skip anything under 1% of the account
+MIN_ORDER_USD = 1.0                           # Alpaca fractional orders go down to $1
+UNIVERSE_SIZE = 100
+DECISION_WINDOW_MINS = (5, 30)                # act when the close is 5-30 minutes away
 
-HEADERS = {
-    "APCA-API-KEY-ID": API_KEY,
-    "APCA-API-SECRET-KEY": SECRET_KEY,
-    "accept": "application/json"
-}
-
-# ---------------- Session timing (New York time; Alpaca's clock handles holidays & half days) ----------------
-NO_ENTRY_FIRST_MINS = 15          # no entries 9:30-9:45 ET (8:30-8:45 CT): opening-bar volume fakes every RVOL signal
-NO_NEW_ENTRIES_BEFORE_CLOSE_MINS = 30   # last new entry 3:30 PM ET (2:30 PM CT)
-EOD_FLATTEN_BEFORE_CLOSE_MINS = 20      # flatten to cash from 3:40 PM ET (2:40 PM CT); 12:40 PM ET on half days.
-                                        # 20 min (not 10) because GitHub cron runs often start 5-15 min late.
-
-# ---------------- Risk / strategy settings ----------------
-MAX_STOCK_SLOTS = 3               # total open positions (large + small)
-MAX_SMALLCAP_SLOTS = 2            # of which small caps at most
-MAX_NEW_ENTRIES_PER_RUN = 1
-MIN_POSITION_USD = 100.0
-
-# Two rule sets. LARGE = the fixed watchlist of big liquid names (small % moves, tight stops).
-# SMALL = Ross-style $2-$20 gappers found live each run (big % moves, wider stops, smaller size).
-LARGE_CAP = {
-    "name": "large", "label": "🏛 LARGE",
-    "position_fraction": 0.15,    # of equity per position
-    "hard_stop": -0.0150,         # -1.5% price cap
-    "floor_trigger": 0.0050, "floor_lock": 0.0015,      # after +0.5% peak, lock +0.15%
-    "expansion": 0.0150, "expansion_give": 0.0040,      # +1.5% peak -> keep 80% (or give back 0.4%)
-    "moonshot": 0.0300, "moonshot_give": 0.0050,        # +3% peak -> keep 88% (or give back 0.5%)
-    "climax": 0.0150, "climax_dd": 0.0030, "climax_give": 0.0020,
-    "flat_pct": 0.0010,           # 30m flat exit if under +0.10%
-    "ema9_cap": 0.0100, "vwap_cap": (1.0080, 1.0040),   # (RISK_ON, strict)
-    "hod_prox": 0.0050, "max_spread": 0.0015, "rvol": (1.80, 2.50),
-    "obey_spy_risk_off": True,
-}
-SMALL_CAP = {
-    "name": "small", "label": "🚀 SMALL",
-    "position_fraction": 0.05,    # smaller size: halts and gaps can jump stops
-    "hard_stop": -0.0300,         # -3% price cap (small caps wick 1-2% routinely)
-    "floor_trigger": 0.0100, "floor_lock": 0.0030,      # after +1% peak, lock +0.3%
-    "expansion": 0.0300, "expansion_give": 0.0080,      # +3% peak -> keep 80%
-    "moonshot": 0.0600, "moonshot_give": 0.0100,        # +6% peak -> keep 88%; uncapped above
-    "climax": 0.0300, "climax_dd": 0.0060, "climax_give": 0.0040,
-    "flat_pct": 0.0020,
-    "ema9_cap": 0.0300, "vwap_cap": (1.0300, 1.0200),
-    "hod_prox": 0.0200, "max_spread": 0.0050, "rvol": (1.80, 2.50),
-    "obey_spy_risk_off": False,   # gappers run on their own news, not on SPY
-}
-
-SMALLCAP_SCAN_ENABLED = True
-SMALLCAP_MIN_PRICE = 2.0
-SMALLCAP_MAX_PRICE = 20.0
-SMALLCAP_MIN_GAIN_PCT = 10.0      # up at least 10% on the day
-SMALLCAP_MIN_IEX_VOLUME = 20000   # shares today on IEX alone (IEX is only ~2-3% of all volume)
-SMALLCAP_MAX_CANDIDATES = 20
-NEWS_SCORE_BONUS = 1.25           # gappers with a headline today rank higher (Ross: catalyst)
-
-FLAT_EXIT_MINS = 30.0
-LOSS_COOLDOWN_SEC = 1800
-WIN_COOLDOWN_SEC = 5400
-LEDGER_LOOKBACK_DAYS = 14         # trade history window (calendar days; weekends count)
-
-CB_MAX_LOSSES = 3                 # 3 losses within...
-CB_WINDOW_SEC = 3600              # ...60 minutes -> no new entries for the rest of the day
-DAILY_LOSS_LIMIT_PCT = 0.020      # equity down 2% vs yesterday's close -> flatten to cash, done for the day
-
-BLOCK_ENTRIES_WHEN_RISK_OFF = True
-
-WATCHLIST = [
-    "NVDA", "TSLA", "AMD", "PLTR", "COIN", "MSTR", "HOOD", "SMCI", "AAPL", "MSFT",
-    "AMZN", "GOOGL", "META", "AVGO", "QCOM", "ARM", "AMAT", "LRCX", "ORCL", "CRM",
-    "NOW", "PANW", "FTNT", "XYZ", "PYPL", "NET", "SNOW", "SHOP", "UBER", "ABNB",
-    "RBLX", "DKNG", "NFLX"
-]  # SQ was renamed XYZ (Block, Inc.) in 2025
+HEADERS = {"APCA-API-KEY-ID": API_KEY or "", "APCA-API-SECRET-KEY": SECRET_KEY or "", "accept": "application/json"}
 
 
-def _tz(name):
-    if ZoneInfo is not None:
+# ======================================================================================
+# Alpaca helpers
+# ======================================================================================
+def call(method, path, data=False, **kw):
+    """Retries network errors, 429 and 5xx only. A 4xx (rejected order) is final: re-sending could duplicate it."""
+    url = (DATA_URL if data else BASE_URL) + path
+    delay, res = 2.0, None
+    for attempt in range(4):
         try:
-            return ZoneInfo(name)
-        except Exception:
-            pass
-    return None
-
-
-ET = _tz("America/New_York")
-CT = _tz("America/Chicago")
-
-
-def now_et():
-    return datetime.now(ET) if ET else datetime.now(timezone.utc) - timedelta(hours=4)
-
-
-def fmt_ct(dt_or_ts):
-    dt = datetime.fromtimestamp(dt_or_ts, tz=timezone.utc) if isinstance(dt_or_ts, (int, float)) else dt_or_ts
-    return (dt.astimezone(CT) if CT else dt).strftime('%Y-%m-%d %H:%M:%S CT')
-
-
-def parse_ts(s):
-    ts = pd.Timestamp(s)
-    return (ts.tz_convert("UTC") if ts.tzinfo else ts.tz_localize("UTC")).to_pydatetime()
-
-
-def load_state():
-    default_state = {
-        "closed_trades_ledger": [],
-        "active_position_cache": {},
-        "last_run_timestamp": "",
-        "last_traded_candle": {},
-        "cooldown_blocklist": {},
-        "order_reasons": {},
-        "order_type_cache": {},
-        "entries_paused_day": "",
-        "halted_day": "",
-        "last_email_timestamp": 0
-    }
-    data = {}
-    if os.path.exists(STATE_FILE):
-        try:
-            with open(STATE_FILE, "r") as f:
-                data = json.load(f)
-        except Exception as e:
-            print(f"Error loading {STATE_FILE}: {e}", flush=True)
-    for k, v in default_state.items():
-        if k not in data:
-            data[k] = v
-    data.pop("daily_starting_equity", None)
-    data.pop("previous_active_symbols", None)
-    return data
-
-
-def save_state(state):
-    state["last_run_timestamp"] = fmt_ct(time.time())
-    with open(STATE_FILE, "w") as f:
-        json.dump(state, f, indent=2)
-
-
-def api_retry(func, *args, retries=4, delay=2.0, **kwargs):
-    """Retries only on network errors, 429 and 5xx. A 4xx (rejected order, no buying power...) is final;
-    re-sending it just repeats the rejection or, worse, duplicates an order."""
-    res = None
-    for attempt in range(retries):
-        try:
-            res = func(*args, timeout=20, **kwargs)
+            res = getattr(requests, method)(url, headers=HEADERS, timeout=20, **kw)
             if res.status_code == 429 or res.status_code >= 500:
-                if attempt < retries - 1:
-                    time.sleep(delay)
-                    delay *= 2.0
-                    continue
-            return res
-        except Exception as e:
-            if attempt < retries - 1:
                 time.sleep(delay)
-                delay *= 2.0
-            else:
-                raise e
+                delay *= 2
+                continue
+            return res
+        except Exception:
+            if attempt == 3:
+                raise
+            time.sleep(delay)
+            delay *= 2
     return res
-
-
-class _DryResp:
-    status_code = 200
-    text = "dry-run"
-
-    def __init__(self, payload=None):
-        self._payload = payload if payload is not None else {"id": f"dry-{uuid.uuid4().hex[:8]}", "status": "accepted"}
-
-    def json(self):
-        return self._payload
-
-
-class Alpaca:
-    def __init__(self, audit_logs):
-        self.audit_logs = audit_logs
-
-    def get(self, path, params=None, data=False):
-        url = (DATA_URL if data else BASE_URL) + path
-        return api_retry(requests.get, url, params=params, headers=HEADERS)
-
-    def _write(self, method, path, payload=None, params=None):
-        if DRY_RUN:
-            self.audit_logs.append(f"🧪 [DRY RUN] would {method.upper()} {path} {json.dumps(payload) if payload else ''}{params or ''}")
-            return _DryResp([] if path == "/v2/positions" and method == "delete" else None)
-        fn = getattr(requests, method)
-        kw = {"headers": HEADERS}
-        if payload is not None:
-            kw["json"] = payload
-        if params is not None:
-            kw["params"] = params
-        return api_retry(fn, BASE_URL + path, **kw)
-
-    def post(self, path, payload):
-        return self._write("post", path, payload)
-
-    def patch(self, path, payload):
-        return self._write("patch", path, payload)
-
-    def delete(self, path, params=None):
-        return self._write("delete", path, params=params)
 
 
 def ok(res):
     return res is not None and res.status_code in (200, 201, 202, 204, 207)
 
 
-def send_html_dashboard_email(subject, html_content, text_fallback):
+def write(method, path, log, **kw):
     if DRY_RUN:
-        print(f"[DRY RUN] Email skipped: {subject}\n{text_fallback}", flush=True)
-        return
-
-    sender_email = os.getenv("SENDER_EMAIL")
-    sender_password = os.getenv("SENDER_PASSWORD")
-    receiver_email = os.getenv("RECEIVER_EMAIL")
-
-    if not sender_email or not sender_password or not receiver_email:
-        print("[WARN] Email credentials missing in environment variables. Skipping email dispatch.", flush=True)
-        return
-
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"] = sender_email
-    msg["To"] = receiver_email
-
-    msg.attach(MIMEText(text_fallback, "plain"))
-    msg.attach(MIMEText(html_content, "html"))
-
-    try:
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=15) as server:
-            server.login(sender_email, sender_password)
-            server.sendmail(sender_email, receiver_email, msg.as_string())
-        print(f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Equities telemetry email sent successfully.", flush=True)
-    except Exception as e:
-        print(f"Failed to send email: {e}", flush=True)
-
-
-def round_sig_figs(val, sig_figs=5):
-    if val == 0 or val is None:
-        return 0
-    return round(val, sig_figs - int(floor(log10(abs(val)))) - 1)
-
-
-def round_stock_px(px):
-    """US equities: penny increments at/above $1, 4 decimals below $1. Anything else is rejected."""
-    return round(px, 2) if px >= 1.0 else round(px, 4)
-
-
-def profile_for(symbol, entry_px, state):
-    """Which rule set a symbol trades under: what the bot recorded at entry, else watchlist = large,
-    else price <= $30 = small."""
-    name = state.get("symbol_profile", {}).get(symbol)
-    if name == "small":
-        return SMALL_CAP
-    if name == "large" or symbol in WATCHLIST:
-        return LARGE_CAP
-    return SMALL_CAP if 0 < entry_px <= SMALLCAP_MAX_PRICE * 1.5 else LARGE_CAP
-
-
-# ---------------- Market data ----------------
-
-def fetch_bars(api, symbols, timeframe, start_dt, end_dt=None):
-    out = {}
-    params = {
-        "symbols": ",".join(symbols), "timeframe": timeframe, "feed": DATA_FEED, "limit": 10000,
-        "adjustment": "raw", "start": start_dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
-    }
-    if end_dt:
-        params["end"] = end_dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
-    page_token = None
-    for _ in range(20):
-        if page_token:
-            params["page_token"] = page_token
-        res = api.get("/v2/stocks/bars", params=params, data=True)
-        if not ok(res):
-            break
-        body = res.json()
-        for sym, bl in (body.get("bars") or {}).items():
-            out.setdefault(sym, []).extend(bl)
-        page_token = body.get("next_page_token")
-        if not page_token:
-            break
-    return out
-
-
-def bar_et(b):
-    dt = parse_ts(b["t"])
-    return dt.astimezone(ET) if ET else dt
-
-
-def is_rth_bar(b):
-    t = bar_et(b)
-    m = t.hour * 60 + t.minute
-    return 9 * 60 + 30 <= m < 16 * 60
-
-
-def calculate_15m_ross_indicators(rth_bars, session_bars):
-    """EMA/MACD on regular-hours 15m bars (multi-day); VWAP is TODAY's session VWAP (resets at 9:30 ET)."""
-    closes = [float(b["c"]) for b in rth_bars]
-    if len(closes) < 30 or not session_bars:
+        log.append(f"🧪 DRY RUN — would {method.upper()} {path} {json.dumps(kw.get('json')) if kw.get('json') else ''}")
         return None
+    return call(method, path, **kw)
 
-    df_c = pd.Series(closes)
-    ema9_series = df_c.ewm(span=9, adjust=False).mean()
 
-    s_h = np.array([float(b["h"]) for b in session_bars])
-    s_l = np.array([float(b["l"]) for b in session_bars])
-    s_c = np.array([float(b["c"]) for b in session_bars])
-    s_v = np.array([float(b["v"]) for b in session_bars])
-    cum_v = s_v.sum()
-    vwap = float(((s_h + s_l + s_c) / 3.0 * s_v).sum() / cum_v) if cum_v > 0 else s_c[-1]
+def parse_ts(s):
+    return datetime.fromisoformat(s.replace("Z", "+00:00"))
 
-    ema12 = df_c.ewm(span=12, adjust=False).mean()
-    ema26 = df_c.ewm(span=26, adjust=False).mean()
-    macd_line = ema12 - ema26
-    signal_line = macd_line.ewm(span=9, adjust=False).mean()
 
-    return {
-        "ema9": ema9_series.iloc[-1],
-        "vwap": vwap,
-        "macd_hist": (macd_line - signal_line).iloc[-1],
-        "prev_close": closes[-2],
-        "prev_ema9": ema9_series.iloc[-2]
-    }
-
-
-def time_of_day_rvol(rth_bars, now_utc):
-    """Paced volume of the live 15m bar vs. the SAME 15m slot on previous sessions (true RVOL).
-    Comparing 9:45 volume against yesterday's 3:45 volume is meaningless."""
-    cur = rth_bars[-1]
-    cur_et = bar_et(cur)
-    slot = (cur_et.hour, cur_et.minute)
-    elapsed_mins = max(0.5, (now_utc - parse_ts(cur["t"])).total_seconds() / 60.0)
-    paced = float(cur["v"]) * min(3.0, 15.0 / elapsed_mins)
-
-    same_slot = [float(b["v"]) for b in rth_bars[:-1] if (bar_et(b).hour, bar_et(b).minute) == slot and bar_et(b).date() != cur_et.date()]
-    if len(same_slot) >= 2:
-        base = float(np.mean(same_slot[-5:]))
-    else:
-        vols = [float(b["v"]) for b in rth_bars]
-        base = float(np.mean(vols[-12:-2])) if len(vols) >= 12 else float(np.mean(vols[:-1]))
-    return (paced / base) if base > 0 else 1.0, elapsed_mins
-
-
-def check_spy_regime(api, now_utc):
-    """RISK_OFF: SPY below yesterday's close AND below today's VWAP -> no new longs.
-    CAUTION: one of the two -> strict gates. RISK_ON: both fine.
-    (Old check compared two daily closes; mid-session that's just 'is SPY green', and its labels said Open/Close.)"""
-    try:
-        bars = fetch_bars(api, ["SPY"], "15Min", now_utc - timedelta(days=6)).get("SPY", [])
-        rth = [b for b in bars if is_rth_bar(b)]
-        if not rth:
-            return "CAUTION", "No SPY data — using strict gates"
-        today = bar_et(rth[-1]).date()
-        session = [b for b in rth if bar_et(b).date() == today]
-        prior = [b for b in rth if bar_et(b).date() < today]
-        if not prior or not session:
-            return "CAUTION", "Insufficient SPY history — using strict gates"
-        prev_close = float(prior[-1]["c"])
-        last = float(rth[-1]["c"])
-        v = sum(float(b["v"]) for b in session)
-        vwap = sum((float(b["h"]) + float(b["l"]) + float(b["c"])) / 3.0 * float(b["v"]) for b in session) / v if v > 0 else last
-        desc = f"SPY ${last:.2f} | prev close ${prev_close:.2f} ({(last/prev_close-1)*100:+.2f}%) | VWAP ${vwap:.2f}"
-        below_close, below_vwap = last < prev_close, last < vwap
-        if below_close and below_vwap:
-            return "RISK_OFF", desc
-        if below_close or below_vwap:
-            return "CAUTION", desc
-        return "RISK_ON", desc
-    except Exception as e:
-        return "CAUTION", f"SPY regime check failed ({e}) — using strict gates"
-
-
-def check_spread(api, symbols):
-    """Returns {symbol: spread fraction or None}. None = no usable IEX quote (IEX shows only its own book)."""
-    out = {s: None for s in symbols}
-    try:
-        res = api.get("/v2/stocks/quotes/latest", params={"symbols": ",".join(symbols), "feed": DATA_FEED}, data=True)
-        if ok(res):
-            for s, q in (res.json().get("quotes") or {}).items():
-                bp, ap = float(q.get("bp", 0) or 0), float(q.get("ap", 0) or 0)
-                if bp > 0 and ap > 0 and ap >= bp:
-                    out[s] = (ap - bp) / ((ap + bp) / 2.0)
-    except Exception:
-        pass
-    return out
-
-
-def clean_common_symbol(sym):
-    """Skip warrants (…W), units (…U), rights (…R), bankrupt (…Q) and anything with a dot/slash."""
-    if not sym or not sym.isalpha() or len(sym) > 5:
-        return False
-    return not (len(sym) == 5 and sym[-1] in "WURQ")
-
-
-def fetch_smallcap_gappers(api, now_utc, audit_logs):
-    """Ross-style gapper list: Alpaca's top % gainers, $2-$20, up 10%+, trading on IEX today.
-    Returns {symbol: {"price", "pct", "iex_vol", "news"}}."""
-    res = api.get("/v1beta1/screener/stocks/movers", params={"top": 50}, data=True)
-    if not ok(res):
-        audit_logs.append(f"⚠️ Small-cap scanner unavailable ({res.status_code if res is not None else 'ERR'}) — large caps only this run")
-        return {}
-    gainers = []
-    for g in (res.json().get("gainers") or []):
-        sym, px, pct = g.get("symbol"), float(g.get("price", 0) or 0), float(g.get("percent_change", 0) or 0)
-        if clean_common_symbol(sym) and SMALLCAP_MIN_PRICE <= px <= SMALLCAP_MAX_PRICE and pct >= SMALLCAP_MIN_GAIN_PCT and sym not in WATCHLIST:
-            gainers.append((sym, px, pct))
-    gainers = gainers[:SMALLCAP_MAX_CANDIDATES]
-    if not gainers:
-        audit_logs.append(f"🚀 SMALL-CAP GAPPERS: none ${SMALLCAP_MIN_PRICE:.0f}-${SMALLCAP_MAX_PRICE:.0f} up {SMALLCAP_MIN_GAIN_PCT:.0f}%+ right now")
-        return {}
-
-    syms = [g[0] for g in gainers]
-    vols = {}
-    snap = api.get("/v2/stocks/snapshots", params={"symbols": ",".join(syms), "feed": DATA_FEED}, data=True)
-    if ok(snap):
-        for sym, sd in (snap.json() or {}).items():
-            vols[sym] = float(((sd or {}).get("dailyBar") or {}).get("v", 0) or 0)
-
-    with_news = set()
-    start = (now_utc - timedelta(hours=20)).isoformat().replace("+00:00", "Z")
-    news = api.get("/v1beta1/news", params={"symbols": ",".join(syms), "start": start, "limit": 50}, data=True)
-    if ok(news):
-        for item in (news.json().get("news") or []):
-            with_news.update(item.get("symbols") or [])
-
-    out = {}
-    for sym, px, pct in gainers:
-        if vols and vols.get(sym, 0) < SMALLCAP_MIN_IEX_VOLUME:
-            continue
-        out[sym] = {"price": px, "pct": pct, "iex_vol": vols.get(sym, 0), "news": sym in with_news}
-    shown = ", ".join(f"{s}{'📰' if d['news'] else ''} ({d['pct']:+.0f}%, ${d['price']:.2f})" for s, d in list(out.items())[:8])
-    audit_logs.append(f"🚀 SMALL-CAP GAPPERS ({len(out)}): {shown or 'none passed the volume filter'}")
-    return out
-
-
-def asset_is_tradable(api, symbol):
-    res = api.get(f"/v2/assets/{symbol}")
-    if not ok(res):
-        return False, "asset lookup failed"
-    a = res.json() or {}
-    if not a.get("tradable") or a.get("status") != "active":
-        return False, "not tradable on Alpaca"
-    if str(a.get("exchange", "")).upper() == "OTC":
-        return False, "OTC listing"
-    return True, ""
-
-
-# ---------------- Ledger (rebuilt every run from Alpaca fills -> never duplicates) ----------------
-
-def fetch_fill_activities(api, after_dt):
-    fills, page_token = [], None
-    for _ in range(20):
-        params = {"after": after_dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z"), "direction": "asc", "page_size": 100}
-        if page_token:
-            params["page_token"] = page_token
-        res = api.get("/v2/account/activities/FILL", params=params)
-        if not ok(res):
-            break
-        batch = res.json() or []
-        fills.extend(batch)
-        if len(batch) < 100:
-            break
-        page_token = batch[-1].get("id")
-    return fills
-
-
-def rebuild_ledger(api, state, now_ts):
-    """FIFO-matches buy and sell fills from the last LEDGER_LOOKBACK_DAYS days into closed trades, one per sell order.
-    Covers bot exits, native stop fills and manual sells alike."""
-    fills = fetch_fill_activities(api, datetime.fromtimestamp(now_ts, tz=timezone.utc) - timedelta(days=LEDGER_LOOKBACK_DAYS))
-    lots, sells, last_buy_ts = {}, {}, {}
-    for f in sorted(fills, key=lambda x: x.get("transaction_time", "")):
-        sym = f.get("symbol")
-        qty = float(f.get("qty", 0) or 0)
-        px = float(f.get("price", 0) or 0)
-        ts = parse_ts(f["transaction_time"]).timestamp()
-        if f.get("side") == "buy":
-            lots.setdefault(sym, []).append([qty, px])
-            last_buy_ts[sym] = ts
-            continue
-        if f.get("side") not in ("sell",):
-            continue
-        matched_qty, cost = 0.0, 0.0
-        remaining = qty
-        q = lots.get(sym, [])
-        while remaining > 1e-9 and q:
-            take = min(remaining, q[0][0])
-            matched_qty += take
-            cost += take * q[0][1]
-            q[0][0] -= take
-            remaining -= take
-            if q[0][0] <= 1e-9:
-                q.pop(0)
-        if matched_qty <= 0:
-            continue  # bought before the lookback window
-        g = sells.setdefault(f.get("order_id"), {"symbol": sym, "qty": 0.0, "cost": 0.0, "proceeds": 0.0, "ts": ts})
-        g["qty"] += matched_qty
-        g["cost"] += cost
-        g["proceeds"] += matched_qty * px
-        g["ts"] = max(g["ts"], ts)
-
-    reasons = state.setdefault("order_reasons", {})
-    type_cache = state.setdefault("order_type_cache", {})
-    ledger = []
-    for oid, g in sells.items():
-        reason = (reasons.get(oid) or [None])[0]
-        if not reason:
-            o_type = type_cache.get(oid)
-            if o_type is None:
-                res = api.get(f"/v2/orders/{oid}")
-                o_type = res.json().get("type", "unknown") if ok(res) else "unknown"
-                type_cache[oid] = o_type
-            reason = "🛡️ Native stop hit (exchange-side)" if o_type in ("stop", "stop_limit", "trailing_stop") else f"Manual / external {o_type} sell"
-        pnl = g["proceeds"] - g["cost"]
-        entry_px = g["cost"] / g["qty"]
-        exit_px = g["proceeds"] / g["qty"]
-        ledger.append({
-            "symbol": g["symbol"], "qty": g["qty"],
-            "profile": profile_for(g["symbol"], entry_px, state)["name"],
-            "entry_price": round_sig_figs(entry_px, 6), "exit_price": round_sig_figs(exit_px, 6),
-            "realized_pnl": round(pnl, 2), "pct": round((exit_px / entry_px - 1) * 100, 2),
-            "exit_reason": reason, "timestamp": fmt_ct(g["ts"]), "ts_sec": g["ts"]
-        })
-
-    ledger.sort(key=lambda t: t["ts_sec"], reverse=True)
-    state["closed_trades_ledger"] = ledger[:30]
-    # Real time of each symbol's latest buy fill. Backup for the entry time if the state file failed to save.
-    state["last_buy_fill_ts"] = last_buy_ts
-
-    cutoff = now_ts - 7 * 86400
-    state["order_reasons"] = {k: v for k, v in reasons.items() if isinstance(v, list) and v[1] >= cutoff}
-    state["order_type_cache"] = {k: v for k, v in type_cache.items() if k in sells}
-
-    # Cooldowns from actual exit time.
-    for t in ledger:
-        until = t["ts_sec"] + (WIN_COOLDOWN_SEC if t["realized_pnl"] > 0 else LOSS_COOLDOWN_SEC)
-        if until > now_ts:
-            state["cooldown_blocklist"][t["symbol"]] = max(float(state["cooldown_blocklist"].get(t["symbol"], 0)), until)
-    state["cooldown_blocklist"] = {s: u for s, u in state["cooldown_blocklist"].items() if u > now_ts and u > cutoff}
-    return ledger
-
-
-# ---------------- Orders ----------------
-
-def open_stop_orders(open_orders, symbol):
-    return [o for o in open_orders if o.get("symbol") == symbol and o.get("side") == "sell"
-            and o.get("type") in ("stop", "stop_limit")]
-
-
-def close_position(api, open_orders, symbol, reason, state, audit_logs):
-    """Cancel the symbol's resting orders first (a stop holds the shares, so a sell would be rejected), then close."""
-    for o in open_orders:
-        if o.get("symbol") == symbol:
-            api.delete(f"/v2/orders/{o['id']}")
-    time.sleep(0.3)
-    res = api.delete(f"/v2/positions/{symbol}")
-    if ok(res):
-        oid = (res.json() or {}).get("id")
-        if oid:
-            state["order_reasons"][oid] = [reason, time.time()]
-        audit_logs.append(f"✅ CLOSE SENT [{symbol}]: {reason}")
-        return True
-    audit_logs.append(f"🚨 CLOSE FAILED [{symbol}] ({res.status_code if res is not None else 'ERR'}): {res.text if res is not None else ''}")
-    return False
-
-
-def flatten_all(api, reason, state, audit_logs):
-    res = api.delete("/v2/positions", params={"cancel_orders": "true"})
-    if ok(res):
-        for item in (res.json() or []):
-            body = item.get("body") or {}
-            if body.get("id"):
-                state["order_reasons"][body["id"]] = [reason, time.time()]
-            audit_logs.append(f"✅ FLATTEN [{item.get('symbol')}] status {item.get('status')}")
-        return True
-    audit_logs.append(f"🚨 FLATTEN FAILED ({res.status_code if res is not None else 'ERR'}): {res.text if res is not None else ''}")
-    return False
-
-
-def sync_stop_order(api, open_orders, symbol, qty, stop_px, audit_logs):
-    """Exactly one sell stop for the full position at stop_px. Moves it with PATCH (replace), so there's no
-    window without a stop. Falls back to cancel + re-place if the replace is rejected."""
-    stop_px = round_stock_px(stop_px)
-    qty_str = str(int(qty)) if float(qty).is_integer() else str(qty)
-    stops = open_stop_orders(open_orders, symbol)
-
-    keep = None
-    for o in stops:
-        if keep is None and abs(float(o.get("stop_price") or 0) - stop_px) < 0.005 and abs(float(o.get("qty") or 0) - qty) < 1e-6:
-            keep = o
-    if keep is None and stops:
-        target = stops[0]
-        res = api.patch(f"/v2/orders/{target['id']}", {"qty": qty_str, "stop_price": str(stop_px)})
-        if ok(res):
-            keep = {"id": (res.json() or {}).get("id", target["id"])}
-            stops = stops[1:]
-            audit_logs.append(f"🛡️ STOP MOVED [{symbol}] -> ${stop_px} ({qty_str} sh)")
-        else:
-            audit_logs.append(f"⚠️ Stop replace rejected [{symbol}] ({res.text if res is not None else 'ERR'}) — re-placing")
-    for o in stops:
-        if keep is None or o["id"] != keep.get("id"):
-            api.delete(f"/v2/orders/{o['id']}")
-    if keep is None:
-        time.sleep(0.3)
-        res = api.post("/v2/orders", {"symbol": symbol, "qty": qty_str, "side": "sell", "type": "stop",
-                                      "stop_price": str(stop_px), "time_in_force": "day",
-                                      "client_order_id": f"stop-{symbol}-{uuid.uuid4().hex[:10]}"})
-        if ok(res):
-            audit_logs.append(f"🛡️ STOP PLACED [{symbol}] @ ${stop_px} ({qty_str} sh)")
-        else:
-            audit_logs.append(f"🚨 STOP PLACEMENT FAILED [{symbol}] @ ${stop_px}: {res.text if res is not None else 'ERR'}")
-
-
-def place_entry_with_stop(api, symbol, qty, is_market, limit_px, stop_px, audit_logs):
-    """OTO order: the stop is created with the entry and activates the moment it fills."""
-    payload = {
-        "symbol": symbol, "qty": str(qty), "side": "buy",
-        "type": "market" if is_market else "limit", "time_in_force": "day",
-        "order_class": "oto", "stop_loss": {"stop_price": str(round_stock_px(stop_px))},
-        "client_order_id": f"entry-{symbol}-{uuid.uuid4().hex[:10]}"
-    }
-    if not is_market:
-        payload["limit_price"] = str(round_stock_px(limit_px))
-    res = api.post("/v2/orders", payload)
-    if ok(res):
-        audit_logs.append(f"⚡ ENTRY {'MARKET' if is_market else 'LIMIT @ $' + payload['limit_price']} [{symbol}] {qty} sh + stop @ ${payload['stop_loss']['stop_price']} attached")
-        return True
-    audit_logs.append(f"⚠️ OTO entry rejected [{symbol}] ({res.status_code if res is not None else 'ERR'}: {res.text if res is not None else ''}) — trying plain entry")
-    payload.pop("order_class")
-    payload.pop("stop_loss")
-    payload["client_order_id"] = f"entry-{symbol}-{uuid.uuid4().hex[:10]}"
-    res = api.post("/v2/orders", payload)
-    if ok(res):
-        audit_logs.append(f"⚡ ENTRY [{symbol}] {qty} sh (stop will be placed next run once filled)")
-        return True
-    audit_logs.append(f"ORDER REJECTED BY ALPACA [{res.status_code if res is not None else 'ERR'}] on {symbol}: {res.text if res is not None else 'No response'}")
-    return False
-
-
-def calculate_stock_retention_targets(entry_px, current_px, entry_candle_low, peak_pct=0.0, upper_wick_pct=0.0, prof=LARGE_CAP):
-    """Long-only ratchet ladder (per-profile numbers) plus the crypto bot's failed-V structure stop.
-    The candle low is only used when it's BELOW the entry, so the stop can't start above the buy price."""
-    pct = (current_px - entry_px) / entry_px
-    drawdown_from_peak = peak_pct - pct
-    is_exhaustion = (peak_pct >= prof["climax"]) and (drawdown_from_peak >= prof["climax_dd"] or upper_wick_pct >= 0.45)
-
-    if is_exhaustion:
-        floor_pct = max(peak_pct - prof["climax_give"], pct)
-        status = f"⚡ CLIMAX EXHAUSTION LOCK [Peak +{peak_pct*100:.2f}% -> Stop +{floor_pct*100:.2f}%]"
-    elif peak_pct >= prof["moonshot"]:
-        floor_pct = max(peak_pct * 0.88, peak_pct - prof["moonshot_give"])
-        status = f"🚀 MOONSHOT (88% LOCKED) [Peak +{peak_pct*100:.2f}% -> Stop +{floor_pct*100:.2f}%]"
-    elif peak_pct >= prof["expansion"]:
-        floor_pct = max(peak_pct * 0.80, peak_pct - prof["expansion_give"])
-        status = f"🎯 EXPANSION RATCHET (80% LOCKED) [Peak +{peak_pct*100:.2f}% -> Stop +{floor_pct*100:.2f}%]"
-    elif peak_pct >= prof["floor_trigger"]:
-        floor_pct = prof["floor_lock"]
-        status = f"🛡 PROFIT FLOOR LOCKED (+{prof['floor_lock']*100:.2f}%)"
-    else:
-        floor_pct = None
-        status = f"🛡 HARD STOP ({prof['hard_stop']*100:.2f}%)"
-
-    cap_px = entry_px * (1 + prof["hard_stop"])
-    try:
-        structure_low = float(entry_candle_low) if entry_candle_low else 0.0
-    except (TypeError, ValueError):
-        structure_low = 0.0
-    protective_px = max(structure_low * 0.9995, cap_px) if 0 < structure_low < entry_px else cap_px
-    if floor_pct is None:
-        stop_px = protective_px
-        if protective_px > cap_px * 1.0001:
-            status = f"🛡 FAILED-V LOW @ ${protective_px:.2f} (cap {prof['hard_stop']*100:.2f}%)"
-    else:
-        stop_px = max(entry_px * (1 + floor_pct), protective_px)
-    return stop_px, status
-
-
-def execute_stock_engine():
-    timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
-    now_ts = time.time()
-    now_utc = datetime.now(timezone.utc)
-    et_now = now_et()
-    today_et = et_now.date()
-    today_str = today_et.isoformat()
-
-    if not API_KEY or not SECRET_KEY:
-        raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY environment variables.")
-
-    audit_logs = []
-    api = Alpaca(audit_logs)
-    state = load_state()
-
-    # Alpaca's clock knows weekends, holidays and early closes.
-    clock_res = api.get("/v2/clock")
-    if not ok(clock_res):
-        raise Exception(f"Failed to fetch Alpaca clock: {clock_res.text if clock_res is not None else 'No Response'}")
-    clock = clock_res.json()
-    is_open = bool(clock.get("is_open"))
-    close_dt = parse_ts(clock["next_close"])
-    open_dt = (datetime(today_et.year, today_et.month, today_et.day, 9, 30, tzinfo=ET) if ET else now_utc).astimezone(timezone.utc)
-
-    positions_res = api.get("/v2/positions")
-    positions_list = positions_res.json() if ok(positions_res) else []
-
-    is_manual_run = os.getenv("GITHUB_EVENT_NAME", "").lower() == "workflow_dispatch"
-    # Scheduled runs stay silent while the market is closed; a manual "Run workflow" always emails a report.
-    if not is_open and not positions_list and not is_manual_run:
-        print(f"[{timestamp}] Market CLOSED ({et_now.strftime('%a %H:%M')} ET / {fmt_ct(now_ts)}). 0 positions. Skipping run silently.", flush=True)
-        return
-
-    audit_logs.append(f"[{timestamp}] {BOT_TITLE} Engine Started{' (DRY RUN — no orders sent)' if DRY_RUN else ''}. NY {et_now.strftime('%H:%M')} ET / TX {fmt_ct(now_ts)[11:16]} CT")
-
-    account_res = api.get("/v2/account")
-    if not ok(account_res):
-        raise Exception(f"Failed to fetch Alpaca account: {account_res.text if account_res is not None else 'No Response'}")
-    account_data = account_res.json()
-    equity = float(account_data.get("equity", 0.0))
-    last_equity = float(account_data.get("last_equity", equity) or equity)   # equity at yesterday's close
-    cash = float(account_data.get("cash", 0.0))
-    today_total_gain = equity - last_equity
-    lifetime_cumulative_pnl = equity - STARTING_CAPITAL
-
-    minutes_to_close = (close_dt - now_utc).total_seconds() / 60.0
-    minutes_since_open = (now_utc - open_dt).total_seconds() / 60.0
-    is_eod = is_open and minutes_to_close <= EOD_FLATTEN_BEFORE_CLOSE_MINS
-    entries_window = is_open and minutes_since_open >= NO_ENTRY_FIRST_MINS and minutes_to_close > NO_NEW_ENTRIES_BEFORE_CLOSE_MINS
-
-    orders_res = api.get("/v2/orders", params={"status": "open", "limit": 500})
-    open_orders = orders_res.json() if ok(orders_res) else []
-
-    # 1) Cancel last run's unfilled entries (Day limit orders used to rest for hours, fill on a stale setup,
-    #    and weren't counted toward the 3 slots). Cancelling an OTO parent also cancels its stop.
-    if is_open:
-        purged = False
-        for o in open_orders:
-            if o.get("side") == "buy" and o.get("type") in ("limit", "market"):
-                api.delete(f"/v2/orders/{o['id']}")
-                purged = True
-                audit_logs.append(f"🧹 PURGED UNFILLED ENTRY [{o.get('symbol')}] {o.get('qty')} @ {o.get('limit_price') or 'MKT'}")
-        if purged and not DRY_RUN:
-            time.sleep(1.0)
-            positions_res = api.get("/v2/positions")
-            positions_list = positions_res.json() if ok(positions_res) else positions_list
-            orders_res = api.get("/v2/orders", params={"status": "open", "limit": 500})
-            open_orders = orders_res.json() if ok(orders_res) else open_orders
-
-    # 2) Ledger straight from Alpaca fills (includes native stop fills between runs).
-    ledger = rebuild_ledger(api, state, now_ts)
-    trades_today = [t for t in ledger if t["ts_sec"] >= open_dt.timestamp() - 6 * 3600]
-    trade_closed_this_run = False
-    trades_executed = False
-
-    # 3) Breakers.
-    entries_blocked_reason = ""
-    if state.get("halted_day") == today_str:
-        entries_blocked_reason = "Daily loss limit hit earlier today"
-    elif last_equity > 0 and today_total_gain <= -DAILY_LOSS_LIMIT_PCT * last_equity:
-        state["halted_day"] = today_str
-        entries_blocked_reason = f"Daily loss limit: ${today_total_gain:+,.2f} ≤ -{DAILY_LOSS_LIMIT_PCT*100:.1f}% of ${last_equity:,.2f}"
-        audit_logs.append(f"🚨 DAILY LOSS LIMIT: {entries_blocked_reason}. Flattening to cash, done for today.")
-        if positions_list and is_open:
-            flatten_all(api, "🚨 Daily loss limit flatten", state, audit_logs)
-            positions_list, open_orders = [], []
-            trade_closed_this_run = True
-        send_html_dashboard_email("🚨 Alpaca: Daily loss limit hit — flat for today", f"<h3>{entries_blocked_reason}</h3>", entries_blocked_reason)
-
-    recent_losses = [t for t in ledger if t["realized_pnl"] < 0 and t["ts_sec"] >= now_ts - CB_WINDOW_SEC]
-    if not entries_blocked_reason and len(recent_losses) >= CB_MAX_LOSSES and state.get("entries_paused_day") != today_str:
-        state["entries_paused_day"] = today_str
-        msg = f"🚨 ROLLING CIRCUIT BREAKER: {len(recent_losses)} losses in {CB_WINDOW_SEC // 60}m. No new entries for the rest of today."
-        audit_logs.append(msg)
-        send_html_dashboard_email("🚨 Alpaca: Circuit breaker — entries paused today", f"<h3>{msg}</h3><p>Open positions are still managed.</p>", msg)
-    if not entries_blocked_reason and state.get("entries_paused_day") == today_str:
-        entries_blocked_reason = "Rolling circuit breaker (3 losses / 60m) — paused for today"
-
-    # Pattern-day-trader guard: under $25k a 4th day trade in 5 days gets the account restricted.
-    if not entries_blocked_reason and equity < 25000 and int(account_data.get("daytrade_count", 0) or 0) >= 3:
-        entries_blocked_reason = f"PDT guard: {account_data.get('daytrade_count')} day trades in 5 days with equity < $25k"
-
-    # 4) End of day: flatten everything to cash (handles half days via Alpaca's clock).
-    if is_eod and positions_list:
-        audit_logs.append(f"🔔 EOD SQUARE-OFF ({minutes_to_close:.0f}m to close): liquidating all positions to cash.")
-        flatten_all(api, f"🔔 EOD square-off ({EOD_FLATTEN_BEFORE_CLOSE_MINS}m before close)", state, audit_logs)
-        positions_list, open_orders = [], []
-        trade_closed_this_run = True
-
-    if not is_open and not positions_list:
-        audit_logs.append(f"🌙 Market closed (next open {fmt_ct(parse_ts(clock['next_open']))}) — manual run, report only. No orders sent.")
-    if not is_open and positions_list:
-        audit_logs.append(f"⚠️ MARKET CLOSED WITH {len(positions_list)} OPEN POSITION(S): {', '.join(p['symbol'] for p in positions_list)}. They will be closed at the next open.")
-
-    # 5) Manage open positions.
-    active_count = 0
-    positions_data = []
-    active_symbols = set()
-    current_active_cache = state.get("active_position_cache", {})
-    new_active_cache = {}
-
-    for pos in positions_list:
-        symbol = pos.get("symbol")
-        qty = abs(float(pos.get("qty", 0)))
-        is_long = pos.get("side", "long") == "long"
-        entry_px = float(pos.get("avg_entry_price", 0))
-        current_px = float(pos.get("current_price", entry_px))
-        market_value = float(pos.get("market_value", 0))
-        unrealized_pnl = float(pos.get("unrealized_pl", 0))
-        current_pct = ((current_px - entry_px) / entry_px) if is_long else ((entry_px - current_px) / entry_px)
-
-        cache_info = current_active_cache.get(symbol, {})
-        prof = profile_for(symbol, entry_px, state)
-        entry_candle_low = cache_info.get("entry_candle_low", entry_px * (1 + prof["hard_stop"] / 2))
-        # Entry time: bot's own record, else Alpaca's latest buy fill (covers a lost state save), else now.
-        entry_ts = float(cache_info.get("entry_time_sec") or state.get("last_buy_fill_ts", {}).get(symbol) or now_ts)
-        held_mins = (now_ts - entry_ts) / 60.0
-
-        if not is_open:
-            active_symbols.add(symbol)
-            active_count += 1
-            new_active_cache[symbol] = cache_info
-            positions_data.append({"symbol": symbol, "side": "LONG" if is_long else "SHORT", "qty": qty, "entry": entry_px,
-                                   "current": current_px, "market_value": market_value, "pnl": unrealized_pnl,
-                                   "roe": current_pct * 100, "stop": "—", "status": "⚠️ Held while market closed"})
-            continue
-
-        if not is_long:
-            close_position(api, open_orders, symbol, "Unexpected SHORT position closed (bot is long-only)", state, audit_logs)
-            trade_closed_this_run = True
-            continue
-
-        # Peak from real 1-minute highs since entry (not just the prices seen at run times).
-        peak_px = current_px
-        upper_wick_ratio = 0.0
+def load_state():
+    if os.path.exists(STATE_FILE):
         try:
-            since = datetime.fromtimestamp(max(entry_ts, open_dt.timestamp()), tz=timezone.utc)
-            m1 = fetch_bars(api, [symbol], "1Min", since).get(symbol, [])
-            if m1:
-                peak_px = max([float(b["h"]) for b in m1] + [current_px])
-            b15 = fetch_bars(api, [symbol], "15Min", now_utc - timedelta(hours=1)).get(symbol, [])
-            if b15:
-                c_high, c_low, c_open = float(b15[-1]["h"]), float(b15[-1]["l"]), float(b15[-1]["o"])
-                upper_wick_ratio = (c_high - max(c_open, current_px)) / max(1e-8, c_high - c_low)
-        except Exception:
-            pass
-        peak_pct = max(current_pct, (peak_px - entry_px) / entry_px, float(cache_info.get("peak_roe", current_pct)))
+            with open(STATE_FILE) as f:
+                state = json.load(f)
+            if state.get("version") == STATE_VERSION:
+                return state
+            print("[INFO] stock_state.json is from the old scalper — starting a fresh Book F state", flush=True)
+        except Exception as e:
+            print(f"[WARN] could not read {STATE_FILE}: {e}", flush=True)
+    return {"version": STATE_VERSION, "positions": {}, "closed": [], "last_decision_day": None, "started": None,
+            "start_equity": None, "start_spy": None, "nav_history": []}
 
-        stop_px_calc, leash_status = calculate_stock_retention_targets(
-            entry_px, current_px, entry_candle_low, peak_pct=peak_pct, upper_wick_pct=upper_wick_ratio, prof=prof
-        )
 
-        exit_reason = ""
-        if entry_ts < open_dt.timestamp():
-            exit_reason = "Overnight leftover — closing at open"
-        elif current_px <= stop_px_calc:
-            exit_reason = f"🎯 Stop/ratchet hit ({current_pct*100:+.2f}%, peak +{peak_pct*100:.2f}%)"
-        elif held_mins >= FLAT_EXIT_MINS and current_pct < prof["flat_pct"] and peak_pct < prof["floor_trigger"]:
-            exit_reason = f"⏱ {FLAT_EXIT_MINS:.0f}m flat exit ({current_pct*100:+.2f}% after {held_mins:.0f}m)"
+def save_state(state):
+    with open(STATE_FILE, "w") as f:
+        json.dump(state, f, indent=1)
 
-        if exit_reason:
-            audit_logs.append(f"🎯 EXIT TRIGGERED [{symbol}] @ ${current_px:.2f}: {exit_reason}")
-            if close_position(api, open_orders, symbol, f"🤖 {exit_reason}", state, audit_logs):
-                cd = WIN_COOLDOWN_SEC if unrealized_pnl > 0 else LOSS_COOLDOWN_SEC
-                state["cooldown_blocklist"][symbol] = max(float(state["cooldown_blocklist"].get(symbol, 0)), now_ts + cd)
-                trade_closed_this_run = True
-                continue
 
-        sync_stop_order(api, open_orders, symbol, qty, stop_px_calc, audit_logs)
+# ======================================================================================
+# Market data: daily bars up to yesterday (SIP history) + today's bar so far (IEX snapshot)
+# ======================================================================================
+def build_market(now_utc, today_et):
+    midnight_et = datetime(today_et.year, today_et.month, today_et.day, tzinfo=engine.ET_ZONE).astimezone(timezone.utc)
+    end = min(now_utc - timedelta(minutes=16), midnight_et)
+    raw = engine.alpaca_bars(engine.STOCK_UNIVERSE, "1Day", now_utc - timedelta(days=700), end)
+    snaps = {}
+    syms = list(engine.STOCK_UNIVERSE)
+    for i in range(0, len(syms), 50):
+        res = call("get", "/v2/stocks/snapshots", data=True, params={"symbols": ",".join(syms[i:i + 50]), "feed": "iex"})
+        if ok(res):
+            snaps.update(res.json() or {})
+    today = today_et.strftime("%Y-%m-%d")
+    data, dollar_vol, last_px = {}, {}, {}
+    for sym, bl in raw.items():
+        rows = []
+        for k in sorted(bl, key=lambda k: k["t"]):
+            d = engine._et(k["t"]).strftime("%Y-%m-%d")
+            if d < today:
+                rows.append({"date": d, "o": float(k["o"]), "h": float(k["h"]), "l": float(k["l"]), "c": float(k["c"]), "v": float(k.get("v", 0))})
+        sn = snaps.get(sym) or {}
+        px = float((sn.get("latestTrade") or {}).get("p") or 0)
+        db = sn.get("dailyBar") or {}
+        if px > 0 and db and engine._et(db["t"]).strftime("%Y-%m-%d") == today:
+            rows.append({"date": today, "o": float(db["o"]), "h": max(float(db["h"]), px), "l": min(float(db["l"]), px), "c": px,
+                         "v": float(db.get("v", 0))})
+            last_px[sym] = px
+        if len(rows) < 3:
+            continue
+        engine.enrich(rows)
+        data[sym] = {r["date"]: r for r in rows}
+        dollar_vol[sym] = sum(r["c"] * r["v"] for r in rows[-21:-1]) / max(1, len(rows[-21:-1]))
+    ranked = sorted(data, key=lambda s: dollar_vol.get(s, 0), reverse=True)
+    return ranked, data, last_px
 
-        active_count += 1
-        active_symbols.add(symbol)
-        new_active_cache[symbol] = {
-            "entry_px": entry_px, "current_px": current_px, "qty": qty, "peak_roe": peak_pct,
-            "entry_candle_low": entry_candle_low, "entry_time_sec": entry_ts,
-            "strategy": cache_info.get("strategy", "UNKNOWN"), "profile": prof["name"]
-        }
-        positions_data.append({
-            "symbol": symbol, "side": "LONG", "qty": qty, "label": prof["label"], "entry": entry_px, "current": current_px,
-            "market_value": market_value, "pnl": unrealized_pnl, "roe": current_pct * 100,
-            "stop": round_stock_px(stop_px_calc), "status": leash_status
-        })
 
-    state["active_position_cache"] = new_active_cache
+# ======================================================================================
+# Orders
+# ======================================================================================
+def buy(sym, usd, px, log):
+    """Fractional (notional) market order; whole shares if the stock is not fractionable."""
+    payload = {"symbol": sym, "notional": f"{usd:.2f}", "side": "buy", "type": "market", "time_in_force": "day",
+               "client_order_id": f"gcf-{sym}-{uuid.uuid4().hex[:10]}"}
+    res = write("post", "/v2/orders", log, json=payload)
+    if DRY_RUN or ok(res):
+        return True
+    qty = math.floor(usd / px) if px > 0 else 0
+    if qty >= 1:
+        payload.pop("notional")
+        payload["qty"] = str(qty)
+        payload["client_order_id"] = f"gcf-{sym}-{uuid.uuid4().hex[:10]}"
+        res = write("post", "/v2/orders", log, json=payload)
+        if ok(res):
+            return True
+    log.append(f"🚨 {sym}: buy ${usd:,.2f} REJECTED ({res.status_code if res is not None else 'ERR'}: {res.text[:160] if res is not None else ''})")
+    return False
 
-    # 6) Scan.
-    regime, regime_desc = ("—", "market closed")
-    market_candidates = []
-    scanned_count = 0
-    if is_open:
-        regime, regime_desc = check_spy_regime(api, now_utc)
-        audit_logs.append(f"📈 SPY Regime: **{regime}** — {regime_desc}")
-    large_blocked_by_spy = regime == "RISK_OFF" and BLOCK_ENTRIES_WHEN_RISK_OFF
-    if large_blocked_by_spy and is_open:
-        audit_logs.append("⛔ SPY RISK_OFF: large-cap entries blocked; small-cap gappers still allowed (strict gates)")
-    strict = regime != "RISK_ON"
 
-    if not entries_window and is_open and not is_eod:
-        if minutes_since_open < NO_ENTRY_FIRST_MINS:
-            entries_blocked_reason = entries_blocked_reason or f"Opening {NO_ENTRY_FIRST_MINS}m — no entries until 9:{30 + NO_ENTRY_FIRST_MINS} ET"
-        else:
-            entries_blocked_reason = entries_blocked_reason or f"Last {NO_NEW_ENTRIES_BEFORE_CLOSE_MINS}m before close — no new entries"
-    if entries_blocked_reason:
-        audit_logs.append(f"⛔ NEW ENTRIES BLOCKED: {entries_blocked_reason}")
+def sell_all(sym, open_orders, log):
+    for o in open_orders:                                       # an open order can hold the shares: cancel first
+        if o.get("symbol") == sym:
+            write("delete", f"/v2/orders/{o['id']}", log)
+    res = write("delete", f"/v2/positions/{sym}", log)
+    if DRY_RUN or ok(res):
+        return True
+    log.append(f"🚨 {sym}: sell REJECTED ({res.status_code if res is not None else 'ERR'}: {res.text[:160] if res is not None else ''})")
+    return False
 
-    available_slots = MAX_STOCK_SLOTS - active_count
-    small_open = sum(1 for p in positions_data if p.get("label") == SMALL_CAP["label"])
-    gappers = {}
-    if entries_window and not entries_blocked_reason and available_slots > 0:
-        audit_logs.append(f"⚡ {BOT_VERSION} gates ({'strict' if strict else 'normal'}): LARGE RVOL {LARGE_CAP['rvol'][strict]}x, VWAP +{(LARGE_CAP['vwap_cap'][strict]-1)*100:.1f}%, stop {LARGE_CAP['hard_stop']*100:.1f}% | SMALL RVOL {SMALL_CAP['rvol'][strict]}x, VWAP +{(SMALL_CAP['vwap_cap'][strict]-1)*100:.1f}%, stop {SMALL_CAP['hard_stop']*100:.1f}%")
-        if SMALLCAP_SCAN_ENABLED and small_open < MAX_SMALLCAP_SLOTS:
-            gappers = fetch_smallcap_gappers(api, now_utc, audit_logs)
-        large_syms = [] if large_blocked_by_spy else [s for s in WATCHLIST if s not in active_symbols]
-        small_syms = [s for s in gappers if s not in active_symbols]
-        symbols_to_scan = large_syms + small_syms
-        all_bars = fetch_bars(api, symbols_to_scan, "15Min", now_utc - timedelta(days=7)) if symbols_to_scan else {}
 
-        for symbol in symbols_to_scan:
-            prof = SMALL_CAP if symbol in gappers else LARGE_CAP
-            cooldown_until = float(state["cooldown_blocklist"].get(symbol, 0))
-            if now_ts < cooldown_until:
-                audit_logs.append(f"🔍 [{symbol}] Skipped: Cooldown ({(cooldown_until - now_ts) / 60:.0f}m left)")
-                continue
-            rth = [b for b in all_bars.get(symbol, []) if is_rth_bar(b)]
-            if len(rth) < 30:
-                if prof is SMALL_CAP:
-                    audit_logs.append(f"🔍 [{symbol}] Skipped: not enough bar history ({len(rth)} bars)")
-                continue
-            session = [b for b in rth if bar_et(b).date() == today_et]
-            if not session:
-                continue
-            if state.get("last_traded_candle", {}).get(symbol) == rth[-1]["t"]:
-                continue
-            scanned_count += 1
+# ======================================================================================
+# Daily decisions (Book F rules, same order as gc_paper.step_day: exits, entries, top-ups)
+# ======================================================================================
+def decide(state, equity, cash, positions, open_orders, today, log, skips):
+    now_utc = datetime.now(timezone.utc)
+    ranked, data, last_px = build_market(now_utc, now_utc.astimezone(engine.ET_ZONE))
+    universe = ranked[:UNIVERSE_SIZE]
+    bar = {s: data[s][today] for s in data if today in data[s]}
+    log.append(f"📅 Daily decisions on {today} ({len(bar)} stocks priced; price at {now_utc.astimezone(engine.ET_ZONE).strftime('%H:%M')} ET used as the close)")
+    exited, entered = set(), set()
 
-            try:
-                ind = calculate_15m_ross_indicators(rth, session)
-                if not ind:
-                    continue
-                closes = [float(b["c"]) for b in rth]
-                highs = [float(b["h"]) for b in rth]
-                lows = [float(b["l"]) for b in rth]
-                curr_px = closes[-1]
-                ema9, vwap, macd_hist = ind["ema9"], ind["vwap"], ind["macd_hist"]
-                day_high = max(float(b["h"]) for b in session)
-                required_vol_ratio = prof["rvol"][strict]
-                max_vwap_extension = prof["vwap_cap"][strict]
+    # Exits: close back below the upper band
+    for sym, p in list(positions.items()):
+        b = bar.get(sym)
+        if not b or not b.get("valid"):
+            skips.append((sym, "held, but no usable bar today — kept"))
+            continue
+        if b["c"] < b["upper"]:
+            if sell_all(sym, open_orders, log):
+                exited.add(sym)
+                meta = state["positions"].pop(sym, {})
+                pnl, pct = float(p.get("unrealized_pl", 0) or 0), float(p.get("unrealized_plpc", 0) or 0) * 100
+                state["closed"].append({"symbol": sym, "opened": meta.get("opened", "?"), "closed": today, "entry": float(p["avg_entry_price"]),
+                                        "exit": b["c"], "pct": round(pct, 2), "pnl": round(pnl, 2), "reason": "Close below upper GC band"})
+                log.append(f"{'💰' if pnl > 0 else '🔻'} SELL {sym} @ ~${b['c']:.2f}: {pct:+.2f}% (${pnl:+,.2f}) — close below upper band")
+                cash += float(p.get("market_value", 0) or 0)
+    state["closed"] = state["closed"][-200:]
 
-                extension = (curr_px - ema9) / ema9
-                if extension > prof["ema9_cap"]:
-                    audit_logs.append(f"🔍 [{symbol}] Skipped: Too extended from EMA9 (+{extension*100:.2f}% > {prof['ema9_cap']*100:.0f}%)")
-                    continue
+    # Entries: breakout above the upper band, in dollar-volume order, cash only
+    for sym in universe:
+        b = bar.get(sym)
+        pb = b.get("_prev") if b else None
+        if not b or not pb or not b.get("valid") or not (b["c"] > b["upper"] and pb["c"] <= pb["upper"]):
+            continue
+        if sym in positions or sym in exited:
+            skips.append((sym, "breakout, but already held / sold today"))
+            continue
+        recent = b.get("breakout") and (datetime.strptime(today, "%Y-%m-%d") - datetime.strptime(b["breakout"], "%Y-%m-%d")).days <= engine.BREAKOUT_RECENT_DAYS
+        want = equity * (LONG_SIZE_RECENT if recent else LONG_SIZE_OLD)
+        usd = min(want, cash * 0.995)
+        if usd < max(MIN_ORDER_USD, equity * MIN_TRADE_NAV):
+            skips.append((sym, f"breakout, not enough cash (${usd:,.2f})"))
+            continue
+        if buy(sym, usd, b["c"], log):
+            entered.add(sym)
+            cash -= usd
+            state["positions"][sym] = {"opened": today, "breakout": b.get("breakout")}
+            log.append(f"✅ BUY {sym} ${usd:,.2f} @ ~${b['c']:.2f} — band breakout ({'recent' if recent else 'old'}, {want/equity*100:.1f}% of the account)")
 
-                vol_ratio, _ = time_of_day_rvol(rth, now_utc)
-                vwap_dist = curr_px / vwap if vwap > 0 else 1.0
-                above_ema9, above_vwap, macd_pos = curr_px > ema9, curr_px > vwap, macd_hist > 0.0
-                vwap_ok = vwap_dist <= max_vwap_extension
+    # Top-ups: winners still above the band
+    for sym in universe:
+        p, b = positions.get(sym), bar.get(sym)
+        if not p or sym in exited or sym in entered or not b or not b.get("valid") or b["c"] <= b["upper"]:
+            continue
+        entry = float(p["avg_entry_price"])
+        roe = b["c"] / entry - 1
+        held = float(p.get("qty", 0)) * b["c"]
+        target = equity * TOPUP_TARGET
+        if roe < TOPUP_MIN_ROE or held >= target:
+            continue
+        usd = min(target - held, cash * 0.995)
+        if usd < max(MIN_ORDER_USD, equity * MIN_TRADE_NAV):
+            continue
+        if buy(sym, usd, b["c"], log):
+            cash -= usd
+            log.append(f"➕ ADD {sym} ${usd:,.2f} (up {roe*100:+.1f}%, still above the band)")
+    return last_px.get("SPY")
 
-                is_breakout = curr_px >= day_high * (1 - prof["hod_prox"]) and vol_ratio >= required_vol_ratio and vwap_ok and above_ema9 and above_vwap and macd_pos
 
-                reclaim_cross = (ind["prev_close"] <= ind["prev_ema9"] or ind["prev_close"] <= vwap) and above_ema9 and above_vwap
-                is_reclaim = reclaim_cross and curr_px <= ema9 * 1.0025 and vol_ratio >= required_vol_ratio and vwap_ok and macd_pos
+# ======================================================================================
+# Report
+# ======================================================================================
+def send_email(subject, html, text):
+    sender, password, to = os.getenv("SENDER_EMAIL"), os.getenv("SENDER_PASSWORD"), os.getenv("RECEIVER_EMAIL")
+    if DRY_RUN or not (sender and password and to):
+        print(f"[email not sent] {subject}\n{text}", flush=True)
+        return
+    msg = MIMEMultipart("alternative")
+    msg["Subject"], msg["From"], msg["To"] = subject, sender, to
+    msg.attach(MIMEText(text, "plain"))
+    msg.attach(MIMEText(html, "html"))
+    with smtplib.SMTP_SSL("smtp.gmail.com", 465, timeout=20) as s:
+        s.login(sender, password)
+        s.sendmail(sender, to, msg.as_string())
+    print(f"Email sent: {subject}", flush=True)
 
-                prev_45 = min(lows[-4:-1])
-                c_range = max(1e-8, highs[-1] - lows[-1])
-                lower_wick = (min(float(rth[-1]["o"]), curr_px) - lows[-1]) / c_range
-                is_v_bottom = lows[-1] <= prev_45 and lower_wick >= 0.45 and vol_ratio >= required_vol_ratio and vwap_ok and above_ema9 and macd_pos
 
-                if not (is_breakout or is_reclaim or is_v_bottom):
-                    if prof is SMALL_CAP:
-                        why = []
-                        if vol_ratio < required_vol_ratio:
-                            why.append(f"RVOL {vol_ratio:.1f}x<{required_vol_ratio}x")
-                        if not above_ema9:
-                            why.append("below EMA9")
-                        if not above_vwap:
-                            why.append("below VWAP")
-                        if not vwap_ok:
-                            why.append(f"+{(vwap_dist-1)*100:.1f}% over VWAP")
-                        if not macd_pos:
-                            why.append("MACD<0")
-                        audit_logs.append(f"🔍 [{symbol}] No setup: {', '.join(why) or 'no breakout/reclaim/V pattern'}")
-                    continue
-                if is_v_bottom:
-                    setup, score = "V_BOTTOM_RECLAIM", vol_ratio * 3.2
-                elif is_reclaim:
-                    setup, score = "BULLISH_RECLAIM", vol_ratio * 2.4
-                else:
-                    setup, score = "HOD_BREAKOUT", vol_ratio * 1.0
-                has_news = gappers.get(symbol, {}).get("news", False)
-                if has_news:
-                    score *= NEWS_SCORE_BONUS
+def report(state, equity, positions, spy_now, log, skips, decided, next_window):
+    start = state.get("start_equity") or equity
+    ret = (equity / start - 1) * 100 if start else 0.0
+    spy_ret = ((spy_now / state["start_spy"] - 1) * 100) if spy_now and state.get("start_spy") else None
+    rows = ""
+    for sym, p in sorted(positions.items(), key=lambda kv: -float(kv[1].get("market_value", 0) or 0)):
+        pct = float(p.get("unrealized_plpc", 0) or 0) * 100
+        rows += (f"<tr><td><b>{sym}</b></td><td>{float(p['qty']):g}</td><td>${float(p['avg_entry_price']):,.2f}</td>"
+                 f"<td>${float(p.get('current_price', 0) or 0):,.2f}</td><td style='color:{'#15803d' if pct >= 0 else '#b91c1c'};'>{pct:+.2f}%</td>"
+                 f"<td>${float(p.get('market_value', 0) or 0):,.2f}</td><td>{state['positions'].get(sym, {}).get('opened', '?')}</td></tr>")
+    rows = rows or "<tr><td colspan='7' style='color:#64748b;'>No open positions</td></tr>"
+    closed = state["closed"]
+    wins = [t for t in closed if t["pnl"] > 0]
+    recent = "".join(f"<tr><td>{t['closed']}</td><td>{t['symbol']}</td><td style='color:{'#15803d' if t['pnl'] > 0 else '#b91c1c'};'>{t['pct']:+.2f}%</td>"
+                     f"<td>${t['pnl']:+,.2f}</td><td>{t['opened']}</td></tr>" for t in reversed(closed[-10:])) or \
+        "<tr><td colspan='5' style='color:#64748b;'>None yet</td></tr>"
+    invested = sum(float(p.get("market_value", 0) or 0) for p in positions.values())
+    log_html = "".join(f"<div>• {x}</div>" for x in log) or "<div style='color:#64748b;'>Nothing to do</div>"
+    skip_html = "".join(f"<div>• {s}: {w}</div>" for s, w in skips) or "<div style='color:#64748b;'>None</div>"
+    vs_spy = "" if spy_ret is None else f" • SPY since start {spy_ret:+.2f}%"
+    html = f"""<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f4f6f8;margin:0;padding:8px;color:#333;">
+<div style="max-width:680px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;">
+ <div style="background:#0f172a;color:#fff;padding:14px;"><div style="font-size:15px;font-weight:700;">{BOT_TITLE}{' • 🧪 DRY RUN' if DRY_RUN else ''}</div>
+  <div style="font-size:11px;color:#94a3b8;">{datetime.now(engine.ET_ZONE).strftime('%Y-%m-%d %H:%M ET')} • {'daily decisions made' if decided else f'report only — next decisions {next_window}'}</div></div>
+ <div style="padding:12px;font-size:12px;">
+  <div style="font-size:22px;font-weight:700;color:{'#15803d' if ret >= 0 else '#b91c1c'};">${equity:,.2f}
+   <span style="font-size:13px;">({ret:+.2f}% since {state.get('started') or 'today'}{vs_spy})</span></div>
+  <div style="color:#475569;font-size:11px;">Invested ${invested:,.2f} ({invested/equity*100 if equity else 0:.0f}%) • {len(positions)} positions •
+   Closed {len(closed)} ({len(wins)} wins) • Realised ${sum(t['pnl'] for t in closed):+,.2f}</div>
+  <table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:8px;" cellpadding="3">
+   <tr style="background:#f1f5f9;"><th align="left">Stock</th><th align="left">Shares</th><th align="left">Entry</th><th align="left">Now</th><th align="left">P&amp;L</th>
+   <th align="left">Value</th><th align="left">Since</th></tr>{rows}</table>
+  <div style="font-weight:700;margin-top:10px;">This run</div>{log_html}
+  <div style="font-weight:700;margin-top:10px;">Signals not taken</div><div style="font-size:11px;">{skip_html}</div>
+  <div style="font-weight:700;margin-top:10px;">Recent sells</div>
+  <table style="width:100%;font-size:11px;border-collapse:collapse;" cellpadding="3"><tr style="background:#f1f5f9;"><th align="left">Sold</th>
+   <th align="left">Stock</th><th align="left">Result</th><th align="left">$</th><th align="left">Bought</th></tr>{recent}</table>
+  <div style="font-size:10px;color:#64748b;margin-top:10px;">Book F rules: daily Gaussian Channel on ~100 large US stocks. Buy on a close above the
+   upper band (4.8% of the account if the breakout is ≤25 days old, else 1.2%), add up to 3.3% on +10% winners, sell on a close back below
+   the band. Long-only, cash only, held overnight. Decisions once a day in the last 30 minutes before the close.</div>
+ </div></div></body></html>"""
+    text = f"{BOT_TITLE}\nEquity ${equity:,.2f} ({ret:+.2f}%)\n" + "\n".join(log)
+    n_trades = sum(1 for x in log if x[:1] in "✅💰🔻➕")
+    send_email(f"📈 Alpaca GC-F — ${equity:,.2f} ({ret:+.2f}%){f' • {n_trades} trades' if decided else ''}{' [DRY RUN]' if DRY_RUN else ''}", html, text)
 
-                market_candidates.append({
-                    "symbol": symbol, "close": curr_px, "limit_px": min(curr_px * 0.9985, max(ema9, vwap)),
-                    "score": score, "entry_candle_low": min(lows[-1], lows[-2]), "strategy": setup,
-                    "candle_ts": rth[-1]["t"], "prof": prof
-                })
-                audit_logs.append(f"🔥 TRIGGER {prof['label']} [{setup}] {symbol}{' 📰' if has_news else ''} @ ${curr_px:.2f} (RVOL {vol_ratio:.2f}x, req {required_vol_ratio}x)")
-            except Exception as e:
-                audit_logs.append(f"⚠️ [{symbol}] scan error: {e}")
 
-        audit_logs.append(f"ℹ️ SCAN COMPLETE: {scanned_count} symbols evaluated ({len(large_syms)} large, {len(small_syms)} small), {len(market_candidates)} trigger(s).")
-
-        market_candidates.sort(key=lambda x: x["score"], reverse=True)
-        if market_candidates:
-            spreads = check_spread(api, [c["symbol"] for c in market_candidates[:5]])
-            entries = 0
-            buying_power = float(account_data.get("buying_power", equity) or equity)
-            for c in market_candidates:
-                if entries >= min(MAX_NEW_ENTRIES_PER_RUN, available_slots):
-                    break
-                prof = c["prof"]
-                if prof is SMALL_CAP and small_open >= MAX_SMALLCAP_SLOTS:
-                    audit_logs.append(f"🔍 [{c['symbol']}] Skipped: small-cap slots full ({small_open}/{MAX_SMALLCAP_SLOTS})")
-                    continue
-                spread = spreads.get(c["symbol"])
-                if spread is not None and spread > prof["max_spread"]:
-                    audit_logs.append(f"🔍 [{c['symbol']}] Skipped: spread {spread*100:.2f}% > {prof['max_spread']*100:.2f}%")
-                    continue
-                if prof is SMALL_CAP:
-                    tradable, why = asset_is_tradable(api, c["symbol"])
-                    if not tradable:
-                        audit_logs.append(f"🔍 [{c['symbol']}] Skipped: {why}")
-                        continue
-                is_market = c["strategy"] == "HOD_BREAKOUT"
-                entry_px = c["close"] if is_market else c["limit_px"]
-                target_usd = min(max(MIN_POSITION_USD, equity * prof["position_fraction"]), buying_power * 0.95)
-                qty = int(target_usd / entry_px)
-                if qty < 1:
-                    audit_logs.append(f"🔍 [{c['symbol']}] Skipped: not enough buying power for 1 share")
-                    continue
-                stop_px, _ = calculate_stock_retention_targets(entry_px, entry_px, c["entry_candle_low"], prof=prof)
-                if place_entry_with_stop(api, c["symbol"], qty, is_market, c["limit_px"], stop_px, audit_logs):
-                    entries += 1
-                    trades_executed = True
-                    if prof is SMALL_CAP:
-                        small_open += 1
-                    state.setdefault("last_traded_candle", {})[c["symbol"]] = c["candle_ts"]
-                    sp = state.setdefault("symbol_profile", {})
-                    sp[c["symbol"]] = prof["name"]
-                    if len(sp) > 300:
-                        state["symbol_profile"] = dict(list(sp.items())[-300:])
-                    state["active_position_cache"][c["symbol"]] = {
-                        "entry_px": entry_px, "entry_candle_low": c["entry_candle_low"], "qty": qty,
-                        "strategy": c["strategy"], "entry_time_sec": now_ts, "profile": prof["name"]
-                    }
-
-    if trade_closed_this_run and not DRY_RUN:
-        time.sleep(1.5)
-        ledger = rebuild_ledger(api, state, time.time())
-        trades_today = [t for t in ledger if t["ts_sec"] >= open_dt.timestamp() - 6 * 3600]
-
-    # 7) Email (every 15 min, or immediately on any entry/exit, or on manual runs).
-    last_email_ts = float(state.get("last_email_timestamp", 0))
-    should_send_email = is_manual_run or (now_ts - last_email_ts) / 60.0 >= 15.0 or trades_executed or trade_closed_this_run
-    if should_send_email:
-        state["last_email_timestamp"] = now_ts
-    save_state(state)
-    if not should_send_email:
-        print(f"[{timestamp}] Cycle complete. Skipping email dispatch.", flush=True)
-        for line in audit_logs:
-            print(line, flush=True)
+# ======================================================================================
+# Main
+# ======================================================================================
+def main():
+    if not API_KEY or not SECRET_KEY:
+        raise ValueError("Missing APAL_API_KEY_ID or APAL_SECRET_KEY")
+    clock = call("get", "/v2/clock")
+    if not ok(clock):
+        raise RuntimeError(f"Alpaca clock failed: {clock.text if clock is not None else 'no response'}")
+    clock = clock.json()
+    now_utc = datetime.now(timezone.utc)
+    today = now_utc.astimezone(engine.ET_ZONE).strftime("%Y-%m-%d")
+    mins_to_close = (parse_ts(clock["next_close"]) - now_utc).total_seconds() / 60
+    state = load_state()
+    in_window = bool(clock.get("is_open")) and DECISION_WINDOW_MINS[0] <= mins_to_close <= DECISION_WINDOW_MINS[1]
+    due = in_window and state.get("last_decision_day") != today
+    if not due and not IS_MANUAL:
+        print(f"Nothing to do ({'market closed' if not clock.get('is_open') else f'{mins_to_close:.0f} min to close'}; "
+              f"decided today: {state.get('last_decision_day') == today})", flush=True)
         return
 
-    margin_util_pct = ((equity - cash) / equity * 100) if equity > 0 else 0.0
-    total_today = len(trades_today)
-    win_count = len([t for t in trades_today if t["realized_pnl"] > 0])
-    loss_count = total_today - win_count
-    win_rate_today = (win_count / total_today * 100) if total_today else 0.0
-    realized_today = sum(t["realized_pnl"] for t in trades_today)
+    log, skips = [], []
+    acct = call("get", "/v2/account").json()
+    equity, cash = float(acct.get("equity", 0)), max(0.0, float(acct.get("cash", 0)))
+    positions = {p["symbol"]: p for p in (call("get", "/v2/positions").json() or []) if p.get("side", "long") == "long"}
+    open_orders = call("get", "/v2/orders", params={"status": "open", "limit": 500}).json() or []
+    if state.get("start_equity") is None:
+        state["start_equity"], state["started"] = equity, today
+    for sym in positions:                                        # positions the state doesn't know (e.g. old bot): manage them
+        if sym not in state["positions"]:
+            state["positions"][sym] = {"opened": "before " + today, "breakout": None}
+            log.append(f"🔄 {sym}: found in the account — now managed by the Book F rules")
+    for sym in list(state["positions"]):
+        if sym not in positions:
+            state["positions"].pop(sym)
 
-    positions_cards = ""
-    if positions_data:
-        for p in positions_data:
-            pnl_color = '#2e7d32' if p['pnl'] >= 0 else '#c62828'
-            positions_cards += f"""
-            <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 8px; box-sizing: border-box;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <div>
-                  <span style="font-weight: 700; font-size: 13px; color: #0f172a;">{p['symbol']}</span>
-                  <span style="font-size: 10px; color: #2e7d32; font-weight: 700; margin-left: 6px;">{p['side']} {p['qty']:g} sh {p.get('label', '')}</span>
-                </div>
-                <span style="font-weight: 700; font-size: 13px; color: {pnl_color};">${p['pnl']:+.2f} ({p['roe']:+.2f}%)</span>
-              </div>
-              <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">
-                <b>Val:</b> ${p['market_value']:.2f} &bull; <b>Buy:</b> ${p['entry']:.2f} &bull; <b>Stop:</b> ${p['stop']}
-              </div>
-              <div style="font-size: 10px; color: #2e7d32; font-weight: 600;">
-                <b>Status:</b> {p['status']}
-              </div>
-            </div>
-            """
-    else:
-        positions_cards = '<div style="padding: 12px; text-align: center; color: #666666; font-size: 11px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px;">No active positions (100% Cash Flat).</div>'
-
-    closed_cards = ""
-    recent = ledger[:10]
-    total_realized_pnl = sum(t["realized_pnl"] for t in recent)
-    if recent:
-        for t in recent:
-            pnl_color = '#2e7d32' if t["realized_pnl"] >= 0 else '#c62828'
-            closed_cards += f"""
-            <div style="background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 8px; box-sizing: border-box;">
-              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
-                <span style="font-weight: 700; font-size: 13px; color: #0f172a;">{t['symbol']} <span style="font-size: 10px; color: #64748b;">{t['qty']:g} sh {SMALL_CAP['label'] if t.get('profile') == 'small' else LARGE_CAP['label']}</span></span>
-                <span style="font-weight: 700; font-size: 13px; color: {pnl_color};">${t['realized_pnl']:+.2f} ({t['pct']:+.2f}%)</span>
-              </div>
-              <div style="font-size: 11px; color: #475569; margin-bottom: 4px;">
-                <b>Entry:</b> ${t['entry_price']} &bull; <b>Exit:</b> ${t['exit_price']}
-              </div>
-              <div style="font-size: 10px; color: #b45309; margin-bottom: 2px; word-break: break-word;">
-                <b>Reason:</b> {t['exit_reason']}
-              </div>
-              <div style="font-size: 10px; color: #94a3b8; font-family: monospace;">{t['timestamp']}</div>
-            </div>
-            """
-    else:
-        closed_cards = '<div style="padding: 12px; text-align: center; color: #666666; font-size: 11px; background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 6px;">No recent exits recorded yet.</div>'
-    total_pnl_color = '#2e7d32' if total_realized_pnl >= 0 else '#c62828'
-
-    # Scorecard per group over the whole ledger window: which half of "both worlds" is actually making money.
-    group_rows = ""
-    for prof in (LARGE_CAP, SMALL_CAP):
-        g = [t for t in ledger if t.get("profile") == prof["name"]]
-        if not g:
-            group_rows += f"<div>{prof['label']}: no trades yet</div>"
-            continue
-        wins = [t for t in g if t["realized_pnl"] > 0]
-        losses = [t for t in g if t["realized_pnl"] <= 0]
-        avg_w = sum(t["realized_pnl"] for t in wins) / len(wins) if wins else 0.0
-        avg_l = sum(t["realized_pnl"] for t in losses) / len(losses) if losses else 0.0
-        net = sum(t["realized_pnl"] for t in g)
-        group_rows += (f"<div>{prof['label']}: <b>{len(g)}</b> trades &bull; {len(wins)}W/{len(losses)}L &bull; "
-                       f"avg win ${avg_w:+.2f} / avg loss ${avg_l:+.2f} &bull; net <b style=\"color: {'#15803d' if net >= 0 else '#b91c1c'};\">${net:+.2f}</b></div>")
-
-    audit_section = ""
-    if VERBOSE_TEST_MODE:
-        audit_rows = "".join([f"<tr><td style='padding: 6px 8px; border-bottom: 1px solid #fde68a; font-family: monospace; font-size: 10px; color: #475569; white-space: pre-wrap; word-break: break-all;'>{log}</td></tr>" for log in audit_logs])
-        audit_section = f"""
-        <div style="font-size: 11px; text-transform: uppercase; color: #d97706; margin: 14px 0 6px 0; font-weight: 700;">Live Telemetry & Audit Log</div>
-        <div style="width: 100%; border: 1px solid #fde68a; border-radius: 6px; background-color: #fffbeb; margin-bottom: 15px; box-sizing: border-box;">
-          <table style="width: 100%; font-size: 11px; border-collapse: collapse;"><tbody>{audit_rows}</tbody></table>
-        </div>
-        """
-
-    blocked_banner = ""
-    if entries_blocked_reason:
-        blocked_banner = f'<div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #b91c1c; font-weight: 700;">⛔ New entries blocked: {entries_blocked_reason}</div>'
-
-    close_ct = fmt_ct(close_dt)[11:16]
-    text_fallback = (f"{BOT_TITLE}\nTimestamp: {timestamp}\nTotal Equity: USD ${equity:.2f}\nToday's Gain: USD ${today_total_gain:+.2f}\n"
-                     f"Lifetime P&L: USD ${lifetime_cumulative_pnl:+.2f}\n\n" + "\n".join(audit_logs))
-
-    html_content = f"""<!DOCTYPE html>
-<html>
-  <head>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  </head>
-  <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 8px; color: #333333; -webkit-text-size-adjust: 100%;">
-    <div style="max-width: 500px; width: 100%; margin: 0 auto; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.06); box-sizing: border-box;">
-
-      <div style="background-color: #0f172a; color: #ffffff; padding: 14px;">
-        <div style="font-size: 15px; font-weight: 700; color: #ffffff; margin: 0;">TR-GC-Equities-LS-01 | 15M Scalper ({BOT_VERSION}){' — DRY RUN' if DRY_RUN else ''}</div>
-        <div style="font-size: 11px; color: #94a3b8; margin-top: 3px;">{timestamp} UTC &bull; {'OPEN' if is_open else 'CLOSED'} &bull; closes {close_ct} CT &bull; SPY: {regime}</div>
-      </div>
-
-      <div style="padding: 12px; box-sizing: border-box;">
-        {blocked_banner}
-        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; margin-bottom: 14px; box-sizing: border-box;">
-          <div style="font-size: 10px; text-transform: uppercase; color: #64748b; font-weight: 700; margin-bottom: 2px;">Total Account Equity</div>
-          <div style="font-size: 22px; font-weight: 700; color: #0f172a;">USD ${equity:,.2f}</div>
-          <div style="font-size: 11px; color: #64748b; margin-top: 6px; border-top: 1px solid #e2e8f0; padding-top: 6px; line-height: 1.6;">
-            <div>Invested: <b style="color: #0f172a;">{margin_util_pct:.1f}%</b></div>
-            <div>Today's Gain (vs yesterday's close): <span style="background-color: {'#e6f4ea' if today_total_gain >= 0 else '#fce8e6'}; color: {'#137333' if today_total_gain >= 0 else '#c5221f'}; padding: 2px 6px; border-radius: 4px; font-weight: bold;">${today_total_gain:+,.2f}</span></div>
-            <div>Lifetime P&amp;L: <b style="color: #0f172a;">${lifetime_cumulative_pnl:+,.2f}</b></div>
-          </div>
-        </div>
-
-        <div style="background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 6px; padding: 10px; margin-bottom: 14px;">
-          <div style="font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase;">📊 Today's Realized ({today_str})</div>
-          <div style="font-size: 11px; color: #166534;">Trades: <b>{total_today}</b> &bull; Win Rate: <b>{win_count}W / {loss_count}L ({win_rate_today:.1f}%)</b></div>
-          <div style="font-size: 11px; color: #166534; font-weight: 700; margin-top: 4px;">Realized P&amp;L: <span style="color: {'#15803d' if realized_today >= 0 else '#b91c1c'};">${realized_today:+.2f}</span></div>
-        </div>
-
-        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #334155; line-height: 1.4; box-sizing: border-box;">
-          <div style="font-weight: 700; text-transform: uppercase; margin-bottom: 4px; font-size: 10px; color: #0f172a;">✅ Active {BOT_VERSION} Rules</div>
-          <div>&bull; <b>Hours:</b> Mon–Fri 8:30–3:00 CT (9:30–4:00 ET); entries 8:45–2:30 CT; flat from 2:40 CT; holidays/half days via Alpaca clock</div>
-          <div>&bull; <b>Stop attached to entry</b> (OTO), moved by replace — never unprotected</div>
-          <div>&bull; <b>Failed-V low or hard cap</b>, ratchet profit floor / 80% / 88% locks, climax lock, {FLAT_EXIT_MINS:.0f}m flat exit</div>
-          <div>&bull; <b>Setups:</b> HOD breakout, EMA9/VWAP reclaim, V-bottom — session VWAP, time-of-day RVOL</div>
-          <div>&bull; <b>Two universes:</b> 🏛 {len(WATCHLIST)} large caps (15% size, {LARGE_CAP['hard_stop']*100:.1f}% stop) + 🚀 live gappers ${SMALLCAP_MIN_PRICE:.0f}–${SMALLCAP_MAX_PRICE:.0f} up {SMALLCAP_MIN_GAIN_PCT:.0f}%+ (5% size, {SMALL_CAP['hard_stop']*100:.0f}% stop, max {MAX_SMALLCAP_SLOTS}, 📰 = news today)</div>
-          <div>&bull; <b>Breakers:</b> {CB_MAX_LOSSES} losses/{CB_WINDOW_SEC // 60}m → paused today; -{DAILY_LOSS_LIMIT_PCT*100:.1f}% day → flat for today; SPY RISK_OFF blocks large-cap longs</div>
-        </div>
-
-        <div style="background-color: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; padding: 10px; margin-bottom: 14px; font-size: 11px; color: #1e3a8a; line-height: 1.6;">
-          <div style="font-weight: 700; text-transform: uppercase; font-size: 10px;">⚖️ Scorecard by group (last {LEDGER_LOOKBACK_DAYS} days)</div>
-          {group_rows}
-        </div>
-
-        <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 12px 0 6px 0; font-weight: 700;">Active Positions</div>
-        {positions_cards}
-
-        <div style="font-size: 11px; text-transform: uppercase; color: #475569; margin: 14px 0 6px 0; font-weight: 700;">Recently Closed Trades (from Alpaca fills)</div>
-        {closed_cards}
-
-        <div style="background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 6px; padding: 8px; margin-top: 8px; text-align: right; font-weight: bold; font-size: 11px;">
-          LAST 10 TRADES P&amp;L: <span style="color: {total_pnl_color};">${total_realized_pnl:+.2f}</span>
-        </div>
-
-        {audit_section}
-
-      </div>
-
-      <div style="text-align: center; font-size: 10px; color: #94a3b8; padding: 10px; background-color: #f8fafc; border-top: 1px solid #e2e8f0;">
-        Alpaca {BOT_VERSION} Equities Scalper &bull; Managed via GitHub Actions
-      </div>
-    </div>
-  </body>
-</html>
-"""
-
-    send_html_dashboard_email(f"Alpaca Quantitative Report — USD ${equity:,.2f}{' [DRY RUN]' if DRY_RUN else ''}", html_content, text_fallback)
-    print(f"[{timestamp}] {BOT_VERSION} Equities telemetry report complete.", flush=True)
+    spy_now = None
+    if due:
+        for o in open_orders:                                    # leftovers from the old scalper (stops, limits)
+            if not str(o.get("client_order_id", "")).startswith("gcf-"):
+                write("delete", f"/v2/orders/{o['id']}", log)
+                log.append(f"🧹 cancelled old order {o.get('symbol')} {o.get('type')} {o.get('side')}")
+        open_orders = [o for o in open_orders if str(o.get("client_order_id", "")).startswith("gcf-")]
+        spy_now = decide(state, equity, cash, positions, open_orders, today, log, skips)
+        state["last_decision_day"] = today
+        if state.get("start_spy") is None and spy_now:
+            state["start_spy"] = spy_now
+        state["nav_history"] = (state.get("nav_history", []) + [[today, round(equity, 2)]])[-400:]
+        if not DRY_RUN:
+            time.sleep(3)
+            acct = call("get", "/v2/account").json()
+            equity = float(acct.get("equity", equity))
+            positions = {p["symbol"]: p for p in (call("get", "/v2/positions").json() or []) if p.get("side", "long") == "long"}
+    save_state(state)
+    print("\n".join(log), flush=True)
+    next_window = "today in the last 30 min before the close" if clock.get("is_open") and state.get("last_decision_day") != today else \
+        f"next trading day, 30 min before the close (next open {parse_ts(clock['next_open']).astimezone(engine.ET_ZONE).strftime('%a %m-%d %H:%M ET')})"
+    report(state, equity, positions, spy_now, log, skips, due, next_window)
 
 
 if __name__ == "__main__":
     try:
-        execute_stock_engine()
+        main()
     except Exception as e:
-        err_msg = f"[{time.strftime('%Y-%m-%d %H:%M:%S')}] Equities Engine execution error: {e}"
-        print(err_msg, flush=True)
-        send_html_dashboard_email("Alpaca Bot ERROR Alert", f"<h3>Error</h3><pre>{err_msg}</pre>", err_msg)
-        raise e
+        msg = f"{BOT_TITLE} error: {e}"
+        print(msg, flush=True)
+        try:
+            send_email(f"⚠️ {msg}", f"<pre>{msg}</pre>", msg)
+        except Exception:
+            pass
+        raise
