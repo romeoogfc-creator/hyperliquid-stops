@@ -45,6 +45,9 @@ Profit-protection variants of the live setup U (same 9 slots, 4-hour lock, disas
   Book W "EARLY LOCK + SELLERS" - Book V, plus: once a long has been +3%, sell on a red day with volume >= 1.5x its
                          20-day average that closes in the bottom third of the day's range (sellers took over)
   Book X "TAKE HALF"   - Book U, plus: sell HALF at +10% (resting take-profit), the other half runs on U's lock
+  Book Y  = V with the lock starting at +1% (keeps 50% of any gain from +1%)
+  Book Z  = V with a -5% loss stop on every position (instead of the -35% disaster stop) -> cut losers fast, sit in cash
+  Book Z3 = V with a -3% loss stop.   Book YZ = Y + the -5% loss stop
 
 Every email also has a GROWTH CALCULATOR: each book's return so far, turned into average $ per day at $1k / $10k / $50k /
 $200k and the capital that would have been needed for $200 and $400 a day.
@@ -82,13 +85,13 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.14"
+ENGINE_VERSION = "GC-PAPER-1.15"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
 START_NAV = float(os.getenv("START_NAV", "1000") or 1000)   # starting balance of each NEW book (Run workflow option)
 ROBUST_RUNS = int(os.getenv("ROBUST_RUNS", "20") or 20)
-ROBUST_BOOKS = [c.strip().upper() for c in os.getenv("ROBUST_BOOKS", "U,V,W,X").split(",") if c.strip()]
+ROBUST_BOOKS = [c.strip().upper() for c in os.getenv("ROBUST_BOOKS", "V,Y,Z,Z3,YZ").split(",") if c.strip()]
 MIN_ORDER_USD = 1.0 if STOCKS else 10.0   # Hyperliquid rejects orders under ~$10; Alpaca fractional orders go down to $1
 _LONG_ONLY_ENV = os.getenv("LONG_ONLY", "auto").strip().lower()
 LONG_ONLY = (_LONG_ONLY_ENV in ("1", "true", "yes")) or (_LONG_ONLY_ENV == "auto" and STOCKS and START_NAV < 2000)
@@ -162,6 +165,10 @@ BOOKS = [
     ("V", "U + Early Lock (keep 50-90% from +3%)", "long", False),
     ("W", "U + Early Lock + Sellers-Took-Over Exit", "long", False),
     ("X", "U + Take Half at +10%", "long", False),
+    ("Y", "V + Lock from +1%", "long", False),
+    ("Z", "V + -5% Loss Stop", "long", False),
+    ("Z3", "V + -3% Loss Stop", "long", False),
+    ("YZ", "V + Lock from +1% + -5% Loss Stop", "long", False),
 ]
 # Extra per-book settings (books not listed use the LS-15 defaults).
 #   size_mult: scales every entry and the top-up target.  max_pos / slot_size: at most N positions, each slot_size of NAV.
@@ -195,6 +202,15 @@ BOOK_OPTIONS = {
           "seller_exit": {"after_gain": 0.03, "vol_mult": 1.5, "close_in_bottom": 0.35}},
     "X": {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": 0.35,
           "take_half": {"at": 0.10, "frac": 0.5}},
+    # "disaster" doubles as the loss stop: a resting stop that far against the entry, long or short.
+    "Y": {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": 0.35,
+          "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50], [0.01, 0.50]]},
+    "Z": {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": 0.05,
+          "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50]]},
+    "Z3": {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": 0.03,
+           "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50]]},
+    "YZ": {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": 0.05,
+           "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50], [0.01, 0.50]]},
 }
 VOL_AVG_DAYS = 20                      # seller-exit: today's volume vs the previous 20 days
 ATR_PERIOD = 14
@@ -445,6 +461,10 @@ def sellers_took_over(book, p, b):
             and rng > 0 and (b["c"] - b["l"]) <= se["close_in_bottom"] * rng)
 
 
+def stop_label(book):
+    return "✂️ Loss stop" if book.get("disaster", 1) <= 0.10 else "🧯 Disaster stop"
+
+
 def take_half_hit(book, p, high):
     th = book.get("take_half")
     return bool(th and p["side"] == "LONG" and not p.get("half_taken") and high >= p["entry"] * (1 + th["at"]))
@@ -507,11 +527,11 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
                 continue
             if p["side"] == "LONG" and b["l"] <= p["entry"] * (1 - book["disaster"]):
                 px = p["entry"] * (1 - book["disaster"])
-                close_position(book, c, min(b["o"], px), day, f"🧯 Disaster stop (-{book['disaster']*100:.0f}%)", log)
+                close_position(book, c, min(b["o"], px), day, f"{stop_label(book)} (-{book['disaster']*100:.0f}%)", log)
                 exited.add(c)
             elif p["side"] == "SHORT" and b["h"] >= p["entry"] * (1 + book["disaster"]):
                 px = p["entry"] * (1 + book["disaster"])
-                close_position(book, c, max(b["o"], px), day, f"🧯 Disaster stop (+{book['disaster']*100:.0f}% against)", log)
+                close_position(book, c, max(b["o"], px), day, f"{stop_label(book)} (+{book['disaster']*100:.0f}% against)", log)
                 exited.add(c)
 
     nav = book_nav(book, closes)
@@ -893,7 +913,7 @@ def make_chart(books, btc_curve, title):
     except Exception:
         return None
     fig, ax = plt.subplots(figsize=(7, 3.2), dpi=110)
-    for book, color in zip(books, ["#2563eb", "#16a34a", "#9333ea", "#0891b2", "#db2777", "#64748b", "#ea580c", "#000000", "#65a30d", "#7c3aed", "#be123c", "#0d9488", "#a16207", "#4f46e5", "#15803d", "#c026d3", "#0369a1", "#9f1239", "#047857", "#854d0e", "#1d4ed8", "#be185d", "#0f766e", "#b45309"]):
+    for book, color in zip(books, ["#2563eb", "#16a34a", "#9333ea", "#0891b2", "#db2777", "#64748b", "#ea580c", "#000000", "#65a30d", "#7c3aed", "#be123c", "#0d9488", "#a16207", "#4f46e5", "#15803d", "#c026d3", "#0369a1", "#9f1239", "#047857", "#854d0e", "#1d4ed8", "#be185d", "#0f766e", "#b45309"] * 3):
         if book["equity"]:
             ax.plot([datetime.strptime(d, "%Y-%m-%d") for d, _ in book["equity"]], [v / book_start(book) * 100 - 100 for _, v in book["equity"]],
                     label=f"{book['code']}: {book['name']}", color=color, linewidth=1.6)
@@ -1088,6 +1108,9 @@ NOTES = [
     "Book V = U with an EARLY lock: keeps 50% of the peak gain from +3%, 60% from +5%, 70% from +10%, 80/85/90% from +20/35/60%. "
     "Book W = V plus a SELLERS-TOOK-OVER exit: once a long has been +3%, it sells on a red day whose volume is 1.5x+ the 20-day average "
     "and that closes in the bottom third of its range. Book X = U plus TAKE HALF: sells half at +10%, the other half runs on U's lock.",
+    "Book Y = V with the lock starting at +1% (keeps 50% of any gain from +1%). Book Z = V with a -5% loss stop on every position "
+    "(replaces the -35% disaster stop). Book Z3 = V with a -3% loss stop. Book YZ = Y plus the -5% loss stop. Loss stops are resting "
+    "stops checked against each day's low/high (fill at the stop, or at the open if it gapped through).",
     "Gaussian Channel computed here from Hyperliquid daily candles (hlc3, 4 poles, period 144, x1.414) — close to SIGNUM's Trend Radar, not identical.",
     "Rank = Hyperliquid open-interest value (no market cap on Hyperliquid). breakoutDate = first close above the upper band since the channel turned Green.",
     "Fills at the daily close (lock stops at the stop price, or the open if it gapped through). 0.045% fee per side. Funding is not modelled.",
