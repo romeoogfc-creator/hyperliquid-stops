@@ -931,9 +931,315 @@
    "gross_cap": 1.35,
    "lock_intraday": true,
    "disaster": 0.35
+  },
+  {
+   "code": "V",
+   "name": "U + Early Lock (keep 50-90% from +3%)",
+   "lock": "long",
+   "guard": false,
+   "cash": 1000.0,
+   "positions": {},
+   "closed": [],
+   "equity": [],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_pos": 9,
+   "slot_size": 0.15,
+   "gross_cap": 1.35,
+   "lock_intraday": true,
+   "disaster": 0.35,
+   "lock_tiers": [
+    [
+     0.6,
+     0.9
+    ],
+    [
+     0.35,
+     0.85
+    ],
+    [
+     0.2,
+     0.8
+    ],
+    [
+     0.1,
+     0.7
+    ],
+    [
+     0.05,
+     0.6
+    ],
+    [
+     0.03,
+     0.5
+    ]
+   ]
+  },
+  {
+   "code": "W",
+   "name": "U + Early Lock + Sellers-Took-Over Exit",
+   "lock": "long",
+   "guard": false,
+   "cash": 1000.0,
+   "positions": {},
+   "closed": [],
+   "equity": [],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_pos": 9,
+   "slot_size": 0.15,
+   "gross_cap": 1.35,
+   "lock_intraday": true,
+   "disaster": 0.35,
+   "lock_tiers": [
+    [
+     0.6,
+     0.9
+    ],
+    [
+     0.35,
+     0.85
+    ],
+    [
+     0.2,
+     0.8
+    ],
+    [
+     0.1,
+     0.7
+    ],
+    [
+     0.05,
+     0.6
+    ],
+    [
+     0.03,
+     0.5
+    ]
+   ],
+   "seller_exit": {
+    "after_gain": 0.03,
+    "vol_mult": 1.5,
+    "close_in_bottom": 0.35
+   }
+  },
+  {
+   "code": "X",
+   "name": "U + Take Half at +10%",
+   "lock": "long",
+   "guard": false,
+   "cash": 1000.0,
+   "positions": {},
+   "closed": [],
+   "equity": [],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_pos": 9,
+   "slot_size": 0.15,
+   "gross_cap": 1.35,
+   "lock_intraday": true,
+   "disaster": 0.35,
+   "take_half": {
+    "at": 0.1,
+    "frac": 0.5
+   }
+  },
+  {
+   "code": "Y",
+   "name": "V + Lock from +1%",
+   "lock": "long",
+   "guard": false,
+   "cash": 1000.0,
+   "positions": {},
+   "closed": [],
+   "equity": [],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_pos": 9,
+   "slot_size": 0.15,
+   "gross_cap": 1.35,
+   "lock_intraday": true,
+   "disaster": 0.35,
+   "lock_tiers": [
+    [
+     0.6,
+     0.9
+    ],
+    [
+     0.35,
+     0.85
+    ],
+    [
+     0.2,
+     0.8
+    ],
+    [
+     0.1,
+     0.7
+    ],
+    [
+     0.05,
+     0.6
+    ],
+    [
+     0.03,
+     0.5
+    ],
+    [
+     0.01,
+     0.5
+    ]
+   ]
+  },
+  {
+   "code": "Z",
+   "name": "V + -5% Loss Stop",
+   "lock": "long",
+   "guard": false,
+   "cash": 1000.0,
+   "positions": {},
+   "closed": [],
+   "equity": [],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_pos": 9,
+   "slot_size": 0.15,
+   "gross_cap": 1.35,
+   "lock_intraday": true,
+   "disaster": 0.05,
+   "lock_tiers": [
+    [
+     0.6,
+     0.9
+    ],
+    [
+     0.35,
+     0.85
+    ],
+    [
+     0.2,
+     0.8
+    ],
+    [
+     0.1,
+     0.7
+    ],
+    [
+     0.05,
+     0.6
+    ],
+    [
+     0.03,
+     0.5
+    ]
+   ]
+  },
+  {
+   "code": "Z3",
+   "name": "V + -3% Loss Stop",
+   "lock": "long",
+   "guard": false,
+   "cash": 1000.0,
+   "positions": {},
+   "closed": [],
+   "equity": [],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_pos": 9,
+   "slot_size": 0.15,
+   "gross_cap": 1.35,
+   "lock_intraday": true,
+   "disaster": 0.03,
+   "lock_tiers": [
+    [
+     0.6,
+     0.9
+    ],
+    [
+     0.35,
+     0.85
+    ],
+    [
+     0.2,
+     0.8
+    ],
+    [
+     0.1,
+     0.7
+    ],
+    [
+     0.05,
+     0.6
+    ],
+    [
+     0.03,
+     0.5
+    ]
+   ]
+  },
+  {
+   "code": "YZ",
+   "name": "V + Lock from +1% + -5% Loss Stop",
+   "lock": "long",
+   "guard": false,
+   "cash": 1000.0,
+   "positions": {},
+   "closed": [],
+   "equity": [],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_pos": 9,
+   "slot_size": 0.15,
+   "gross_cap": 1.35,
+   "lock_intraday": true,
+   "disaster": 0.05,
+   "lock_tiers": [
+    [
+     0.6,
+     0.9
+    ],
+    [
+     0.35,
+     0.85
+    ],
+    [
+     0.2,
+     0.8
+    ],
+    [
+     0.1,
+     0.7
+    ],
+    [
+     0.05,
+     0.6
+    ],
+    [
+     0.03,
+     0.5
+    ],
+    [
+     0.01,
+     0.5
+    ]
+   ]
   }
  ],
  "last_processed_day": "2026-10-22",
- "engine": "GC-PAPER-1.13",
+ "engine": "GC-PAPER-1.16",
  "started": "2026-10-21"
 }
