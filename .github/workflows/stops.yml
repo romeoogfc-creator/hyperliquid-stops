@@ -22,6 +22,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          # Always start from the LATEST main (with the newest state.json). Without this, a run that was queued
+          # behind another one checks out the older commit and works from an out-of-date state.json.
+          ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
