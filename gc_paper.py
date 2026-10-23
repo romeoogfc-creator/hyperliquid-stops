@@ -43,6 +43,10 @@ plus a disaster stop 35% against every position (long below entry x0.65 / short 
 Every email also has a GROWTH CALCULATOR: each book's return so far, turned into average $ per day at $1k / $10k / $50k /
 $200k and the capital that would have been needed for $200 and $400 a day.
 
+MARKET (env MARKET): crypto (default, Hyperliquid) or stocks (Alpaca daily bars, ~100 large US stocks, SPY plays BTC's role
+for the bear-short filter and the buy & hold comparison). Stocks: backtest and robust modes only for now. Accounts under
+$2,000 at Alpaca cannot short or use margin, so LONG_ONLY=auto makes stock backtests under $2,000 long-only at 1x.
+
 Modes (env MODE):
   robust   stability check: replay chosen books ROBUST_RUNS times over the same history, each time considering the coins in a
            different random order (which coin fills a slot first). Shows the typical and worst result, so a lucky ordering
@@ -68,15 +72,31 @@ from email.mime.image import MIMEImage
 
 import numpy as np
 
-STRATEGY_ID = "TR-GC-Crypto-LS-15"
-ENGINE_VERSION = "GC-PAPER-1.12"
+MARKET = os.getenv("MARKET", "crypto").strip().lower()
+STOCKS = MARKET == "stocks"
+STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
+BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
+ENGINE_VERSION = "GC-PAPER-1.13"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
 START_NAV = float(os.getenv("START_NAV", "1000") or 1000)   # starting balance of each NEW book (Run workflow option)
 ROBUST_RUNS = int(os.getenv("ROBUST_RUNS", "20") or 20)
 ROBUST_BOOKS = [c.strip().upper() for c in os.getenv("ROBUST_BOOKS", "D,O,U").split(",") if c.strip()]
-MIN_ORDER_USD = 10.0                   # Hyperliquid rejects orders under ~$10: entries / top-ups below this are skipped
+MIN_ORDER_USD = 1.0 if STOCKS else 10.0   # Hyperliquid rejects orders under ~$10; Alpaca fractional orders go down to $1
+_LONG_ONLY_ENV = os.getenv("LONG_ONLY", "auto").strip().lower()
+LONG_ONLY = (_LONG_ONLY_ENV in ("1", "true", "yes")) or (_LONG_ONLY_ENV == "auto" and STOCKS and START_NAV < 2000)
+
+# Stocks universe: large, liquid US names (ranked each run by average dollar volume; the top 100 are traded).
+STOCK_UNIVERSE = [
+    "AAPL", "MSFT", "NVDA", "AMZN", "GOOGL", "META", "AVGO", "TSLA", "JPM", "V", "MA", "UNH", "XOM", "JNJ", "PG", "HD", "COST",
+    "ABBV", "MRK", "CVX", "LLY", "PEP", "KO", "BAC", "WMT", "ADBE", "CRM", "NFLX", "AMD", "ORCL", "CSCO", "ACN", "TMO", "MCD",
+    "ABT", "INTC", "DIS", "WFC", "QCOM", "TXN", "DHR", "VZ", "CMCSA", "PFE", "NKE", "PM", "UPS", "NEE", "RTX", "HON", "INTU",
+    "LOW", "AMGN", "IBM", "SPGI", "CAT", "GS", "UNP", "BA", "MS", "AMAT", "ISRG", "GE", "BKNG", "LMT", "PLD", "BLK", "MDT", "DE",
+    "SYK", "ADP", "GILD", "TJX", "CB", "AXP", "SBUX", "MDLZ", "ADI", "LRCX", "C", "NOW", "REGN", "VRTX", "PANW", "MU", "SCHW",
+    "CI", "ELV", "ZTS", "SO", "DUK", "BSX", "MO", "CL", "PYPL", "UBER", "PLTR", "COIN", "MSTR", "HOOD", "SHOP", "SNOW", "ABNB",
+    "ARM", "SMCI", "MRVL", "CRWD", "QQQ", "SPY",
+]
 
 # ---------------- Gaussian Channel (DonovanWall defaults) ----------------
 GC_POLES = 4
@@ -97,7 +117,7 @@ HEDGE_SHORT_SIZE = 0.03
 BEAR_SHORT_SIZE = 0.05
 BEAR_SHORT_TOUCH = 0.98                # high >= 0.98 x filter
 SHORT_TP_RATIO = 0.65                  # close <= 0.65 x entry
-FEE_RATE = 0.00045                     # Hyperliquid taker per side (funding not modelled)
+FEE_RATE = 0.0005 if STOCKS else 0.00045   # stocks: no commission, 0.05%/side for spread + slippage; crypto: Hyperliquid taker
 
 # ---------------- Book B profit-lock ladder (price gain at 1x, peak from daily highs/lows) ----------------
 # (peak gain reached, share of peak to keep). Below 10%: after +5% the stop moves to +1% so a winner never turns red.
@@ -228,6 +248,7 @@ def enrich(bars):
             breakout = b["date"]
         b["breakout"] = breakout
         b["valid"] = i >= GC_WARMUP_BARS
+        b["_prev"] = bars[i - 1] if i > 0 else None
         tr = b["h"] - b["l"] if i == 0 else max(b["h"] - b["l"], abs(b["h"] - bars[i - 1]["c"]), abs(b["l"] - bars[i - 1]["c"]))
         atr = tr if atr is None else atr + (tr - atr) / ATR_PERIOD          # Wilder's ATR
         b["atr"] = atr
@@ -246,7 +267,7 @@ def new_book(code, name, lock, guard=False):
 
 def buying_power(book, nav):
     """Cash available for a new position. Books with gross_cap may borrow margin up to gross_cap x NAV in positions."""
-    cap = book.get("gross_cap")
+    cap = None if LONG_ONLY else book.get("gross_cap")       # long-only (small stock account) = cash only, no margin
     if not cap:
         return book["cash"]
     return book["cash"] + max(0.0, (cap - 1.0) * nav)
@@ -372,8 +393,7 @@ def set_lock_stop(book, p, high, low):
 def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=None):
     """Runs one LS-15 decision cycle on the daily candle `day` (YYYY-MM-DD) for one book."""
     bar = {c: data[c][day] for c in data if day in data[c]}
-    prev_day = (datetime.strptime(day, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
-    prev = {c: data[c][prev_day] for c in data if prev_day in data[c]}
+    prev = {c: b["_prev"] for c, b in bar.items() if b.get("_prev")}   # previous bar (previous TRADING day for stocks)
     closes = {c: b["c"] for c, b in bar.items()}
     rank_of = {c: i + 1 for i, c in enumerate(ranked)}
     universe = ranked[:UNIVERSE_SIZE]
@@ -524,7 +544,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
         topup_position(book, c, usd, b["c"], day, log)
 
     # 8) SHORT ENTRIES (rank order)
-    for c in universe:
+    for c in ([] if LONG_ONLY else universe):
         b, pb = bar.get(c), prev.get(c)
         if not b or not pb or not b.get("valid") or c in book["positions"]:
             continue
@@ -539,11 +559,15 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
         want = entry_size(book, nav, HEDGE_SHORT_SIZE if hedge else BEAR_SHORT_SIZE)
         power = buying_power(book, nav)
         usd = min(want, power / (1 + FEE_RATE))
+        if STOCKS:                                            # stock shorts: whole shares only
+            usd = math.floor(usd / b["c"]) * b["c"]
+            if usd <= 0:
+                skips.append((c, f"Short signal, one share (${b['c']:,.2f}) is more than the position size")); continue
         if usd < MIN_ORDER_USD:
-            skips.append((c, f"Short signal, ${usd:,.2f} is below Hyperliquid's ${MIN_ORDER_USD:.0f} minimum order")); continue
+            skips.append((c, f"Short signal, ${usd:,.2f} is below the ${MIN_ORDER_USD:.0f} minimum order")); continue
         if usd < nav * MIN_TRADE_NAV:
             skips.append((c, f"Short signal, not enough cash (${usd:,.2f} < 1% NAV)")); continue
-        open_position(book, c, "SHORT", usd, b["c"], day, "hedge short (cross under filter)" if hedge else "bear short (rejected bounce, BTC down)", log, power)
+        open_position(book, c, "SHORT", usd, b["c"], day, "hedge short (cross under filter)" if hedge else f"bear short (rejected bounce, {BENCH} down)", log, power)
 
     # Update peaks with today's candle and (profit-lock books) set tomorrow's resting stop.
     for c, p in book["positions"].items():
@@ -643,12 +667,119 @@ def fetch_intraday(info, coins, history_days):
     return out
 
 
+# ---------------- Stocks (Alpaca market data; read-only, no orders) ----------------
+STOCK_NOTE = ("STOCKS MODE: Alpaca daily bars (split/dividend adjusted), ~100 large US stocks ranked by average dollar volume, "
+              "SPY replaces BTC as the market filter and the benchmark. 0.05% per side for spread/slippage (no commission). "
+              "Accounts under $2,000 cannot short or use margin at Alpaca, so those backtests are long-only at 1x. Stock shorts use "
+              "whole shares. Overnight gaps fill stops at the open. The 4-hour lock uses regular-hours hourly bars.")
+ALPACA_DATA = "https://data.alpaca.markets/v2/stocks/bars"
+_feed = {"name": os.getenv("APAL_HIST_FEED", "sip")}       # free plan: full SIP history except the last 15 minutes
+
+
+def _et_zone():
+    try:
+        from zoneinfo import ZoneInfo
+        return ZoneInfo("America/New_York")
+    except Exception:
+        return timezone(timedelta(hours=-4))
+
+
+ET_ZONE = _et_zone()
+
+
+def alpaca_bars(symbols, timeframe, start_dt, end_dt):
+    import requests
+    headers = {"APCA-API-KEY-ID": os.getenv("APAL_API_KEY_ID", ""), "APCA-API-SECRET-KEY": os.getenv("APAL_SECRET_KEY", ""),
+               "accept": "application/json"}
+    if not headers["APCA-API-KEY-ID"]:
+        raise RuntimeError("APAL_API_KEY_ID / APAL_SECRET_KEY missing — stock data needs the Alpaca keys")
+    out = {}
+    params = {"symbols": ",".join(symbols), "timeframe": timeframe, "limit": 10000, "adjustment": "all", "feed": _feed["name"],
+              "start": start_dt.strftime("%Y-%m-%dT%H:%M:%SZ"), "end": end_dt.strftime("%Y-%m-%dT%H:%M:%SZ")}
+    pages = 0
+    while pages < 500:
+        res = None
+        for attempt in range(5):
+            try:
+                res = requests.get(ALPACA_DATA, params=params, headers=headers, timeout=30)
+            except Exception:
+                time.sleep(5 * (attempt + 1))
+                continue
+            if res.status_code == 429 or res.status_code >= 500:
+                time.sleep(10 * (attempt + 1))
+                continue
+            break
+        if res is None:
+            raise RuntimeError("Alpaca data API unreachable")
+        if res.status_code == 403 and _feed["name"] == "sip":
+            print("[WARN] SIP feed not allowed on this plan — falling back to IEX", flush=True)
+            _feed["name"] = params["feed"] = "iex"
+            continue
+        if res.status_code != 200:
+            raise RuntimeError(f"Alpaca bars {timeframe} failed ({res.status_code}): {res.text[:200]}")
+        body = res.json()
+        for sym, bl in (body.get("bars") or {}).items():
+            out.setdefault(sym, []).extend(bl)
+        pages += 1
+        token = body.get("next_page_token")
+        if not token:
+            break
+        params["page_token"] = token
+        time.sleep(0.35)                                       # free plan: 200 requests/minute
+    return out
+
+
+def _et(ts):
+    return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(ET_ZONE)
+
+
+def fetch_stock_market(history_days):
+    """Same shape as fetch_market: (ranked symbols, {symbol: {date: bar}}). Rank = average dollar volume, last 20 days."""
+    now = datetime.now(timezone.utc)
+    end = now - timedelta(minutes=16)
+    start = now - timedelta(days=history_days + 340)          # + ~230 trading days for the channel warm-up
+    raw = alpaca_bars(STOCK_UNIVERSE, "1Day", start, end)
+    today_et = now.astimezone(ET_ZONE)
+    data, dollar_vol = {}, {}
+    for sym, bl in raw.items():
+        rows = []
+        for k in sorted(bl, key=lambda k: k["t"]):
+            d = _et(k["t"]).strftime("%Y-%m-%d")
+            if d == today_et.strftime("%Y-%m-%d") and (today_et.hour, today_et.minute) < (16, 15):
+                continue                                       # today's bar is still forming
+            rows.append({"date": d, "o": float(k["o"]), "h": float(k["h"]), "l": float(k["l"]), "c": float(k["c"]), "v": float(k.get("v", 0))})
+        if len(rows) < 3:
+            continue
+        enrich(rows)
+        data[sym] = {r["date"]: r for r in rows}
+        dollar_vol[sym] = float(np.mean([r["c"] * r["v"] for r in rows[-20:]]))
+    ranked = sorted(data, key=lambda s: dollar_vol.get(s, 0), reverse=True)
+    print(f"Stocks: {len(data)} symbols with daily bars (feed {_feed['name']})", flush=True)
+    return ranked, data
+
+
+def fetch_stock_intraday(coins, history_days):
+    """{symbol: {date: [regular-hours hourly bars in order]}} for the lock_intraday books."""
+    now = datetime.now(timezone.utc)
+    raw = alpaca_bars(list(coins), "1Hour", now - timedelta(days=history_days + 3), now - timedelta(minutes=16))
+    out = {}
+    for sym, bl in raw.items():
+        by_day = {}
+        for k in sorted(bl, key=lambda k: k["t"]):
+            t = _et(k["t"])
+            if not (9 <= t.hour <= 15):                          # regular session (the 9:00 bar holds the 9:30 open)
+                continue
+            by_day.setdefault(t.strftime("%Y-%m-%d"), []).append({"o": float(k["o"]), "h": float(k["h"]), "l": float(k["l"]), "c": float(k["c"])})
+        out[sym] = by_day
+    return out
+
+
 def needs_intraday(books):
     return any(b.get("lock_intraday") for b in books)
 
 
 def btc_downtrend(data, day):
-    b = data.get("BTC", {}).get(day)
+    b = data.get(BENCH, {}).get(day)
     return bool(b and b.get("valid") and b["c"] < b["filter"])
 
 
@@ -697,7 +828,7 @@ def make_chart(books, btc_curve, title):
             ax.plot([datetime.strptime(d, "%Y-%m-%d") for d, _ in book["equity"]], [v / book_start(book) * 100 - 100 for _, v in book["equity"]],
                     label=f"{book['code']}: {book['name']}", color=color, linewidth=1.6)
     if btc_curve:
-        ax.plot([datetime.strptime(d, "%Y-%m-%d") for d, _ in btc_curve], [v for _, v in btc_curve], label="BTC buy & hold",
+        ax.plot([datetime.strptime(d, "%Y-%m-%d") for d, _ in btc_curve], [v for _, v in btc_curve], label=f"{BENCH} buy & hold",
                 color="#f59e0b", linewidth=1, linestyle="--")
     ax.axhline(0, color="#94a3b8", linewidth=0.8)
     ax.set_ylabel("Return %")
@@ -892,7 +1023,7 @@ NOTES = [
 
 
 def btc_buy_hold(data, days):
-    btc = data.get("BTC", {})
+    btc = data.get(BENCH, {})
     pts = [(d, btc[d]["c"]) for d in days if d in btc]
     if not pts:
         return []
@@ -903,13 +1034,27 @@ def btc_buy_hold(data, days):
 # ======================================================================================
 # Modes
 # ======================================================================================
+def backtest_days(all_days):
+    """Candles of the last BACKTEST_DAYS calendar days (crypto: one per day; stocks: trading days only)."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=BACKTEST_DAYS)).strftime("%Y-%m-%d")
+    return [d for d in all_days if d >= cutoff]
+
+
+def load_market(info, history_days):
+    return fetch_stock_market(history_days) if STOCKS else fetch_market(info, history_days)
+
+
+def load_intraday(info, coins, history_days):
+    return fetch_stock_intraday(coins, history_days) if STOCKS else fetch_intraday(info, coins, history_days)
+
+
 def run_backtest(info):
-    ranked, data = fetch_market(info, BACKTEST_DAYS)
+    ranked, data = load_market(info, BACKTEST_DAYS)
     universe = ranked[:UNIVERSE_SIZE]
     all_days = sorted({d for c in data for d in data[c]})
-    days = all_days[-BACKTEST_DAYS:]
+    days = backtest_days(all_days)
     books = [new_book(code, name, lock, guard) for code, name, lock, guard in BOOKS]
-    data4h = fetch_intraday(info, universe, BACKTEST_DAYS) if needs_intraday(books) else {}
+    data4h = load_intraday(info, universe, BACKTEST_DAYS) if needs_intraday(books) else {}
     min_order_skips = {b["code"]: 0 for b in books}
     for day in days:
         btc_down = btc_downtrend(data, day)
@@ -920,16 +1065,16 @@ def run_backtest(info):
     last = days[-1] if days else ""
     prices = {c: data[c][last]["c"] for c in data if last in data[c]}
     btc_curve = btc_buy_hold(data, days)
-    chart = make_chart(books, btc_curve, f"Backtest {days[0] if days else ''} → {last} (all books vs BTC)")
+    chart = make_chart(books, btc_curve, f"Backtest {days[0] if days else ''} → {last} (all books vs {BENCH})")
     title = f"{STRATEGY_ID} BACKTEST — {len(days)} days from ${START_NAV:,.0f}"
     btc_ret = btc_curve[-1][1] if btc_curve else 0.0
-    summary = " | ".join(f"{b['code']}: {book_stats(b)['ret']:+.1f}% (DD {book_stats(b)['mdd']:.1f}%)" for b in books) + f" | BTC {btc_ret:+.1f}%"
+    summary = " | ".join(f"{b['code']}: {book_stats(b)['ret']:+.1f}% (DD {book_stats(b)['mdd']:.1f}%)" for b in books) + f" | {BENCH} {btc_ret:+.1f}%"
     blocked = ", ".join(f"{k}: {v}" for k, v in min_order_skips.items() if v)
-    notes = NOTES + [f"Starting balance ${START_NAV:,.2f} per book. Signals skipped because the order would be under ${MIN_ORDER_USD:.0f}: "
+    notes = ([STOCK_NOTE] if STOCKS else []) + NOTES + [f"Starting balance ${START_NAV:,.2f} per book. Signals skipped because the order would be under ${MIN_ORDER_USD:.0f}: "
                      f"{blocked or 'none'}.", f"Backtest universe = today's top {UNIVERSE_SIZE} by open interest (coins that died earlier are missing, which flatters results slightly). "
                      "No drift-out exits in backtest (no historical ranks). Open positions are valued at the last close."]
     html = render_email(title, f"{days[0] if days else ''} → {last} • {summary}", books, [], [], prices, btc_curve,
-                        f"BTC buy & hold over the same period: {btc_ret:+.1f}%.", "gcchart" if chart else None, notes, growth_section(books, prices))
+                        f"{BENCH} buy & hold over the same period: {btc_ret:+.1f}%.", "gcchart" if chart else None, notes, growth_section(books, prices))
     text = f"{title}\n{summary}\n" + "\n".join(f"{b['code']}: {book_stats(b)}" for b in books)
     print(text, flush=True)
     send_email(f"📊 {title} — {summary}", html, text, chart)
@@ -937,14 +1082,14 @@ def run_backtest(info):
 
 def run_robust(info):
     """Same history, ROBUST_RUNS different coin orders. Run 1 = the normal open-interest order."""
-    ranked, data = fetch_market(info, BACKTEST_DAYS)
+    ranked, data = load_market(info, BACKTEST_DAYS)
     universe = ranked[:UNIVERSE_SIZE]
     all_days = sorted({d for c in data for d in data[c]})
-    days = all_days[-BACKTEST_DAYS:]
+    days = backtest_days(all_days)
     specs = [b for b in BOOKS if b[0] in ROBUST_BOOKS]
     if not specs:
         raise RuntimeError(f"ROBUST_BOOKS {ROBUST_BOOKS} matches no book")
-    data4h = fetch_intraday(info, universe, BACKTEST_DAYS) if any(BOOK_OPTIONS.get(c, {}).get("lock_intraday") for c, *_ in specs) else {}
+    data4h = load_intraday(info, universe, BACKTEST_DAYS) if any(BOOK_OPTIONS.get(c, {}).get("lock_intraday") for c, *_ in specs) else {}
     btc_down = {d: btc_downtrend(data, d) for d in days}
     last = days[-1]
     prices = {c: data[c][last]["c"] for c in data if last in data[c]}
@@ -982,7 +1127,7 @@ def run_robust(info):
 <body style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f4f6f8;margin:0;padding:8px;color:#333;">
 <div style="max-width:680px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;">
   <div style="background:#0f172a;color:#fff;padding:14px;"><div style="font-size:15px;font-weight:700;">{title}</div>
-    <div style="font-size:11px;color:#94a3b8;margin-top:3px;">{days[0]} → {last} • BTC buy &amp; hold {btc_ret:+.1f}%</div></div>
+    <div style="font-size:11px;color:#94a3b8;margin-top:3px;">{days[0]} → {last} • {BENCH} buy &amp; hold {btc_ret:+.1f}%</div></div>
   <div style="padding:12px;font-size:12px;">
     <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:8px;font-size:11px;color:#92400e;margin-bottom:12px;">
       📝 PAPER ONLY. Same coins, same candles, same rules — only the ORDER in which same-day signals are considered changes
@@ -990,7 +1135,7 @@ def run_robust(info):
       a lucky one swings wildly.</div>
     <div style="overflow-x:auto;"><table style="width:100%;font-size:11px;border-collapse:collapse;" cellpadding="4">
       <tr style="background:#f1f5f9;"><th align="left">Book</th><th align="left">Normal order</th><th align="left">Median</th><th align="left">Worst</th>
-      <th align="left">Best</th><th align="left">Median drop</th><th align="left">Worst drop</th><th align="left">Beat BTC</th><th align="left">Beat D (same order)</th></tr>
+      <th align="left">Best</th><th align="left">Median drop</th><th align="left">Worst drop</th><th align="left">Beat {BENCH}</th><th align="left">Beat D (same order)</th></tr>
       {rows}</table></div>
     <div style="font-weight:700;margin-top:12px;">Every run</div><div style="font-size:11px;color:#475569;">{every}</div>
   </div></div></body></html>"""
@@ -1000,6 +1145,8 @@ def run_robust(info):
 
 
 def run_paper(info):
+    if STOCKS:
+        raise RuntimeError("Stocks: only backtest and robust modes are available so far (no stock paper books yet)")
     state = {}
     if os.path.exists(STATE_FILE):
         with open(STATE_FILE) as f:
@@ -1056,6 +1203,12 @@ def run_paper(info):
 
 
 def main():
+    if STOCKS:                                                # Alpaca data only: no Hyperliquid connection needed
+        if MODE == "backtest":
+            return run_backtest(None)
+        if MODE == "robust":
+            return run_robust(None)
+        return run_paper(None)
     from hyperliquid.info import Info
     from hyperliquid.utils import constants
     info = None
