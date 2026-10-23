@@ -40,6 +40,12 @@ account in positions (2x margin). Built for small accounts: on $111 the doubled 
 Book U "LIVE SETUP" = exactly what ls15_live.py trades: max 9 positions @ 15% (up to 135% in use, ~1.35x), 4-hour long lock,
 plus a disaster stop 35% against every position (long below entry x0.65 / short above entry x1.35).
 
+Profit-protection variants of the live setup U (same 9 slots, 4-hour lock, disaster stop):
+  Book V "EARLY LOCK"  - keeps 50% of the peak gain from +3%, 60% from +5%, 70% from +10%, 80/85/90% from +20/35/60%
+  Book W "EARLY LOCK + SELLERS" - Book V, plus: once a long has been +3%, sell on a red day with volume >= 1.5x its
+                         20-day average that closes in the bottom third of the day's range (sellers took over)
+  Book X "TAKE HALF"   - Book U, plus: sell HALF at +10% (resting take-profit), the other half runs on U's lock
+
 Every email also has a GROWTH CALCULATOR: each book's return so far, turned into average $ per day at $1k / $10k / $50k /
 $200k and the capital that would have been needed for $200 and $400 a day.
 
@@ -76,13 +82,13 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.13"
+ENGINE_VERSION = "GC-PAPER-1.14"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
 START_NAV = float(os.getenv("START_NAV", "1000") or 1000)   # starting balance of each NEW book (Run workflow option)
 ROBUST_RUNS = int(os.getenv("ROBUST_RUNS", "20") or 20)
-ROBUST_BOOKS = [c.strip().upper() for c in os.getenv("ROBUST_BOOKS", "D,O,U").split(",") if c.strip()]
+ROBUST_BOOKS = [c.strip().upper() for c in os.getenv("ROBUST_BOOKS", "U,V,W,X").split(",") if c.strip()]
 MIN_ORDER_USD = 1.0 if STOCKS else 10.0   # Hyperliquid rejects orders under ~$10; Alpaca fractional orders go down to $1
 _LONG_ONLY_ENV = os.getenv("LONG_ONLY", "auto").strip().lower()
 LONG_ONLY = (_LONG_ONLY_ENV in ("1", "true", "yes")) or (_LONG_ONLY_ENV == "auto" and STOCKS and START_NAV < 2000)
@@ -153,6 +159,9 @@ BOOKS = [
     ("S", "Max 10 @ 10% + Long Lock (4h), 1x", "long", False),
     ("T", "LS-15 + Long Lock @ 2x (D doubled)", "long", False),
     ("U", "LIVE SETUP: Max 9 @ 15% + Long Lock (4h) + Disaster Stop", "long", False),
+    ("V", "U + Early Lock (keep 50-90% from +3%)", "long", False),
+    ("W", "U + Early Lock + Sellers-Took-Over Exit", "long", False),
+    ("X", "U + Take Half at +10%", "long", False),
 ]
 # Extra per-book settings (books not listed use the LS-15 defaults).
 #   size_mult: scales every entry and the top-up target.  max_pos / slot_size: at most N positions, each slot_size of NAV.
@@ -179,7 +188,15 @@ BOOK_OPTIONS = {
     "T": {"size_mult": 2.0, "gross_cap": 2.0},                # Book D with 2x sizes and up to 2x margin
     # U mirrors ls15_live.py: 9 slots x 15% (135% max), 4h long lock, disaster stop 35% from entry on every position.
     "U": {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": 0.35},
+    "V": {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": 0.35,
+          "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50]]},
+    "W": {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": 0.35,
+          "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50]],
+          "seller_exit": {"after_gain": 0.03, "vol_mult": 1.5, "close_in_bottom": 0.35}},
+    "X": {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": 0.35,
+          "take_half": {"at": 0.10, "frac": 0.5}},
 }
+VOL_AVG_DAYS = 20                      # seller-exit: today's volume vs the previous 20 days
 ATR_PERIOD = 14
 CLIMAX_ATR = 2.0                       # "parabolic" = daily close more than 2 ATR above the upper band
 INTRADAY_INTERVAL = "4h"               # candles used by lock_intraday books (Hyperliquid keeps the last 5000 = ~833 days)
@@ -249,6 +266,8 @@ def enrich(bars):
         b["breakout"] = breakout
         b["valid"] = i >= GC_WARMUP_BARS
         b["_prev"] = bars[i - 1] if i > 0 else None
+        past = [x.get("v", 0) for x in bars[max(0, i - VOL_AVG_DAYS):i]]
+        b["vavg"] = (sum(past) / len(past)) if len(past) >= VOL_AVG_DAYS and sum(past) > 0 else None
         tr = b["h"] - b["l"] if i == 0 else max(b["h"] - b["l"], abs(b["h"] - bars[i - 1]["c"]), abs(b["l"] - bars[i - 1]["c"]))
         atr = tr if atr is None else atr + (tr - atr) / ATR_PERIOD          # Wilder's ATR
         b["atr"] = atr
@@ -306,7 +325,14 @@ def book_nav(book, prices):
     return book["cash"] + sum(pos_value(p, prices.get(c, p["last_px"])) for c, p in book["positions"].items())
 
 
-def lock_floor(peak_gain):
+def lock_floor(peak_gain, tiers=None):
+    """Locked gain for a peak gain. Default = the 80-97% ladder with the +5% -> +1% floor; a book's own lock_tiers
+    (e.g. Book V: keep 50% from +3%) replace both."""
+    if tiers:
+        for trigger, keep in tiers:
+            if peak_gain >= trigger:
+                return peak_gain * keep
+        return None
     for trigger, keep in LOCK_TIERS:
         if peak_gain >= trigger:
             return peak_gain * keep
@@ -382,12 +408,46 @@ def set_lock_stop(book, p, high, low):
         return
     if p["side"] == "LONG":
         p["peak_px"] = max(p["peak_px"], high)
-        fl = lock_floor(p["peak_px"] / p["entry"] - 1)
+        fl = lock_floor(p["peak_px"] / p["entry"] - 1, book.get("lock_tiers"))
         p["stop"] = None if fl is None else p["entry"] * (1 + fl)
     else:
         p["peak_px"] = min(p["peak_px"], low)
-        fl = lock_floor(1 - p["peak_px"] / p["entry"])
+        fl = lock_floor(1 - p["peak_px"] / p["entry"], book.get("lock_tiers"))
         p["stop"] = None if fl is None else p["entry"] * (1 - fl)
+
+
+def partial_close(book, coin, px, frac, date, reason, log):
+    """Sell `frac` of a long at px (Book X take-half). The rest of the position keeps running."""
+    p = book["positions"][coin]
+    q = p["qty"] * frac
+    fee = q * px * FEE_RATE
+    fees_part = p["fees"] * frac
+    book["cash"] += q * px - fee
+    pnl = (px - p["entry"]) * q - fees_part - fee
+    p["qty"] -= q
+    p["cost"] *= (1 - frac)
+    p["fees"] -= fees_part
+    p["half_taken"] = True
+    gain = px / p["entry"] - 1
+    book["closed"].append({"coin": coin, "side": "LONG", "opened": p["opened"], "closed": date, "entry": p["entry"], "exit": px,
+                           "pnl": round(pnl, 4), "pct": round(gain * 100, 2), "peak_pct": round(max(p["peak_px"] / p["entry"] - 1, gain) * 100, 2),
+                           "reason": reason, "why_in": p["reason"]})
+    log.append(("EXIT", coin, f"LONG {reason} — {frac*100:.0f}% sold at {gain*100:+.2f}%, ${pnl:+,.2f}"))
+
+
+def sellers_took_over(book, p, b):
+    """Book W: the long has been up `after_gain`, and today is a red day on heavy volume closing near its low."""
+    se = book.get("seller_exit")
+    if not se or p["side"] != "LONG" or p["opened"] == b.get("date") or not b.get("vavg"):
+        return False
+    rng = b["h"] - b["l"]
+    return (max(p["peak_px"], b["h"]) / p["entry"] - 1 >= se["after_gain"] and b["c"] < b["o"] and b.get("v", 0) >= se["vol_mult"] * b["vavg"]
+            and rng > 0 and (b["c"] - b["l"]) <= se["close_in_bottom"] * rng)
+
+
+def take_half_hit(book, p, high):
+    th = book.get("take_half")
+    return bool(th and p["side"] == "LONG" and not p.get("half_taken") and high >= p["entry"] * (1 + th["at"]))
 
 
 def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=None):
@@ -421,8 +481,15 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
                         close_position(book, c, max(k["o"], p["stop"]), day, f"{lock_label(book)} (stop {p['stop']:.6g}, 4h)", log)
                         exited.add(c)
                         break
+                    if take_half_hit(book, p, k["h"]):
+                        tp = p["entry"] * (1 + book["take_half"]["at"])
+                        partial_close(book, c, max(k["o"], tp), book["take_half"]["frac"], day,
+                                      f"💵 Take half at +{book['take_half']['at']*100:.0f}%", log)
                     set_lock_stop(book, p, k["h"], k["l"])    # this candle's high/low raises the peak, stop moves up
                 continue
+            if take_half_hit(book, p, b["h"]) and not (p["stop"] is not None and b["l"] <= p["stop"]):
+                tp = p["entry"] * (1 + book["take_half"]["at"])
+                partial_close(book, c, max(b["o"], tp), book["take_half"]["frac"], day, f"💵 Take half at +{book['take_half']['at']*100:.0f}%", log)
             if p["stop"] is None:
                 continue
             if p["side"] == "LONG" and b["l"] <= p["stop"]:
@@ -477,6 +544,9 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
             exited.add(c)
         elif not b or not b.get("valid"):
             skips.append((c, "Long held but indicator data missing — kept"))
+        elif sellers_took_over(book, p, b):
+            close_position(book, c, b["c"], day, f"🐻 Sellers took over (red day, volume {b['v']/b['vavg']:.1f}x avg, closed near the low)", log)
+            exited.add(c)
         elif b["c"] < b["upper"]:
             close_position(book, c, b["c"], day, "Close below upper GC band", log)
             exited.add(c)
@@ -632,7 +702,7 @@ def fetch_market(info, history_days, paced=False):
             if t + 86400000 > now_ms:          # still-forming daily candle: not CLOSED, ignore
                 continue
             bars.append({"date": datetime.fromtimestamp(t / 1000, tz=timezone.utc).strftime("%Y-%m-%d"),
-                         "o": float(k["o"]), "h": float(k["h"]), "l": float(k["l"]), "c": float(k["c"])})
+                         "o": float(k["o"]), "h": float(k["h"]), "l": float(k["l"]), "c": float(k["c"]), "v": float(k.get("v", 0) or 0)})
         enrich(bars)
         data[coin] = {b["date"]: b for b in bars}
     return ranked, data
@@ -823,7 +893,7 @@ def make_chart(books, btc_curve, title):
     except Exception:
         return None
     fig, ax = plt.subplots(figsize=(7, 3.2), dpi=110)
-    for book, color in zip(books, ["#2563eb", "#16a34a", "#9333ea", "#0891b2", "#db2777", "#64748b", "#ea580c", "#000000", "#65a30d", "#7c3aed", "#be123c", "#0d9488", "#a16207", "#4f46e5", "#15803d", "#c026d3", "#0369a1", "#9f1239", "#047857", "#854d0e", "#1d4ed8"]):
+    for book, color in zip(books, ["#2563eb", "#16a34a", "#9333ea", "#0891b2", "#db2777", "#64748b", "#ea580c", "#000000", "#65a30d", "#7c3aed", "#be123c", "#0d9488", "#a16207", "#4f46e5", "#15803d", "#c026d3", "#0369a1", "#9f1239", "#047857", "#854d0e", "#1d4ed8", "#be185d", "#0f766e", "#b45309"]):
         if book["equity"]:
             ax.plot([datetime.strptime(d, "%Y-%m-%d") for d, _ in book["equity"]], [v / book_start(book) * 100 - 100 for _, v in book["equity"]],
                     label=f"{book['code']}: {book['name']}", color=color, linewidth=1.6)
@@ -1015,6 +1085,9 @@ NOTES = [
     "Book T = Book D with every size doubled and up to 2x margin (200% of the account in positions) — gains AND losses roughly double.",
     "Book U = THE LIVE SETUP (ls15_live.py): max 9 positions @ 15% (up to 135% in use, ~1.35x), 4-hour long lock, and a disaster stop "
     "35% from entry on every position.",
+    "Book V = U with an EARLY lock: keeps 50% of the peak gain from +3%, 60% from +5%, 70% from +10%, 80/85/90% from +20/35/60%. "
+    "Book W = V plus a SELLERS-TOOK-OVER exit: once a long has been +3%, it sells on a red day whose volume is 1.5x+ the 20-day average "
+    "and that closes in the bottom third of its range. Book X = U plus TAKE HALF: sells half at +10%, the other half runs on U's lock.",
     "Gaussian Channel computed here from Hyperliquid daily candles (hlc3, 4 poles, period 144, x1.414) — close to SIGNUM's Trend Radar, not identical.",
     "Rank = Hyperliquid open-interest value (no market cap on Hyperliquid). breakoutDate = first close above the upper band since the channel turned Green.",
     "Fills at the daily close (lock stops at the stop price, or the open if it gapped through). 0.045% fee per side. Funding is not modelled.",
