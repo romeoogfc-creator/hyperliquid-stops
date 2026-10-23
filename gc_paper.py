@@ -85,7 +85,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.15"
+ENGINE_VERSION = "GC-PAPER-1.16"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -493,6 +493,13 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
             intraday = (data4h or {}).get(c, {}).get(day) if book.get("lock_intraday") else None
             if intraday:
                 for k in intraday:
+                    # The loss / disaster stop rests on the exchange too: inside the day it competes with the lock,
+                    # candle by candle (checking it only against the daily low let a dip-then-rally day exit at a profit).
+                    loss_px = p["entry"] * (1 - book["disaster"]) if book.get("disaster") and p["side"] == "LONG" and p["opened"] != day else None
+                    if p["side"] == "LONG" and loss_px and (p["stop"] is None or loss_px > p["stop"]) and k["l"] <= loss_px:
+                        close_position(book, c, min(k["o"], loss_px), day, f"{stop_label(book)} (-{book['disaster']*100:.0f}%, 4h)", log)
+                        exited.add(c)
+                        break
                     if p["stop"] is not None and p["side"] == "LONG" and k["l"] <= p["stop"]:
                         close_position(book, c, min(k["o"], p["stop"]), day, f"{lock_label(book)} (stop {p['stop']:.6g}, 4h)", log)
                         exited.add(c)
