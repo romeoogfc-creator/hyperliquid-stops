@@ -8,6 +8,12 @@ on:
     - cron: '20 6 * * *'
   workflow_dispatch:
     inputs:
+      market:
+        description: "crypto = Hyperliquid coins | stocks = ~100 large US stocks (Alpaca data; backtest / robust only)"
+        required: true
+        default: crypto
+        type: choice
+        options: [crypto, stocks]
       mode:
         description: "paper = update the paper books (daily) | backtest = replay history | robust = stability check (same history, shuffled coin order)"
         required: true
@@ -30,6 +36,10 @@ on:
         description: "robust only: books to check (comma separated)"
         required: false
         default: "D,O,U"
+      long_only:
+        description: "auto = stocks under $2,000 are long-only at 1x (Alpaca rule) | true | false"
+        required: false
+        default: "auto"
 
 concurrency:
   group: gc-paper-trader
@@ -65,6 +75,11 @@ jobs:
           START_NAV: ${{ (github.event.inputs.mode != 'paper' && github.event.inputs.start_nav) || '1000' }}
           ROBUST_RUNS: ${{ github.event.inputs.robust_runs || '20' }}
           ROBUST_BOOKS: ${{ github.event.inputs.robust_books || 'D,O,U' }}
+          MARKET: ${{ github.event.inputs.market || 'crypto' }}
+          LONG_ONLY: ${{ github.event.inputs.long_only || 'auto' }}
+          # Stocks mode reads Alpaca market data only (the paper account's keys; no orders are ever sent from here).
+          APAL_API_KEY_ID: ${{ secrets.APAL_API_KEY_ID }}
+          APAL_SECRET_KEY: ${{ secrets.APAL_SECRET_KEY }}
           # Paper only: no Hyperliquid keys are passed to this job at all.
           SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
           SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
@@ -73,7 +88,7 @@ jobs:
           python gc_paper.py
 
       - name: Auto-commit Paper State
-        if: ${{ (github.event.inputs.mode || 'paper') == 'paper' }}
+        if: ${{ (github.event.inputs.mode || 'paper') == 'paper' && (github.event.inputs.market || 'crypto') == 'crypto' }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
