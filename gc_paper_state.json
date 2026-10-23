@@ -5,40 +5,60 @@
    "name": "LS-15 Original",
    "lock": false,
    "guard": false,
-   "cash": 899.9549999999999,
+   "cash": 966.2936127655763,
    "positions": {
-    "ENA": {
-     "side": "LONG",
-     "qty": 93.58476440035562,
-     "entry": 0.21371,
-     "cost": 20.0,
-     "collateral": 0.0,
-     "fees": 0.009,
-     "opened": "2026-10-21",
-     "peak_px": 0.22608,
+    "STBL": {
+     "side": "SHORT",
+     "qty": 1166.3655857302106,
+     "entry": 0.025623,
+     "cost": 29.885785403165187,
+     "collateral": 29.885785403165187,
+     "fees": 0.013448603431424334,
+     "opened": "2026-10-22",
+     "peak_px": 0.025623,
      "stop": null,
-     "last_px": 0.21371,
-     "reason": "band breakout (old breakout, 2% NAV)"
-    },
-    "VVV": {
-     "side": "LONG",
-     "qty": 2.965049479263185,
-     "entry": 26.981,
-     "cost": 80.0,
-     "collateral": 0.0,
-     "fees": 0.036,
-     "opened": "2026-10-21",
-     "peak_px": 28.072,
-     "stop": null,
-     "last_px": 26.981,
-     "reason": "band breakout (recent breakout, 8% NAV)"
+     "last_px": 0.025623,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.003433214036756425,
+     "climax": false
     }
    },
-   "closed": [],
+   "closed": [
+    {
+     "coin": "ENA",
+     "side": "LONG",
+     "opened": "2026-10-21",
+     "closed": "2026-10-22",
+     "entry": 0.21371,
+     "exit": 0.19821,
+     "pnl": -1.4679,
+     "pct": -7.25,
+     "peak_pct": 5.79,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 2% NAV)"
+    },
+    {
+     "coin": "VVV",
+     "side": "LONG",
+     "opened": "2026-10-21",
+     "closed": "2026-10-22",
+     "entry": 26.981,
+     "exit": 26.216,
+     "pnl": -2.3392,
+     "pct": -2.84,
+     "peak_pct": 4.04,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (recent breakout, 8% NAV)"
+    }
+   ],
    "equity": [
     [
      "2026-10-21",
      999.95
+    ],
+    [
+     "2026-10-22",
+     996.18
     ]
    ],
    "eq_base": 1000.0,
@@ -50,40 +70,60 @@
    "name": "LS-15 + Profit Lock",
    "lock": "all",
    "guard": false,
-   "cash": 899.9549999999999,
+   "cash": 967.7081731132166,
    "positions": {
-    "ENA": {
-     "side": "LONG",
-     "qty": 93.58476440035562,
-     "entry": 0.21371,
-     "cost": 20.0,
-     "collateral": 0.0,
-     "fees": 0.009,
-     "opened": "2026-10-21",
-     "peak_px": 0.22608,
-     "stop": 0.21584710000000001,
-     "last_px": 0.21371,
-     "reason": "band breakout (old breakout, 2% NAV)"
-    },
-    "VVV": {
-     "side": "LONG",
-     "qty": 2.965049479263185,
-     "entry": 26.981,
-     "cost": 80.0,
-     "collateral": 0.0,
-     "fees": 0.036,
-     "opened": "2026-10-21",
-     "peak_px": 28.072,
+    "STBL": {
+     "side": "SHORT",
+     "qty": 1168.073032086711,
+     "entry": 0.025623,
+     "cost": 29.929535301157795,
+     "collateral": 29.929535301157795,
+     "fees": 0.013468290885521008,
+     "opened": "2026-10-22",
+     "peak_px": 0.025623,
      "stop": null,
-     "last_px": 26.981,
-     "reason": "band breakout (recent breakout, 8% NAV)"
+     "last_px": 0.025623,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.003433214036756425,
+     "climax": false
     }
    },
-   "closed": [],
+   "closed": [
+    {
+     "coin": "ENA",
+     "side": "LONG",
+     "opened": "2026-10-21",
+     "closed": "2026-10-22",
+     "entry": 0.21371,
+     "exit": 0.2138,
+     "pnl": -0.0096,
+     "pct": 0.04,
+     "peak_pct": 5.79,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.215847)",
+     "why_in": "band breakout (old breakout, 2% NAV)"
+    },
+    {
+     "coin": "VVV",
+     "side": "LONG",
+     "opened": "2026-10-21",
+     "closed": "2026-10-22",
+     "entry": 26.981,
+     "exit": 26.216,
+     "pnl": -2.3392,
+     "pct": -2.84,
+     "peak_pct": 4.04,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (recent breakout, 8% NAV)"
+    }
+   ],
    "equity": [
     [
      "2026-10-21",
      999.95
+    ],
+    [
+     "2026-10-22",
+     997.64
     ]
    ],
    "eq_base": 1000.0,
@@ -95,40 +135,60 @@
    "name": "LS-15 + Account Guard",
    "lock": false,
    "guard": true,
-   "cash": 899.9549999999999,
+   "cash": 966.2936127655763,
    "positions": {
-    "ENA": {
-     "side": "LONG",
-     "qty": 93.58476440035562,
-     "entry": 0.21371,
-     "cost": 20.0,
-     "collateral": 0.0,
-     "fees": 0.009,
-     "opened": "2026-10-21",
-     "peak_px": 0.22608,
+    "STBL": {
+     "side": "SHORT",
+     "qty": 1166.3655857302106,
+     "entry": 0.025623,
+     "cost": 29.885785403165187,
+     "collateral": 29.885785403165187,
+     "fees": 0.013448603431424334,
+     "opened": "2026-10-22",
+     "peak_px": 0.025623,
      "stop": null,
-     "last_px": 0.21371,
-     "reason": "band breakout (old breakout, 2% NAV)"
-    },
-    "VVV": {
-     "side": "LONG",
-     "qty": 2.965049479263185,
-     "entry": 26.981,
-     "cost": 80.0,
-     "collateral": 0.0,
-     "fees": 0.036,
-     "opened": "2026-10-21",
-     "peak_px": 28.072,
-     "stop": null,
-     "last_px": 26.981,
-     "reason": "band breakout (recent breakout, 8% NAV)"
+     "last_px": 0.025623,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.003433214036756425,
+     "climax": false
     }
    },
-   "closed": [],
+   "closed": [
+    {
+     "coin": "ENA",
+     "side": "LONG",
+     "opened": "2026-10-21",
+     "closed": "2026-10-22",
+     "entry": 0.21371,
+     "exit": 0.19821,
+     "pnl": -1.4679,
+     "pct": -7.25,
+     "peak_pct": 5.79,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 2% NAV)"
+    },
+    {
+     "coin": "VVV",
+     "side": "LONG",
+     "opened": "2026-10-21",
+     "closed": "2026-10-22",
+     "entry": 26.981,
+     "exit": 26.216,
+     "pnl": -2.3392,
+     "pct": -2.84,
+     "peak_pct": 4.04,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (recent breakout, 8% NAV)"
+    }
+   ],
    "equity": [
     [
      "2026-10-21",
      999.95
+    ],
+    [
+     "2026-10-22",
+     996.18
     ]
    ],
    "eq_base": 1000.0,
@@ -140,40 +200,60 @@
    "name": "LS-15 + Long Lock",
    "lock": "long",
    "guard": false,
-   "cash": 899.9549999999999,
+   "cash": 967.7081731132166,
    "positions": {
-    "ENA": {
-     "side": "LONG",
-     "qty": 93.58476440035562,
-     "entry": 0.21371,
-     "cost": 20.0,
-     "collateral": 0.0,
-     "fees": 0.009,
-     "opened": "2026-10-21",
-     "peak_px": 0.22608,
-     "stop": 0.21584710000000001,
-     "last_px": 0.21371,
-     "reason": "band breakout (old breakout, 2% NAV)"
-    },
-    "VVV": {
-     "side": "LONG",
-     "qty": 2.965049479263185,
-     "entry": 26.981,
-     "cost": 80.0,
-     "collateral": 0.0,
-     "fees": 0.036,
-     "opened": "2026-10-21",
-     "peak_px": 28.072,
+    "STBL": {
+     "side": "SHORT",
+     "qty": 1168.073032086711,
+     "entry": 0.025623,
+     "cost": 29.929535301157795,
+     "collateral": 29.929535301157795,
+     "fees": 0.013468290885521008,
+     "opened": "2026-10-22",
+     "peak_px": 0.025623,
      "stop": null,
-     "last_px": 26.981,
-     "reason": "band breakout (recent breakout, 8% NAV)"
+     "last_px": 0.025623,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.003433214036756425,
+     "climax": false
     }
    },
-   "closed": [],
+   "closed": [
+    {
+     "coin": "ENA",
+     "side": "LONG",
+     "opened": "2026-10-21",
+     "closed": "2026-10-22",
+     "entry": 0.21371,
+     "exit": 0.2138,
+     "pnl": -0.0096,
+     "pct": 0.04,
+     "peak_pct": 5.79,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.215847)",
+     "why_in": "band breakout (old breakout, 2% NAV)"
+    },
+    {
+     "coin": "VVV",
+     "side": "LONG",
+     "opened": "2026-10-21",
+     "closed": "2026-10-22",
+     "entry": 26.981,
+     "exit": 26.216,
+     "pnl": -2.3392,
+     "pct": -2.84,
+     "peak_pct": 4.04,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (recent breakout, 8% NAV)"
+    }
+   ],
    "equity": [
     [
      "2026-10-21",
      999.95
+    ],
+    [
+     "2026-10-22",
+     997.64
     ]
    ],
    "eq_base": 1000.0,
@@ -185,48 +265,675 @@
    "name": "LS-15 + Long Lock + Guard",
    "lock": "long",
    "guard": true,
-   "cash": 899.9549999999999,
+   "cash": 967.7081731132166,
    "positions": {
-    "ENA": {
-     "side": "LONG",
-     "qty": 93.58476440035562,
-     "entry": 0.21371,
-     "cost": 20.0,
-     "collateral": 0.0,
-     "fees": 0.009,
-     "opened": "2026-10-21",
-     "peak_px": 0.22608,
-     "stop": 0.21584710000000001,
-     "last_px": 0.21371,
-     "reason": "band breakout (old breakout, 2% NAV)"
-    },
-    "VVV": {
-     "side": "LONG",
-     "qty": 2.965049479263185,
-     "entry": 26.981,
-     "cost": 80.0,
-     "collateral": 0.0,
-     "fees": 0.036,
-     "opened": "2026-10-21",
-     "peak_px": 28.072,
+    "STBL": {
+     "side": "SHORT",
+     "qty": 1168.073032086711,
+     "entry": 0.025623,
+     "cost": 29.929535301157795,
+     "collateral": 29.929535301157795,
+     "fees": 0.013468290885521008,
+     "opened": "2026-10-22",
+     "peak_px": 0.025623,
      "stop": null,
-     "last_px": 26.981,
-     "reason": "band breakout (recent breakout, 8% NAV)"
+     "last_px": 0.025623,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.003433214036756425,
+     "climax": false
     }
    },
-   "closed": [],
+   "closed": [
+    {
+     "coin": "ENA",
+     "side": "LONG",
+     "opened": "2026-10-21",
+     "closed": "2026-10-22",
+     "entry": 0.21371,
+     "exit": 0.2138,
+     "pnl": -0.0096,
+     "pct": 0.04,
+     "peak_pct": 5.79,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.215847)",
+     "why_in": "band breakout (old breakout, 2% NAV)"
+    },
+    {
+     "coin": "VVV",
+     "side": "LONG",
+     "opened": "2026-10-21",
+     "closed": "2026-10-22",
+     "entry": 26.981,
+     "exit": 26.216,
+     "pnl": -2.3392,
+     "pct": -2.84,
+     "peak_pct": 4.04,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (recent breakout, 8% NAV)"
+    }
+   ],
    "equity": [
     [
      "2026-10-21",
      999.95
+    ],
+    [
+     "2026-10-22",
+     997.64
     ]
    ],
    "eq_base": 1000.0,
    "eq_hwm": 1000.0,
    "guard_hits": 0
+  },
+  {
+   "code": "F",
+   "name": "LS-15 @ 60% Size",
+   "lock": false,
+   "guard": false,
+   "cash": 981.9919,
+   "positions": {
+    "STBL": {
+     "side": "SHORT",
+     "qty": 702.4938531787847,
+     "entry": 0.025623,
+     "cost": 18.0,
+     "collateral": 18.0,
+     "fees": 0.0081,
+     "opened": "2026-10-22",
+     "peak_px": 0.025623,
+     "stop": null,
+     "last_px": 0.025623,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.003433214036756425,
+     "climax": false
+    }
+   },
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-22",
+     999.99
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "size_mult": 0.6
+  },
+  {
+   "code": "G",
+   "name": "LS-15 Max 3 @ 15%",
+   "lock": false,
+   "guard": false,
+   "cash": 849.9325,
+   "positions": {
+    "STBL": {
+     "side": "SHORT",
+     "qty": 5854.115443156539,
+     "entry": 0.025623,
+     "cost": 150.0,
+     "collateral": 150.0,
+     "fees": 0.0675,
+     "opened": "2026-10-22",
+     "peak_px": 0.025623,
+     "stop": null,
+     "last_px": 0.025623,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.003433214036756425,
+     "climax": false
+    }
+   },
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-22",
+     999.93
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_pos": 3,
+   "slot_size": 0.15
+  },
+  {
+   "code": "H",
+   "name": "LS-15 Max 3 @ 15% + Long Lock",
+   "lock": "long",
+   "guard": false,
+   "cash": 849.9325,
+   "positions": {
+    "STBL": {
+     "side": "SHORT",
+     "qty": 5854.115443156539,
+     "entry": 0.025623,
+     "cost": 150.0,
+     "collateral": 150.0,
+     "fees": 0.0675,
+     "opened": "2026-10-22",
+     "peak_px": 0.025623,
+     "stop": null,
+     "last_px": 0.025623,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.003433214036756425,
+     "climax": false
+    }
+   },
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-22",
+     999.93
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_pos": 3,
+   "slot_size": 0.15
+  },
+  {
+   "code": "I",
+   "name": "LS-15 3L+3S @ 15%",
+   "lock": false,
+   "guard": false,
+   "cash": 849.9325,
+   "positions": {
+    "STBL": {
+     "side": "SHORT",
+     "qty": 5854.115443156539,
+     "entry": 0.025623,
+     "cost": 150.0,
+     "collateral": 150.0,
+     "fees": 0.0675,
+     "opened": "2026-10-22",
+     "peak_px": 0.025623,
+     "stop": null,
+     "last_px": 0.025623,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.003433214036756425,
+     "climax": false
+    }
+   },
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-22",
+     999.93
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_long": 3,
+   "max_short": 3,
+   "slot_size": 0.15
+  },
+  {
+   "code": "J",
+   "name": "LS-15 3L+3S @ 15% + Long Lock",
+   "lock": "long",
+   "guard": false,
+   "cash": 849.9325,
+   "positions": {
+    "STBL": {
+     "side": "SHORT",
+     "qty": 5854.115443156539,
+     "entry": 0.025623,
+     "cost": 150.0,
+     "collateral": 150.0,
+     "fees": 0.0675,
+     "opened": "2026-10-22",
+     "peak_px": 0.025623,
+     "stop": null,
+     "last_px": 0.025623,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.003433214036756425,
+     "climax": false
+    }
+   },
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-22",
+     999.93
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_long": 3,
+   "max_short": 3,
+   "slot_size": 0.15
+  },
+  {
+   "code": "K",
+   "name": "LS-15 Max 6 @ 20%",
+   "lock": false,
+   "guard": false,
+   "cash": 799.91,
+   "positions": {
+    "STBL": {
+     "side": "SHORT",
+     "qty": 7805.487257542052,
+     "entry": 0.025623,
+     "cost": 200.0,
+     "collateral": 200.0,
+     "fees": 0.09,
+     "opened": "2026-10-22",
+     "peak_px": 0.025623,
+     "stop": null,
+     "last_px": 0.025623,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.003433214036756425,
+     "climax": false
+    }
+   },
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-22",
+     999.91
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_pos": 6,
+   "slot_size": 0.2,
+   "gross_cap": 1.2
+  },
+  {
+   "code": "L",
+   "name": "LS-15 Max 6 @ 20% + Long Lock",
+   "lock": "long",
+   "guard": false,
+   "cash": 799.91,
+   "positions": {
+    "STBL": {
+     "side": "SHORT",
+     "qty": 7805.487257542052,
+     "entry": 0.025623,
+     "cost": 200.0,
+     "collateral": 200.0,
+     "fees": 0.09,
+     "opened": "2026-10-22",
+     "peak_px": 0.025623,
+     "stop": null,
+     "last_px": 0.025623,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.003433214036756425,
+     "climax": false
+    }
+   },
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-22",
+     999.91
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_pos": 6,
+   "slot_size": 0.2,
+   "gross_cap": 1.2
+  },
+  {
+   "code": "M",
+   "name": "LS-15 + Long Lock (4h)",
+   "lock": "long",
+   "guard": false,
+   "cash": 969.9865,
+   "positions": {
+    "STBL": {
+     "side": "SHORT",
+     "qty": 1170.8230886313079,
+     "entry": 0.025623,
+     "cost": 30.0,
+     "collateral": 30.0,
+     "fees": 0.0135,
+     "opened": "2026-10-22",
+     "peak_px": 0.025623,
+     "stop": null,
+     "last_px": 0.025623,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.003433214036756425,
+     "climax": false
+    }
+   },
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-22",
+     999.99
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "lock_intraday": true
+  },
+  {
+   "code": "N",
+   "name": "Max 6 @ 15% + Long Lock (4h)",
+   "lock": "long",
+   "guard": false,
+   "cash": 849.9325,
+   "positions": {
+    "STBL": {
+     "side": "SHORT",
+     "qty": 5854.115443156539,
+     "entry": 0.025623,
+     "cost": 150.0,
+     "collateral": 150.0,
+     "fees": 0.0675,
+     "opened": "2026-10-22",
+     "peak_px": 0.025623,
+     "stop": null,
+     "last_px": 0.025623,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.003433214036756425,
+     "climax": false
+    }
+   },
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-22",
+     999.93
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_pos": 6,
+   "slot_size": 0.15,
+   "lock_intraday": true
+  },
+  {
+   "code": "O",
+   "name": "Max 10 @ 15% + Long Lock (4h)",
+   "lock": "long",
+   "guard": false,
+   "cash": 849.9325,
+   "positions": {
+    "STBL": {
+     "side": "SHORT",
+     "qty": 5854.115443156539,
+     "entry": 0.025623,
+     "cost": 150.0,
+     "collateral": 150.0,
+     "fees": 0.0675,
+     "opened": "2026-10-22",
+     "peak_px": 0.025623,
+     "stop": null,
+     "last_px": 0.025623,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.003433214036756425,
+     "climax": false
+    }
+   },
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-22",
+     999.93
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_pos": 10,
+   "slot_size": 0.15,
+   "gross_cap": 1.5,
+   "lock_intraday": true
+  },
+  {
+   "code": "P",
+   "name": "LS-15 + Smart Trail (4h)",
+   "lock": "long",
+   "guard": false,
+   "cash": 969.9865,
+   "positions": {
+    "STBL": {
+     "side": "SHORT",
+     "qty": 1170.8230886313079,
+     "entry": 0.025623,
+     "cost": 30.0,
+     "collateral": 30.0,
+     "fees": 0.0135,
+     "opened": "2026-10-22",
+     "peak_px": 0.025623,
+     "stop": null,
+     "last_px": 0.025623,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.003433214036756425,
+     "climax": false
+    }
+   },
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-22",
+     999.99
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "lock_intraday": true,
+   "trail": {
+    "k": 3.0
+   }
+  },
+  {
+   "code": "Q",
+   "name": "LS-15 + Smart Trail + Climax (4h)",
+   "lock": "long",
+   "guard": false,
+   "cash": 969.9865,
+   "positions": {
+    "STBL": {
+     "side": "SHORT",
+     "qty": 1170.8230886313079,
+     "entry": 0.025623,
+     "cost": 30.0,
+     "collateral": 30.0,
+     "fees": 0.0135,
+     "opened": "2026-10-22",
+     "peak_px": 0.025623,
+     "stop": null,
+     "last_px": 0.025623,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.003433214036756425,
+     "climax": false
+    }
+   },
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-22",
+     999.99
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "lock_intraday": true,
+   "trail": {
+    "k": 3.0,
+    "k_climax": 1.5
+   }
+  },
+  {
+   "code": "R",
+   "name": "Max 10 @ 15% + Long Lock (4h), 1x",
+   "lock": "long",
+   "guard": false,
+   "cash": 849.9325,
+   "positions": {
+    "STBL": {
+     "side": "SHORT",
+     "qty": 5854.115443156539,
+     "entry": 0.025623,
+     "cost": 150.0,
+     "collateral": 150.0,
+     "fees": 0.0675,
+     "opened": "2026-10-22",
+     "peak_px": 0.025623,
+     "stop": null,
+     "last_px": 0.025623,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.003433214036756425,
+     "climax": false
+    }
+   },
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-22",
+     999.93
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_pos": 10,
+   "slot_size": 0.15,
+   "lock_intraday": true
+  },
+  {
+   "code": "S",
+   "name": "Max 10 @ 10% + Long Lock (4h), 1x",
+   "lock": "long",
+   "guard": false,
+   "cash": 899.955,
+   "positions": {
+    "STBL": {
+     "side": "SHORT",
+     "qty": 3902.743628771026,
+     "entry": 0.025623,
+     "cost": 100.0,
+     "collateral": 100.0,
+     "fees": 0.045,
+     "opened": "2026-10-22",
+     "peak_px": 0.025623,
+     "stop": null,
+     "last_px": 0.025623,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.003433214036756425,
+     "climax": false
+    }
+   },
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-22",
+     999.96
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_pos": 10,
+   "slot_size": 0.1,
+   "lock_intraday": true
+  },
+  {
+   "code": "T",
+   "name": "LS-15 + Long Lock @ 2x (D doubled)",
+   "lock": "long",
+   "guard": false,
+   "cash": 939.973,
+   "positions": {
+    "STBL": {
+     "side": "SHORT",
+     "qty": 2341.6461772626158,
+     "entry": 0.025623,
+     "cost": 60.0,
+     "collateral": 60.0,
+     "fees": 0.027,
+     "opened": "2026-10-22",
+     "peak_px": 0.025623,
+     "stop": null,
+     "last_px": 0.025623,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.003433214036756425,
+     "climax": false
+    }
+   },
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-22",
+     999.97
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "size_mult": 2.0,
+   "gross_cap": 2.0
+  },
+  {
+   "code": "U",
+   "name": "LIVE SETUP: Max 9 @ 15% + Long Lock (4h) + Disaster Stop",
+   "lock": "long",
+   "guard": false,
+   "cash": 849.9325,
+   "positions": {
+    "STBL": {
+     "side": "SHORT",
+     "qty": 5854.115443156539,
+     "entry": 0.025623,
+     "cost": 150.0,
+     "collateral": 150.0,
+     "fees": 0.0675,
+     "opened": "2026-10-22",
+     "peak_px": 0.025623,
+     "stop": null,
+     "last_px": 0.025623,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.003433214036756425,
+     "climax": false
+    }
+   },
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-22",
+     999.93
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_pos": 9,
+   "slot_size": 0.15,
+   "gross_cap": 1.35,
+   "lock_intraday": true,
+   "disaster": 0.35
   }
  ],
- "last_processed_day": "2026-10-21",
- "engine": "GC-PAPER-1.1",
+ "last_processed_day": "2026-10-22",
+ "engine": "GC-PAPER-1.13",
  "started": "2026-10-21"
 }
