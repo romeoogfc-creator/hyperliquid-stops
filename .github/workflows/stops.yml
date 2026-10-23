@@ -16,7 +16,8 @@ concurrency:
 jobs:
   run-bot:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    # Most runs take seconds; the first run after the 00:00 UTC daily close downloads ~120 coins (paced, ~3-4 min).
+    timeout-minutes: 15
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -37,6 +38,11 @@ jobs:
       - name: Run Trading Engine
         env:
           PYTHONUNBUFFERED: "1"
+          # ============================================================================
+          # "true"  = DRY RUN: reads your real account, emails what it WOULD do, sends no orders.
+          # "false" = LIVE: real orders with real money. Change only after the dry run looks right.
+          DRY_RUN: "true"
+          # ============================================================================
           HL_ACCOUNT_ADDRESS: ${{ secrets.HL_ACCOUNT_ADDRESS }}
           HL_SECRET_KEY: ${{ secrets.HL_SECRET_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
@@ -48,7 +54,9 @@ jobs:
           python bot_engine.py
 
       - name: Auto-commit State Updates
+        if: always()
         run: |
+          [ -f state.json ] || { echo "No state file"; exit 0; }
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           # state.json is written only by this bot and this run's copy is the newest, so never merge it:
