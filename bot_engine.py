@@ -1,13 +1,16 @@
 """
-bot_engine.py — TR-GC-Crypto-LS-15 LIVE BOT (Hyperliquid, real money) — the "Book U" setup from gc_paper.py
+bot_engine.py — TR-GC-Crypto-LS-15 LIVE BOT (Hyperliquid, real money) — the "Book Z" setup from gc_paper.py
+(Book V's early lock + a -5% loss stop on every position. 30-order stability check at $111, after the intraday-stop fix:
+ median +174% vs V's +145%, unluckiest +91% vs +53%, deepest drop -36% vs -43%.)
+(EARLY LOCK: keeps 50% of the peak gain from +3%, 60% from +5%, 70% from +10%, 80/85/90% from +20/35/60%.)
 Replaces the old 5-minute scalper (V4.12) on the same account, workflow (stops.yml) and state file (state.json).
 
 What it trades (same rules as the paper/backtest engine, which it imports for the indicator and the signals):
   - LS-15 Gaussian Channel signals on DAILY candles, longs AND shorts, top 100 coins by open interest
   - at most 9 positions, 15% of the account each, up to 135% of the account in positions (cross margin, 3x setting
     -> only ~45% of the account is used as margin, the rest stays free as a safety buffer)
-  - longs: the 80-97% profit lock as a REAL stop order on Hyperliquid, raised every 4 hours
-  - every position: a disaster stop 35% from entry, resting on the exchange 24/7
+  - longs: the early profit lock (keep 50-90% of the peak gain from +3%) as a REAL stop on Hyperliquid, raised every 4 hours
+  - every position: a LOSS STOP 5% against the entry, resting on the exchange 24/7 (cut losers fast, wait in cash)
   - shorts: original LS-15 exits (daily close above the GC filter, or take profit at -35%)
 
 Schedule: stops.yml runs it every 5 minutes (external cron) with a 15-minute backup. Most runs only check that every
@@ -27,7 +30,7 @@ from email.mime.text import MIMEText
 
 import gc_paper as engine
 
-BOT_VERSION = "LS15-LIVE-1.1"
+BOT_VERSION = "LS15-LIVE-1.3"
 STATE_FILE = "state.json"                  # same file the old scalper used (stops.yml commits it)
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
 SECRET_KEY = os.getenv("HL_SECRET_KEY")
@@ -39,7 +42,8 @@ SLOT_SIZE = 0.15                       # 15% of the account per position (notion
 GROSS_CAP = 1.35                       # at most 135% of the account in positions
 LEVERAGE_SETTING = 3                   # cross margin setting per coin: margin used = notional / 3
 MIN_ORDER_USD = 11.0                   # Hyperliquid minimum is $10; keep a small buffer for rounding / price moves
-DISASTER_STOP = 0.35                   # resting stop 35% against every position
+LOCK_TIERS = engine.BOOK_OPTIONS["V"]["lock_tiers"]   # early lock: (peak gain, share of it kept), same as paper Book V
+DISASTER_STOP = 0.05                   # loss stop: resting stop 5% against every position (paper Book Z)
 SLIPPAGE = 0.01                        # market orders: worst price accepted 1% away
 LOW_BALANCE_WARN = 67.0                # below this, 15% positions fall under $10 and the bot cannot open trades
 H4_MS = 4 * 3600 * 1000
@@ -223,10 +227,10 @@ def exit_fill(info, coin, since_ms):
 # Stops
 # ======================================================================================
 def desired_stop(p):
-    """Long: the higher of the profit lock and the disaster stop. Short: disaster stop only (LS-15 exits are daily)."""
+    """Long: the higher of the profit lock and the -5% loss stop. Short: the loss stop (LS-15 short exits are daily)."""
     if p["side"] == "LONG":
         stop = p["entry"] * (1 - DISASTER_STOP)
-        fl = engine.lock_floor(p["peak_px"] / p["entry"] - 1)
+        fl = engine.lock_floor(p["peak_px"] / p["entry"] - 1, LOCK_TIERS)
         if fl is not None:
             stop = max(stop, p["entry"] * (1 + fl))
         return stop
@@ -258,7 +262,7 @@ def raise_peaks(info, state, now_ms, log):
 
 
 # ======================================================================================
-# Daily decisions (same rules as gc_paper.step_day for Book U)
+# Daily decisions (same rules as gc_paper.step_day for Book Z)
 # ======================================================================================
 def daily_decisions(info, exchange, state, nav, ex_pos, sz_dec, log, skips):
     newest_closed = time.strftime("%Y-%m-%d", time.gmtime(time.time() - 86400))   # yesterday (UTC) = last closed daily candle
@@ -462,8 +466,8 @@ def report(state, nav, ex_pos, mids, log, skips, daily_day):
   <table style="width:100%;font-size:11px;border-collapse:collapse;" cellpadding="3"><tr style="background:#f1f5f9;"><th align="left">When</th><th align="left">Coin</th>
    <th align="left">Side</th><th align="left">Result</th><th align="left">Peak</th><th align="left">$</th><th align="left">Why</th></tr>{recent}</table>
   <div style="font-size:10px;color:#64748b;margin-top:10px;">Rules: LS-15 daily signals (long + short), max {MAX_POSITIONS} positions × {SLOT_SIZE*100:.0f}%,
-   up to {GROSS_CAP*100:.0f}% in positions, cross {LEVERAGE_SETTING}x setting. Longs: profit lock (after +5% stop → +1%; +10/20/35/60/100% keep
-   80/85/90/93/97% of the peak) as a real stop raised every 4 hours. Every position: disaster stop {DISASTER_STOP*100:.0f}% from entry.
+   up to {GROSS_CAP*100:.0f}% in positions, cross {LEVERAGE_SETTING}x setting. Longs: early profit lock (keeps 50% of the peak gain from +3%,
+   60% from +5%, 70% from +10%, 80/85/90% from +20/35/60%) as a real stop raised every 4 hours. Every position: loss stop {DISASTER_STOP*100:.0f}% against the entry.
    Shorts exit on a daily close above the GC filter or at -35%.</div>
  </div></div></body></html>"""
     text = f"{BOT_VERSION} {mode}\nNAV ${nav:,.2f}\n" + "\n".join(log)
@@ -508,7 +512,7 @@ def main():
 
     # 1) Positions the exchange closed since last run (a stop filled)
     for coin in [c for c in state["positions"] if c not in ex_pos]:
-        record_closed(info, state, coin, None, "🛡️ Stop filled on the exchange (profit lock / disaster stop)", log)
+        record_closed(info, state, coin, None, "🛡️ Stop filled on the exchange (profit lock / loss stop)", log)
     for coin, p in state["positions"].items():                     # keep size in sync (partial fills, manual changes)
         p["sz"] = ex_pos[coin]["sz"]
 
