@@ -27,7 +27,7 @@ from email.mime.text import MIMEText
 
 import gc_paper as engine
 
-BOT_VERSION = "LS15-LIVE-1.0"
+BOT_VERSION = "LS15-LIVE-1.1"
 STATE_FILE = "state.json"                  # same file the old scalper used (stops.yml commits it)
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
 SECRET_KEY = os.getenv("HL_SECRET_KEY")
@@ -497,6 +497,15 @@ def main():
     if state.get("start_nav") is None:
         state["start_nav"], state["started"] = nav, datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
+    # 0) Positions on the exchange that the state does not know (e.g. a run that started from an older state.json):
+    #    adopt them so they still get their disaster stop / profit lock instead of being left unprotected.
+    today = time.strftime("%Y-%m-%d", time.gmtime())
+    for coin, ep in ex_pos.items():
+        if coin not in state["positions"]:
+            state["positions"][coin] = {"side": ep["side"], "sz": ep["sz"], "entry": ep["entry"], "peak_px": ep["entry"], "opened": today,
+                                        "opened_ms": now_ms, "reason": "adopted (found on the exchange)", "stop": None}
+            log.append(f"🔄 {coin}: {ep['side']} found on the exchange but not in state.json — now managed (stops placed)")
+
     # 1) Positions the exchange closed since last run (a stop filled)
     for coin in [c for c in state["positions"] if c not in ex_pos]:
         record_closed(info, state, coin, None, "🛡️ Stop filled on the exchange (profit lock / disaster stop)", log)
@@ -536,7 +545,7 @@ def main():
     state["version"] = BOT_VERSION
     save_state(state)
     print("\n".join(log), flush=True)
-    if did_daily or IS_MANUAL or any(x[:1] in "✅💰🔻🚨⬆" for x in log):
+    if did_daily or IS_MANUAL or any(x[:1] in "✅💰🔻🚨⬆🔄" for x in log):
         report(state, nav, ex_pos, mids, log, skips, daily_day)
 
 
