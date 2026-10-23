@@ -35,7 +35,7 @@ on:
       robust_books:
         description: "robust only: books to check (comma separated)"
         required: false
-        default: "U,V,W,X"
+        default: "V,Y,Z,Z3,YZ"
       long_only:
         description: "auto = stocks under $2,000 are long-only at 1x (Alpaca rule) | true | false"
         required: false
@@ -74,7 +74,7 @@ jobs:
           # Only backtest / robust use it: the daily paper books keep the balance they started with.
           START_NAV: ${{ (github.event.inputs.mode != 'paper' && github.event.inputs.start_nav) || '1000' }}
           ROBUST_RUNS: ${{ github.event.inputs.robust_runs || '20' }}
-          ROBUST_BOOKS: ${{ github.event.inputs.robust_books || 'U,V,W,X' }}
+          ROBUST_BOOKS: ${{ github.event.inputs.robust_books || 'V,Y,Z,Z3,YZ' }}
           MARKET: ${{ github.event.inputs.market || 'crypto' }}
           LONG_ONLY: ${{ github.event.inputs.long_only || 'auto' }}
           # Stocks mode reads Alpaca market data only (the paper account's keys; no orders are ever sent from here).
