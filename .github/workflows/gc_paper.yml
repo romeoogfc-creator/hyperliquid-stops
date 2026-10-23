@@ -29,7 +29,7 @@ on:
       robust_books:
         description: "robust only: books to check (comma separated)"
         required: false
-        default: "A,D,O,R,S"
+        default: "D,O,U"
 
 concurrency:
   group: gc-paper-trader
@@ -64,7 +64,7 @@ jobs:
           # Only backtest / robust use it: the daily paper books keep the balance they started with.
           START_NAV: ${{ (github.event.inputs.mode != 'paper' && github.event.inputs.start_nav) || '1000' }}
           ROBUST_RUNS: ${{ github.event.inputs.robust_runs || '20' }}
-          ROBUST_BOOKS: ${{ github.event.inputs.robust_books || 'A,D,O,R,S' }}
+          ROBUST_BOOKS: ${{ github.event.inputs.robust_books || 'D,O,U' }}
           # Paper only: no Hyperliquid keys are passed to this job at all.
           SENDER_EMAIL: ${{ secrets.SENDER_EMAIL }}
           SENDER_PASSWORD: ${{ secrets.SENDER_PASSWORD }}
