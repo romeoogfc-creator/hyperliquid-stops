@@ -2,9 +2,13 @@ name: TR-GC-Equities-LS-15-F
 
 on:
   schedule:
-    # Every 5 min, Mon-Fri, 13:00-20:55 UTC. Book F acts ONCE a day: the first run in the last 30 minutes before the close
-    # (about 2:30-2:55 PM CT, summer and winter). Every other run exits in seconds without sending anything.
+    # Backup only. GitHub often delays or skips scheduled runs, so the external cron that runs the crypto bot every
+    # 5 minutes (repository_dispatch "trigger-bot") triggers this workflow too. Book F acts ONCE a day: the first run in
+    # the last 45 minutes before the close (about 2:15-2:57 PM CT); a missed day is caught up the next morning.
+    # Every other run exits in seconds without sending anything.
     - cron: '*/5 13-20 * * 1-5'
+  repository_dispatch:
+    types: [trigger-bot]
   workflow_dispatch:
 
 concurrency:
