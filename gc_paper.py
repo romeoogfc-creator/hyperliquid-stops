@@ -85,7 +85,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.16"
+ENGINE_VERSION = "GC-PAPER-1.17"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -1254,6 +1254,11 @@ def run_paper(info):
     if os.path.exists(STATE_FILE):
         with open(STATE_FILE) as f:
             state = json.load(f)
+    newest_closed = (datetime.now(timezone.utc) - timedelta(days=1)).strftime("%Y-%m-%d")
+    manual = os.getenv("GITHUB_EVENT_NAME", "").lower() == "workflow_dispatch"
+    if not manual and (state.get("last_processed_day") or "") >= newest_closed:
+        print(f"Paper books already processed {state.get('last_processed_day')} — nothing new (no email)", flush=True)
+        return                                                # the 5-minute trigger: quiet until the next daily candle
     books = state.get("books") or [new_book(code, name, lock, guard) for code, name, lock, guard in BOOKS]
     for code, name, lock, guard in BOOKS:                     # books added in later versions join with a fresh balance
         if code not in {b["code"] for b in books}:
