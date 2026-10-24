@@ -2,10 +2,14 @@ name: TR-GC-Crypto-LS-15-Paper
 
 on:
   schedule:
-    # Daily candles close at 00:00 UTC (7 PM CT in summer, 6 PM CT in winter). Run 20 minutes later,
-    # plus a backup run at 06:20 UTC in case GitHub skips one (a day is never processed twice).
+    # Daily candles close at 00:00 UTC (7 PM CT in summer, 6 PM CT in winter). GitHub often delays or skips scheduled
+    # runs, so the external 5-minute cron ("trigger-bot", the same one that runs the crypto bot) triggers this too: the
+    # first run after the close processes the new candle and emails; every other run exits in seconds, no email.
+    # The two schedules below stay as a backup (a day is never processed twice).
     - cron: '20 0 * * *'
     - cron: '20 6 * * *'
+  repository_dispatch:
+    types: [trigger-bot]
   workflow_dispatch:
     inputs:
       market:
