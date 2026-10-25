@@ -57,6 +57,9 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          # Always start from the LATEST main (newest gc_paper_state.json). A run queued behind another one would
+          # otherwise start from the older commit and process (and email) the same candle a second time.
+          ref: main
           token: ${{ secrets.GITHUB_TOKEN }}
           fetch-depth: 0
 
