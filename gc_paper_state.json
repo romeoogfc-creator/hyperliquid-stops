@@ -5,8 +5,24 @@
    "name": "LS-15 Original",
    "lock": false,
    "guard": false,
-   "cash": 994.8893714127433,
-   "positions": {},
+   "cash": 974.9826299801457,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 224.72964421290555,
+     "entry": 0.088541,
+     "cost": 19.89778742825487,
+     "collateral": 0.0,
+     "fees": 0.008954004342714691,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 2% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "ENA",
@@ -60,6 +76,10 @@
     [
      "2026-10-23",
      994.89
+    ],
+    [
+     "2026-10-24",
+     994.88
     ]
    ],
    "eq_base": 1000.0,
@@ -71,8 +91,24 @@
    "name": "LS-15 + Profit Lock",
    "lock": "all",
    "guard": false,
-   "cash": 996.3457931840323,
-   "positions": {},
+   "cash": 976.4099102082131,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 225.05862666652342,
+     "entry": 0.088541,
+     "cost": 19.926915863680648,
+     "collateral": 0.0,
+     "fees": 0.00896711213865629,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 2% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "ENA",
@@ -126,6 +162,10 @@
     [
      "2026-10-23",
      996.35
+    ],
+    [
+     "2026-10-24",
+     996.34
     ]
    ],
    "eq_base": 1000.0,
@@ -137,8 +177,24 @@
    "name": "LS-15 + Account Guard",
    "lock": false,
    "guard": true,
-   "cash": 994.8893714127433,
-   "positions": {},
+   "cash": 974.9826299801457,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 224.72964421290555,
+     "entry": 0.088541,
+     "cost": 19.89778742825487,
+     "collateral": 0.0,
+     "fees": 0.008954004342714691,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 2% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "ENA",
@@ -192,10 +248,14 @@
     [
      "2026-10-23",
      994.89
+    ],
+    [
+     "2026-10-24",
+     994.88
     ]
    ],
-   "eq_base": 1000.0,
-   "eq_hwm": 1000.0,
+   "eq_base": 994.8893714127433,
+   "eq_hwm": 994.8893714127433,
    "guard_hits": 0
   },
   {
@@ -203,8 +263,24 @@
    "name": "LS-15 + Long Lock",
    "lock": "long",
    "guard": false,
-   "cash": 996.3457931840323,
-   "positions": {},
+   "cash": 976.4099102082131,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 225.05862666652342,
+     "entry": 0.088541,
+     "cost": 19.926915863680648,
+     "collateral": 0.0,
+     "fees": 0.00896711213865629,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 2% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "ENA",
@@ -258,6 +334,10 @@
     [
      "2026-10-23",
      996.35
+    ],
+    [
+     "2026-10-24",
+     996.34
     ]
    ],
    "eq_base": 1000.0,
@@ -269,8 +349,24 @@
    "name": "LS-15 + Long Lock + Guard",
    "lock": "long",
    "guard": true,
-   "cash": 996.3457931840323,
-   "positions": {},
+   "cash": 976.4099102082131,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 225.05862666652342,
+     "entry": 0.088541,
+     "cost": 19.926915863680648,
+     "collateral": 0.0,
+     "fees": 0.00896711213865629,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 2% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "ENA",
@@ -324,10 +420,14 @@
     [
      "2026-10-23",
      996.35
+    ],
+    [
+     "2026-10-24",
+     996.34
     ]
    ],
-   "eq_base": 1000.0,
-   "eq_hwm": 1000.0,
+   "eq_base": 996.3457931840323,
+   "eq_hwm": 996.3457931840323,
    "guard_hits": 0
   },
   {
@@ -335,8 +435,24 @@
    "name": "LS-15 @ 60% Size",
    "lock": false,
    "guard": false,
-   "cash": 999.2149258868985,
-   "positions": {},
+   "cash": 987.218951015656,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 135.42403079525624,
+     "entry": 0.088541,
+     "cost": 11.990579110642782,
+     "collateral": 0.0,
+     "fees": 0.0053957605997892516,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 1% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "STBL",
@@ -360,6 +476,10 @@
     [
      "2026-10-23",
      999.21
+    ],
+    [
+     "2026-10-24",
+     999.21
     ]
    ],
    "eq_base": 1000.0,
@@ -373,8 +493,24 @@
    "name": "LS-15 Max 3 @ 15%",
    "lock": false,
    "guard": false,
-   "cash": 993.4577157241541,
-   "positions": {},
+   "cash": 844.3719999697196,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 1683.0469201683188,
+     "entry": 0.088541,
+     "cost": 149.0186573586231,
+     "collateral": 0.0,
+     "fees": 0.0670583958113804,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 15% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "STBL",
@@ -398,6 +534,10 @@
     [
      "2026-10-23",
      993.46
+    ],
+    [
+     "2026-10-24",
+     993.39
     ]
    ],
    "eq_base": 1000.0,
@@ -412,8 +552,24 @@
    "name": "LS-15 Max 3 @ 15% + Long Lock",
    "lock": "long",
    "guard": false,
-   "cash": 993.4577157241541,
-   "positions": {},
+   "cash": 844.3719999697196,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 1683.0469201683188,
+     "entry": 0.088541,
+     "cost": 149.0186573586231,
+     "collateral": 0.0,
+     "fees": 0.0670583958113804,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 15% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "STBL",
@@ -437,6 +593,10 @@
     [
      "2026-10-23",
      993.46
+    ],
+    [
+     "2026-10-24",
+     993.39
     ]
    ],
    "eq_base": 1000.0,
@@ -451,8 +611,24 @@
    "name": "LS-15 3L+3S @ 15%",
    "lock": false,
    "guard": false,
-   "cash": 993.4577157241541,
-   "positions": {},
+   "cash": 844.3719999697196,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 1683.0469201683188,
+     "entry": 0.088541,
+     "cost": 149.0186573586231,
+     "collateral": 0.0,
+     "fees": 0.0670583958113804,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 15% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "STBL",
@@ -476,6 +652,10 @@
     [
      "2026-10-23",
      993.46
+    ],
+    [
+     "2026-10-24",
+     993.39
     ]
    ],
    "eq_base": 1000.0,
@@ -491,8 +671,24 @@
    "name": "LS-15 3L+3S @ 15% + Long Lock",
    "lock": "long",
    "guard": false,
-   "cash": 993.4577157241541,
-   "positions": {},
+   "cash": 844.3719999697196,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 1683.0469201683188,
+     "entry": 0.088541,
+     "cost": 149.0186573586231,
+     "collateral": 0.0,
+     "fees": 0.0670583958113804,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 15% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "STBL",
@@ -516,6 +712,10 @@
     [
      "2026-10-23",
      993.46
+    ],
+    [
+     "2026-10-24",
+     993.39
     ]
    ],
    "eq_base": 1000.0,
@@ -531,8 +731,24 @@
    "name": "LS-15 Max 6 @ 20%",
    "lock": false,
    "guard": false,
-   "cash": 991.276954298872,
-   "positions": {},
+   "cash": 792.9323485132107,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 2239.1365679151404,
+     "entry": 0.088541,
+     "cost": 198.25539085977442,
+     "collateral": 0.0,
+     "fees": 0.08921492588689849,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 20% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "STBL",
@@ -556,6 +772,10 @@
     [
      "2026-10-23",
      991.28
+    ],
+    [
+     "2026-10-24",
+     991.19
     ]
    ],
    "eq_base": 1000.0,
@@ -571,8 +791,24 @@
    "name": "LS-15 Max 6 @ 20% + Long Lock",
    "lock": "long",
    "guard": false,
-   "cash": 991.276954298872,
-   "positions": {},
+   "cash": 792.9323485132107,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 2239.1365679151404,
+     "entry": 0.088541,
+     "cost": 198.25539085977442,
+     "collateral": 0.0,
+     "fees": 0.08921492588689849,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 20% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "STBL",
@@ -596,6 +832,10 @@
     [
      "2026-10-23",
      991.28
+    ],
+    [
+     "2026-10-24",
+     991.19
     ]
    ],
    "eq_base": 1000.0,
@@ -611,8 +851,24 @@
    "name": "LS-15 + Long Lock (4h)",
    "lock": "long",
    "guard": false,
-   "cash": 998.6915431448308,
-   "positions": {},
+   "cash": 978.7087240580458,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 225.58849417667088,
+     "entry": 0.088541,
+     "cost": 19.973830862896616,
+     "collateral": 0.0,
+     "fees": 0.008988223888303478,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 2% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "STBL",
@@ -636,6 +892,10 @@
     [
      "2026-10-23",
      998.69
+    ],
+    [
+     "2026-10-24",
+     998.68
     ]
    ],
    "eq_base": 1000.0,
@@ -649,8 +909,24 @@
    "name": "Max 6 @ 15% + Long Lock (4h)",
    "lock": "long",
    "guard": false,
-   "cash": 993.4577157241541,
-   "positions": {},
+   "cash": 844.3719999697196,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 1683.0469201683188,
+     "entry": 0.088541,
+     "cost": 149.0186573586231,
+     "collateral": 0.0,
+     "fees": 0.0670583958113804,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 15% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "STBL",
@@ -674,6 +950,10 @@
     [
      "2026-10-23",
      993.46
+    ],
+    [
+     "2026-10-24",
+     993.39
     ]
    ],
    "eq_base": 1000.0,
@@ -689,8 +969,24 @@
    "name": "Max 10 @ 15% + Long Lock (4h)",
    "lock": "long",
    "guard": false,
-   "cash": 993.4577157241541,
-   "positions": {},
+   "cash": 844.3719999697196,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 1683.0469201683188,
+     "entry": 0.088541,
+     "cost": 149.0186573586231,
+     "collateral": 0.0,
+     "fees": 0.0670583958113804,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 15% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "STBL",
@@ -714,6 +1010,10 @@
     [
      "2026-10-23",
      993.46
+    ],
+    [
+     "2026-10-24",
+     993.39
     ]
    ],
    "eq_base": 1000.0,
@@ -730,8 +1030,24 @@
    "name": "LS-15 + Smart Trail (4h)",
    "lock": "long",
    "guard": false,
-   "cash": 998.6915431448308,
-   "positions": {},
+   "cash": 978.7087240580458,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 225.58849417667088,
+     "entry": 0.088541,
+     "cost": 19.973830862896616,
+     "collateral": 0.0,
+     "fees": 0.008988223888303478,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 2% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "STBL",
@@ -755,6 +1071,10 @@
     [
      "2026-10-23",
      998.69
+    ],
+    [
+     "2026-10-24",
+     998.68
     ]
    ],
    "eq_base": 1000.0,
@@ -771,8 +1091,24 @@
    "name": "LS-15 + Smart Trail + Climax (4h)",
    "lock": "long",
    "guard": false,
-   "cash": 998.6915431448308,
-   "positions": {},
+   "cash": 978.7087240580458,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 225.58849417667088,
+     "entry": 0.088541,
+     "cost": 19.973830862896616,
+     "collateral": 0.0,
+     "fees": 0.008988223888303478,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 2% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "STBL",
@@ -796,6 +1132,10 @@
     [
      "2026-10-23",
      998.69
+    ],
+    [
+     "2026-10-24",
+     998.68
     ]
    ],
    "eq_base": 1000.0,
@@ -813,8 +1153,24 @@
    "name": "Max 10 @ 15% + Long Lock (4h), 1x",
    "lock": "long",
    "guard": false,
-   "cash": 993.4577157241541,
-   "positions": {},
+   "cash": 844.3719999697196,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 1683.0469201683188,
+     "entry": 0.088541,
+     "cost": 149.0186573586231,
+     "collateral": 0.0,
+     "fees": 0.0670583958113804,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 15% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "STBL",
@@ -838,6 +1194,10 @@
     [
      "2026-10-23",
      993.46
+    ],
+    [
+     "2026-10-24",
+     993.39
     ]
    ],
    "eq_base": 1000.0,
@@ -853,8 +1213,24 @@
    "name": "Max 10 @ 10% + Long Lock (4h), 1x",
    "lock": "long",
    "guard": false,
-   "cash": 995.6384771494361,
-   "positions": {},
+   "cash": 896.0298257030207,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 1124.4942762668552,
+     "entry": 0.088541,
+     "cost": 99.56384771494362,
+     "collateral": 0.0,
+     "fees": 0.04480373147172463,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 10% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "STBL",
@@ -878,6 +1254,10 @@
     [
      "2026-10-23",
      995.64
+    ],
+    [
+     "2026-10-24",
+     995.59
     ]
    ],
    "eq_base": 1000.0,
@@ -893,8 +1273,24 @@
    "name": "LS-15 + Long Lock @ 2x (D doubled)",
    "lock": "long",
    "guard": false,
-   "cash": 997.3830862896616,
-   "positions": {},
+   "cash": 957.4698099425219,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 450.5858692762276,
+     "entry": 0.088541,
+     "cost": 39.895323451586464,
+     "collateral": 0.0,
+     "fees": 0.01795289555321391,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 4% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "STBL",
@@ -918,6 +1314,10 @@
     [
      "2026-10-23",
      997.38
+    ],
+    [
+     "2026-10-24",
+     997.37
     ]
    ],
    "eq_base": 1000.0,
@@ -932,8 +1332,24 @@
    "name": "LIVE SETUP: Max 9 @ 15% + Long Lock (4h) + Disaster Stop",
    "lock": "long",
    "guard": false,
-   "cash": 993.4577157241541,
-   "positions": {},
+   "cash": 844.3719999697196,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 1683.0469201683188,
+     "entry": 0.088541,
+     "cost": 149.0186573586231,
+     "collateral": 0.0,
+     "fees": 0.0670583958113804,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 15% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "STBL",
@@ -957,6 +1373,10 @@
     [
      "2026-10-23",
      993.46
+    ],
+    [
+     "2026-10-24",
+     993.39
     ]
    ],
    "eq_base": 1000.0,
@@ -974,13 +1394,33 @@
    "name": "U + Early Lock (keep 50-90% from +3%)",
    "lock": "long",
    "guard": false,
-   "cash": 1000.0,
-   "positions": {},
+   "cash": 849.9325,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 1694.1304028642098,
+     "entry": 0.088541,
+     "cost": 150.0,
+     "collateral": 0.0,
+     "fees": 0.0675,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 15% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [],
    "equity": [
     [
      "2026-10-23",
      1000.0
+    ],
+    [
+     "2026-10-24",
+     999.93
     ]
    ],
    "eq_base": 1000.0,
@@ -1024,13 +1464,33 @@
    "name": "U + Early Lock + Sellers-Took-Over Exit",
    "lock": "long",
    "guard": false,
-   "cash": 1000.0,
-   "positions": {},
+   "cash": 849.9325,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 1694.1304028642098,
+     "entry": 0.088541,
+     "cost": 150.0,
+     "collateral": 0.0,
+     "fees": 0.0675,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 15% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [],
    "equity": [
     [
      "2026-10-23",
      1000.0
+    ],
+    [
+     "2026-10-24",
+     999.93
     ]
    ],
    "eq_base": 1000.0,
@@ -1079,13 +1539,33 @@
    "name": "U + Take Half at +10%",
    "lock": "long",
    "guard": false,
-   "cash": 1000.0,
-   "positions": {},
+   "cash": 849.9325,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 1694.1304028642098,
+     "entry": 0.088541,
+     "cost": 150.0,
+     "collateral": 0.0,
+     "fees": 0.0675,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 15% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [],
    "equity": [
     [
      "2026-10-23",
      1000.0
+    ],
+    [
+     "2026-10-24",
+     999.93
     ]
    ],
    "eq_base": 1000.0,
@@ -1107,13 +1587,33 @@
    "name": "V + Lock from +1%",
    "lock": "long",
    "guard": false,
-   "cash": 1000.0,
-   "positions": {},
+   "cash": 849.9325,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 1694.1304028642098,
+     "entry": 0.088541,
+     "cost": 150.0,
+     "collateral": 0.0,
+     "fees": 0.0675,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 15% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [],
    "equity": [
     [
      "2026-10-23",
      1000.0
+    ],
+    [
+     "2026-10-24",
+     999.93
     ]
    ],
    "eq_base": 1000.0,
@@ -1161,13 +1661,33 @@
    "name": "V + -5% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 1000.0,
-   "positions": {},
+   "cash": 849.9325,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 1694.1304028642098,
+     "entry": 0.088541,
+     "cost": 150.0,
+     "collateral": 0.0,
+     "fees": 0.0675,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 15% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [],
    "equity": [
     [
      "2026-10-23",
      1000.0
+    ],
+    [
+     "2026-10-24",
+     999.93
     ]
    ],
    "eq_base": 1000.0,
@@ -1211,13 +1731,33 @@
    "name": "V + -3% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 1000.0,
-   "positions": {},
+   "cash": 849.9325,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 1694.1304028642098,
+     "entry": 0.088541,
+     "cost": 150.0,
+     "collateral": 0.0,
+     "fees": 0.0675,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 15% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [],
    "equity": [
     [
      "2026-10-23",
      1000.0
+    ],
+    [
+     "2026-10-24",
+     999.93
     ]
    ],
    "eq_base": 1000.0,
@@ -1261,13 +1801,33 @@
    "name": "V + Lock from +1% + -5% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 1000.0,
-   "positions": {},
+   "cash": 849.9325,
+   "positions": {
+    "NIL": {
+     "side": "LONG",
+     "qty": 1694.1304028642098,
+     "entry": 0.088541,
+     "cost": 150.0,
+     "collateral": 0.0,
+     "fees": 0.0675,
+     "opened": "2026-10-24",
+     "peak_px": 0.088541,
+     "stop": null,
+     "last_px": 0.088541,
+     "reason": "band breakout (old breakout, 15% NAV)",
+     "atr": 0.012053424115335214,
+     "climax": false
+    }
+   },
    "closed": [],
    "equity": [
     [
      "2026-10-23",
      1000.0
+    ],
+    [
+     "2026-10-24",
+     999.93
     ]
    ],
    "eq_base": 1000.0,
@@ -1311,7 +1871,7 @@
    ]
   }
  ],
- "last_processed_day": "2026-10-23",
+ "last_processed_day": "2026-10-24",
  "engine": "GC-PAPER-1.17",
  "started": "2026-10-21"
 }
