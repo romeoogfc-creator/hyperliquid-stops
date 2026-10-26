@@ -8,6 +8,9 @@ The rules are Book F from gc_paper.py (stocks backtest: beat SPY in 100/100 coin
     otherwise 1.2% (LS-15 sizes x 0.6)
   - ADD up to 3.3% while the stock is +10% or more and still above the band
   - SELL when the daily close is back below the upper band. No profit lock (it cut the stock trends short in the backtest)
+  - LOSS STOP: sell any stock that is 5% below its average entry price, checked every 5 minutes while the market is open
+    (Book F5 — 100-order stability check: median +56% vs F's +52%, unluckiest +40% vs +37%, smaller drops).
+    Never on the day it was bought (that would be a day trade).
   - long-only, cash only (no margin, no shorts) — exactly what a $1,000 account at Alpaca can do
 
 Timing: stock_bot.yml runs every 5 minutes (external trigger + GitHub schedule as backup). Only ONE run per day acts: the
@@ -30,7 +33,7 @@ import requests
 
 import gc_paper as engine
 
-BOT_VERSION = "V6.1.0"
+BOT_VERSION = "V6.2.0"
 BOT_TITLE = f"TR-GC-Equities-LS-15-F {BOT_VERSION}"
 STATE_VERSION = "GCSTK-F-1"
 
@@ -50,6 +53,7 @@ TOPUP_MIN_ROE = engine.TOPUP_MIN_ROE                      # +10%
 MIN_TRADE_NAV = engine.MIN_TRADE_NAV                      # skip anything under 1% of the account
 MIN_ORDER_USD = 1.0                           # Alpaca fractional orders go down to $1
 UNIVERSE_SIZE = 100
+LOSS_STOP = 0.05                              # Book F5: sell at -5% from the average entry
 DECISION_WINDOW_MINS = (3, 45)                # act when the close is 3-45 minutes away
 CATCHUP_AFTER_OPEN_MINS = 15                  # missed-day catch-up waits 15 minutes after the open
 
@@ -236,7 +240,7 @@ def decide(state, equity, cash, positions, open_orders, today, log, skips, catch
         if buy(sym, usd, b["c"], log):
             entered.add(sym)
             cash -= usd
-            state["positions"][sym] = {"opened": today, "breakout": b.get("breakout")}
+            state["positions"][sym] = {"opened": today, "bought": datetime.now(engine.ET_ZONE).strftime("%Y-%m-%d"), "breakout": b.get("breakout")}
             log.append(f"✅ BUY {sym} ${usd:,.2f} @ ~${b['c']:.2f} — band breakout ({'recent' if recent else 'old'}, {want/equity*100:.1f}% of the account)")
 
     # Top-ups: winners still above the band
@@ -301,7 +305,7 @@ def report(state, equity, positions, spy_now, log, skips, decided, next_window):
 <body style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f4f6f8;margin:0;padding:8px;color:#333;">
 <div style="max-width:680px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;">
  <div style="background:#0f172a;color:#fff;padding:14px;"><div style="font-size:15px;font-weight:700;">{BOT_TITLE}{' • 🧪 DRY RUN' if DRY_RUN else ''}</div>
-  <div style="font-size:11px;color:#94a3b8;">{datetime.now(engine.ET_ZONE).strftime('%Y-%m-%d %H:%M ET')} • {'daily decisions made' if decided else f'report only — next decisions {next_window}'}</div></div>
+  <div style="font-size:11px;color:#94a3b8;">{datetime.now(engine.ET_ZONE).strftime('%Y-%m-%d %H:%M ET')} • {'daily decisions made' if any(x[:1] in '📅⏪' for x in log) else ('✂️ loss stop' if decided else f'report only — next decisions {next_window}')}</div></div>
  <div style="padding:12px;font-size:12px;">
   <div style="font-size:22px;font-weight:700;color:{'#15803d' if ret >= 0 else '#b91c1c'};">${equity:,.2f}
    <span style="font-size:13px;">({ret:+.2f}% since {state.get('started') or 'today'}{vs_spy})</span></div>
@@ -317,11 +321,11 @@ def report(state, equity, positions, spy_now, log, skips, decided, next_window):
    <th align="left">Stock</th><th align="left">Result</th><th align="left">$</th><th align="left">Bought</th></tr>{recent}</table>
   <div style="font-size:10px;color:#64748b;margin-top:10px;">Book F rules: daily Gaussian Channel on ~100 large US stocks. Buy on a close above the
    upper band (4.8% of the account if the breakout is ≤25 days old, else 1.2%), add up to 3.3% on +10% winners, sell on a close back below
-   the band. Long-only, cash only, held overnight. Decisions once a day in the last 45 minutes before the close
+   the band. -5% loss stop (checked every 5 minutes while the market is open, never on the buy day). Long-only, cash only, held overnight. Decisions once a day in the last 45 minutes before the close
    (a missed day is caught up the next morning).</div>
  </div></div></body></html>"""
     text = f"{BOT_TITLE}\nEquity ${equity:,.2f} ({ret:+.2f}%)\n" + "\n".join(log)
-    n_trades = sum(1 for x in log if x[:1] in "✅💰🔻➕")
+    n_trades = sum(1 for x in log if x[:1] in "✅💰🔻➕✂")
     send_email(f"📈 Alpaca GC-F — ${equity:,.2f} ({ret:+.2f}%){f' • {n_trades} trades' if decided else ''}{' [DRY RUN]' if DRY_RUN else ''}", html, text)
 
 
@@ -352,7 +356,17 @@ def main():
             opened = datetime.strptime(f"{today} {todays[0]['open']}", "%Y-%m-%d %H:%M").replace(tzinfo=engine.ET_ZONE)
             if prev[-1] > base and (now_utc - opened.astimezone(timezone.utc)).total_seconds() >= CATCHUP_AFTER_OPEN_MINS * 60:
                 catchup_day = prev[-1]
-    if not due and not catchup_day and not IS_MANUAL:
+    # Loss stop check (every run while the market is open): any position 5% under its average entry.
+    losers = {}
+    if clock.get("is_open"):
+        res = call("get", "/v2/positions")
+        for p in (res.json() if ok(res) else []) or []:
+            meta = state["positions"].get(p["symbol"], {})
+            bought = meta.get("bought") or meta.get("opened", "")
+            if p.get("side", "long") == "long" and bought != today and \
+                    float(p.get("current_price", 0) or 0) <= float(p["avg_entry_price"]) * (1 - LOSS_STOP):
+                losers[p["symbol"]] = p
+    if not due and not catchup_day and not losers and not IS_MANUAL:
         print(f"Nothing to do ({'market closed' if not clock.get('is_open') else f'{mins_to_close:.0f} min to close'}; "
               f"decided today: {state.get('last_decision_day') == today})", flush=True)
         return
@@ -371,6 +385,16 @@ def main():
     for sym in list(state["positions"]):
         if sym not in positions:
             state["positions"].pop(sym)
+
+    for sym, p in losers.items():
+        if sym in positions and sell_all(sym, open_orders, log):
+            meta = state["positions"].pop(sym, {})
+            pnl, pct = float(p.get("unrealized_pl", 0) or 0), float(p.get("unrealized_plpc", 0) or 0) * 100
+            state["closed"].append({"symbol": sym, "opened": meta.get("opened", "?"), "closed": today, "entry": float(p["avg_entry_price"]),
+                                    "exit": float(p["current_price"]), "pct": round(pct, 2), "pnl": round(pnl, 2), "reason": f"✂️ Loss stop (-{LOSS_STOP*100:.0f}%)"})
+            log.append(f"✂️ LOSS STOP {sym} @ ~${float(p['current_price']):.2f}: {pct:+.2f}% (${pnl:+,.2f}) — 5% under the entry, sold to wait in cash")
+            positions.pop(sym, None)
+            cash += float(p.get("market_value", 0) or 0)
 
     spy_now = None
     if due or catchup_day:
@@ -394,7 +418,11 @@ def main():
     print("\n".join(log), flush=True)
     next_window = "today in the last 45 min before the close" if clock.get("is_open") and state.get("last_decision_day") != today else \
         f"next trading day, 45 min before the close (next open {parse_ts(clock['next_open']).astimezone(engine.ET_ZONE).strftime('%a %m-%d %H:%M ET')})"
-    report(state, equity, positions, spy_now, log, skips, bool(due or catchup_day), next_window)
+    if losers and not DRY_RUN and not (due or catchup_day):
+        time.sleep(2)
+        acct = call("get", "/v2/account").json()
+        equity = float(acct.get("equity", equity))
+    report(state, equity, positions, spy_now, log, skips, bool(due or catchup_day or losers), next_window)
 
 
 if __name__ == "__main__":
