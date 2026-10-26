@@ -44,7 +44,7 @@ jobs:
           # ============================================================================
           # "true"  = DRY RUN: reads your real account, emails what it WOULD do, sends no orders.
           # "false" = LIVE: real orders with real money. Change only after the dry run looks right.
-          DRY_RUN: "true"
+          DRY_RUN: "false"
           # ============================================================================
           HL_ACCOUNT_ADDRESS: ${{ secrets.HL_ACCOUNT_ADDRESS }}
           HL_SECRET_KEY: ${{ secrets.HL_SECRET_KEY }}
