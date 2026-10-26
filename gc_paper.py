@@ -48,6 +48,7 @@ Profit-protection variants of the live setup U (same 9 slots, 4-hour lock, disas
   Book Y  = V with the lock starting at +1% (keeps 50% of any gain from +1%)
   Book Z  = V with a -5% loss stop on every position (instead of the -35% disaster stop) -> cut losers fast, sit in cash
   Book Z3 = V with a -3% loss stop.   Book YZ = Y + the -5% loss stop
+  Stock-bot variants of Book F (daily, no margin): F5 / F8 = F + a -5% / -8% loss stop; FZ = F + early lock + -5% stop
 
 Every email also has a GROWTH CALCULATOR: each book's return so far, turned into average $ per day at $1k / $10k / $50k /
 $200k and the capital that would have been needed for $200 and $400 a day.
@@ -85,7 +86,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.17"
+ENGINE_VERSION = "GC-PAPER-1.18"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -169,6 +170,9 @@ BOOKS = [
     ("Z", "V + -5% Loss Stop", "long", False),
     ("Z3", "V + -3% Loss Stop", "long", False),
     ("YZ", "V + Lock from +1% + -5% Loss Stop", "long", False),
+    ("F5", "F + -5% Loss Stop", False, False),
+    ("F8", "F + -8% Loss Stop", False, False),
+    ("FZ", "F + Early Lock + -5% Loss Stop", "long", False),
 ]
 # Extra per-book settings (books not listed use the LS-15 defaults).
 #   size_mult: scales every entry and the top-up target.  max_pos / slot_size: at most N positions, each slot_size of NAV.
@@ -208,6 +212,10 @@ BOOK_OPTIONS = {
     "Z": {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": 0.05,
           "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50]]},
     "Z3": {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": 0.03,
+           "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50]]},
+    "F5": {"size_mult": 0.60, "disaster": 0.05},
+    "F8": {"size_mult": 0.60, "disaster": 0.08},
+    "FZ": {"size_mult": 0.60, "disaster": 0.05,
            "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50]]},
     "YZ": {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": 0.05,
            "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50], [0.01, 0.50]]},
@@ -1118,6 +1126,8 @@ NOTES = [
     "Book Y = V with the lock starting at +1% (keeps 50% of any gain from +1%). Book Z = V with a -5% loss stop on every position "
     "(replaces the -35% disaster stop). Book Z3 = V with a -3% loss stop. Book YZ = Y plus the -5% loss stop. Loss stops are resting "
     "stops checked against each day's low/high (fill at the stop, or at the open if it gapped through).",
+    "Books F5 / F8 = Book F (60% sizes, no lock) plus a -5% / -8% loss stop. Book FZ = Book F plus the early lock and the -5% loss stop "
+    "(daily checks). Built to test loss stops for the stock bot.",
     "Gaussian Channel computed here from Hyperliquid daily candles (hlc3, 4 poles, period 144, x1.414) — close to SIGNUM's Trend Radar, not identical.",
     "Rank = Hyperliquid open-interest value (no market cap on Hyperliquid). breakoutDate = first close above the upper band since the channel turned Green.",
     "Fills at the daily close (lock stops at the stop price, or the open if it gapped through). 0.045% fee per side. Funding is not modelled.",
