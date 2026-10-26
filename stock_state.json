@@ -1,10 +1,20 @@
 {
  "version": "GCSTK-F-1",
- "positions": {},
+ "positions": {
+  "CRWD": {
+   "opened": "2026-10-23",
+   "breakout": "2026-08-27"
+  }
+ },
  "closed": [],
- "last_decision_day": null,
+ "last_decision_day": "2026-10-23",
  "started": "2026-10-22",
  "start_equity": 97918.51,
- "start_spy": null,
- "nav_history": []
+ "start_spy": 762.85,
+ "nav_history": [
+  [
+   "2026-10-23",
+   97918.51
+  ]
+ ]
 }
