@@ -87,7 +87,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.20"
+ENGINE_VERSION = "GC-PAPER-1.21"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -177,6 +177,10 @@ BOOKS = [
     ("Z1", "V + -1% Loss Stop", "long", False),
     ("Z2", "V + -2% Loss Stop", "long", False),
     ("Z4", "V + -4% Loss Stop", "long", False),
+    ("Z35", "V + -3.5% Loss Stop", "long", False),
+    ("Z45", "V + -4.5% Loss Stop", "long", False),
+    ("Z6", "V + -6% Loss Stop", "long", False),
+    ("Z7", "V + -7% Loss Stop", "long", False),
     ("F1", "F + -1% Loss Stop", False, False),
     ("F2", "F + -2% Loss Stop", False, False),
     ("F3", "F + -3% Loss Stop", False, False),
@@ -224,7 +228,10 @@ BOOK_OPTIONS = {
     "F5": {"size_mult": 0.60, "disaster": 0.05},
     "F8": {"size_mult": 0.60, "disaster": 0.08},
     **{f"Z{n}": {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": n / 100,
-                 "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50]]} for n in (1, 2, 4)},
+                 "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50]]} for n in (1, 2, 4, 6, 7)},
+    **{code: {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": d,
+              "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50]]}
+       for code, d in (("Z35", 0.035), ("Z45", 0.045))},
     **{f"F{n}": {"size_mult": 0.60, "disaster": n / 100} for n in (1, 2, 3, 4)},
     "FZ": {"size_mult": 0.60, "disaster": 0.05,
            "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50]]},
@@ -516,7 +523,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
                     # candle by candle (checking it only against the daily low let a dip-then-rally day exit at a profit).
                     loss_px = p["entry"] * (1 - book["disaster"]) if book.get("disaster") and p["side"] == "LONG" and p["opened"] != day else None
                     if p["side"] == "LONG" and loss_px and (p["stop"] is None or loss_px > p["stop"]) and k["l"] <= loss_px:
-                        close_position(book, c, min(k["o"], loss_px), day, f"{stop_label(book)} (-{book['disaster']*100:.0f}%, 4h)", log)
+                        close_position(book, c, min(k["o"], loss_px), day, f"{stop_label(book)} (-{book['disaster']*100:g}%, 4h)", log)
                         exited.add(c)
                         break
                     if p["stop"] is not None and p["side"] == "LONG" and k["l"] <= p["stop"]:
@@ -553,11 +560,11 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
                 continue
             if p["side"] == "LONG" and b["l"] <= p["entry"] * (1 - book["disaster"]):
                 px = p["entry"] * (1 - book["disaster"])
-                close_position(book, c, min(b["o"], px), day, f"{stop_label(book)} (-{book['disaster']*100:.0f}%)", log)
+                close_position(book, c, min(b["o"], px), day, f"{stop_label(book)} (-{book['disaster']*100:g}%)", log)
                 exited.add(c)
             elif p["side"] == "SHORT" and b["h"] >= p["entry"] * (1 + book["disaster"]):
                 px = p["entry"] * (1 + book["disaster"])
-                close_position(book, c, max(b["o"], px), day, f"{stop_label(book)} (+{book['disaster']*100:.0f}% against)", log)
+                close_position(book, c, max(b["o"], px), day, f"{stop_label(book)} (+{book['disaster']*100:g}% against)", log)
                 exited.add(c)
 
     nav = book_nav(book, closes)
@@ -1225,6 +1232,7 @@ def run_robust(info):
     all_days = sorted({d for c in data for d in data[c]})
     days = backtest_days(all_days)
     specs = [b for b in BOOKS if b[0] in ROBUST_BOOKS]
+    unknown = [c for c in ROBUST_BOOKS if c not in {b[0] for b in BOOKS}]
     if not specs:
         raise RuntimeError(f"ROBUST_BOOKS {ROBUST_BOOKS} matches no book")
     data4h = load_intraday(info, universe, BACKTEST_DAYS) if any(BOOK_OPTIONS.get(c, {}).get("lock_intraday") for c, *_ in specs) else {}
@@ -1275,6 +1283,7 @@ def run_robust(info):
       <tr style="background:#f1f5f9;"><th align="left">Book</th><th align="left">Normal order</th><th align="left">Median</th><th align="left">Worst</th>
       <th align="left">Best</th><th align="left">Median drop</th><th align="left">Worst drop</th><th align="left">Beat {BENCH}</th><th align="left">Beat D (same order)</th></tr>
       {rows}</table></div>
+    {f"<div style='background:#fee2e2;border:1px solid #fecaca;border-radius:6px;padding:8px;color:#991b1b;margin-top:10px;'>⚠️ Books not found in this gc_paper.py ({ENGINE_VERSION}): <b>{', '.join(unknown)}</b> — skipped. Is the newest gc_paper.py committed?</div>" if unknown else ""}
     <div style="font-weight:700;margin-top:12px;">Every run</div><div style="font-size:11px;color:#475569;">{every}</div>
   </div></div></body></html>"""
     text = f"{title}\n" + "\n".join(summary)
