@@ -87,7 +87,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.21"
+ENGINE_VERSION = "GC-PAPER-1.22"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -185,6 +185,10 @@ BOOKS = [
     ("F2", "F + -2% Loss Stop", False, False),
     ("F3", "F + -3% Loss Stop", False, False),
     ("F4", "F + -4% Loss Stop", False, False),
+    ("F45", "F + -4.5% Loss Stop", False, False),
+    ("F55", "F + -5.5% Loss Stop", False, False),
+    ("F6", "F + -6% Loss Stop", False, False),
+    ("F7", "F + -7% Loss Stop", False, False),
 ]
 # Extra per-book settings (books not listed use the LS-15 defaults).
 #   size_mult: scales every entry and the top-up target.  max_pos / slot_size: at most N positions, each slot_size of NAV.
@@ -232,7 +236,9 @@ BOOK_OPTIONS = {
     **{code: {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": d,
               "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50]]}
        for code, d in (("Z35", 0.035), ("Z45", 0.045))},
-    **{f"F{n}": {"size_mult": 0.60, "disaster": n / 100} for n in (1, 2, 3, 4)},
+    **{f"F{n}": {"size_mult": 0.60, "disaster": n / 100} for n in (1, 2, 3, 4, 6, 7)},
+    "F45": {"size_mult": 0.60, "disaster": 0.045},
+    "F55": {"size_mult": 0.60, "disaster": 0.055},
     "FZ": {"size_mult": 0.60, "disaster": 0.05,
            "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50]]},
     "YZ": {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": 0.05,
