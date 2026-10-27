@@ -1,7 +1,8 @@
 """
-bot_engine.py — TR-GC-Crypto-LS-15 LIVE BOT (Hyperliquid, real money) — the "Book Z" setup from gc_paper.py
-(Book V's early lock + a -5% loss stop on every position. 30-order stability check at $111, after the intraday-stop fix:
- median +174% vs V's +145%, unluckiest +91% vs +53%, deepest drop -36% vs -43%.)
+bot_engine.py — TR-GC-Crypto-LS-15 LIVE BOT (Hyperliquid, real money) — the "Book Z4" setup from gc_paper.py
+(Book V's early lock + a -4% loss stop on every position. 100-order stability checks at $111, loss-stop ladder:
+ -3% +150% | -3.5% +203% | -4% +248% | -4.5% +206% | -5% +181% | -6% +184% | -7% +165% (median, 2 years).
+ -3.5% to -4.5% all beat -5%, so -4% sits in the middle of a broad high zone, not on a lone spike.)
 (EARLY LOCK: keeps 50% of the peak gain from +3%, 60% from +5%, 70% from +10%, 80/85/90% from +20/35/60%.)
 Replaces the old 5-minute scalper (V4.12) on the same account, workflow (stops.yml) and state file (state.json).
 
@@ -10,7 +11,7 @@ What it trades (same rules as the paper/backtest engine, which it imports for th
   - at most 9 positions, 15% of the account each, up to 135% of the account in positions (cross margin, 3x setting
     -> only ~45% of the account is used as margin, the rest stays free as a safety buffer)
   - longs: the early profit lock (keep 50-90% of the peak gain from +3%) as a REAL stop on Hyperliquid, raised every 4 hours
-  - every position: a LOSS STOP 5% against the entry, resting on the exchange 24/7 (cut losers fast, wait in cash)
+  - every position: a LOSS STOP 4% against the entry, resting on the exchange 24/7 (cut losers fast, wait in cash)
   - shorts: original LS-15 exits (daily close above the GC filter, or take profit at -35%)
 
 Schedule: stops.yml runs it every 5 minutes (external cron) with a 15-minute backup. Most runs only check that every
@@ -30,7 +31,7 @@ from email.mime.text import MIMEText
 
 import gc_paper as engine
 
-BOT_VERSION = "LS15-LIVE-1.3"
+BOT_VERSION = "LS15-LIVE-1.4"
 STATE_FILE = "state.json"                  # same file the old scalper used (stops.yml commits it)
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
 SECRET_KEY = os.getenv("HL_SECRET_KEY")
@@ -43,7 +44,7 @@ GROSS_CAP = 1.35                       # at most 135% of the account in position
 LEVERAGE_SETTING = 3                   # cross margin setting per coin: margin used = notional / 3
 MIN_ORDER_USD = 11.0                   # Hyperliquid minimum is $10; keep a small buffer for rounding / price moves
 LOCK_TIERS = engine.BOOK_OPTIONS["V"]["lock_tiers"]   # early lock: (peak gain, share of it kept), same as paper Book V
-DISASTER_STOP = 0.05                   # loss stop: resting stop 5% against every position (paper Book Z)
+DISASTER_STOP = 0.04                   # loss stop: resting stop 4% against every position (paper Book Z4)
 SLIPPAGE = 0.01                        # market orders: worst price accepted 1% away
 LOW_BALANCE_WARN = 67.0                # below this, 15% positions fall under $10 and the bot cannot open trades
 H4_MS = 4 * 3600 * 1000
@@ -227,7 +228,7 @@ def exit_fill(info, coin, since_ms):
 # Stops
 # ======================================================================================
 def desired_stop(p):
-    """Long: the higher of the profit lock and the -5% loss stop. Short: the loss stop (LS-15 short exits are daily)."""
+    """Long: the higher of the profit lock and the -4% loss stop. Short: the loss stop (LS-15 short exits are daily)."""
     if p["side"] == "LONG":
         stop = p["entry"] * (1 - DISASTER_STOP)
         fl = engine.lock_floor(p["peak_px"] / p["entry"] - 1, LOCK_TIERS)
@@ -262,7 +263,7 @@ def raise_peaks(info, state, now_ms, log):
 
 
 # ======================================================================================
-# Daily decisions (same rules as gc_paper.step_day for Book Z)
+# Daily decisions (same rules as gc_paper.step_day for Book Z4)
 # ======================================================================================
 def daily_decisions(info, exchange, state, nav, ex_pos, sz_dec, log, skips):
     newest_closed = time.strftime("%Y-%m-%d", time.gmtime(time.time() - 86400))   # yesterday (UTC) = last closed daily candle
