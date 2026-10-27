@@ -86,7 +86,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.18"
+ENGINE_VERSION = "GC-PAPER-1.19"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -1000,7 +1000,19 @@ def pct_color(v):
     return "#15803d" if v >= 0 else "#b91c1c"
 
 
-def render_email(title, subtitle, books, day_logs, skips, prices, btc_curve, regime_line, chart_cid, notes, growth=""):
+def real_nav():
+    """Paper emails show every book scaled to the REAL live account (the live bot's starting balance in state.json)."""
+    try:
+        with open("state.json") as f:
+            v = float(json.load(f).get("start_nav") or 0)
+        if v > 0:
+            return v
+    except Exception:
+        pass
+    return float(os.getenv("REAL_NAV", "111") or 111)
+
+
+def render_email(title, subtitle, books, day_logs, skips, prices, btc_curve, regime_line, chart_cid, notes, growth="", real=None):
     cards = ""
     for book in books:
         s = book_stats(book)
@@ -1027,7 +1039,7 @@ def render_email(title, subtitle, books, day_logs, skips, prices, btc_curve, reg
         cards += f"""
         <div style="border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:14px;background:#fff;">
           <div style="font-weight:700;font-size:14px;color:#0f172a;">Book {book['code']} — {book['name']}</div>
-          <div style="font-size:22px;font-weight:700;color:{pct_color(s['ret'])};margin-top:4px;">${nav:,.2f} <span style="font-size:13px;">({(nav/book_start(book)-1)*100:+.2f}%)</span></div>
+          <div style="font-size:22px;font-weight:700;color:{pct_color(s['ret'])};margin-top:4px;">{f"${real * nav / book_start(book):,.2f}" if real else f"${nav:,.2f}"} <span style="font-size:13px;">({(nav/book_start(book)-1)*100:+.2f}%){f" on your real ${real:,.2f} • paper book ${nav:,.2f} of ${book_start(book):,.0f}" if real else ""}</span></div>
           <div style="font-size:11px;color:#475569;">Trades {s['trades']} ({s['wins']}W/{s['losses']}L, {s['winrate']:.0f}%) &bull;
             Avg win {s['avg_w']:+.2f}% / avg loss {s['avg_l']:+.2f}% &bull; Profit factor {s['pf']:.2f} &bull;
             Biggest account give-back from a high {s['mdd']:.1f}% &bull;{f" Account guard fired {book.get('guard_hits', 0)}x &bull;" if book.get("guard") else ""}
@@ -1061,7 +1073,9 @@ def render_email(title, subtitle, books, day_logs, skips, prices, btc_curve, reg
   </div>
   <div style="padding:12px;">
     <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:8px;font-size:11px;color:#92400e;margin-bottom:12px;">
-      📝 PAPER TRADING ONLY — this script holds no keys and cannot place orders. {regime_line}</div>
+      📝 PAPER TRADING ONLY — this script holds no keys and cannot place orders. {regime_line}
+      {f"<br><b>Big numbers are scaled to your real account (${real:,.2f})</b>: each paper book runs on $1,000, so its % result is applied to ${real:,.2f}. "
+       "Position values and $ in the tables below are still per $1,000 book." if real else ""}</div>
     {chart}
     {growth}
     {cards}
@@ -1312,9 +1326,10 @@ def run_paper(info):
     btc_curve = btc_buy_hold(data, eq_days) if len(eq_days) > 1 else []
     chart = make_chart(books, btc_curve, f"Paper since {state['started']}") if len(eq_days) > 1 else None
     title = f"{STRATEGY_ID} PAPER — {latest}"
-    summary = " | ".join(f"{b['code']} ${book_nav(b, prices):,.2f} ({(book_nav(b, prices)/book_start(b)-1)*100:+.2f}%)" for b in books)
+    real = real_nav()
+    summary = " | ".join(f"{b['code']} ${real * book_nav(b, prices) / book_start(b):,.2f} ({(book_nav(b, prices)/book_start(b)-1)*100:+.2f}%)" for b in books)
     html = render_email(title, f"Paper since {state['started']} • processed: {', '.join(todo) or 'nothing new'} • {summary}", books, day_logs,
-                        all_skips, prices, btc_curve, regime_line, "gcchart" if chart else None, NOTES, growth_section(books, prices))
+                        all_skips, prices, btc_curve, regime_line, "gcchart" if chart else None, NOTES, growth_section(books, prices), real)
     text = f"{title}\n{summary}\n{regime_line}\n" + "\n".join(f"{d}: {e}" for d, e in day_logs)
     print(text, flush=True)
     send_email(f"📝 {title} — {summary}", html, text, chart)
