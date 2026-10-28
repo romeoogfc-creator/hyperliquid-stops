@@ -50,6 +50,11 @@ Profit-protection variants of the live setup U (same 9 slots, 4-hour lock, disas
   Book Z3 = V with a -3% loss stop.   Book YZ = Y + the -5% loss stop
   Stock-bot variants of Book F (daily, no margin): F5 / F8 = F + a -5% / -8% loss stop; FZ = F + early lock + -5% stop
   Loss-stop ladder: Z1 / Z2 / Z4 = V + a -1% / -2% / -4% loss stop (crypto); F1 / F2 / F3 / F4 = F + -1..-4% (stocks)
+  Falling-knife exits on top of Z4 (the live setup), checked on every 4-hour candle once a long has been +3%:
+  Book KN1 = sell at the close of a red 4h candle on >= 2x the volume of the previous 6 candles that closes in its bottom 25%
+  Book KN2 = more sensitive: >= 1.5x volume, closes in the bottom 35%
+  Book KN3 = no volume check: a red 4h candle that falls >= 3% open-to-close and closes in its bottom 25%
+  Book KN4 = only the extreme ones: >= 3x volume, closes in the bottom 25%
 
 Every email also has a GROWTH CALCULATOR: each book's return so far, turned into average $ per day at $1k / $10k / $50k /
 $200k and the capital that would have been needed for $200 and $400 a day.
@@ -87,7 +92,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.22"
+ENGINE_VERSION = "GC-PAPER-1.23"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -189,6 +194,10 @@ BOOKS = [
     ("F55", "F + -5.5% Loss Stop", False, False),
     ("F6", "F + -6% Loss Stop", False, False),
     ("F7", "F + -7% Loss Stop", False, False),
+    ("KN1", "Z4 + Knife Exit (4h red, 2x volume)", "long", False),
+    ("KN2", "Z4 + Knife Exit (4h red, 1.5x volume)", "long", False),
+    ("KN3", "Z4 + Knife Exit (4h drop >= 3%)", "long", False),
+    ("KN4", "Z4 + Knife Exit (4h red, 3x volume)", "long", False),
 ]
 # Extra per-book settings (books not listed use the LS-15 defaults).
 #   size_mult: scales every entry and the top-up target.  max_pos / slot_size: at most N positions, each slot_size of NAV.
@@ -243,6 +252,11 @@ BOOK_OPTIONS = {
            "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50]]},
     "YZ": {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": 0.05,
            "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50], [0.01, 0.50]]},
+    # knife: on top of Z4, sell a long at the close of a 4h candle that looks like a falling knife (see knife_hit).
+    **{code: {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": 0.04,
+              "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50]],
+              "knife": {"after_gain": 0.03, "vol_mult": vm, "close_in_bottom": cb, "drop": dr}}
+       for code, vm, cb, dr in (("KN1", 2.0, 0.25, None), ("KN2", 1.5, 0.35, None), ("KN3", None, 0.25, 0.03), ("KN4", 3.0, 0.25, None))},
 }
 VOL_AVG_DAYS = 20                      # seller-exit: today's volume vs the previous 20 days
 ATR_PERIOD = 14
@@ -250,6 +264,7 @@ CLIMAX_ATR = 2.0                       # "parabolic" = daily close more than 2 A
 INTRADAY_INTERVAL = "4h"               # candles used by lock_intraday books (Hyperliquid keeps the last 5000 = ~833 days)
 INTRADAY_MS = 4 * 3600 * 1000
 INTRADAY_MAX_DAYS = 830
+KNIFE_LOOKBACK = 6                     # knife exit: a 4h candle's volume vs the previous 6 candles (one day)
 
 # Growth calculator (every email): account sizes to scale results to, and the daily-profit targets to size for.
 GROWTH_SIZES = [1000, 10000, 50000, 200000]
@@ -493,6 +508,22 @@ def sellers_took_over(book, p, b):
             and rng > 0 and (b["c"] - b["l"]) <= se["close_in_bottom"] * rng)
 
 
+def knife_hit(book, p, k):
+    """Knife books: the long has been up `after_gain`, and this 4h candle is red, closes near its low, and either came on
+    heavy volume (vol_mult x the previous KNIFE_LOOKBACK candles) or fell at least `drop` open-to-close."""
+    kn = book.get("knife")
+    if not kn or p["side"] != "LONG" or p["peak_px"] / p["entry"] - 1 < kn["after_gain"] or k["c"] >= k["o"]:
+        return False
+    rng = k["h"] - k["l"]
+    if rng <= 0 or (k["c"] - k["l"]) > kn["close_in_bottom"] * rng:
+        return False
+    if kn.get("vol_mult") and not (k.get("va") and k.get("v", 0) >= kn["vol_mult"] * k["va"]):
+        return False
+    if kn.get("drop") and (k["o"] - k["c"]) / k["o"] < kn["drop"]:
+        return False
+    return True
+
+
 def stop_label(book):
     return "✂️ Loss stop" if book.get("disaster", 1) <= 0.10 else "🧯 Disaster stop"
 
@@ -545,6 +576,11 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
                         partial_close(book, c, max(k["o"], tp), book["take_half"]["frac"], day,
                                       f"💵 Take half at +{book['take_half']['at']*100:.0f}%", log)
                     set_lock_stop(book, p, k["h"], k["l"])    # this candle's high/low raises the peak, stop moves up
+                    if knife_hit(book, p, k):
+                        vol = f", volume {k['v']/k['va']:.1f}x" if k.get("va") else ""
+                        close_position(book, c, k["c"], day, f"🔪 Falling knife (4h red candle {(k['c']/k['o']-1)*100:+.1f}%{vol}, closed near the low)", log)
+                        exited.add(c)
+                        break
                 continue
             if take_half_hit(book, p, b["h"]) and not (p["stop"] is not None and b["l"] <= p["stop"]):
                 tp = p["entry"] * (1 + book["take_half"]["at"])
@@ -785,13 +821,16 @@ def fetch_intraday(info, coins, history_days):
                 time.sleep(15 * (attempt + 1))                 # 429 / network: back off
         if not candles:
             continue
-        by_day = {}
+        by_day, vols = {}, []
         for k in sorted(candles, key=lambda k: int(k["t"])):
             t = int(k["t"])
             if t + INTRADAY_MS > now_ms:
                 continue
             d = datetime.fromtimestamp(t / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
-            by_day.setdefault(d, []).append({"o": float(k["o"]), "h": float(k["h"]), "l": float(k["l"]), "c": float(k["c"])})
+            v = float(k.get("v", 0) or 0)
+            va = sum(vols[-KNIFE_LOOKBACK:]) / KNIFE_LOOKBACK if len(vols) >= KNIFE_LOOKBACK else None
+            vols.append(v)
+            by_day.setdefault(d, []).append({"o": float(k["o"]), "h": float(k["h"]), "l": float(k["l"]), "c": float(k["c"]), "v": v, "va": va})
         out[coin] = by_day
     return out
 
@@ -1259,7 +1298,7 @@ def run_robust(info):
         print(f"run {run + 1}/{ROBUST_RUNS}: " + " | ".join(f"{c} {r[-1][0]:+.1f}%" for c, r in results.items()), flush=True)
     btc_curve = btc_buy_hold(data, days)
     btc_ret = btc_curve[-1][1] if btc_curve else 0.0
-    ref = "D" if "D" in results else None
+    ref = "Z4" if "Z4" in results else ("D" if "D" in results else None)
     rows, summary = "", []
     for code, name, *_ in specs:
         rets = [r for r, _ in results[code]]
@@ -1287,7 +1326,7 @@ def run_robust(info):
       a lucky one swings wildly.</div>
     <div style="overflow-x:auto;"><table style="width:100%;font-size:11px;border-collapse:collapse;" cellpadding="4">
       <tr style="background:#f1f5f9;"><th align="left">Book</th><th align="left">Normal order</th><th align="left">Median</th><th align="left">Worst</th>
-      <th align="left">Best</th><th align="left">Median drop</th><th align="left">Worst drop</th><th align="left">Beat {BENCH}</th><th align="left">Beat D (same order)</th></tr>
+      <th align="left">Best</th><th align="left">Median drop</th><th align="left">Worst drop</th><th align="left">Beat {BENCH}</th><th align="left">Beat {ref or "D"} (same order)</th></tr>
       {rows}</table></div>
     {f"<div style='background:#fee2e2;border:1px solid #fecaca;border-radius:6px;padding:8px;color:#991b1b;margin-top:10px;'>⚠️ Books not found in this gc_paper.py ({ENGINE_VERSION}): <b>{', '.join(unknown)}</b> — skipped. Is the newest gc_paper.py committed?</div>" if unknown else ""}
     <div style="font-weight:700;margin-top:12px;">Every run</div><div style="font-size:11px;color:#475569;">{every}</div>
