@@ -4,23 +4,23 @@
    "side": "LONG",
    "sz": 3622.0,
    "entry": 0.00459,
-   "peak_px": 0.004928,
+   "peak_px": 0.005048,
    "opened": "2026-10-27",
    "opened_ms": 1793145847953,
    "reason": "band breakout",
-   "stop": 0.0047928,
-   "peak_checked_ms": 1793174400000
+   "stop": 0.0048648,
+   "peak_checked_ms": 1793188800000
   },
   "MEGA": {
    "side": "LONG",
    "sz": 336.0,
    "entry": 0.049406,
-   "peak_px": 0.049892,
+   "peak_px": 0.050711,
    "opened": "2026-10-27",
    "opened_ms": 1793145849955,
    "reason": "band breakout",
    "stop": 0.047429759999999994,
-   "peak_checked_ms": 1793174400000
+   "peak_checked_ms": 1793188800000
   }
  },
  "closed": [],
