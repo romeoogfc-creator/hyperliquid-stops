@@ -1,16 +1,5 @@
 {
  "positions": {
-  "kPEPE": {
-   "side": "LONG",
-   "sz": 3622.0,
-   "entry": 0.00459,
-   "peak_px": 0.005048,
-   "opened": "2026-10-27",
-   "opened_ms": 1793145847953,
-   "reason": "band breakout",
-   "stop": 0.0048648,
-   "peak_checked_ms": 1793188800000
-  },
   "MEGA": {
    "side": "LONG",
    "sz": 336.0,
@@ -23,7 +12,20 @@
    "peak_checked_ms": 1793188800000
   }
  },
- "closed": [],
+ "closed": [
+  {
+   "coin": "kPEPE",
+   "side": "LONG",
+   "opened": "2026-10-27",
+   "closed": "2026-10-28 13:20",
+   "entry": 0.00459,
+   "exit": 0.004858,
+   "pct": 5.84,
+   "peak_pct": 9.98,
+   "pnl": 0.9631,
+   "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
+  }
+ ],
  "last_daily_day": "2026-10-27",
  "started": "2026-10-23",
  "start_nav": 110.8395182,
