@@ -31,7 +31,7 @@ from email.mime.text import MIMEText
 
 import gc_paper as engine
 
-BOT_VERSION = "LS15-LIVE-1.4"
+BOT_VERSION = "LS15-LIVE-1.5"
 STATE_FILE = "state.json"                  # same file the old scalper used (stops.yml commits it)
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
 SECRET_KEY = os.getenv("HL_SECRET_KEY")
@@ -529,10 +529,12 @@ def main():
     # 3) Every run: raise long peaks from 4h candles, sync every stop order
     raise_peaks(info, state, now_ms, log)
     stops_now = stop_orders(info)
+    closed_now = False
     for coin, p in list(state["positions"].items()):
         stop = desired_stop(p)
         if p["side"] == "LONG" and mids.get(coin) and mids[coin] <= stop:
             close_own(info, exchange, state, coin, f"🔒 Profit lock (price {mids[coin]:.6g} already under stop {stop:.6g})", log)
+            closed_now = True
             continue
         if p.get("stop") is None or abs(stop - p["stop"]) / stop > 0.0005:
             old = p.get("stop")
@@ -543,6 +545,8 @@ def main():
     for coin in stops_now:                                          # stops left over from closed positions
         if coin not in ex_pos:
             cancel_stops(exchange, stops_now, coin)
+    if closed_now and not DRY_RUN:                                 # the email should show the account after the close
+        nav, ex_pos, mids = read_account(info)
 
     if did_daily:                                                  # one balance point per day (runs every 5 minutes)
         state.setdefault("nav_history", []).append([datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"), round(nav, 2)])
