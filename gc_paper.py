@@ -64,6 +64,7 @@ for the bear-short filter and the buy & hold comparison). Stocks: backtest and r
 $2,000 at Alpaca cannot short or use margin, so LONG_ONLY=auto makes stock backtests under $2,000 long-only at 1x.
 
 Modes (env MODE):
+  ross     the old 15-minute Ross scalper (V4.8.12 rules) replayed on 5m / 15m / 30m / 1h / 4h candles (env ROSS_TIMEFRAMES)
   robust   stability check: replay chosen books ROBUST_RUNS times over the same history, each time considering the coins in a
            different random order (which coin fills a slot first). Shows the typical and worst result, so a lucky ordering
            cannot pass for a real edge.
@@ -92,7 +93,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.23"
+ENGINE_VERSION = "GC-PAPER-1.24"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -1400,6 +1401,339 @@ def run_paper(info):
     send_email(f"📝 {title} — {summary}", html, text, chart)
 
 
+# ---------------- ROSS scalper test (MODE=ross): the old V4.8.12 rules replayed on 5m / 15m / 30m / 1h / 4h ----------------
+# Paper only, like everything in this file. Entries are the V4.8.12 rules exactly (top 20 gainers outside the first 20 listed
+# coins, $500k+ 24h volume, HOD breakout / bullish reclaim / V-bottom with RVOL 1.8x, VWAP, EMA9 and MACD), checked at each
+# candle close. Two exit books per timeframe:
+#   R  = V4.8.12 exits as written: 5x, -3.5% ROE stop (-0.7% price), lock 80/85/90/93% of the peak ROE from +1.2% ROE,
+#        climax lock, 15-minute scratch (< -0.5% ROE) and 30-minute flat exit (< +0.4% ROE)
+#   RS = the same exits stretched to the timeframe: every distance x sqrt(timeframe / 15m) (price swings grow with the square
+#        root of time), so a 4h candle gets 4x the room of a 15m one (stop -2.8% price instead of -0.7%)
+ROSS_TFS = [t.strip() for t in os.getenv("ROSS_TIMEFRAMES", "5m,15m,30m,1h,4h").split(",") if t.strip()]
+ROSS_TF_MIN = {"5m": 5, "15m": 15, "30m": 30, "1h": 60, "2h": 120, "4h": 240}
+ROSS_COINS = int(os.getenv("ROSS_COINS", "50") or 50)  # today's most-traded coins outside the first 20 listed (majors)
+ROSS_LEV = 5
+ROSS_SIZE = 0.25 * 0.85                                 # 21.25% of the account per trade, as V4.8.12
+ROSS_SLOTS = 3
+ROSS_MIN_ORDER = 10.5
+ROSS_WINDOW = 32                                        # V4.8.12 read 32 candles (8 hours of 15m)
+ROSS_RVOL, ROSS_VWAP_CAP, ROSS_HOD = 1.80, 1.0080, 0.0100
+MAKER_FEE = 0.00015
+
+
+def _ema_weights(n, span):
+    """Weights w so that w @ x[-n:] = pandas ewm(span, adjust=False).mean() of the n values, at the last one."""
+    a = 2.0 / (span + 1)
+    w = np.array([a * (1 - a) ** (n - 1 - k) for k in range(n)])
+    w[0] = (1 - a) ** (n - 1)
+    return w
+
+
+def _ema_matrix(n, span):
+    """Row i = weights of the ewm(adjust=False) value at position i of an n-long window (lower triangular)."""
+    return np.array([np.concatenate([_ema_weights(i + 1, span), np.zeros(n - i - 1)]) for i in range(n)])
+
+
+_N = ROSS_WINDOW
+_W_EMA9 = _ema_weights(_N, 9)
+_W_EMA9_PREV = np.concatenate([_ema_weights(_N - 1, 9), [0.0]])
+_W_HIST = (np.eye(_N) - _ema_matrix(_N, 9))[-1] @ (_ema_matrix(_N, 12) - _ema_matrix(_N, 26))   # MACD histogram is linear
+
+
+def ross_fetch(info, coins, tf):
+    """{coin: dict of numpy arrays t,o,h,l,c,v} - the last 5,000 candles (all Hyperliquid keeps), paced like fetch_intraday."""
+    mins = ROSS_TF_MIN[tf]
+    now_ms = int(time.time() * 1000)
+    start_ms = now_ms - 5000 * mins * 60000
+    out = {}
+    for coin in coins:
+        time.sleep(6.3)                                        # 20 + 5000/60 weight per call: stay under ~1000 weight/minute
+        candles = None
+        for attempt in range(5):
+            try:
+                candles = info.candles_snapshot(coin, tf, start_ms, now_ms)
+                break
+            except Exception:
+                time.sleep(15 * (attempt + 1))
+        if not candles:
+            continue
+        ks = [k for k in sorted(candles, key=lambda k: int(k["t"])) if int(k["t"]) + mins * 60000 <= now_ms]
+        if len(ks) < ROSS_WINDOW + 300:
+            continue
+        out[coin] = {f: np.array([float(k[f]) for k in ks]) for f in "ohlcv"}
+        out[coin]["t"] = np.array([int(k["t"]) for k in ks], dtype=np.int64)
+    return out
+
+
+def ross_align(raw):
+    """Put every coin on one time grid (NaN where a coin has no candle)."""
+    grid = np.array(sorted({int(t) for d in raw.values() for t in d["t"]}), dtype=np.int64)
+    pos = {t: i for i, t in enumerate(grid)}
+    out = {}
+    for coin, d in raw.items():
+        idx = np.array([pos[int(t)] for t in d["t"]])
+        out[coin] = {}
+        for f in "ohlcv":
+            a = np.full(len(grid), np.nan)
+            a[idx] = d[f]
+            out[coin][f] = a
+    return grid, out
+
+
+def ross_signals(d, mins):
+    """Per-candle V4.8.12 entry signals for one coin (arrays over the time grid)."""
+    o, h, l, c, v = d["o"], d["h"], d["l"], d["c"], d["v"]
+    n = len(c)
+    sig = {k: np.full(n, np.nan) for k in ("ema9", "vwap", "score", "chg24", "vol24")}
+    sig["setup"] = np.zeros(n, dtype=np.int8)                 # 1 breakout, 2 reclaim, 3 V-bottom
+    if n <= _N + 2:
+        return sig
+    from numpy.lib.stride_tricks import sliding_window_view
+    win = sliding_window_view(c, _N)                          # row j = candles j .. j+N-1, i.e. ending at t = j+N-1
+    t_idx = np.arange(_N - 1, n)
+    ema9 = win @ _W_EMA9
+    prev_ema9 = win @ _W_EMA9_PREV
+    hist = win @ _W_HIST
+    tp = (h + l + c) / 3.0
+    vw_num = sliding_window_view(tp * v, _N).sum(axis=1)
+    vw_den = sliding_window_view(v, _N).sum(axis=1)
+    vwap = np.where(vw_den > 0, vw_num / np.where(vw_den > 0, vw_den, 1), c[t_idx])
+    day_high = sliding_window_view(h, _N).max(axis=1)
+    cc = c[t_idx]
+    prev_close = c[t_idx - 1]
+    vavg = np.array([np.mean(v[t - 11:t - 1]) if t >= 11 else np.nan for t in t_idx])   # live: volumes[-12:-2]
+    vr = np.where(vavg > 0, v[t_idx] / np.where(vavg > 0, vavg, 1), 1.0)
+    min3 = np.array([np.min(l[t - 3:t]) for t in t_idx])
+    rng = np.maximum(h[t_idx] - l[t_idx], 1e-12)
+    lower_wick = (np.minimum(o[t_idx], cc) - l[t_idx]) / rng
+    with np.errstate(invalid="ignore"):
+        ext_ok = (cc - ema9) / ema9 <= 0.0100
+        above_ema, above_vwap, macd_pos = cc > ema9, cc > vwap, hist > 0
+        vwap_ok = cc / vwap <= ROSS_VWAP_CAP
+        vol_ok = vr >= ROSS_RVOL
+        breakout = (cc >= day_high * (1 - ROSS_HOD)) & vol_ok & vwap_ok & above_ema & above_vwap & macd_pos
+        reclaim = (((prev_close <= prev_ema9) | (prev_close <= vwap)) & above_ema & above_vwap & (cc <= ema9 * 1.0025)
+                   & vol_ok & vwap_ok & macd_pos)
+        vbottom = (l[t_idx] <= min3) & (lower_wick >= 0.45) & vol_ok & vwap_ok & above_ema & macd_pos
+    setup = np.where(vbottom, 3, np.where(reclaim, 2, np.where(breakout, 1, 0))) * ext_ok
+    score = np.where(setup == 3, vr * 3.2, np.where(setup == 2, vr * 2.4, vr))
+    b24 = max(1, 1440 // mins)
+    chg = np.full(n, np.nan)
+    chg[b24:] = c[b24:] / c[:-b24] - 1
+    usd = np.nan_to_num(c * v)
+    cs = np.concatenate([[0.0], np.cumsum(usd)])
+    vol24 = np.full(n, np.nan)
+    vol24[b24 - 1:] = cs[b24:] - cs[:-b24]
+    bad = np.isnan(win).any(axis=1)
+    setup = np.where(bad, 0, setup)
+    sig["ema9"][t_idx], sig["vwap"][t_idx], sig["score"][t_idx] = ema9, vwap, score
+    sig["setup"][t_idx] = setup
+    sig["chg24"], sig["vol24"] = chg, vol24
+    return sig
+
+
+def ross_stop(entry, close, peak_roe, wick, s):
+    """V4.8.12 calculate_smart_exchange_targets for a long, with every ROE distance multiplied by s (R: s = 1)."""
+    roe = (close - entry) / entry * ROSS_LEV
+    if peak_roe >= 0.12 * s:
+        floor = max(peak_roe * 0.93, peak_roe - 0.008 * s)
+    elif peak_roe >= 0.08 * s:
+        floor = max(peak_roe * 0.90, peak_roe - 0.010 * s)
+    elif peak_roe >= 0.05 * s:
+        floor = max(peak_roe * 0.85, peak_roe - 0.012 * s)
+    elif peak_roe >= 0.025 * s:
+        floor = max(peak_roe * 0.80, 0.008 * s)
+    elif peak_roe >= 0.012 * s:
+        floor = 0.004 * s
+    else:
+        floor = -0.035 * s
+    if peak_roe >= 0.045 * s and (peak_roe - roe >= 0.006 * s or wick >= 0.45):
+        floor = max(floor, peak_roe - 0.004 * s)
+    return entry * (1 + floor / ROSS_LEV), floor
+
+
+def ross_simulate(grid, data, sigs, mins, s):
+    """One book over one timeframe. Returns (equity curve, closed trades, fees paid)."""
+    coins = list(data)
+    n = len(grid)
+    cash = START_NAV                                          # realised account value (margin is not tracked: 3 x 21% at 5x)
+    pos, pending, trades, fees = {}, None, [], 0.0
+    cooldown, recent_losses, paused_until = {}, [], 0
+    scratch_bars = max(1, round(15 / mins))
+    flat_bars = max(2, round(30 / mins))
+    curve = []
+    for t in range(n):
+        now = int(grid[t])
+        # 1) yesterday's resting limit entry: fills if this candle trades down to it, else it is purged (as the live bot did)
+        if pending:
+            cn, lim, setup = pending
+            d = data[cn]
+            if not np.isnan(d["l"][t]) and d["l"][t] <= lim and len(pos) < ROSS_SLOTS:
+                px = min(d["o"][t], lim)
+                usd = max(ROSS_MIN_ORDER, (curve[-1] if curve else cash) * ROSS_SIZE)
+                fee = usd * MAKER_FEE
+                cash -= fee
+                fees += fee
+                pos[cn] = {"entry": px, "qty": usd / px, "peak": 0.0, "stop": px * (1 - 0.035 * s / ROSS_LEV), "t0": t,
+                           "setup": setup, "fee_in": fee, "last": px}
+            pending = None
+        # 2) manage open longs on this candle
+        for cn in list(pos):
+            p, d = pos[cn], data[cn]
+            if t <= p["t0"] or np.isnan(d["c"][t]):
+                continue
+            o_, h_, l_, c_ = d["o"][t], d["h"][t], d["l"][t], d["c"][t]
+            p["last"] = c_
+            exit_px, why = None, None
+            if l_ <= p["stop"]:
+                exit_px = min(o_, p["stop"])
+                why = "Stop / profit lock (resting)" if p["peak"] >= 0.012 * s else "Hard stop"
+            else:
+                p["peak"] = max(p["peak"], (h_ - p["entry"]) / p["entry"] * ROSS_LEV)
+                rng = max(h_ - l_, 1e-12)
+                wick = (h_ - max(o_, c_)) / rng
+                stop, _ = ross_stop(p["entry"], c_, p["peak"], wick, s)
+                p["stop"] = max(p["stop"], stop)
+                roe = (c_ - p["entry"]) / p["entry"] * ROSS_LEV
+                held = t - p["t0"]
+                if c_ <= p["stop"]:
+                    exit_px, why = c_, "Profit lock (closed under the new stop)"
+                elif held >= scratch_bars and roe < -0.005 * s:
+                    exit_px, why = c_, "15-minute scratch"
+                elif held >= flat_bars and roe < 0.004 * s:
+                    exit_px, why = c_, "30-minute flat exit"
+            if exit_px is None:
+                continue
+            fee = p["qty"] * exit_px * FEE_RATE
+            pnl = p["qty"] * (exit_px - p["entry"]) - fee - p["fee_in"]
+            cash += p["qty"] * (exit_px - p["entry"]) - fee
+            fees += fee
+            trades.append({"coin": cn, "pnl": pnl, "pct": (exit_px / p["entry"] - 1) * 100, "why": why, "setup": p["setup"], "t": now})
+            cooldown[cn] = now + (4 * 3600000 if pnl > 0 else 1800000)
+            if pnl < 0:
+                recent_losses.append((now, pnl))
+            del pos[cn]
+        # 3) circuit breaker: 3+ losses totalling -$1 or worse inside 60 minutes -> 12 hours without new entries
+        recent_losses = [(tt, pl) for tt, pl in recent_losses if tt >= now - 3600000]
+        if len(recent_losses) >= 3 and sum(pl for _, pl in recent_losses) <= -1.0:
+            paused_until, recent_losses = now + 12 * 3600000, []
+        # 4) scan at this candle's close: top 20 gainers ($500k+ day volume), best setups fill the free slots
+        if now >= paused_until and len(pos) < ROSS_SLOTS:
+            ranked = sorted((c for c in coins if not np.isnan(sigs[c]["chg24"][t]) and (sigs[c]["vol24"][t] or 0) >= 500000),
+                            key=lambda c: sigs[c]["chg24"][t], reverse=True)[:20]
+            cands = sorted((c for c in ranked if sigs[c]["setup"][t] and c not in pos and cooldown.get(c, 0) <= now),
+                           key=lambda c: sigs[c]["score"][t], reverse=True)
+            for cn in cands[:ROSS_SLOTS - len(pos)]:
+                d, sg = data[cn], sigs[cn]
+                c_ = d["c"][t]
+                if sg["setup"][t] == 1:                       # HOD breakout: market order at the close
+                    usd = max(ROSS_MIN_ORDER, (curve[-1] if curve else cash) * ROSS_SIZE)
+                    fee = usd * FEE_RATE
+                    cash -= fee
+                    fees += fee
+                    pos[cn] = {"entry": c_, "qty": usd / c_, "peak": 0.0, "stop": c_ * (1 - 0.035 * s / ROSS_LEV), "t0": t,
+                               "setup": 1, "fee_in": fee, "last": c_}
+                elif pending is None:                         # reclaim / V-bottom: resting limit near EMA9 / VWAP
+                    pending = (cn, min(c_ * 0.999, max(sg["ema9"][t], sg["vwap"][t])), int(sg["setup"][t]))
+        eq = cash + sum(p["qty"] * (p["last"] - p["entry"]) for p in pos.values())
+        curve.append(eq)
+    return curve, trades, fees
+
+
+def ross_stats(curve, trades, fees, days):
+    eq = np.array(curve) if curve else np.array([START_NAV])
+    peak = np.maximum.accumulate(eq)
+    mdd = float(np.min(eq / peak - 1) * 100)
+    mid = len(eq) // 2
+    wins = [t for t in trades if t["pnl"] > 0]
+    loss = [t for t in trades if t["pnl"] <= 0]
+    gp, gl = sum(t["pnl"] for t in wins), -sum(t["pnl"] for t in loss)
+    why = {}
+    for t in trades:
+        why[t["why"]] = why.get(t["why"], 0) + 1
+    by_setup = {}
+    for t in trades:
+        k = {1: "Breakout", 2: "Reclaim", 3: "V-bottom"}.get(t["setup"], "?")
+        by_setup[k] = by_setup.get(k, 0.0) + t["pnl"]
+    return {"ret": (eq[-1] / START_NAV - 1) * 100, "mdd": mdd, "n": len(trades), "per_day": len(trades) / max(days, 1e-9),
+            "win": len(wins) / len(trades) * 100 if trades else 0.0,
+            "avg_w": float(np.mean([t["pct"] for t in wins])) if wins else 0.0,
+            "avg_l": float(np.mean([t["pct"] for t in loss])) if loss else 0.0,
+            "pf": gp / gl if gl > 0 else (float("inf") if gp > 0 else 0.0), "fees": fees,
+            "pnl_before_fees": eq[-1] - START_NAV + fees,
+            "h1": (eq[mid] / START_NAV - 1) * 100, "h2": (eq[-1] / eq[mid] - 1) * 100, "why": why, "setup": by_setup}
+
+
+def run_ross(info):
+    if STOCKS:
+        raise RuntimeError("The Ross scalper test is crypto only")
+    meta, ctxs = info.meta_and_asset_ctxs()
+    uni = meta.get("universe", [])
+    pool = [(uni[i]["name"], float(ctxs[i].get("dayNtlVlm", 0) or 0)) for i in range(20, min(len(uni), len(ctxs)))
+            if not uni[i].get("isDelisted")]
+    coins = [c for c, _ in sorted(pool, key=lambda x: x[1], reverse=True)[:ROSS_COINS]]
+    print(f"Ross test: {len(coins)} coins, timeframes {ROSS_TFS}", flush=True)
+    rows, summary, notes_tf = "", [], []
+    for tf in ROSS_TFS:
+        mins = ROSS_TF_MIN[tf]
+        raw = ross_fetch(info, coins + ["BTC"], tf)
+        btc = raw.pop("BTC", None)
+        if not raw:
+            notes_tf.append(f"{tf}: no candles returned")
+            continue
+        grid, data = ross_align(raw)
+        sigs = {c: ross_signals(data[c], mins) for c in data}
+        days = (grid[-1] - grid[0]) / 86400000 + mins / 1440
+        btc_ret = (btc["c"][-1] / btc["c"][min(int(np.searchsorted(btc["t"], grid[0])), len(btc["c"]) - 1)] - 1) * 100 if btc is not None else float("nan")
+        first = datetime.fromtimestamp(grid[0] / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
+        n_sig = int(sum(int((sigs[c]["setup"] > 0).sum()) for c in sigs))
+        for book, s in (("R", 1.0), ("RS", math.sqrt(mins / 15))):
+            curve, trades, fees = ross_simulate(grid, data, sigs, mins, s)
+            st = ross_stats(curve, trades, fees, days)
+            pf = "∞" if st["pf"] == float("inf") else f"{st['pf']:.2f}"
+            why = ", ".join(f"{k} {v}" for k, v in sorted(st["why"].items(), key=lambda x: -x[1]))
+            setups = ", ".join(f"{k} ${v:+,.0f}" for k, v in st["setup"].items())
+            good = st["ret"] > 0 and st["h1"] > 0 and st["h2"] > 0 and st["pf"] > 1.2
+            rows += (f"<tr style='background:{'#dcfce7' if good else '#fff'};'><td><b>{tf} {book}</b><br><span style='color:#64748b;'>{days:.0f} days from {first}</span></td>"
+                     f"<td style='color:{pct_color(st['ret'])};font-weight:700;'>{st['ret']:+.1f}%</td>"
+                     f"<td style='color:{pct_color(st['h1'])};'>{st['h1']:+.1f}%</td><td style='color:{pct_color(st['h2'])};'>{st['h2']:+.1f}%</td>"
+                     f"<td style='color:#b91c1c;'>{st['mdd']:.1f}%</td><td>{st['n']} ({st['per_day']:.1f}/day)</td><td>{st['win']:.0f}%</td>"
+                     f"<td>{st['avg_w']:+.2f}% / {st['avg_l']:+.2f}%</td><td>{pf}</td><td>${st['fees']:,.2f}</td>"
+                     f"<td style='color:{pct_color(st['pnl_before_fees'])};'>${st['pnl_before_fees']:+,.2f}</td><td>{btc_ret:+.1f}%</td></tr>"
+                     f"<tr><td colspan='12' style='font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0;'>Exits: {why or 'none'} • "
+                     f"P&amp;L by setup: {setups or 'none'}</td></tr>")
+            summary.append(f"{tf} {book}: {st['ret']:+.1f}% ({st['n']} trades, PF {pf})")
+            print(summary[-1], flush=True)
+        notes_tf.append(f"{tf}: {len(data)} coins, {days:.0f} days, {n_sig} raw entry signals")
+    title = f"ROSS SCALPER TEST (V4.8.12 rules) — {', '.join(ROSS_TFS)} from ${START_NAV:,.0f}"
+    html = f"""<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f4f6f8;margin:0;padding:8px;color:#333;">
+<div style="max-width:760px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;">
+  <div style="background:#0f172a;color:#fff;padding:14px;"><div style="font-size:15px;font-weight:700;">{title}</div>
+    <div style="font-size:11px;color:#94a3b8;margin-top:3px;">{ENGINE_VERSION} • paper only, no keys, no orders</div></div>
+  <div style="padding:12px;font-size:12px;">
+    <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:8px;font-size:11px;color:#92400e;margin-bottom:12px;">
+      <b>R</b> = V4.8.12 exits as written (5x, -3.5% ROE stop = -0.7% price, keep 80-93% of the peak from +1.2% ROE, climax lock,
+      15-minute scratch and 30-minute flat exits). <b>RS</b> = the same exits stretched to the timeframe (every distance x
+      &radic;(timeframe / 15m): 5m x0.58, 30m x1.41, 1h x2, 4h x4). A green row = made money overall AND in both halves of the test
+      with profit factor above 1.2. "Before fees" shows whether there is any edge at all before the exchange takes its cut.
+      Longer timeframes cover more days because Hyperliquid keeps only the last 5,000 candles.</div>
+    <div style="overflow-x:auto;"><table style="width:100%;font-size:11px;border-collapse:collapse;" cellpadding="4">
+      <tr style="background:#f1f5f9;"><th align="left">Timeframe / book</th><th align="left">Return</th><th align="left">1st half</th>
+      <th align="left">2nd half</th><th align="left">Worst drop</th><th align="left">Trades</th><th align="left">Win rate</th>
+      <th align="left">Avg win / loss</th><th align="left">Profit factor</th><th align="left">Fees</th><th align="left">P&amp;L before fees</th>
+      <th align="left">BTC hold</th></tr>{rows}</table></div>
+    <div style="font-size:10px;color:#64748b;margin-top:10px;">{' • '.join(notes_tf)}<br>
+      Not modelled: the Gemini risk shield (normal thresholds used: RVOL 1.8x, VWAP +0.8%), the order-book spread/depth check,
+      funding. Signals are checked once per candle close (the live bot looked inside the forming candle every 5-15 minutes).
+      Coins = today's {ROSS_COINS} most-traded outside the first 20 listed, so coins that faded away are missing.
+      Fees 0.045% market / 0.015% limit entries.</div>
+  </div></div></body></html>"""
+    text = f"{title}\n" + "\n".join(summary)
+    print(text, flush=True)
+    send_email(f"⚡ {title} — " + " | ".join(summary), html, text, None)
+
+
 def main():
     if STOCKS:                                                # Alpaca data only: no Hyperliquid connection needed
         if MODE == "backtest":
@@ -1420,6 +1754,8 @@ def main():
         raise RuntimeError("Could not reach Hyperliquid")
     if MODE == "backtest":
         run_backtest(info)
+    elif MODE == "ross":
+        run_ross(info)
     elif MODE == "robust":
         run_robust(info)
     else:
