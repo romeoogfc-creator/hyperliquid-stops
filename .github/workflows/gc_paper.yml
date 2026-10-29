@@ -19,11 +19,11 @@ on:
         type: choice
         options: [crypto, stocks]
       mode:
-        description: "paper = update the paper books (daily) | backtest = replay history | robust = stability check (same history, shuffled coin order)"
+        description: "paper = update the paper books (daily) | backtest = replay history | robust = stability check (same history, shuffled coin order) | ross = old Ross scalper on several candle sizes"
         required: true
         default: paper
         type: choice
-        options: [paper, backtest, robust]
+        options: [paper, backtest, robust, ross]
       backtest_days:
         description: "Backtest length in days"
         required: false
@@ -40,6 +40,10 @@ on:
         description: "robust only: books to check (comma separated)"
         required: false
         default: "V,Y,Z,Z3,YZ"
+      timeframes:
+        description: "ross only: candle sizes to test (comma separated)"
+        required: false
+        default: "5m,15m,30m,1h,4h"
       long_only:
         description: "auto = stocks under $2,000 are long-only at 1x (Alpaca rule) | true | false"
         required: false
@@ -52,7 +56,7 @@ concurrency:
 jobs:
   run-gc-paper:
     runs-on: ubuntu-latest
-    timeout-minutes: 40   # 730-day backtests also download 4-hour candles (paced, ~10 min)
+    timeout-minutes: 75   # 730-day backtests download 4-hour candles (~10 min); the ross test downloads 5 candle sizes (~30 min)
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -84,6 +88,7 @@ jobs:
           ROBUST_BOOKS: ${{ github.event.inputs.robust_books || 'V,Y,Z,Z3,YZ' }}
           MARKET: ${{ github.event.inputs.market || 'crypto' }}
           LONG_ONLY: ${{ github.event.inputs.long_only || 'auto' }}
+          ROSS_TIMEFRAMES: ${{ github.event.inputs.timeframes || '5m,15m,30m,1h,4h' }}
           # Stocks mode reads Alpaca market data only (the paper account's keys; no orders are ever sent from here).
           APAL_API_KEY_ID: ${{ secrets.APAL_API_KEY_ID }}
           APAL_SECRET_KEY: ${{ secrets.APAL_SECRET_KEY }}
