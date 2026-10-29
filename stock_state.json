@@ -10,11 +10,6 @@
    "bought": "2026-10-26",
    "breakout": "2026-10-05"
   },
-  "PANW": {
-   "opened": "2026-10-26",
-   "bought": "2026-10-26",
-   "breakout": "2026-09-14"
-  },
   "TXN": {
    "opened": "2026-10-26",
    "bought": "2026-10-26",
@@ -35,14 +30,60 @@
    "bought": "2026-10-26",
    "breakout": "2026-01-30"
   },
-  "AMD": {
-   "opened": "2026-10-28",
-   "bought": "2026-10-28",
-   "breakout": "2026-10-28"
+  "JNJ": {
+   "opened": "2026-10-29",
+   "bought": "2026-10-29",
+   "breakout": "2026-10-29"
+  },
+  "HD": {
+   "opened": "2026-10-29",
+   "bought": "2026-10-29",
+   "breakout": "2026-07-28"
+  },
+  "SBUX": {
+   "opened": "2026-10-29",
+   "bought": "2026-10-29",
+   "breakout": "2025-12-18"
+  },
+  "VRTX": {
+   "opened": "2026-10-29",
+   "bought": "2026-10-29",
+   "breakout": "2026-08-05"
+  },
+  "PYPL": {
+   "opened": "2026-10-29",
+   "bought": "2026-10-29",
+   "breakout": "2026-09-02"
+  },
+  "ELV": {
+   "opened": "2026-10-29",
+   "bought": "2026-10-29",
+   "breakout": "2026-09-03"
   }
  },
- "closed": [],
- "last_decision_day": "2026-10-28",
+ "closed": [
+  {
+   "symbol": "AMD",
+   "opened": "2026-10-28",
+   "closed": "2026-10-29",
+   "entry": 575.64576,
+   "exit": 561.765,
+   "pct": -2.39,
+   "pnl": -112.88,
+   "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "PANW",
+   "opened": "2026-10-26",
+   "closed": "2026-10-29",
+   "entry": 391.653333,
+   "exit": 375.635,
+   "pct": -4.12,
+   "pnl": -48.43,
+   "reason": "Close below upper GC band"
+  }
+ ],
+ "last_decision_day": "2026-10-29",
  "started": "2026-10-22",
  "start_equity": 97918.51,
  "start_spy": 762.85,
@@ -62,6 +103,10 @@
   [
    "2026-10-28",
    98479.51
+  ],
+  [
+   "2026-10-29",
+   98448.11
   ]
  ]
 }
