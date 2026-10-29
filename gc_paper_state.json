@@ -5,23 +5,8 @@
    "name": "LS-15 Original",
    "lock": false,
    "guard": false,
-   "cash": 933.0333015543713,
+   "cash": 950.6426047992042,
    "positions": {
-    "NIL": {
-     "side": "LONG",
-     "qty": 224.72964421290555,
-     "entry": 0.088541,
-     "cost": 19.89778742825487,
-     "collateral": 0.0,
-     "fees": 0.008954004342714691,
-     "opened": "2026-10-24",
-     "peak_px": 0.1336,
-     "stop": null,
-     "last_px": 0.091548,
-     "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.014165800575727486,
-     "climax": false
-    },
     "kPEPE": {
      "side": "LONG",
      "qty": 4320.831210519473,
@@ -30,11 +15,11 @@
      "collateral": 0.0,
      "fees": 0.00894023185768584,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
+     "peak_px": 0.005244,
      "stop": null,
-     "last_px": 0.004598,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -45,11 +30,11 @@
      "collateral": 0.0,
      "fees": 0.00894023185768584,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -105,6 +90,19 @@
      "peak_pct": 2.4,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (recent breakout, 8% NAV)"
+    },
+    {
+     "coin": "NIL",
+     "side": "LONG",
+     "opened": "2026-10-24",
+     "closed": "2026-10-28",
+     "entry": 0.088541,
+     "exit": 0.078393,
+     "pnl": -2.2974,
+     "pct": -11.46,
+     "peak_pct": 50.89,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 2% NAV)"
     }
    ],
    "equity": [
@@ -135,6 +133,10 @@
     [
      "2026-10-27",
      993.34
+    ],
+    [
+     "2026-10-28",
+     992.66
     ]
    ],
    "eq_base": 1000.0,
@@ -156,11 +158,11 @@
      "collateral": 0.0,
      "fees": 0.008948940641806942,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
+     "peak_px": 0.005244,
+     "stop": 0.0051148,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -171,11 +173,11 @@
      "collateral": 0.0,
      "fees": 0.008948940641806942,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -274,6 +276,10 @@
     [
      "2026-10-27",
      994.31
+    ],
+    [
+     "2026-10-28",
+     996.6
     ]
    ],
    "eq_base": 1000.0,
@@ -285,23 +291,8 @@
    "name": "LS-15 + Account Guard",
    "lock": false,
    "guard": true,
-   "cash": 933.0333015543713,
+   "cash": 950.6426047992042,
    "positions": {
-    "NIL": {
-     "side": "LONG",
-     "qty": 224.72964421290555,
-     "entry": 0.088541,
-     "cost": 19.89778742825487,
-     "collateral": 0.0,
-     "fees": 0.008954004342714691,
-     "opened": "2026-10-24",
-     "peak_px": 0.1336,
-     "stop": null,
-     "last_px": 0.091548,
-     "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.014165800575727486,
-     "climax": false
-    },
     "kPEPE": {
      "side": "LONG",
      "qty": 4320.831210519473,
@@ -310,11 +301,11 @@
      "collateral": 0.0,
      "fees": 0.00894023185768584,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
+     "peak_px": 0.005244,
      "stop": null,
-     "last_px": 0.004598,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -325,11 +316,11 @@
      "collateral": 0.0,
      "fees": 0.00894023185768584,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -385,6 +376,19 @@
      "peak_pct": 2.4,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (recent breakout, 8% NAV)"
+    },
+    {
+     "coin": "NIL",
+     "side": "LONG",
+     "opened": "2026-10-24",
+     "closed": "2026-10-28",
+     "entry": 0.088541,
+     "exit": 0.078393,
+     "pnl": -2.2974,
+     "pct": -11.46,
+     "peak_pct": 50.89,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 2% NAV)"
     }
    ],
    "equity": [
@@ -415,6 +419,10 @@
     [
      "2026-10-27",
      993.34
+    ],
+    [
+     "2026-10-28",
+     992.66
     ]
    ],
    "eq_base": 994.8893714127433,
@@ -436,11 +444,11 @@
      "collateral": 0.0,
      "fees": 0.008948940641806942,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
+     "peak_px": 0.005244,
+     "stop": 0.0051148,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -451,11 +459,11 @@
      "collateral": 0.0,
      "fees": 0.008948940641806942,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -554,6 +562,10 @@
     [
      "2026-10-27",
      994.31
+    ],
+    [
+     "2026-10-28",
+     996.6
     ]
    ],
    "eq_base": 1000.0,
@@ -575,11 +587,11 @@
      "collateral": 0.0,
      "fees": 0.008948940641806942,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
+     "peak_px": 0.005244,
+     "stop": 0.0051148,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -590,11 +602,11 @@
      "collateral": 0.0,
      "fees": 0.008948940641806942,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -693,6 +705,10 @@
     [
      "2026-10-27",
      994.31
+    ],
+    [
+     "2026-10-28",
+     996.6
     ]
    ],
    "eq_base": 996.3457931840323,
@@ -704,23 +720,8 @@
    "name": "LS-15 @ 60% Size",
    "lock": false,
    "guard": false,
-   "cash": 961.9252946208569,
+   "cash": 972.5368133337687,
    "positions": {
-    "NIL": {
-     "side": "LONG",
-     "qty": 135.42403079525624,
-     "entry": 0.088541,
-     "cost": 11.990579110642782,
-     "collateral": 0.0,
-     "fees": 0.0053957605997892516,
-     "opened": "2026-10-24",
-     "peak_px": 0.1336,
-     "stop": null,
-     "last_px": 0.091548,
-     "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.014165800575727486,
-     "climax": false
-    },
     "kPEPE": {
      "side": "LONG",
      "qty": 2605.3751328682,
@@ -729,11 +730,11 @@
      "collateral": 0.0,
      "fees": 0.005390781687417592,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
+     "peak_px": 0.005244,
      "stop": null,
-     "last_px": 0.004598,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -744,11 +745,11 @@
      "collateral": 0.0,
      "fees": 0.005390781687417592,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -778,6 +779,19 @@
      "peak_pct": 2.4,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (recent breakout, 5% NAV)"
+    },
+    {
+     "coin": "NIL",
+     "side": "LONG",
+     "opened": "2026-10-24",
+     "closed": "2026-10-28",
+     "entry": 0.088541,
+     "exit": 0.078393,
+     "pnl": -1.3845,
+     "pct": -11.46,
+     "peak_pct": 50.89,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 1% NAV)"
     }
    ],
    "equity": [
@@ -804,6 +818,10 @@
     [
      "2026-10-27",
      998.28
+    ],
+    [
+     "2026-10-28",
+     997.87
     ]
    ],
    "eq_base": 1000.0,
@@ -817,23 +835,8 @@
    "name": "LS-15 Max 3 @ 15%",
    "lock": false,
    "guard": false,
-   "cash": 541.8179320656676,
+   "cash": 673.6976566846769,
    "positions": {
-    "NIL": {
-     "side": "LONG",
-     "qty": 1683.0469201683188,
-     "entry": 0.088541,
-     "cost": 149.0186573586231,
-     "collateral": 0.0,
-     "fees": 0.0670583958113804,
-     "opened": "2026-10-24",
-     "peak_px": 0.1336,
-     "stop": null,
-     "last_px": 0.091548,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.014165800575727486,
-     "climax": false
-    },
     "kPEPE": {
      "side": "LONG",
      "qty": 32437.942562316606,
@@ -842,11 +845,11 @@
      "collateral": 0.0,
      "fees": 0.06711734695568929,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
+     "peak_px": 0.005244,
      "stop": null,
-     "last_px": 0.004598,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -857,11 +860,11 @@
      "collateral": 0.0,
      "fees": 0.06711734695568929,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -891,6 +894,19 @@
      "peak_pct": 2.4,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (recent breakout, 15% NAV)"
+    },
+    {
+     "coin": "NIL",
+     "side": "LONG",
+     "opened": "2026-10-24",
+     "closed": "2026-10-28",
+     "entry": 0.088541,
+     "exit": 0.078393,
+     "pnl": -17.206,
+     "pct": -11.46,
+     "peak_pct": 50.89,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     }
    ],
    "equity": [
@@ -917,6 +933,10 @@
     [
      "2026-10-27",
      994.2
+    ],
+    [
+     "2026-10-28",
+     989.17
     ]
    ],
    "eq_base": 1000.0,
@@ -941,11 +961,11 @@
      "collateral": 0.0,
      "fees": 0.06687175060226806,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
+     "peak_px": 0.005244,
+     "stop": 0.0051148,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -956,11 +976,11 @@
      "collateral": 0.0,
      "fees": 0.06687175060226806,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -1029,6 +1049,10 @@
     [
      "2026-10-27",
      990.56
+    ],
+    [
+     "2026-10-28",
+     1007.67
     ]
    ],
    "eq_base": 1000.0,
@@ -1043,23 +1067,8 @@
    "name": "LS-15 3L+3S @ 15%",
    "lock": false,
    "guard": false,
-   "cash": 541.8179320656676,
+   "cash": 673.6976566846769,
    "positions": {
-    "NIL": {
-     "side": "LONG",
-     "qty": 1683.0469201683188,
-     "entry": 0.088541,
-     "cost": 149.0186573586231,
-     "collateral": 0.0,
-     "fees": 0.0670583958113804,
-     "opened": "2026-10-24",
-     "peak_px": 0.1336,
-     "stop": null,
-     "last_px": 0.091548,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.014165800575727486,
-     "climax": false
-    },
     "kPEPE": {
      "side": "LONG",
      "qty": 32437.942562316606,
@@ -1068,11 +1077,11 @@
      "collateral": 0.0,
      "fees": 0.06711734695568929,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
+     "peak_px": 0.005244,
      "stop": null,
-     "last_px": 0.004598,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -1083,11 +1092,11 @@
      "collateral": 0.0,
      "fees": 0.06711734695568929,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -1117,6 +1126,19 @@
      "peak_pct": 2.4,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (recent breakout, 15% NAV)"
+    },
+    {
+     "coin": "NIL",
+     "side": "LONG",
+     "opened": "2026-10-24",
+     "closed": "2026-10-28",
+     "entry": 0.088541,
+     "exit": 0.078393,
+     "pnl": -17.206,
+     "pct": -11.46,
+     "peak_pct": 50.89,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     }
    ],
    "equity": [
@@ -1143,6 +1165,10 @@
     [
      "2026-10-27",
      994.2
+    ],
+    [
+     "2026-10-28",
+     989.17
     ]
    ],
    "eq_base": 1000.0,
@@ -1168,11 +1194,11 @@
      "collateral": 0.0,
      "fees": 0.06687175060226806,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
+     "peak_px": 0.005244,
+     "stop": 0.0051148,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -1183,11 +1209,11 @@
      "collateral": 0.0,
      "fees": 0.06687175060226806,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -1256,6 +1282,10 @@
     [
      "2026-10-27",
      990.56
+    ],
+    [
+     "2026-10-28",
+     1007.67
     ]
    ],
    "eq_base": 1000.0,
@@ -1271,23 +1301,8 @@
    "name": "LS-15 Max 6 @ 20%",
    "lock": false,
    "guard": false,
-   "cash": 390.29408516090984,
+   "cash": 565.7477284446456,
    "positions": {
-    "NIL": {
-     "side": "LONG",
-     "qty": 2239.1365679151404,
-     "entry": 0.088541,
-     "cost": 198.25539085977442,
-     "collateral": 0.0,
-     "fees": 0.08921492588689849,
-     "opened": "2026-10-24",
-     "peak_px": 0.1336,
-     "stop": null,
-     "last_px": 0.091548,
-     "reason": "band breakout (old breakout, 20% NAV)",
-     "atr": 0.014165800575727486,
-     "climax": false
-    },
     "kPEPE": {
      "side": "LONG",
      "qty": 43168.13092937634,
@@ -1296,11 +1311,11 @@
      "collateral": 0.0,
      "fees": 0.08931917970597257,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
+     "peak_px": 0.005244,
      "stop": null,
-     "last_px": 0.004598,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 20% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -1311,11 +1326,11 @@
      "collateral": 0.0,
      "fees": 0.08931917970597257,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 20% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -1345,6 +1360,19 @@
      "peak_pct": 2.4,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (recent breakout, 20% NAV)"
+    },
+    {
+     "coin": "NIL",
+     "side": "LONG",
+     "opened": "2026-10-24",
+     "closed": "2026-10-28",
+     "entry": 0.088541,
+     "exit": 0.078393,
+     "pnl": -22.891,
+     "pct": -11.46,
+     "peak_pct": 50.89,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 20% NAV)"
     }
    ],
    "equity": [
@@ -1371,6 +1399,10 @@
     [
      "2026-10-27",
      992.26
+    ],
+    [
+     "2026-10-28",
+     985.57
     ]
    ],
    "eq_base": 1000.0,
@@ -1396,11 +1428,11 @@
      "collateral": 0.0,
      "fees": 0.08888352239160836,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
+     "peak_px": 0.005244,
+     "stop": 0.0051148,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 20% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -1411,11 +1443,11 @@
      "collateral": 0.0,
      "fees": 0.08888352239160836,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 20% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -1484,6 +1516,10 @@
     [
      "2026-10-27",
      987.42
+    ],
+    [
+     "2026-10-28",
+     1010.16
     ]
    ],
    "eq_base": 1000.0,
@@ -1509,11 +1545,11 @@
      "collateral": 0.0,
      "fees": 0.00897000960933138,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
+     "peak_px": 0.005244,
+     "stop": 0.0051148,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -1524,11 +1560,11 @@
      "collateral": 0.0,
      "fees": 0.00897000960933138,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -1597,6 +1633,10 @@
     [
      "2026-10-27",
      996.65
+    ],
+    [
+     "2026-10-28",
+     998.94
     ]
    ],
    "eq_base": 1000.0,
@@ -1620,11 +1660,11 @@
      "collateral": 0.0,
      "fees": 0.06687175060226806,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
+     "peak_px": 0.005244,
+     "stop": 0.0051148,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -1635,11 +1675,11 @@
      "collateral": 0.0,
      "fees": 0.06687175060226806,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -1708,6 +1748,10 @@
     [
      "2026-10-27",
      990.56
+    ],
+    [
+     "2026-10-28",
+     1007.67
     ]
    ],
    "eq_base": 1000.0,
@@ -1733,11 +1777,11 @@
      "collateral": 0.0,
      "fees": 0.06687175060226806,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
+     "peak_px": 0.005244,
+     "stop": 0.0051148,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -1748,11 +1792,11 @@
      "collateral": 0.0,
      "fees": 0.06687175060226806,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -1821,6 +1865,10 @@
     [
      "2026-10-27",
      990.56
+    ],
+    [
+     "2026-10-28",
+     1007.67
     ]
    ],
    "eq_base": 1000.0,
@@ -1847,11 +1895,11 @@
      "collateral": 0.0,
      "fees": 0.00897000960933138,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
+     "peak_px": 0.005244,
+     "stop": 0.00464398,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -1862,11 +1910,11 @@
      "collateral": 0.0,
      "fees": 0.00897000960933138,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -1935,6 +1983,10 @@
     [
      "2026-10-27",
      996.65
+    ],
+    [
+     "2026-10-28",
+     998.94
     ]
    ],
    "eq_base": 1000.0,
@@ -1961,11 +2013,11 @@
      "collateral": 0.0,
      "fees": 0.00897000960933138,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
+     "peak_px": 0.005244,
+     "stop": 0.00464398,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -1976,11 +2028,11 @@
      "collateral": 0.0,
      "fees": 0.00897000960933138,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -2049,6 +2101,10 @@
     [
      "2026-10-27",
      996.65
+    ],
+    [
+     "2026-10-28",
+     998.94
     ]
    ],
    "eq_base": 1000.0,
@@ -2076,11 +2132,11 @@
      "collateral": 0.0,
      "fees": 0.06687175060226806,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
+     "peak_px": 0.005244,
+     "stop": 0.0051148,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -2091,11 +2147,11 @@
      "collateral": 0.0,
      "fees": 0.06687175060226806,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -2164,6 +2220,10 @@
     [
      "2026-10-27",
      990.56
+    ],
+    [
+     "2026-10-28",
+     1007.67
     ]
    ],
    "eq_base": 1000.0,
@@ -2189,11 +2249,11 @@
      "collateral": 0.0,
      "fees": 0.04472067584297331,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
+     "peak_px": 0.005244,
+     "stop": 0.0051148,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 10% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -2204,11 +2264,11 @@
      "collateral": 0.0,
      "fees": 0.04472067584297331,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 10% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -2277,6 +2337,10 @@
     [
      "2026-10-27",
      993.7
+    ],
+    [
+     "2026-10-28",
+     1005.14
     ]
    ],
    "eq_base": 1000.0,
@@ -2302,11 +2366,11 @@
      "collateral": 0.0,
      "fees": 0.017880113404823504,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
+     "peak_px": 0.005244,
+     "stop": 0.0051148,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 4% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -2317,11 +2381,11 @@
      "collateral": 0.0,
      "fees": 0.017880113404823504,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 4% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -2390,6 +2454,10 @@
     [
      "2026-10-27",
      993.3
+    ],
+    [
+     "2026-10-28",
+     997.88
     ]
    ],
    "eq_base": 1000.0,
@@ -2414,11 +2482,11 @@
      "collateral": 0.0,
      "fees": 0.06687175060226806,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
+     "peak_px": 0.005244,
+     "stop": 0.0051148,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -2429,11 +2497,11 @@
      "collateral": 0.0,
      "fees": 0.06687175060226806,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -2502,6 +2570,10 @@
     [
      "2026-10-27",
      990.56
+    ],
+    [
+     "2026-10-28",
+     1007.67
     ]
    ],
    "eq_base": 1000.0,
@@ -2519,39 +2591,8 @@
    "name": "U + Early Lock (keep 50-90% from +3%)",
    "lock": "long",
    "guard": false,
-   "cash": 698.2483995212594,
-   "positions": {
-    "kPEPE": {
-     "side": "LONG",
-     "qty": 32547.524747786494,
-     "entry": 0.004598,
-     "cost": 149.6535187903223,
-     "collateral": 0.0,
-     "fees": 0.06734408345564503,
-     "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
-     "climax": false
-    },
-    "MEGA": {
-     "side": "LONG",
-     "qty": 3026.5439519146216,
-     "entry": 0.049447,
-     "cost": 149.6535187903223,
-     "collateral": 0.0,
-     "fees": 0.06734408345564503,
-     "opened": "2026-10-27",
-     "peak_px": 0.049447,
-     "stop": null,
-     "last_px": 0.049447,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
-     "climax": false
-    }
-   },
+   "cash": 1008.4341100957981,
+   "positions": {},
    "closed": [
     {
      "coin": "NIL",
@@ -2578,6 +2619,32 @@
      "peak_pct": 2.4,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (recent breakout, 15% NAV)"
+    },
+    {
+     "coin": "kPEPE",
+     "side": "LONG",
+     "opened": "2026-10-27",
+     "closed": "2026-10-28",
+     "entry": 0.004598,
+     "exit": 0.004849399999999999,
+     "pnl": 8.0441,
+     "pct": 5.47,
+     "peak_pct": 9.11,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.0048494, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "MEGA",
+     "side": "LONG",
+     "opened": "2026-10-27",
+     "closed": "2026-10-28",
+     "entry": 0.049447,
+     "exit": 0.050384,
+     "pnl": 2.6999,
+     "pct": 1.89,
+     "peak_pct": 4.23,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.050493, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     }
    ],
    "equity": [
@@ -2600,6 +2667,10 @@
     [
      "2026-10-27",
      997.56
+    ],
+    [
+     "2026-10-28",
+     1008.43
     ]
    ],
    "eq_base": 1000.0,
@@ -2643,39 +2714,8 @@
    "name": "U + Early Lock + Sellers-Took-Over Exit",
    "lock": "long",
    "guard": false,
-   "cash": 698.2483995212594,
-   "positions": {
-    "kPEPE": {
-     "side": "LONG",
-     "qty": 32547.524747786494,
-     "entry": 0.004598,
-     "cost": 149.6535187903223,
-     "collateral": 0.0,
-     "fees": 0.06734408345564503,
-     "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
-     "climax": false
-    },
-    "MEGA": {
-     "side": "LONG",
-     "qty": 3026.5439519146216,
-     "entry": 0.049447,
-     "cost": 149.6535187903223,
-     "collateral": 0.0,
-     "fees": 0.06734408345564503,
-     "opened": "2026-10-27",
-     "peak_px": 0.049447,
-     "stop": null,
-     "last_px": 0.049447,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
-     "climax": false
-    }
-   },
+   "cash": 1008.4341100957981,
+   "positions": {},
    "closed": [
     {
      "coin": "NIL",
@@ -2702,6 +2742,32 @@
      "peak_pct": 2.4,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (recent breakout, 15% NAV)"
+    },
+    {
+     "coin": "kPEPE",
+     "side": "LONG",
+     "opened": "2026-10-27",
+     "closed": "2026-10-28",
+     "entry": 0.004598,
+     "exit": 0.004849399999999999,
+     "pnl": 8.0441,
+     "pct": 5.47,
+     "peak_pct": 9.11,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.0048494, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "MEGA",
+     "side": "LONG",
+     "opened": "2026-10-27",
+     "closed": "2026-10-28",
+     "entry": 0.049447,
+     "exit": 0.050384,
+     "pnl": 2.6999,
+     "pct": 1.89,
+     "peak_pct": 4.23,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.050493, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     }
    ],
    "equity": [
@@ -2724,6 +2790,10 @@
     [
      "2026-10-27",
      997.56
+    ],
+    [
+     "2026-10-28",
+     1008.43
     ]
    ],
    "eq_base": 1000.0,
@@ -2772,22 +2842,23 @@
    "name": "U + Take Half at +10%",
    "lock": "long",
    "guard": false,
-   "cash": 697.9170492968124,
+   "cash": 780.1504034387282,
    "positions": {
     "kPEPE": {
      "side": "LONG",
-     "qty": 32532.07948555923,
+     "qty": 16266.039742779614,
      "entry": 0.004598,
-     "cost": 149.58250147460132,
+     "cost": 74.79125073730066,
      "collateral": 0.0,
-     "fees": 0.06731212566357059,
+     "fees": 0.033656062831785294,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
+     "peak_px": 0.005244,
+     "stop": 0.0051148,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
-     "climax": false
+     "atr": 0.0003673004389019985,
+     "climax": false,
+     "half_taken": true
     },
     "MEGA": {
      "side": "LONG",
@@ -2797,11 +2868,11 @@
      "collateral": 0.0,
      "fees": 0.06731212566357059,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -2831,6 +2902,19 @@
      "peak_pct": 2.4,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (recent breakout, 15% NAV)"
+    },
+    {
+     "coin": "kPEPE",
+     "side": "LONG",
+     "opened": "2026-10-27",
+     "closed": "2026-10-28",
+     "entry": 0.004598,
+     "exit": 0.0050578,
+     "pnl": 7.4084,
+     "pct": 10.0,
+     "peak_pct": 10.0,
+     "reason": "\ud83d\udcb5 Take half at +10%",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     }
    ],
    "equity": [
@@ -2853,6 +2937,10 @@
     [
      "2026-10-27",
      997.08
+    ],
+    [
+     "2026-10-28",
+     1014.7
     ]
    ],
    "eq_base": 1000.0,
@@ -2874,39 +2962,8 @@
    "name": "V + Lock from +1%",
    "lock": "long",
    "guard": false,
-   "cash": 700.3586485945574,
-   "positions": {
-    "kPEPE": {
-     "side": "LONG",
-     "qty": 32645.890005743764,
-     "entry": 0.004598,
-     "cost": 150.1058022464098,
-     "collateral": 0.0,
-     "fees": 0.06754761101088441,
-     "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
-     "climax": false
-    },
-    "MEGA": {
-     "side": "LONG",
-     "qty": 3035.6907850104117,
-     "entry": 0.049447,
-     "cost": 150.1058022464098,
-     "collateral": 0.0,
-     "fees": 0.06754761101088441,
-     "opened": "2026-10-27",
-     "peak_px": 0.049447,
-     "stop": null,
-     "last_px": 0.049447,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
-     "climax": false
-    }
-   },
+   "cash": 1007.7222753165674,
+   "positions": {},
    "closed": [
     {
      "coin": "NIL",
@@ -2933,6 +2990,32 @@
      "peak_pct": 1.78,
      "reason": "\ud83d\udd12 Profit lock (stop 0.075658, 4h)",
      "why_in": "band breakout (recent breakout, 15% NAV)"
+    },
+    {
+     "coin": "kPEPE",
+     "side": "LONG",
+     "opened": "2026-10-27",
+     "closed": "2026-10-28",
+     "entry": 0.004598,
+     "exit": 0.004849399999999999,
+     "pnl": 8.0684,
+     "pct": 5.47,
+     "peak_pct": 9.11,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.0048494, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "MEGA",
+     "side": "LONG",
+     "opened": "2026-10-27",
+     "closed": "2026-10-28",
+     "entry": 0.049447,
+     "exit": 0.049145,
+     "pnl": -1.0515,
+     "pct": -0.61,
+     "peak_pct": 2.01,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.0499445, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     }
    ],
    "equity": [
@@ -2955,6 +3038,10 @@
     [
      "2026-10-27",
      1000.57
+    ],
+    [
+     "2026-10-28",
+     1007.72
     ]
    ],
    "eq_base": 1000.0,
@@ -3002,39 +3089,8 @@
    "name": "V + -5% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 691.6488246748524,
-   "positions": {
-    "kPEPE": {
-     "side": "LONG",
-     "qty": 32239.89808400098,
-     "entry": 0.004598,
-     "cost": 148.23905139023648,
-     "collateral": 0.0,
-     "fees": 0.06670757312560642,
-     "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
-     "climax": false
-    },
-    "MEGA": {
-     "side": "LONG",
-     "qty": 2997.938224568457,
-     "entry": 0.049447,
-     "cost": 148.23905139023648,
-     "collateral": 0.0,
-     "fees": 0.06670757312560642,
-     "opened": "2026-10-27",
-     "peak_px": 0.049447,
-     "stop": null,
-     "last_px": 0.049447,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
-     "climax": false
-    }
-   },
+   "cash": 998.9027794234901,
+   "positions": {},
    "closed": [
     {
      "coin": "NIL",
@@ -3061,6 +3117,32 @@
      "peak_pct": 2.4,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (recent breakout, 15% NAV)"
+    },
+    {
+     "coin": "kPEPE",
+     "side": "LONG",
+     "opened": "2026-10-27",
+     "closed": "2026-10-28",
+     "entry": 0.004598,
+     "exit": 0.004849399999999999,
+     "pnl": 7.968,
+     "pct": 5.47,
+     "peak_pct": 9.11,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.0048494, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "MEGA",
+     "side": "LONG",
+     "opened": "2026-10-27",
+     "closed": "2026-10-28",
+     "entry": 0.049447,
+     "exit": 0.050384,
+     "pnl": 2.6744,
+     "pct": 1.89,
+     "peak_pct": 4.23,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.050493, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     }
    ],
    "equity": [
@@ -3083,6 +3165,10 @@
     [
      "2026-10-27",
      988.13
+    ],
+    [
+     "2026-10-28",
+     998.9
     ]
    ],
    "eq_base": 1000.0,
@@ -3126,39 +3212,8 @@
    "name": "V + -3% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 693.3951081256937,
-   "positions": {
-    "kPEPE": {
-     "side": "LONG",
-     "qty": 32321.2977748157,
-     "entry": 0.004598,
-     "cost": 148.61332716860258,
-     "collateral": 0.0,
-     "fees": 0.06687599722587116,
-     "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
-     "climax": false
-    },
-    "MEGA": {
-     "side": "LONG",
-     "qty": 3005.507455833571,
-     "entry": 0.049447,
-     "cost": 148.61332716860258,
-     "collateral": 0.0,
-     "fees": 0.06687599722587116,
-     "opened": "2026-10-27",
-     "peak_px": 0.049447,
-     "stop": null,
-     "last_px": 0.049447,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
-     "climax": false
-    }
-   },
+   "cash": 1001.4248214345158,
+   "positions": {},
    "closed": [
     {
      "coin": "NIL",
@@ -3185,6 +3240,32 @@
      "peak_pct": 0.79,
      "reason": "\u2702\ufe0f Loss stop (-3%, 4h)",
      "why_in": "band breakout (recent breakout, 15% NAV)"
+    },
+    {
+     "coin": "kPEPE",
+     "side": "LONG",
+     "opened": "2026-10-27",
+     "closed": "2026-10-28",
+     "entry": 0.004598,
+     "exit": 0.004849399999999999,
+     "pnl": 7.9882,
+     "pct": 5.47,
+     "peak_pct": 9.11,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.0048494, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "MEGA",
+     "side": "LONG",
+     "opened": "2026-10-27",
+     "closed": "2026-10-28",
+     "entry": 0.049447,
+     "exit": 0.050384,
+     "pnl": 2.6811,
+     "pct": 1.89,
+     "peak_pct": 4.23,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.050493, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     }
    ],
    "equity": [
@@ -3207,6 +3288,10 @@
     [
      "2026-10-27",
      990.62
+    ],
+    [
+     "2026-10-28",
+     1001.42
     ]
    ],
    "eq_base": 1000.0,
@@ -3250,39 +3335,8 @@
    "name": "V + Lock from +1% + -5% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 700.3586485945574,
-   "positions": {
-    "kPEPE": {
-     "side": "LONG",
-     "qty": 32645.890005743764,
-     "entry": 0.004598,
-     "cost": 150.1058022464098,
-     "collateral": 0.0,
-     "fees": 0.06754761101088441,
-     "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
-     "climax": false
-    },
-    "MEGA": {
-     "side": "LONG",
-     "qty": 3035.6907850104117,
-     "entry": 0.049447,
-     "cost": 150.1058022464098,
-     "collateral": 0.0,
-     "fees": 0.06754761101088441,
-     "opened": "2026-10-27",
-     "peak_px": 0.049447,
-     "stop": null,
-     "last_px": 0.049447,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
-     "climax": false
-    }
-   },
+   "cash": 1007.7222753165674,
+   "positions": {},
    "closed": [
     {
      "coin": "NIL",
@@ -3309,6 +3363,32 @@
      "peak_pct": 1.78,
      "reason": "\ud83d\udd12 Profit lock (stop 0.075658, 4h)",
      "why_in": "band breakout (recent breakout, 15% NAV)"
+    },
+    {
+     "coin": "kPEPE",
+     "side": "LONG",
+     "opened": "2026-10-27",
+     "closed": "2026-10-28",
+     "entry": 0.004598,
+     "exit": 0.004849399999999999,
+     "pnl": 8.0684,
+     "pct": 5.47,
+     "peak_pct": 9.11,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.0048494, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "MEGA",
+     "side": "LONG",
+     "opened": "2026-10-27",
+     "closed": "2026-10-28",
+     "entry": 0.049447,
+     "exit": 0.049145,
+     "pnl": -1.0515,
+     "pct": -0.61,
+     "peak_pct": 2.01,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.0499445, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     }
    ],
    "equity": [
@@ -3331,6 +3411,10 @@
     [
      "2026-10-27",
      1000.57
+    ],
+    [
+     "2026-10-28",
+     1007.72
     ]
    ],
    "eq_base": 1000.0,
@@ -3388,11 +3472,11 @@
      "collateral": 0.0,
      "fees": 0.0054,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
+     "peak_px": 0.005244,
      "stop": null,
-     "last_px": 0.004598,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -3403,11 +3487,11 @@
      "collateral": 0.0,
      "fees": 0.0054,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -3420,6 +3504,10 @@
     [
      "2026-10-27",
      999.99
+    ],
+    [
+     "2026-10-28",
+     1001.37
     ]
    ],
    "eq_base": 1000.0,
@@ -3444,11 +3532,11 @@
      "collateral": 0.0,
      "fees": 0.0054,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
+     "peak_px": 0.005244,
      "stop": null,
-     "last_px": 0.004598,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -3459,11 +3547,11 @@
      "collateral": 0.0,
      "fees": 0.0054,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -3476,6 +3564,10 @@
     [
      "2026-10-27",
      999.99
+    ],
+    [
+     "2026-10-28",
+     1001.37
     ]
    ],
    "eq_base": 1000.0,
@@ -3500,11 +3592,11 @@
      "collateral": 0.0,
      "fees": 0.0054,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
+     "peak_px": 0.005244,
+     "stop": 0.0050502,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -3515,11 +3607,11 @@
      "collateral": 0.0,
      "fees": 0.0054,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
-     "stop": null,
-     "last_px": 0.049447,
+     "peak_px": 0.051764,
+     "stop": 0.0506055,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -3532,6 +3624,10 @@
     [
      "2026-10-27",
      999.99
+    ],
+    [
+     "2026-10-28",
+     1001.37
     ]
    ],
    "eq_base": 1000.0,
@@ -3572,44 +3668,44 @@
    "name": "V + -1% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 699.865,
-   "positions": {
-    "kPEPE": {
+   "cash": 1006.4283762831666,
+   "positions": {},
+   "closed": [
+    {
+     "coin": "kPEPE",
      "side": "LONG",
-     "qty": 32622.879512831667,
+     "opened": "2026-10-27",
+     "closed": "2026-10-28",
      "entry": 0.004598,
-     "cost": 150.0,
-     "collateral": 0.0,
-     "fees": 0.0675,
-     "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
-     "climax": false
+     "exit": 0.004849399999999999,
+     "pnl": 8.0627,
+     "pct": 5.47,
+     "peak_pct": 9.11,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.0048494, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     },
-    "MEGA": {
+    {
+     "coin": "MEGA",
      "side": "LONG",
-     "qty": 3033.5510748882643,
-     "entry": 0.049447,
-     "cost": 150.0,
-     "collateral": 0.0,
-     "fees": 0.0675,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
-     "stop": null,
-     "last_px": 0.049447,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
-     "climax": false
+     "closed": "2026-10-28",
+     "entry": 0.049447,
+     "exit": 0.048952529999999994,
+     "pnl": -1.6343,
+     "pct": -1.0,
+     "peak_pct": 2.01,
+     "reason": "\u2702\ufe0f Loss stop (-1%, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     }
-   },
-   "closed": [],
+   ],
    "equity": [
     [
      "2026-10-27",
      999.87
+    ],
+    [
+     "2026-10-28",
+     1006.43
     ]
    ],
    "eq_base": 1000.0,
@@ -3653,44 +3749,44 @@
    "name": "V + -2% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 699.865,
-   "positions": {
-    "kPEPE": {
+   "cash": 1010.7688595435261,
+   "positions": {},
+   "closed": [
+    {
+     "coin": "kPEPE",
      "side": "LONG",
-     "qty": 32622.879512831667,
+     "opened": "2026-10-27",
+     "closed": "2026-10-28",
      "entry": 0.004598,
-     "cost": 150.0,
-     "collateral": 0.0,
-     "fees": 0.0675,
-     "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
-     "climax": false
+     "exit": 0.004849399999999999,
+     "pnl": 8.0627,
+     "pct": 5.47,
+     "peak_pct": 9.11,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.0048494, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     },
-    "MEGA": {
+    {
+     "coin": "MEGA",
      "side": "LONG",
-     "qty": 3033.5510748882643,
-     "entry": 0.049447,
-     "cost": 150.0,
-     "collateral": 0.0,
-     "fees": 0.0675,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
-     "stop": null,
-     "last_px": 0.049447,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
-     "climax": false
+     "closed": "2026-10-28",
+     "entry": 0.049447,
+     "exit": 0.050384,
+     "pnl": 2.7062,
+     "pct": 1.89,
+     "peak_pct": 4.23,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.050493, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     }
-   },
-   "closed": [],
+   ],
    "equity": [
     [
      "2026-10-27",
      999.87
+    ],
+    [
+     "2026-10-28",
+     1010.77
     ]
    ],
    "eq_base": 1000.0,
@@ -3734,44 +3830,44 @@
    "name": "V + -4% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 699.865,
-   "positions": {
-    "kPEPE": {
+   "cash": 1010.7688595435261,
+   "positions": {},
+   "closed": [
+    {
+     "coin": "kPEPE",
      "side": "LONG",
-     "qty": 32622.879512831667,
+     "opened": "2026-10-27",
+     "closed": "2026-10-28",
      "entry": 0.004598,
-     "cost": 150.0,
-     "collateral": 0.0,
-     "fees": 0.0675,
-     "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
-     "climax": false
+     "exit": 0.004849399999999999,
+     "pnl": 8.0627,
+     "pct": 5.47,
+     "peak_pct": 9.11,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.0048494, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     },
-    "MEGA": {
+    {
+     "coin": "MEGA",
      "side": "LONG",
-     "qty": 3033.5510748882643,
-     "entry": 0.049447,
-     "cost": 150.0,
-     "collateral": 0.0,
-     "fees": 0.0675,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
-     "stop": null,
-     "last_px": 0.049447,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
-     "climax": false
+     "closed": "2026-10-28",
+     "entry": 0.049447,
+     "exit": 0.050384,
+     "pnl": 2.7062,
+     "pct": 1.89,
+     "peak_pct": 4.23,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.050493, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     }
-   },
-   "closed": [],
+   ],
    "equity": [
     [
      "2026-10-27",
      999.87
+    ],
+    [
+     "2026-10-28",
+     1010.77
     ]
    ],
    "eq_base": 1000.0,
@@ -3815,44 +3911,44 @@
    "name": "V + -3.5% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 699.865,
-   "positions": {
-    "kPEPE": {
+   "cash": 1010.7688595435261,
+   "positions": {},
+   "closed": [
+    {
+     "coin": "kPEPE",
      "side": "LONG",
-     "qty": 32622.879512831667,
+     "opened": "2026-10-27",
+     "closed": "2026-10-28",
      "entry": 0.004598,
-     "cost": 150.0,
-     "collateral": 0.0,
-     "fees": 0.0675,
-     "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
-     "climax": false
+     "exit": 0.004849399999999999,
+     "pnl": 8.0627,
+     "pct": 5.47,
+     "peak_pct": 9.11,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.0048494, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     },
-    "MEGA": {
+    {
+     "coin": "MEGA",
      "side": "LONG",
-     "qty": 3033.5510748882643,
-     "entry": 0.049447,
-     "cost": 150.0,
-     "collateral": 0.0,
-     "fees": 0.0675,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
-     "stop": null,
-     "last_px": 0.049447,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
-     "climax": false
+     "closed": "2026-10-28",
+     "entry": 0.049447,
+     "exit": 0.050384,
+     "pnl": 2.7062,
+     "pct": 1.89,
+     "peak_pct": 4.23,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.050493, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     }
-   },
-   "closed": [],
+   ],
    "equity": [
     [
      "2026-10-27",
      999.87
+    ],
+    [
+     "2026-10-28",
+     1010.77
     ]
    ],
    "eq_base": 1000.0,
@@ -3896,44 +3992,44 @@
    "name": "V + -4.5% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 699.865,
-   "positions": {
-    "kPEPE": {
+   "cash": 1010.7688595435261,
+   "positions": {},
+   "closed": [
+    {
+     "coin": "kPEPE",
      "side": "LONG",
-     "qty": 32622.879512831667,
+     "opened": "2026-10-27",
+     "closed": "2026-10-28",
      "entry": 0.004598,
-     "cost": 150.0,
-     "collateral": 0.0,
-     "fees": 0.0675,
-     "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
-     "climax": false
+     "exit": 0.004849399999999999,
+     "pnl": 8.0627,
+     "pct": 5.47,
+     "peak_pct": 9.11,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.0048494, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     },
-    "MEGA": {
+    {
+     "coin": "MEGA",
      "side": "LONG",
-     "qty": 3033.5510748882643,
-     "entry": 0.049447,
-     "cost": 150.0,
-     "collateral": 0.0,
-     "fees": 0.0675,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
-     "stop": null,
-     "last_px": 0.049447,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
-     "climax": false
+     "closed": "2026-10-28",
+     "entry": 0.049447,
+     "exit": 0.050384,
+     "pnl": 2.7062,
+     "pct": 1.89,
+     "peak_pct": 4.23,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.050493, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     }
-   },
-   "closed": [],
+   ],
    "equity": [
     [
      "2026-10-27",
      999.87
+    ],
+    [
+     "2026-10-28",
+     1010.77
     ]
    ],
    "eq_base": 1000.0,
@@ -3977,44 +4073,44 @@
    "name": "V + -6% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 699.865,
-   "positions": {
-    "kPEPE": {
+   "cash": 1010.7688595435261,
+   "positions": {},
+   "closed": [
+    {
+     "coin": "kPEPE",
      "side": "LONG",
-     "qty": 32622.879512831667,
+     "opened": "2026-10-27",
+     "closed": "2026-10-28",
      "entry": 0.004598,
-     "cost": 150.0,
-     "collateral": 0.0,
-     "fees": 0.0675,
-     "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
-     "climax": false
+     "exit": 0.004849399999999999,
+     "pnl": 8.0627,
+     "pct": 5.47,
+     "peak_pct": 9.11,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.0048494, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     },
-    "MEGA": {
+    {
+     "coin": "MEGA",
      "side": "LONG",
-     "qty": 3033.5510748882643,
-     "entry": 0.049447,
-     "cost": 150.0,
-     "collateral": 0.0,
-     "fees": 0.0675,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
-     "stop": null,
-     "last_px": 0.049447,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
-     "climax": false
+     "closed": "2026-10-28",
+     "entry": 0.049447,
+     "exit": 0.050384,
+     "pnl": 2.7062,
+     "pct": 1.89,
+     "peak_pct": 4.23,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.050493, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     }
-   },
-   "closed": [],
+   ],
    "equity": [
     [
      "2026-10-27",
      999.87
+    ],
+    [
+     "2026-10-28",
+     1010.77
     ]
    ],
    "eq_base": 1000.0,
@@ -4058,44 +4154,44 @@
    "name": "V + -7% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 699.865,
-   "positions": {
-    "kPEPE": {
+   "cash": 1010.7688595435261,
+   "positions": {},
+   "closed": [
+    {
+     "coin": "kPEPE",
      "side": "LONG",
-     "qty": 32622.879512831667,
+     "opened": "2026-10-27",
+     "closed": "2026-10-28",
      "entry": 0.004598,
-     "cost": 150.0,
-     "collateral": 0.0,
-     "fees": 0.0675,
-     "opened": "2026-10-27",
-     "peak_px": 0.004598,
-     "stop": null,
-     "last_px": 0.004598,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00034363124190994764,
-     "climax": false
+     "exit": 0.004849399999999999,
+     "pnl": 8.0627,
+     "pct": 5.47,
+     "peak_pct": 9.11,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.0048494, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     },
-    "MEGA": {
+    {
+     "coin": "MEGA",
      "side": "LONG",
-     "qty": 3033.5510748882643,
-     "entry": 0.049447,
-     "cost": 150.0,
-     "collateral": 0.0,
-     "fees": 0.0675,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
-     "stop": null,
-     "last_px": 0.049447,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.004199124165138968,
-     "climax": false
+     "closed": "2026-10-28",
+     "entry": 0.049447,
+     "exit": 0.050384,
+     "pnl": 2.7062,
+     "pct": 1.89,
+     "peak_pct": 4.23,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.050493, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     }
-   },
-   "closed": [],
+   ],
    "equity": [
     [
      "2026-10-27",
      999.87
+    ],
+    [
+     "2026-10-28",
+     1010.77
     ]
    ],
    "eq_base": 1000.0,
@@ -4139,7 +4235,7 @@
    "name": "F + -1% Loss Stop",
    "lock": false,
    "guard": false,
-   "cash": 975.9892,
+   "cash": 987.863854,
    "positions": {
     "kPEPE": {
      "side": "LONG",
@@ -4149,34 +4245,37 @@
      "collateral": 0.0,
      "fees": 0.0054,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
+     "peak_px": 0.005244,
      "stop": null,
-     "last_px": 0.004598,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.00034363124190994764,
-     "climax": false
-    },
-    "MEGA": {
-     "side": "LONG",
-     "qty": 242.68408599106115,
-     "entry": 0.049447,
-     "cost": 12.0,
-     "collateral": 0.0,
-     "fees": 0.0054,
-     "opened": "2026-10-27",
-     "peak_px": 0.049447,
-     "stop": null,
-     "last_px": 0.049447,
-     "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.0003673004389019985,
      "climax": false
     }
    },
-   "closed": [],
+   "closed": [
+    {
+     "coin": "MEGA",
+     "side": "LONG",
+     "opened": "2026-10-27",
+     "closed": "2026-10-28",
+     "entry": 0.049447,
+     "exit": 0.048952529999999994,
+     "pnl": -0.1307,
+     "pct": -1.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (-1%)",
+     "why_in": "band breakout (old breakout, 1% NAV)"
+    }
+   ],
    "equity": [
     [
      "2026-10-27",
      999.99
+    ],
+    [
+     "2026-10-28",
+     1000.99
     ]
    ],
    "eq_base": 1000.0,
@@ -4201,11 +4300,11 @@
      "collateral": 0.0,
      "fees": 0.0054,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
+     "peak_px": 0.005244,
      "stop": null,
-     "last_px": 0.004598,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -4216,11 +4315,11 @@
      "collateral": 0.0,
      "fees": 0.0054,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -4229,6 +4328,10 @@
     [
      "2026-10-27",
      999.99
+    ],
+    [
+     "2026-10-28",
+     1001.37
     ]
    ],
    "eq_base": 1000.0,
@@ -4253,11 +4356,11 @@
      "collateral": 0.0,
      "fees": 0.0054,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
+     "peak_px": 0.005244,
      "stop": null,
-     "last_px": 0.004598,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -4268,11 +4371,11 @@
      "collateral": 0.0,
      "fees": 0.0054,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -4281,6 +4384,10 @@
     [
      "2026-10-27",
      999.99
+    ],
+    [
+     "2026-10-28",
+     1001.37
     ]
    ],
    "eq_base": 1000.0,
@@ -4305,11 +4412,11 @@
      "collateral": 0.0,
      "fees": 0.0054,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
+     "peak_px": 0.005244,
      "stop": null,
-     "last_px": 0.004598,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -4320,11 +4427,11 @@
      "collateral": 0.0,
      "fees": 0.0054,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -4333,6 +4440,10 @@
     [
      "2026-10-27",
      999.99
+    ],
+    [
+     "2026-10-28",
+     1001.37
     ]
    ],
    "eq_base": 1000.0,
@@ -4357,11 +4468,11 @@
      "collateral": 0.0,
      "fees": 0.0054,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
+     "peak_px": 0.005244,
      "stop": null,
-     "last_px": 0.004598,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -4372,11 +4483,11 @@
      "collateral": 0.0,
      "fees": 0.0054,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -4385,6 +4496,10 @@
     [
      "2026-10-27",
      999.99
+    ],
+    [
+     "2026-10-28",
+     1001.37
     ]
    ],
    "eq_base": 1000.0,
@@ -4409,11 +4524,11 @@
      "collateral": 0.0,
      "fees": 0.0054,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
+     "peak_px": 0.005244,
      "stop": null,
-     "last_px": 0.004598,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -4424,11 +4539,11 @@
      "collateral": 0.0,
      "fees": 0.0054,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -4437,6 +4552,10 @@
     [
      "2026-10-27",
      999.99
+    ],
+    [
+     "2026-10-28",
+     1001.37
     ]
    ],
    "eq_base": 1000.0,
@@ -4461,11 +4580,11 @@
      "collateral": 0.0,
      "fees": 0.0054,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
+     "peak_px": 0.005244,
      "stop": null,
-     "last_px": 0.004598,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -4476,11 +4595,11 @@
      "collateral": 0.0,
      "fees": 0.0054,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -4489,6 +4608,10 @@
     [
      "2026-10-27",
      999.99
+    ],
+    [
+     "2026-10-28",
+     1001.37
     ]
    ],
    "eq_base": 1000.0,
@@ -4513,11 +4636,11 @@
      "collateral": 0.0,
      "fees": 0.0054,
      "opened": "2026-10-27",
-     "peak_px": 0.004598,
+     "peak_px": 0.005244,
      "stop": null,
-     "last_px": 0.004598,
+     "last_px": 0.005031,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.00034363124190994764,
+     "atr": 0.0003673004389019985,
      "climax": false
     },
     "MEGA": {
@@ -4528,11 +4651,11 @@
      "collateral": 0.0,
      "fees": 0.0054,
      "opened": "2026-10-27",
-     "peak_px": 0.049447,
+     "peak_px": 0.051764,
      "stop": null,
-     "last_px": 0.049447,
+     "last_px": 0.050483,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.004199124165138968,
+     "atr": 0.004116686738462138,
      "climax": false
     }
    },
@@ -4541,6 +4664,10 @@
     [
      "2026-10-27",
      999.99
+    ],
+    [
+     "2026-10-28",
+     1001.37
     ]
    ],
    "eq_base": 1000.0,
@@ -4549,9 +4676,233 @@
    "start_nav": 1000.0,
    "size_mult": 0.6,
    "disaster": 0.07
+  },
+  {
+   "code": "KN1",
+   "name": "Z4 + Knife Exit (4h red, 2x volume)",
+   "lock": "long",
+   "guard": false,
+   "cash": 1000.0,
+   "positions": {},
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-28",
+     1000.0
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_pos": 9,
+   "slot_size": 0.15,
+   "gross_cap": 1.35,
+   "lock_intraday": true,
+   "disaster": 0.04,
+   "lock_tiers": [
+    [
+     0.6,
+     0.9
+    ],
+    [
+     0.35,
+     0.85
+    ],
+    [
+     0.2,
+     0.8
+    ],
+    [
+     0.1,
+     0.7
+    ],
+    [
+     0.05,
+     0.6
+    ],
+    [
+     0.03,
+     0.5
+    ]
+   ],
+   "knife": {
+    "after_gain": 0.03,
+    "vol_mult": 2.0,
+    "close_in_bottom": 0.25,
+    "drop": null
+   }
+  },
+  {
+   "code": "KN2",
+   "name": "Z4 + Knife Exit (4h red, 1.5x volume)",
+   "lock": "long",
+   "guard": false,
+   "cash": 1000.0,
+   "positions": {},
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-28",
+     1000.0
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_pos": 9,
+   "slot_size": 0.15,
+   "gross_cap": 1.35,
+   "lock_intraday": true,
+   "disaster": 0.04,
+   "lock_tiers": [
+    [
+     0.6,
+     0.9
+    ],
+    [
+     0.35,
+     0.85
+    ],
+    [
+     0.2,
+     0.8
+    ],
+    [
+     0.1,
+     0.7
+    ],
+    [
+     0.05,
+     0.6
+    ],
+    [
+     0.03,
+     0.5
+    ]
+   ],
+   "knife": {
+    "after_gain": 0.03,
+    "vol_mult": 1.5,
+    "close_in_bottom": 0.35,
+    "drop": null
+   }
+  },
+  {
+   "code": "KN3",
+   "name": "Z4 + Knife Exit (4h drop >= 3%)",
+   "lock": "long",
+   "guard": false,
+   "cash": 1000.0,
+   "positions": {},
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-28",
+     1000.0
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_pos": 9,
+   "slot_size": 0.15,
+   "gross_cap": 1.35,
+   "lock_intraday": true,
+   "disaster": 0.04,
+   "lock_tiers": [
+    [
+     0.6,
+     0.9
+    ],
+    [
+     0.35,
+     0.85
+    ],
+    [
+     0.2,
+     0.8
+    ],
+    [
+     0.1,
+     0.7
+    ],
+    [
+     0.05,
+     0.6
+    ],
+    [
+     0.03,
+     0.5
+    ]
+   ],
+   "knife": {
+    "after_gain": 0.03,
+    "vol_mult": null,
+    "close_in_bottom": 0.25,
+    "drop": 0.03
+   }
+  },
+  {
+   "code": "KN4",
+   "name": "Z4 + Knife Exit (4h red, 3x volume)",
+   "lock": "long",
+   "guard": false,
+   "cash": 1000.0,
+   "positions": {},
+   "closed": [],
+   "equity": [
+    [
+     "2026-10-28",
+     1000.0
+    ]
+   ],
+   "eq_base": 1000.0,
+   "eq_hwm": 1000.0,
+   "guard_hits": 0,
+   "start_nav": 1000.0,
+   "max_pos": 9,
+   "slot_size": 0.15,
+   "gross_cap": 1.35,
+   "lock_intraday": true,
+   "disaster": 0.04,
+   "lock_tiers": [
+    [
+     0.6,
+     0.9
+    ],
+    [
+     0.35,
+     0.85
+    ],
+    [
+     0.2,
+     0.8
+    ],
+    [
+     0.1,
+     0.7
+    ],
+    [
+     0.05,
+     0.6
+    ],
+    [
+     0.03,
+     0.5
+    ]
+   ],
+   "knife": {
+    "after_gain": 0.03,
+    "vol_mult": 3.0,
+    "close_in_bottom": 0.25,
+    "drop": null
+   }
   }
  ],
- "last_processed_day": "2026-10-27",
- "engine": "GC-PAPER-1.22",
+ "last_processed_day": "2026-10-28",
+ "engine": "GC-PAPER-1.23",
  "started": "2026-10-21"
 }
