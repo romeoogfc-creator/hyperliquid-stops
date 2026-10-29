@@ -93,7 +93,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.24"
+ENGINE_VERSION = "GC-PAPER-1.25"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -1415,10 +1415,12 @@ ROSS_COINS = int(os.getenv("ROSS_COINS", "50") or 50)  # today's most-traded coi
 ROSS_LEV = 5
 ROSS_SIZE = 0.25 * 0.85                                 # 21.25% of the account per trade, as V4.8.12
 ROSS_SLOTS = 3
-ROSS_MIN_ORDER = 10.5
+ROSS_MIN_ORDER = 1.0 if STOCKS else 10.5
 ROSS_WINDOW = 32                                        # V4.8.12 read 32 candles (8 hours of 15m)
 ROSS_RVOL, ROSS_VWAP_CAP, ROSS_HOD = 1.80, 1.0080, 0.0100
-MAKER_FEE = 0.00015
+MAKER_FEE = 0.0001 if STOCKS else 0.00015               # limit entries (stocks: no commission, a little spread)
+# Stocks: Alpaca keeps years of intraday bars; use about 5,000 regular-hours candles per size (as crypto), at most 2 years.
+ROSS_STOCK_DAYS = {"5m": 90, "15m": 270, "30m": 540, "1h": 730, "4h": 730}
 
 
 def _ema_weights(n, span):
@@ -1465,6 +1467,41 @@ def ross_fetch(info, coins, tf):
     return out
 
 
+def ross_fetch_stocks(symbols, tf):
+    """Same shape as ross_fetch, from Alpaca: regular-hours bars only. 4h = two half-day bars (9:30-13:00, 13:00-16:00)."""
+    mins = ROSS_TF_MIN[tf]
+    now = datetime.now(timezone.utc)
+    tf_api = {"5m": "5Min", "15m": "15Min", "30m": "30Min", "1h": "1Hour", "4h": "1Hour"}[tf]
+    raw = alpaca_bars(list(symbols), tf_api, now - timedelta(days=ROSS_STOCK_DAYS[tf]), now - timedelta(minutes=16))
+    out = {}
+    for sym, bl in raw.items():
+        rows = []
+        for k in sorted(bl, key=lambda k: k["t"]):
+            t = _et(k["t"])
+            hm = t.hour * 60 + t.minute
+            if tf_api == "1Hour":
+                if not 9 <= t.hour <= 15:                    # the 9:00 bar holds the 9:30 open
+                    continue
+            elif not 570 <= hm < 960:
+                continue
+            row = {"t": int(t.timestamp() * 1000), "o": float(k["o"]), "h": float(k["h"]), "l": float(k["l"]),
+                   "c": float(k["c"]), "v": float(k.get("v", 0))}
+            if tf == "4h":
+                key = (t.strftime("%Y-%m-%d"), t.hour >= 13)
+                if rows and rows[-1]["key"] == key:
+                    r = rows[-1]
+                    r["h"], r["l"], r["c"], r["v"] = max(r["h"], row["h"]), min(r["l"], row["l"]), row["c"], r["v"] + row["v"]
+                    continue
+                row["key"] = key
+                row["t"] = int(t.replace(hour=13 if key[1] else 9, minute=0 if key[1] else 30).timestamp() * 1000)
+            rows.append(row)
+        if len(rows) < ROSS_WINDOW + 300:
+            continue
+        out[sym] = {f: np.array([r[f] for r in rows]) for f in "ohlcv"}
+        out[sym]["t"] = np.array([r["t"] for r in rows], dtype=np.int64)
+    return out
+
+
 def ross_align(raw):
     """Put every coin on one time grid (NaN where a coin has no candle)."""
     grid = np.array(sorted({int(t) for d in raw.values() for t in d["t"]}), dtype=np.int64)
@@ -1480,7 +1517,7 @@ def ross_align(raw):
     return grid, out
 
 
-def ross_signals(d, mins):
+def ross_signals(d, mins, b24=None):
     """Per-candle V4.8.12 entry signals for one coin (arrays over the time grid)."""
     o, h, l, c, v = d["o"], d["h"], d["l"], d["c"], d["v"]
     n = len(c)
@@ -1517,7 +1554,7 @@ def ross_signals(d, mins):
         vbottom = (l[t_idx] <= min3) & (lower_wick >= 0.45) & vol_ok & vwap_ok & above_ema & macd_pos
     setup = np.where(vbottom, 3, np.where(reclaim, 2, np.where(breakout, 1, 0))) * ext_ok
     score = np.where(setup == 3, vr * 3.2, np.where(setup == 2, vr * 2.4, vr))
-    b24 = max(1, 1440 // mins)
+    b24 = b24 or max(1, 1440 // mins)                         # candles in one day (stocks: one trading day)
     chg = np.full(n, np.nan)
     chg[b24:] = c[b24:] / c[:-b24] - 1
     usd = np.nan_to_num(c * v)
@@ -1666,24 +1703,25 @@ def ross_stats(curve, trades, fees, days):
 
 def run_ross(info):
     if STOCKS:
-        raise RuntimeError("The Ross scalper test is crypto only")
-    meta, ctxs = info.meta_and_asset_ctxs()
-    uni = meta.get("universe", [])
-    pool = [(uni[i]["name"], float(ctxs[i].get("dayNtlVlm", 0) or 0)) for i in range(20, min(len(uni), len(ctxs)))
-            if not uni[i].get("isDelisted")]
-    coins = [c for c, _ in sorted(pool, key=lambda x: x[1], reverse=True)[:ROSS_COINS]]
+        coins = [c for c in STOCK_UNIVERSE if c != BENCH]
+    else:
+        meta, ctxs = info.meta_and_asset_ctxs()
+        uni = meta.get("universe", [])
+        pool = [(uni[i]["name"], float(ctxs[i].get("dayNtlVlm", 0) or 0)) for i in range(20, min(len(uni), len(ctxs)))
+                if not uni[i].get("isDelisted")]
+        coins = [c for c, _ in sorted(pool, key=lambda x: x[1], reverse=True)[:ROSS_COINS]]
     print(f"Ross test: {len(coins)} coins, timeframes {ROSS_TFS}", flush=True)
     rows, summary, notes_tf = "", [], []
     for tf in ROSS_TFS:
         mins = ROSS_TF_MIN[tf]
-        raw = ross_fetch(info, coins + ["BTC"], tf)
-        btc = raw.pop("BTC", None)
+        raw = ross_fetch_stocks(coins + [BENCH], tf) if STOCKS else ross_fetch(info, coins + [BENCH], tf)
+        btc = raw.pop(BENCH, None)
         if not raw:
             notes_tf.append(f"{tf}: no candles returned")
             continue
         grid, data = ross_align(raw)
-        sigs = {c: ross_signals(data[c], mins) for c in data}
-        days = (grid[-1] - grid[0]) / 86400000 + mins / 1440
+        sigs = {c: ross_signals(data[c], mins, ({"4h": 2}.get(tf) or 390 // mins) if STOCKS else None) for c in data}
+        days = (grid[-1] - grid[0]) / 86400000 + (1 if STOCKS else mins / 1440)
         btc_ret = (btc["c"][-1] / btc["c"][min(int(np.searchsorted(btc["t"], grid[0])), len(btc["c"]) - 1)] - 1) * 100 if btc is not None else float("nan")
         first = datetime.fromtimestamp(grid[0] / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
         n_sig = int(sum(int((sigs[c]["setup"] > 0).sum()) for c in sigs))
@@ -1705,7 +1743,16 @@ def run_ross(info):
             summary.append(f"{tf} {book}: {st['ret']:+.1f}% ({st['n']} trades, PF {pf})")
             print(summary[-1], flush=True)
         notes_tf.append(f"{tf}: {len(data)} coins, {days:.0f} days, {n_sig} raw entry signals")
-    title = f"ROSS SCALPER TEST (V4.8.12 rules) — {', '.join(ROSS_TFS)} from ${START_NAV:,.0f}"
+    title = f"ROSS SCALPER TEST{' — STOCKS' if STOCKS else ''} (V4.8.12 rules) — {', '.join(ROSS_TFS)} from ${START_NAV:,.0f}"
+    market_note = (f"STOCKS: the ~{len(coins)} large US stocks of the stock bot (Alpaca, regular hours only; 4h = two half-day "
+                   "candles). The ladder keeps the same PRICE distances (stop -0.7%), at 1x: 21% of the account per trade, "
+                   "max 3, no margin. Day trades are NOT limited here: the real pattern-day-trader rule allows only 3 day trades "
+                   "per 5 days under $25,000, so on a $1,000 account most of these trades could not be placed. "
+                   "'Top 20 gainers' = biggest move over the last trading day. Spread/slippage 0.05% per market order. "
+                   "Ross himself trades small-cap gappers ($2-20 stocks with news), which this universe does not include."
+                   if STOCKS else
+                   f"Coins = today's {ROSS_COINS} most-traded outside the first 20 listed, so coins that faded away are missing. "
+                   "Fees 0.045% market / 0.015% limit entries.")
     html = f"""<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
 <body style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f4f6f8;margin:0;padding:8px;color:#333;">
 <div style="max-width:760px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;">
@@ -1722,12 +1769,11 @@ def run_ross(info):
       <tr style="background:#f1f5f9;"><th align="left">Timeframe / book</th><th align="left">Return</th><th align="left">1st half</th>
       <th align="left">2nd half</th><th align="left">Worst drop</th><th align="left">Trades</th><th align="left">Win rate</th>
       <th align="left">Avg win / loss</th><th align="left">Profit factor</th><th align="left">Fees</th><th align="left">P&amp;L before fees</th>
-      <th align="left">BTC hold</th></tr>{rows}</table></div>
+      <th align="left">{BENCH} hold</th></tr>{rows}</table></div>
     <div style="font-size:10px;color:#64748b;margin-top:10px;">{' • '.join(notes_tf)}<br>
       Not modelled: the Gemini risk shield (normal thresholds used: RVOL 1.8x, VWAP +0.8%), the order-book spread/depth check,
       funding. Signals are checked once per candle close (the live bot looked inside the forming candle every 5-15 minutes).
-      Coins = today's {ROSS_COINS} most-traded outside the first 20 listed, so coins that faded away are missing.
-      Fees 0.045% market / 0.015% limit entries.</div>
+      {market_note}</div>
   </div></div></body></html>"""
     text = f"{title}\n" + "\n".join(summary)
     print(text, flush=True)
@@ -1738,6 +1784,8 @@ def main():
     if STOCKS:                                                # Alpaca data only: no Hyperliquid connection needed
         if MODE == "backtest":
             return run_backtest(None)
+        if MODE == "ross":
+            return run_ross(None)
         if MODE == "robust":
             return run_robust(None)
         return run_paper(None)
