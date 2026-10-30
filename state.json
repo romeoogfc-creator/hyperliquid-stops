@@ -9,16 +9,6 @@
    "opened_ms": 1793318654228,
    "reason": "band breakout",
    "stop": 0.34132799999999996
-  },
-  "PURR": {
-   "side": "SHORT",
-   "sz": 140.0,
-   "entry": 0.11992,
-   "peak_px": 0.11992,
-   "opened": "2026-10-29",
-   "opened_ms": 1793318656239,
-   "reason": "bear short (rejected bounce, BTC down)",
-   "stop": 0.1247168
   }
  },
  "closed": [
@@ -45,6 +35,18 @@
    "peak_pct": 4.32,
    "pnl": 0.3269,
    "reason": "\ud83d\udd12 Profit lock (price 0.050392 already under stop 0.0504725)"
+  },
+  {
+   "coin": "PURR",
+   "side": "SHORT",
+   "opened": "2026-10-29",
+   "closed": "2026-10-30 03:35",
+   "entry": 0.11992,
+   "exit": 0.12495999999999999,
+   "pct": -4.2,
+   "peak_pct": 0.0,
+   "pnl": -0.7132,
+   "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
  "last_daily_day": "2026-10-29",
