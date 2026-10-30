@@ -1,16 +1,5 @@
 {
- "positions": {
-  "TRX": {
-   "side": "LONG",
-   "sz": 47.0,
-   "entry": 0.35555,
-   "peak_px": 0.35555,
-   "opened": "2026-10-29",
-   "opened_ms": 1793318654228,
-   "reason": "band breakout",
-   "stop": 0.34132799999999996
-  }
- },
+ "positions": {},
  "closed": [
   {
    "coin": "kPEPE",
@@ -46,6 +35,18 @@
    "pct": -4.2,
    "peak_pct": 0.0,
    "pnl": -0.7132,
+   "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
+  },
+  {
+   "coin": "TRX",
+   "side": "LONG",
+   "opened": "2026-10-29",
+   "closed": "2026-10-30 05:30",
+   "entry": 0.35555,
+   "exit": 0.3413,
+   "pct": -4.01,
+   "peak_pct": 0.0,
+   "pnl": -0.6767,
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
