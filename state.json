@@ -1,5 +1,26 @@
 {
- "positions": {},
+ "positions": {
+  "TRX": {
+   "side": "LONG",
+   "sz": 47.0,
+   "entry": 0.35555,
+   "peak_px": 0.35555,
+   "opened": "2026-10-29",
+   "opened_ms": 1793318654228,
+   "reason": "band breakout",
+   "stop": 0.34132799999999996
+  },
+  "PURR": {
+   "side": "SHORT",
+   "sz": 140.0,
+   "entry": 0.11992,
+   "peak_px": 0.11992,
+   "opened": "2026-10-29",
+   "opened_ms": 1793318656239,
+   "reason": "bear short (rejected bounce, BTC down)",
+   "stop": 0.1247168
+  }
+ },
  "closed": [
   {
    "coin": "kPEPE",
@@ -26,7 +47,7 @@
    "reason": "\ud83d\udd12 Profit lock (price 0.050392 already under stop 0.0504725)"
   }
  ],
- "last_daily_day": "2026-10-28",
+ "last_daily_day": "2026-10-29",
  "started": "2026-10-23",
  "start_nav": 110.8395182,
  "nav_history": [
@@ -57,6 +78,10 @@
   [
    "2026-10-29 00:04",
    112.1
+  ],
+  [
+   "2026-10-30 00:04",
+   112.08
   ]
  ],
  "version": "LS15-LIVE-1.5"
