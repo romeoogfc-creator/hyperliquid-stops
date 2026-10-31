@@ -31,7 +31,7 @@ from email.mime.text import MIMEText
 
 import gc_paper as engine
 
-BOT_VERSION = "LS15-LIVE-1.5"
+BOT_VERSION = "LS15-LIVE-1.6"
 STATE_FILE = "state.json"                  # same file the old scalper used (stops.yml commits it)
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
 SECRET_KEY = os.getenv("HL_SECRET_KEY")
@@ -282,7 +282,8 @@ def daily_decisions(info, exchange, state, nav, ex_pos, sz_dec, log, skips):
     rank_of = {c: i + 1 for i, c in enumerate(ranked)}
     btc_down = engine.btc_downtrend(data, day)
     log.append(f"📅 Daily decisions on the {day} close • BTC {'DOWNTREND (bear shorts allowed)' if btc_down else 'not in downtrend'}")
-    exited = set()
+    # Coins whose stop filled during this candle's day count as exited today, as in the backtest (no re-entry the same day).
+    exited = {t["coin"] for t in state["closed"] if str(t.get("closed", ""))[:10] >= day}
 
     # Exits for the bot's own positions
     for coin, p in list(state["positions"].items()):
