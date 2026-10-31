@@ -5,7 +5,7 @@
    "name": "LS-15 Original",
    "lock": false,
    "guard": false,
-   "cash": 899.8213105956372,
+   "cash": 933.8234626538507,
    "positions": {
     "kPEPE": {
      "side": "LONG",
@@ -17,39 +17,24 @@
      "opened": "2026-10-27",
      "peak_px": 0.00571,
      "stop": null,
-     "last_px": 0.00456,
+     "last_px": 0.004916,
      "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.00043670755067853526,
+     "atr": 0.0004777284398299578,
      "climax": false
     },
-    "TRX": {
-     "side": "LONG",
-     "qty": 56.04315014505088,
-     "entry": 0.35286,
-     "cost": 19.775385960182653,
-     "collateral": 0.0,
-     "fees": 0.008898923682082194,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 418.5089723224976,
-     "entry": 0.11813,
-     "cost": 49.43846490045664,
-     "collateral": 49.43846490045664,
-     "fees": 0.022247309205205484,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 1154.9753136099464,
+     "entry": 0.025575,
+     "cost": 29.538493645574377,
+     "collateral": 29.538493645574377,
+     "fees": 0.01329232214050847,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -131,6 +116,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 2% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -1.3465,
+     "pct": -6.72,
+     "peak_pct": 0.0,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 2% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -4.3445,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -169,6 +180,10 @@
     [
      "2026-10-29",
      988.74
+    ],
+    [
+     "2026-10-30",
+     984.6
     ]
    ],
    "eq_base": 1000.0,
@@ -180,36 +195,21 @@
    "name": "LS-15 + Profit Lock",
    "lock": "all",
    "guard": false,
-   "cash": 925.064688399615,
+   "cash": 959.3181582141375,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 56.38082557931497,
-     "entry": 0.35286,
-     "cost": 19.894538113917083,
-     "collateral": 0.0,
-     "fees": 0.008952542151262687,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 421.0306042901271,
-     "entry": 0.11813,
-     "cost": 49.73634528479271,
-     "collateral": 49.73634528479271,
-     "fees": 0.02238135537815672,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 1160.1191277747669,
+     "entry": 0.025575,
+     "cost": 29.670046692839666,
+     "collateral": 29.670046692839666,
+     "fees": 0.01335152101177785,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -304,6 +304,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 2% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -1.3547,
+     "pct": -6.72,
+     "peak_pct": 0.0,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 2% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -4.3707,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -342,6 +368,10 @@
     [
      "2026-10-29",
      994.7
+    ],
+    [
+     "2026-10-30",
+     988.99
     ]
    ],
    "eq_base": 1000.0,
@@ -353,7 +383,7 @@
    "name": "LS-15 + Account Guard",
    "lock": false,
    "guard": true,
-   "cash": 899.8213105956372,
+   "cash": 933.8234626538507,
    "positions": {
     "kPEPE": {
      "side": "LONG",
@@ -365,39 +395,24 @@
      "opened": "2026-10-27",
      "peak_px": 0.00571,
      "stop": null,
-     "last_px": 0.00456,
+     "last_px": 0.004916,
      "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.00043670755067853526,
+     "atr": 0.0004777284398299578,
      "climax": false
     },
-    "TRX": {
-     "side": "LONG",
-     "qty": 56.04315014505088,
-     "entry": 0.35286,
-     "cost": 19.775385960182653,
-     "collateral": 0.0,
-     "fees": 0.008898923682082194,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 418.5089723224976,
-     "entry": 0.11813,
-     "cost": 49.43846490045664,
-     "collateral": 49.43846490045664,
-     "fees": 0.022247309205205484,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 1154.9753136099464,
+     "entry": 0.025575,
+     "cost": 29.538493645574377,
+     "collateral": 29.538493645574377,
+     "fees": 0.01329232214050847,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -479,6 +494,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 2% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -1.3465,
+     "pct": -6.72,
+     "peak_pct": 0.0,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 2% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -4.3445,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -517,6 +558,10 @@
     [
      "2026-10-29",
      988.74
+    ],
+    [
+     "2026-10-30",
+     984.6
     ]
    ],
    "eq_base": 994.8893714127433,
@@ -528,36 +573,21 @@
    "name": "LS-15 + Long Lock",
    "lock": "long",
    "guard": false,
-   "cash": 925.064688399615,
+   "cash": 959.3181582141375,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 56.38082557931497,
-     "entry": 0.35286,
-     "cost": 19.894538113917083,
-     "collateral": 0.0,
-     "fees": 0.008952542151262687,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 421.0306042901271,
-     "entry": 0.11813,
-     "cost": 49.73634528479271,
-     "collateral": 49.73634528479271,
-     "fees": 0.02238135537815672,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 1160.1191277747669,
+     "entry": 0.025575,
+     "cost": 29.670046692839666,
+     "collateral": 29.670046692839666,
+     "fees": 0.01335152101177785,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -652,6 +682,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 2% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -1.3547,
+     "pct": -6.72,
+     "peak_pct": 0.0,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 2% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -4.3707,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -690,6 +746,10 @@
     [
      "2026-10-29",
      994.7
+    ],
+    [
+     "2026-10-30",
+     988.99
     ]
    ],
    "eq_base": 1000.0,
@@ -701,36 +761,21 @@
    "name": "LS-15 + Long Lock + Guard",
    "lock": "long",
    "guard": true,
-   "cash": 925.064688399615,
+   "cash": 959.3181582141375,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 56.38082557931497,
-     "entry": 0.35286,
-     "cost": 19.894538113917083,
-     "collateral": 0.0,
-     "fees": 0.008952542151262687,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 421.0306042901271,
-     "entry": 0.11813,
-     "cost": 49.73634528479271,
-     "collateral": 49.73634528479271,
-     "fees": 0.02238135537815672,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 1160.1191277747669,
+     "entry": 0.025575,
+     "cost": 29.670046692839666,
+     "collateral": 29.670046692839666,
+     "fees": 0.01335152101177785,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -825,6 +870,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 2% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -1.3547,
+     "pct": -6.72,
+     "peak_pct": 0.0,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 2% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -4.3707,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -863,6 +934,10 @@
     [
      "2026-10-29",
      994.7
+    ],
+    [
+     "2026-10-30",
+     988.99
     ]
    ],
    "eq_base": 996.3457931840323,
@@ -874,7 +949,7 @@
    "name": "LS-15 @ 60% Size",
    "lock": false,
    "guard": false,
-   "cash": 941.815012769667,
+   "cash": 962.325637090455,
    "positions": {
     "kPEPE": {
      "side": "LONG",
@@ -886,39 +961,24 @@
      "opened": "2026-10-27",
      "peak_px": 0.00571,
      "stop": null,
-     "last_px": 0.00456,
+     "last_px": 0.004916,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.00043670755067853526,
+     "atr": 0.0004777284398299578,
      "climax": false
     },
-    "TRX": {
-     "side": "LONG",
-     "qty": 33.85568609805845,
-     "entry": 0.35286,
-     "cost": 11.946317396560904,
-     "collateral": 0.0,
-     "fees": 0.005375842828452407,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 252.82141277746769,
-     "entry": 0.11813,
-     "cost": 29.865793491402258,
-     "collateral": 29.865793491402258,
-     "fees": 0.013439607071131015,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 698.896886244369,
+     "entry": 0.025575,
+     "cost": 17.87428786569974,
+     "collateral": 17.87428786569974,
+     "fees": 0.008043429539564882,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -974,6 +1034,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -0.8134,
+     "pct": -6.72,
+     "peak_pct": 0.0,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -2.6245,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -1008,6 +1094,10 @@
     [
      "2026-10-29",
      995.51
+    ],
+    [
+     "2026-10-30",
+     993.01
     ]
    ],
    "eq_base": 1000.0,
@@ -1021,7 +1111,7 @@
    "name": "LS-15 Max 3 @ 15%",
    "lock": false,
    "guard": false,
-   "cash": 523.9027460240274,
+   "cash": 647.1360574010777,
    "positions": {
     "kPEPE": {
      "side": "LONG",
@@ -1033,39 +1123,24 @@
      "opened": "2026-10-27",
      "peak_px": 0.00571,
      "stop": null,
-     "last_px": 0.00456,
+     "last_px": 0.004916,
      "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00043670755067853526,
+     "atr": 0.0004777284398299578,
      "climax": false
     },
-    "TRX": {
-     "side": "LONG",
-     "qty": 408.0631053640136,
-     "entry": 0.35286,
-     "cost": 143.98914735874584,
-     "collateral": 0.0,
-     "fees": 0.06479511631143563,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1218.904151009446,
-     "entry": 0.11813,
-     "cost": 143.98914735874584,
-     "collateral": 143.98914735874584,
-     "fees": 0.06479511631143563,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5566.086194458627,
+     "entry": 0.025575,
+     "cost": 142.35265442327938,
+     "collateral": 142.35265442327938,
+     "fees": 0.06405869449047571,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -1121,6 +1196,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -9.8045,
+     "pct": -6.72,
+     "peak_pct": 0.0,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -12.6534,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -1155,6 +1256,10 @@
     [
      "2026-10-29",
      959.8
+    ],
+    [
+     "2026-10-30",
+     948.95
     ]
    ],
    "eq_base": 1000.0,
@@ -1169,36 +1274,21 @@
    "name": "LS-15 Max 3 @ 15% + Long Lock",
    "lock": "long",
    "guard": false,
-   "cash": 695.4438759378975,
+   "cash": 824.804512044442,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 422.41238317588846,
-     "entry": 0.35286,
-     "cost": 149.052433527444,
-     "collateral": 0.0,
-     "fees": 0.06707359508734981,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1261.7661349991029,
-     "entry": 0.11813,
-     "cost": 149.052433527444,
-     "collateral": 149.052433527444,
-     "fees": 0.06707359508734981,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5691.702718151454,
+     "entry": 0.025575,
+     "cost": 145.56529701672343,
+     "collateral": 145.56529701672343,
+     "fees": 0.06550438365752555,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -1267,6 +1357,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -10.1493,
+     "pct": -6.72,
+     "peak_pct": 0.0,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -13.0983,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -1301,6 +1417,10 @@
     [
      "2026-10-29",
      993.55
+    ],
+    [
+     "2026-10-30",
+     970.37
     ]
    ],
    "eq_base": 1000.0,
@@ -1315,7 +1435,7 @@
    "name": "LS-15 3L+3S @ 15%",
    "lock": false,
    "guard": false,
-   "cash": 523.9027460240274,
+   "cash": 647.1360574010777,
    "positions": {
     "kPEPE": {
      "side": "LONG",
@@ -1327,39 +1447,24 @@
      "opened": "2026-10-27",
      "peak_px": 0.00571,
      "stop": null,
-     "last_px": 0.00456,
+     "last_px": 0.004916,
      "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.00043670755067853526,
+     "atr": 0.0004777284398299578,
      "climax": false
     },
-    "TRX": {
-     "side": "LONG",
-     "qty": 408.0631053640136,
-     "entry": 0.35286,
-     "cost": 143.98914735874584,
-     "collateral": 0.0,
-     "fees": 0.06479511631143563,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1218.904151009446,
-     "entry": 0.11813,
-     "cost": 143.98914735874584,
-     "collateral": 143.98914735874584,
-     "fees": 0.06479511631143563,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5566.086194458627,
+     "entry": 0.025575,
+     "cost": 142.35265442327938,
+     "collateral": 142.35265442327938,
+     "fees": 0.06405869449047571,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -1415,6 +1520,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -9.8045,
+     "pct": -6.72,
+     "peak_pct": 0.0,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -12.6534,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -1449,6 +1580,10 @@
     [
      "2026-10-29",
      959.8
+    ],
+    [
+     "2026-10-30",
+     948.95
     ]
    ],
    "eq_base": 1000.0,
@@ -1464,36 +1599,21 @@
    "name": "LS-15 3L+3S @ 15% + Long Lock",
    "lock": "long",
    "guard": false,
-   "cash": 695.4438759378975,
+   "cash": 824.804512044442,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 422.41238317588846,
-     "entry": 0.35286,
-     "cost": 149.052433527444,
-     "collateral": 0.0,
-     "fees": 0.06707359508734981,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1261.7661349991029,
-     "entry": 0.11813,
-     "cost": 149.052433527444,
-     "collateral": 149.052433527444,
-     "fees": 0.06707359508734981,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5691.702718151454,
+     "entry": 0.025575,
+     "cost": 145.56529701672343,
+     "collateral": 145.56529701672343,
+     "fees": 0.06550438365752555,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -1562,6 +1682,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -10.1493,
+     "pct": -6.72,
+     "peak_pct": 0.0,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -13.0983,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -1596,6 +1742,10 @@
     [
      "2026-10-29",
      993.55
+    ],
+    [
+     "2026-10-30",
+     970.37
     ]
    ],
    "eq_base": 1000.0,
@@ -1611,7 +1761,7 @@
    "name": "LS-15 Max 6 @ 20%",
    "lock": false,
    "guard": false,
-   "cash": 370.9789870455301,
+   "cash": 533.6999522856784,
    "positions": {
     "kPEPE": {
      "side": "LONG",
@@ -1623,39 +1773,24 @@
      "opened": "2026-10-27",
      "peak_px": 0.00571,
      "stop": null,
-     "last_px": 0.00456,
+     "last_px": 0.004916,
      "reason": "band breakout (old breakout, 20% NAV)",
-     "atr": 0.00043670755067853526,
+     "atr": 0.0004777284398299578,
      "climax": false
     },
-    "TRX": {
-     "side": "LONG",
-     "qty": 536.5641358256881,
-     "entry": 0.35286,
-     "cost": 189.3320209674523,
-     "collateral": 0.0,
-     "fees": 0.08519940943535353,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 20% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1602.7429185427268,
-     "entry": 0.11813,
-     "cost": 189.3320209674523,
-     "collateral": 189.3320209674523,
-     "fees": 0.08519940943535353,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 7292.262060170845,
+     "entry": 0.025575,
+     "cost": 186.49960218886937,
+     "collateral": 186.49960218886937,
+     "fees": 0.08392482098499121,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -1711,6 +1846,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 20% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -12.892,
+     "pct": -6.72,
+     "peak_pct": 0.0,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 20% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -16.638,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -1745,6 +1906,10 @@
     [
      "2026-10-29",
      946.49
+    ],
+    [
+     "2026-10-30",
+     932.41
     ]
    ],
    "eq_base": 1000.0,
@@ -1760,36 +1925,21 @@
    "name": "LS-15 Max 6 @ 20% + Long Lock",
    "lock": "long",
    "guard": false,
-   "cash": 594.7630838721157,
+   "cash": 768.4242944782712,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 562.0185213607082,
-     "entry": 0.35286,
-     "cost": 198.3138554473395,
-     "collateral": 0.0,
-     "fees": 0.08924123495130278,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 20% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1678.7763942041777,
-     "entry": 0.11813,
-     "cost": 198.3138554473395,
-     "collateral": 198.3138554473395,
-     "fees": 0.08924123495130278,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 7512.324065863777,
+     "entry": 0.025575,
+     "cost": 192.1276879844661,
+     "collateral": 192.1276879844661,
+     "fees": 0.08645745959300974,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -1858,6 +2008,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 20% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -13.5036,
+     "pct": -6.72,
+     "peak_pct": 0.0,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 20% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -17.4273,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -1892,6 +2068,10 @@
     [
      "2026-10-29",
      991.39
+    ],
+    [
+     "2026-10-30",
+     960.55
     ]
    ],
    "eq_base": 1000.0,
@@ -1907,36 +2087,21 @@
    "name": "LS-15 + Long Lock (4h)",
    "lock": "long",
    "guard": false,
-   "cash": 927.2426174593792,
+   "cash": 961.5767320420377,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 56.5135659595095,
-     "entry": 0.35286,
-     "cost": 19.941376884472522,
-     "collateral": 0.0,
-     "fees": 0.008973619598012635,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 422.0218590635851,
-     "entry": 0.11813,
-     "cost": 49.85344221118131,
-     "collateral": 49.85344221118131,
-     "fees": 0.02243404899503159,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 1162.8504580188608,
+     "entry": 0.025575,
+     "cost": 29.739900463832363,
+     "collateral": 29.739900463832363,
+     "fees": 0.013382955208724564,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -2005,6 +2170,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 2% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -1.3578,
+     "pct": -6.72,
+     "peak_pct": 2.26,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 2% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -4.381,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -2039,6 +2230,10 @@
     [
      "2026-10-29",
      997.04
+    ],
+    [
+     "2026-10-30",
+     991.32
     ]
    ],
    "eq_base": 1000.0,
@@ -2052,36 +2247,21 @@
    "name": "Max 6 @ 15% + Long Lock (4h)",
    "lock": "long",
    "guard": false,
-   "cash": 695.4438759378975,
+   "cash": 824.804512044442,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 422.41238317588846,
-     "entry": 0.35286,
-     "cost": 149.052433527444,
-     "collateral": 0.0,
-     "fees": 0.06707359508734981,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1261.7661349991029,
-     "entry": 0.11813,
-     "cost": 149.052433527444,
-     "collateral": 149.052433527444,
-     "fees": 0.06707359508734981,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5691.702718151454,
+     "entry": 0.025575,
+     "cost": 145.56529701672343,
+     "collateral": 145.56529701672343,
+     "fees": 0.06550438365752555,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -2150,6 +2330,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -10.1493,
+     "pct": -6.72,
+     "peak_pct": 2.26,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -13.0983,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -2184,6 +2390,10 @@
     [
      "2026-10-29",
      993.55
+    ],
+    [
+     "2026-10-30",
+     970.37
     ]
    ],
    "eq_base": 1000.0,
@@ -2199,36 +2409,21 @@
    "name": "Max 10 @ 15% + Long Lock (4h)",
    "lock": "long",
    "guard": false,
-   "cash": 695.4438759378975,
+   "cash": 824.804512044442,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 422.41238317588846,
-     "entry": 0.35286,
-     "cost": 149.052433527444,
-     "collateral": 0.0,
-     "fees": 0.06707359508734981,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1261.7661349991029,
-     "entry": 0.11813,
-     "cost": 149.052433527444,
-     "collateral": 149.052433527444,
-     "fees": 0.06707359508734981,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5691.702718151454,
+     "entry": 0.025575,
+     "cost": 145.56529701672343,
+     "collateral": 145.56529701672343,
+     "fees": 0.06550438365752555,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -2297,6 +2492,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -10.1493,
+     "pct": -6.72,
+     "peak_pct": 2.26,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -13.0983,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -2331,6 +2552,10 @@
     [
      "2026-10-29",
      993.55
+    ],
+    [
+     "2026-10-30",
+     970.37
     ]
    ],
    "eq_base": 1000.0,
@@ -2347,36 +2572,21 @@
    "name": "LS-15 + Smart Trail (4h)",
    "lock": "long",
    "guard": false,
-   "cash": 925.6830017607764,
+   "cash": 959.9593665990934,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 56.41851053065532,
-     "entry": 0.35286,
-     "cost": 19.907835625847035,
-     "collateral": 0.0,
-     "fees": 0.008958526031631166,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 421.31202120221445,
-     "entry": 0.11813,
-     "cost": 49.76958906461759,
-     "collateral": 49.76958906461759,
-     "fees": 0.022396315079077914,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 1160.8945515545709,
+     "entry": 0.025575,
+     "cost": 29.689878156008152,
+     "collateral": 29.689878156008152,
+     "fees": 0.013360445170203667,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -2445,6 +2655,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 2% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -1.3556,
+     "pct": -6.72,
+     "peak_pct": 2.26,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 2% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -4.3736,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -2479,6 +2715,10 @@
     [
      "2026-10-29",
      995.36
+    ],
+    [
+     "2026-10-30",
+     989.65
     ]
    ],
    "eq_base": 1000.0,
@@ -2495,36 +2735,21 @@
    "name": "LS-15 + Smart Trail + Climax (4h)",
    "lock": "long",
    "guard": false,
-   "cash": 925.6830017607764,
+   "cash": 959.9593665990934,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 56.41851053065532,
-     "entry": 0.35286,
-     "cost": 19.907835625847035,
-     "collateral": 0.0,
-     "fees": 0.008958526031631166,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 2% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 421.31202120221445,
-     "entry": 0.11813,
-     "cost": 49.76958906461759,
-     "collateral": 49.76958906461759,
-     "fees": 0.022396315079077914,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 1160.8945515545709,
+     "entry": 0.025575,
+     "cost": 29.689878156008152,
+     "collateral": 29.689878156008152,
+     "fees": 0.013360445170203667,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -2593,6 +2818,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 2% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -1.3556,
+     "pct": -6.72,
+     "peak_pct": 2.26,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 2% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -4.3736,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -2627,6 +2878,10 @@
     [
      "2026-10-29",
      995.36
+    ],
+    [
+     "2026-10-30",
+     989.65
     ]
    ],
    "eq_base": 1000.0,
@@ -2644,36 +2899,21 @@
    "name": "Max 10 @ 15% + Long Lock (4h), 1x",
    "lock": "long",
    "guard": false,
-   "cash": 695.4438759378975,
+   "cash": 824.804512044442,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 422.41238317588846,
-     "entry": 0.35286,
-     "cost": 149.052433527444,
-     "collateral": 0.0,
-     "fees": 0.06707359508734981,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1261.7661349991029,
-     "entry": 0.11813,
-     "cost": 149.052433527444,
-     "collateral": 149.052433527444,
-     "fees": 0.06707359508734981,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5691.702718151454,
+     "entry": 0.025575,
+     "cost": 145.56529701672343,
+     "collateral": 145.56529701672343,
+     "fees": 0.06550438365752555,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -2742,6 +2982,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -10.1493,
+     "pct": -6.72,
+     "peak_pct": 2.26,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -13.0983,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -2776,6 +3042,10 @@
     [
      "2026-10-29",
      993.55
+    ],
+    [
+     "2026-10-30",
+     970.37
     ]
    ],
    "eq_base": 1000.0,
@@ -2791,36 +3061,21 @@
    "name": "Max 10 @ 10% + Long Lock (4h), 1x",
    "lock": "long",
    "guard": false,
-   "cash": 796.5444272062197,
+   "cash": 882.1910328933914,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 282.20613293398236,
-     "entry": 0.35286,
-     "cost": 99.57925606708501,
-     "collateral": 0.0,
-     "fees": 0.04481066523018826,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 10% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 842.9633121737494,
-     "entry": 0.11813,
-     "cost": 99.57925606708501,
-     "collateral": 99.57925606708501,
-     "fees": 0.04481066523018826,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 3832.888648422391,
+     "entry": 0.025575,
+     "cost": 98.02612718340265,
+     "collateral": 98.02612718340265,
+     "fees": 0.04411175723253119,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -2889,6 +3144,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 10% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -6.7805,
+     "pct": -6.72,
+     "peak_pct": 2.26,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 10% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -8.7508,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -2923,6 +3204,10 @@
     [
      "2026-10-29",
      995.7
+    ],
+    [
+     "2026-10-30",
+     980.22
     ]
    ],
    "eq_base": 1000.0,
@@ -2938,36 +3223,21 @@
    "name": "LS-15 + Long Lock @ 2x (D doubled)",
    "lock": "long",
    "guard": false,
-   "cash": 854.8970593138503,
+   "cash": 923.7069943196168,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 112.69502630094347,
-     "entry": 0.35286,
-     "cost": 39.765566980550915,
-     "collateral": 0.0,
-     "fees": 0.01789450514124791,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 4% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 841.5636794326361,
-     "entry": 0.11813,
-     "cost": 99.4139174513773,
-     "collateral": 99.4139174513773,
-     "fees": 0.04473626285311978,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 2305.443382020689,
+     "entry": 0.025575,
+     "cost": 58.96171449517912,
+     "collateral": 58.96171449517912,
+     "fees": 0.026532771522830605,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -3036,6 +3306,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 4% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -2.7077,
+     "pct": -6.72,
+     "peak_pct": 0.0,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 4% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -8.7362,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -3070,6 +3366,10 @@
     [
      "2026-10-29",
      994.08
+    ],
+    [
+     "2026-10-30",
+     982.67
     ]
    ],
    "eq_base": 1000.0,
@@ -3084,36 +3384,21 @@
    "name": "LIVE SETUP: Max 9 @ 15% + Long Lock (4h) + Disaster Stop",
    "lock": "long",
    "guard": false,
-   "cash": 695.4438759378975,
+   "cash": 824.804512044442,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 422.41238317588846,
-     "entry": 0.35286,
-     "cost": 149.052433527444,
-     "collateral": 0.0,
-     "fees": 0.06707359508734981,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1261.7661349991029,
-     "entry": 0.11813,
-     "cost": 149.052433527444,
-     "collateral": 149.052433527444,
-     "fees": 0.06707359508734981,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5691.702718151454,
+     "entry": 0.025575,
+     "cost": 145.56529701672343,
+     "collateral": 145.56529701672343,
+     "fees": 0.06550438365752555,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -3182,6 +3467,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -10.1493,
+     "pct": -6.72,
+     "peak_pct": 2.26,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -13.0983,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -3216,6 +3527,10 @@
     [
      "2026-10-29",
      993.55
+    ],
+    [
+     "2026-10-30",
+     970.37
     ]
    ],
    "eq_base": 1000.0,
@@ -3233,36 +3548,21 @@
    "name": "U + Early Lock (keep 50-90% from +3%)",
    "lock": "long",
    "guard": false,
-   "cash": 705.7677384621957,
+   "cash": 837.048732874317,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 428.6830939023117,
-     "entry": 0.35286,
-     "cost": 151.2651165143697,
-     "collateral": 0.0,
-     "fees": 0.06806930243146636,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1280.4970499819665,
-     "entry": 0.11813,
-     "cost": 151.2651165143697,
-     "collateral": 151.2651165143697,
-     "fees": 0.06806930243146636,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5776.196030156143,
+     "entry": 0.025575,
+     "cost": 147.72621347124337,
+     "collateral": 147.72621347124337,
+     "fees": 0.06647679606205951,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -3318,6 +3618,32 @@
      "peak_pct": 4.23,
      "reason": "\ud83d\udd12 Profit lock (stop 0.050493, 4h)",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -10.2999,
+     "pct": -6.72,
+     "peak_pct": 2.26,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -13.2928,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -3348,6 +3674,10 @@
     [
      "2026-10-29",
      1008.3
+    ],
+    [
+     "2026-10-30",
+     984.77
     ]
    ],
    "eq_base": 1000.0,
@@ -3391,36 +3721,21 @@
    "name": "U + Early Lock + Sellers-Took-Over Exit",
    "lock": "long",
    "guard": false,
-   "cash": 705.7677384621957,
+   "cash": 837.048732874317,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 428.6830939023117,
-     "entry": 0.35286,
-     "cost": 151.2651165143697,
-     "collateral": 0.0,
-     "fees": 0.06806930243146636,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1280.4970499819665,
-     "entry": 0.11813,
-     "cost": 151.2651165143697,
-     "collateral": 151.2651165143697,
-     "fees": 0.06806930243146636,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5776.196030156143,
+     "entry": 0.025575,
+     "cost": 147.72621347124337,
+     "collateral": 147.72621347124337,
+     "fees": 0.06647679606205951,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -3476,6 +3791,32 @@
      "peak_pct": 4.23,
      "reason": "\ud83d\udd12 Profit lock (stop 0.050493, 4h)",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -10.2999,
+     "pct": -6.72,
+     "peak_pct": 2.26,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -13.2928,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -3506,6 +3847,10 @@
     [
      "2026-10-29",
      1008.3
+    ],
+    [
+     "2026-10-30",
+     984.77
     ]
    ],
    "eq_base": 1000.0,
@@ -3554,36 +3899,21 @@
    "name": "U + Take Half at +10%",
    "lock": "long",
    "guard": false,
-   "cash": 700.3285842856579,
+   "cash": 830.5978328639266,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 425.3793534314163,
-     "entry": 0.35286,
-     "cost": 150.09935865180955,
-     "collateral": 0.0,
-     "fees": 0.06754471139331429,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1270.6286180632317,
-     "entry": 0.11813,
-     "cost": 150.09935865180955,
-     "collateral": 150.09935865180955,
-     "fees": 0.06754471139331429,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5731.680506068316,
+     "entry": 0.025575,
+     "cost": 146.5877289426972,
+     "collateral": 146.5877289426972,
+     "fees": 0.06596447802421374,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -3652,6 +3982,32 @@
      "peak_pct": 4.69,
      "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -10.2205,
+     "pct": -6.72,
+     "peak_pct": 2.26,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -13.1903,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -3682,6 +4038,10 @@
     [
      "2026-10-29",
      1000.53
+    ],
+    [
+     "2026-10-30",
+     977.19
     ]
    ],
    "eq_base": 1000.0,
@@ -3703,36 +4063,21 @@
    "name": "V + Lock from +1%",
    "lock": "long",
    "guard": false,
-   "cash": 705.2695502144295,
+   "cash": 843.998519147151,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 428.3804945232815,
-     "entry": 0.35286,
-     "cost": 151.15834129748512,
-     "collateral": 0.0,
-     "fees": 0.0680212535838683,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1279.5931710614163,
-     "entry": 0.11813,
-     "cost": 151.15834129748512,
-     "collateral": 151.15834129748512,
-     "fees": 0.0680212535838683,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5824.15420308322,
+     "entry": 0.025575,
+     "cost": 148.95274374385335,
+     "collateral": 148.95274374385335,
+     "fees": 0.067028734684734,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -3788,6 +4133,32 @@
      "peak_pct": 2.01,
      "reason": "\ud83d\udd12 Profit lock (stop 0.0499445, 4h)",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.34986,
+     "pnl": -1.4206,
+     "pct": -0.85,
+     "peak_pct": 2.26,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.356855, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1284,
+     "pnl": -13.2834,
+     "pct": -8.69,
+     "peak_pct": 0.0,
+     "reason": "Stop: close above GC filter",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -3818,6 +4189,10 @@
     [
      "2026-10-29",
      1007.59
+    ],
+    [
+     "2026-10-30",
+     992.95
     ]
    ],
    "eq_base": 1000.0,
@@ -3865,36 +4240,21 @@
    "name": "V + -5% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 699.0970937212207,
+   "cash": 836.0357075408956,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 424.6313464646702,
-     "entry": 0.35286,
-     "cost": 149.83541691352352,
-     "collateral": 0.0,
-     "fees": 0.06742593761108558,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1268.394285224105,
-     "entry": 0.11813,
-     "cost": 149.83541691352352,
-     "collateral": 149.83541691352352,
-     "fees": 0.06742593761108558,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5769.205477898494,
+     "entry": 0.025575,
+     "cost": 147.547430097254,
+     "collateral": 147.547430097254,
+     "fees": 0.0663963435437643,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -3950,6 +4310,32 @@
      "peak_pct": 4.23,
      "reason": "\ud83d\udd12 Profit lock (stop 0.050493, 4h)",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.335217,
+     "pnl": -7.6233,
+     "pct": -5.0,
+     "peak_pct": 2.26,
+     "reason": "\u2702\ufe0f Loss stop (-5%, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.12403650000000001,
+     "pnl": -7.63,
+     "pct": -5.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+5% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -3980,6 +4366,10 @@
     [
      "2026-10-29",
      998.77
+    ],
+    [
+     "2026-10-30",
+     983.58
     ]
    ],
    "eq_base": 1000.0,
@@ -4023,36 +4413,21 @@
    "name": "V + -3% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 700.8621826532675,
+   "cash": 843.2534017799449,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 425.7034609056775,
-     "entry": 0.35286,
-     "cost": 150.21372321517737,
-     "collateral": 0.0,
-     "fees": 0.06759617544682982,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1271.5967427002233,
-     "entry": 0.11813,
-     "cost": 150.21372321517737,
-     "collateral": 150.21372321517737,
-     "fees": 0.06759617544682982,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5819.012394954943,
+     "entry": 0.025575,
+     "cost": 148.8212420009727,
+     "collateral": 148.8212420009727,
+     "fees": 0.06696955890043771,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -4108,6 +4483,32 @@
      "peak_pct": 4.23,
      "reason": "\ud83d\udd12 Profit lock (stop 0.050493, 4h)",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.3422742,
+     "pnl": -4.6396,
+     "pct": -3.0,
+     "peak_pct": 2.26,
+     "reason": "\u2702\ufe0f Loss stop (-3%, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1216739,
+     "pnl": -4.6436,
+     "pct": -3.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+3% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -4138,6 +4539,10 @@
     [
      "2026-10-29",
      1001.29
+    ],
+    [
+     "2026-10-30",
+     992.07
     ]
    ],
    "eq_base": 1000.0,
@@ -4181,36 +4586,21 @@
    "name": "V + Lock from +1% + -5% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 705.2695502144295,
+   "cash": 848.746256863202,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 428.3804945232815,
-     "entry": 0.35286,
-     "cost": 151.15834129748512,
-     "collateral": 0.0,
-     "fees": 0.0680212535838683,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1279.5931710614163,
-     "entry": 0.11813,
-     "cost": 151.15834129748512,
-     "collateral": 151.15834129748512,
-     "fees": 0.0680212535838683,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5856.916768356458,
+     "entry": 0.025575,
+     "cost": 149.79064635071643,
+     "collateral": 149.79064635071643,
+     "fees": 0.06740579085782239,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -4266,6 +4656,32 @@
      "peak_pct": 2.01,
      "reason": "\ud83d\udd12 Profit lock (stop 0.0499445, 4h)",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.34986,
+     "pnl": -1.4206,
+     "pct": -0.85,
+     "peak_pct": 2.26,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.356855, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.12403650000000001,
+     "pnl": -7.6974,
+     "pct": -5.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+5% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -4296,6 +4712,10 @@
     [
      "2026-10-29",
      1007.59
+    ],
+    [
+     "2026-10-30",
+     998.54
     ]
    ],
    "eq_base": 1000.0,
@@ -4343,51 +4763,21 @@
    "name": "F + -5% Loss Stop",
    "lock": false,
    "guard": false,
-   "cash": 945.3952178647133,
+   "cash": 978.6946304829715,
    "positions": {
-    "kPEPE": {
-     "side": "LONG",
-     "qty": 2609.8303610265334,
-     "entry": 0.004598,
-     "cost": 12.0,
-     "collateral": 0.0,
-     "fees": 0.0054,
-     "opened": "2026-10-27",
-     "peak_px": 0.00571,
-     "stop": null,
-     "last_px": 0.00456,
-     "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.00043670755067853526,
-     "climax": false
-    },
-    "TRX": {
-     "side": "LONG",
-     "qty": 33.983502684791056,
-     "entry": 0.35286,
-     "cost": 11.991418757355373,
-     "collateral": 0.0,
-     "fees": 0.005396138440809917,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 253.77589853033464,
-     "entry": 0.11813,
-     "cost": 29.97854689338843,
-     "collateral": 29.97854689338843,
-     "fees": 0.013490346102024793,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 701.449100789204,
+     "entry": 0.025575,
+     "cost": 17.939560752683892,
+     "collateral": 17.939560752683892,
+     "fees": 0.008072802338707752,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -4404,6 +4794,45 @@
      "peak_pct": 4.69,
      "reason": "\u2702\ufe0f Loss stop (-5%)",
      "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "kPEPE",
+     "side": "LONG",
+     "opened": "2026-10-27",
+     "closed": "2026-10-30",
+     "entry": 0.004598,
+     "exit": 0.0043681,
+     "pnl": -0.6105,
+     "pct": -5.0,
+     "peak_pct": 24.18,
+     "reason": "\u2702\ufe0f Loss stop (-5%)",
+     "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.335217,
+     "pnl": -0.6101,
+     "pct": -5.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (-5%)",
+     "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.12403650000000001,
+     "pnl": -1.5266,
+     "pct": -5.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+5% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -4422,6 +4851,10 @@
     [
      "2026-10-29",
      999.27
+    ],
+    [
+     "2026-10-30",
+     996.63
     ]
    ],
    "eq_base": 1000.0,
@@ -4436,7 +4869,7 @@
    "name": "F + -8% Loss Stop",
    "lock": false,
    "guard": false,
-   "cash": 945.0504998616515,
+   "cash": 965.8354409367644,
    "positions": {
     "kPEPE": {
      "side": "LONG",
@@ -4448,39 +4881,24 @@
      "opened": "2026-10-27",
      "peak_px": 0.00571,
      "stop": null,
-     "last_px": 0.00456,
+     "last_px": 0.004916,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.00043670755067853526,
+     "atr": 0.0004777284398299578,
      "climax": false
     },
-    "TRX": {
-     "side": "LONG",
-     "qty": 33.97126537821054,
-     "entry": 0.35286,
-     "cost": 11.987100701355372,
-     "collateral": 0.0,
-     "fees": 0.005394195315609918,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 253.68451496985043,
-     "entry": 0.11813,
-     "cost": 29.96775175338843,
-     "collateral": 29.96775175338843,
-     "fees": 0.013485488289024794,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 701.4281270869994,
+     "entry": 0.025575,
+     "cost": 17.939024350250012,
+     "collateral": 17.939024350250012,
+     "fees": 0.008072560957612504,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -4496,6 +4914,32 @@
      "pct": -8.0,
      "peak_pct": 4.69,
      "reason": "\u2702\ufe0f Loss stop (-8%)",
+     "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1275804,
+     "pnl": -2.4255,
+     "pct": -8.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+8% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -0.8162,
+     "pct": -6.72,
+     "peak_pct": 0.0,
+     "reason": "Close below upper GC band",
      "why_in": "band breakout (old breakout, 1% NAV)"
     }
    ],
@@ -4515,6 +4959,10 @@
     [
      "2026-10-29",
      998.91
+    ],
+    [
+     "2026-10-30",
+     996.6
     ]
    ],
    "eq_base": 1000.0,
@@ -4529,36 +4977,21 @@
    "name": "F + Early Lock + -5% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 959.2832411697387,
+   "cash": 981.2241239644719,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 34.05404712105575,
-     "entry": 0.35286,
-     "cost": 12.016311067135733,
-     "collateral": 0.0,
-     "fees": 0.0054073399802110796,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 254.30269760297415,
-     "entry": 0.11813,
-     "cost": 30.040777667839336,
-     "collateral": 30.040777667839336,
-     "fees": 0.0135183499505277,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 703.262036992987,
+     "entry": 0.025575,
+     "cost": 17.98592659609564,
+     "collateral": 17.98592659609564,
+     "fees": 0.008093666968243039,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -4588,6 +5021,32 @@
      "peak_pct": 4.69,
      "reason": "\ud83d\udd12 Profit lock (stop 0.0506055)",
      "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.335217,
+     "pnl": -0.6114,
+     "pct": -5.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (-5%)",
+     "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.12403650000000001,
+     "pnl": -1.5298,
+     "pct": -5.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+5% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -4606,6 +5065,10 @@
     [
      "2026-10-29",
      1001.34
+    ],
+    [
+     "2026-10-30",
+     999.21
     ]
    ],
    "eq_base": 1000.0,
@@ -4646,36 +5109,21 @@
    "name": "V + -1% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 704.3639955674183,
+   "cash": 852.5990403973167,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 427.8304609263588,
-     "entry": 0.35286,
-     "cost": 150.96425644247498,
-     "collateral": 0.0,
-     "fees": 0.06793391539911374,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1277.9501942137897,
-     "entry": 0.11813,
-     "cost": 150.96425644247498,
-     "collateral": 150.96425644247498,
-     "fees": 0.06793391539911374,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5883.503551276953,
+     "entry": 0.025575,
+     "cost": 150.47060332390808,
+     "collateral": 150.47060332390808,
+     "fees": 0.06771177149575863,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -4705,6 +5153,32 @@
      "peak_pct": 2.01,
      "reason": "\u2702\ufe0f Loss stop (-1%, 4h)",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.3493314,
+     "pnl": -1.6448,
+     "pct": -1.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (-1%, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1193113,
+     "pnl": -1.6462,
+     "pct": -1.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+1% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -4719,6 +5193,10 @@
     [
      "2026-10-29",
      1006.29
+    ],
+    [
+     "2026-10-30",
+     1003.07
     ]
    ],
    "eq_base": 1000.0,
@@ -4762,36 +5240,21 @@
    "name": "V + -2% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 707.4017478844298,
+   "cash": 853.6988388596913,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 429.67559069185774,
-     "entry": 0.35286,
-     "cost": 151.61532893152892,
-     "collateral": 0.0,
-     "fees": 0.068226898019188,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1283.4616856982047,
-     "entry": 0.11813,
-     "cost": 151.61532893152892,
-     "collateral": 151.61532893152892,
-     "fees": 0.068226898019188,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5891.0928961535965,
+     "entry": 0.025575,
+     "cost": 150.66470081912823,
+     "collateral": 150.66470081912823,
+     "fees": 0.0677991153686077,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -4821,6 +5284,32 @@
      "peak_pct": 4.23,
      "reason": "\ud83d\udd12 Profit lock (stop 0.050493, 4h)",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.3458028,
+     "pnl": -3.1674,
+     "pct": -2.0,
+     "peak_pct": 2.26,
+     "reason": "\u2702\ufe0f Loss stop (-2%, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1204926,
+     "pnl": -3.1701,
+     "pct": -2.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+2% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -4835,6 +5324,10 @@
     [
      "2026-10-29",
      1010.63
+    ],
+    [
+     "2026-10-30",
+     1004.36
     ]
    ],
    "eq_base": 1000.0,
@@ -4878,36 +5371,21 @@
    "name": "V + -4% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 707.4017478844298,
+   "cash": 848.5443270374075,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 429.67559069185774,
-     "entry": 0.35286,
-     "cost": 151.61532893152892,
-     "collateral": 0.0,
-     "fees": 0.068226898019188,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1283.4616856982047,
-     "entry": 0.11813,
-     "cost": 151.61532893152892,
-     "collateral": 151.61532893152892,
-     "fees": 0.068226898019188,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5855.523317518633,
+     "entry": 0.025575,
+     "cost": 149.75500884553904,
+     "collateral": 149.75500884553904,
+     "fees": 0.06738975398049256,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -4937,6 +5415,32 @@
      "peak_pct": 4.23,
      "reason": "\ud83d\udd12 Profit lock (stop 0.050493, 4h)",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.3387456,
+     "pnl": -6.1983,
+     "pct": -4.0,
+     "peak_pct": 2.26,
+     "reason": "\u2702\ufe0f Loss stop (-4%, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1228552,
+     "pnl": -6.2038,
+     "pct": -4.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+4% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -4951,6 +5455,10 @@
     [
      "2026-10-29",
      1010.63
+    ],
+    [
+     "2026-10-30",
+     998.3
     ]
    ],
    "eq_base": 1000.0,
@@ -4994,36 +5502,21 @@
    "name": "V + -3.5% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 707.4017478844298,
+   "cash": 849.8329549929784,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 429.67559069185774,
-     "entry": 0.35286,
-     "cost": 151.61532893152892,
-     "collateral": 0.0,
-     "fees": 0.068226898019188,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1283.4616856982047,
-     "entry": 0.11813,
-     "cost": 151.61532893152892,
-     "collateral": 151.61532893152892,
-     "fees": 0.068226898019188,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5864.415712177373,
+     "entry": 0.025575,
+     "cost": 149.98243183893632,
+     "collateral": 149.98243183893632,
+     "fees": 0.06749209432752135,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -5053,6 +5546,32 @@
      "peak_pct": 4.23,
      "reason": "\ud83d\udd12 Profit lock (stop 0.050493, 4h)",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.3405099,
+     "pnl": -5.4406,
+     "pct": -3.5,
+     "peak_pct": 2.26,
+     "reason": "\u2702\ufe0f Loss stop (-3.5%, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.12226454999999999,
+     "pnl": -5.4454,
+     "pct": -3.5,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+3.5% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -5067,6 +5586,10 @@
     [
      "2026-10-29",
      1010.63
+    ],
+    [
+     "2026-10-30",
+     999.82
     ]
    ],
    "eq_base": 1000.0,
@@ -5110,36 +5633,21 @@
    "name": "V + -4.5% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 707.4017478844298,
+   "cash": 847.2556990818364,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 429.67559069185774,
-     "entry": 0.35286,
-     "cost": 151.61532893152892,
-     "collateral": 0.0,
-     "fees": 0.068226898019188,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1283.4616856982047,
-     "entry": 0.11813,
-     "cost": 151.61532893152892,
-     "collateral": 151.61532893152892,
-     "fees": 0.068226898019188,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5846.630922859893,
+     "entry": 0.025575,
+     "cost": 149.52758585214175,
+     "collateral": 149.52758585214175,
+     "fees": 0.06728741363346379,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -5169,6 +5677,32 @@
      "peak_pct": 4.23,
      "reason": "\ud83d\udd12 Profit lock (stop 0.050493, 4h)",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.3369813,
+     "pnl": -6.9561,
+     "pct": -4.5,
+     "peak_pct": 2.26,
+     "reason": "\u2702\ufe0f Loss stop (-4.5%, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.12344585,
+     "pnl": -6.9622,
+     "pct": -4.5,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+4.5% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -5183,6 +5717,10 @@
     [
      "2026-10-29",
      1010.63
+    ],
+    [
+     "2026-10-30",
+     996.78
     ]
    ],
    "eq_base": 1000.0,
@@ -5226,36 +5764,21 @@
    "name": "V + -6% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 707.4017478844298,
+   "cash": 843.3898152151236,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 429.67559069185774,
-     "entry": 0.35286,
-     "cost": 151.61532893152892,
-     "collateral": 0.0,
-     "fees": 0.068226898019188,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1283.4616856982047,
-     "entry": 0.11813,
-     "cost": 151.61532893152892,
-     "collateral": 151.61532893152892,
-     "fees": 0.068226898019188,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5819.95373888367,
+     "entry": 0.025575,
+     "cost": 148.84531687194985,
+     "collateral": 148.84531687194985,
+     "fees": 0.06698039259237742,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -5285,6 +5808,32 @@
      "peak_pct": 4.23,
      "reason": "\ud83d\udd12 Profit lock (stop 0.050493, 4h)",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.3316884,
+     "pnl": -9.2293,
+     "pct": -6.0,
+     "peak_pct": 2.26,
+     "reason": "\u2702\ufe0f Loss stop (-6%, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.12521780000000002,
+     "pnl": -9.2375,
+     "pct": -6.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+6% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -5299,6 +5848,10 @@
     [
      "2026-10-29",
      1010.63
+    ],
+    [
+     "2026-10-30",
+     992.24
     ]
    ],
    "eq_base": 1000.0,
@@ -5342,36 +5895,21 @@
    "name": "V + -7% Loss Stop",
    "lock": "long",
    "guard": false,
-   "cash": 707.4017478844298,
+   "cash": 841.1703626030651,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 429.67559069185774,
-     "entry": 0.35286,
-     "cost": 151.61532893152892,
-     "collateral": 0.0,
-     "fees": 0.068226898019188,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1283.4616856982047,
-     "entry": 0.11813,
-     "cost": 151.61532893152892,
-     "collateral": 151.61532893152892,
-     "fees": 0.068226898019188,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5804.638031609531,
+     "entry": 0.025575,
+     "cost": 148.45361765841375,
+     "collateral": 148.45361765841375,
+     "fees": 0.06680412794628618,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -5401,6 +5939,32 @@
      "peak_pct": 4.23,
      "reason": "\ud83d\udd12 Profit lock (stop 0.050493, 4h)",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.12639910000000001,
+     "pnl": -10.7543,
+     "pct": -7.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+7% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -10.3238,
+     "pct": -6.72,
+     "peak_pct": 2.26,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     }
    ],
    "equity": [
@@ -5415,6 +5979,10 @@
     [
      "2026-10-29",
      1010.63
+    ],
+    [
+     "2026-10-30",
+     989.62
     ]
    ],
    "eq_base": 1000.0,
@@ -5458,36 +6026,21 @@
    "name": "F + -1% Loss Stop",
    "lock": false,
    "guard": false,
-   "cash": 957.7305956061988,
+   "cash": 981.2855991169899,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 33.9989290256759,
-     "entry": 0.35286,
-     "cost": 11.996862096,
-     "collateral": 0.0,
-     "fees": 0.0053985879432,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 253.89109658850415,
-     "entry": 0.11813,
-     "cost": 29.992155239999995,
-     "collateral": 29.992155239999995,
-     "fees": 0.013496469857999998,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 703.30609740684,
+     "entry": 0.025575,
+     "cost": 17.98705344117993,
+     "collateral": 17.98705344117993,
+     "fees": 0.008094174048530968,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -5517,6 +6070,32 @@
      "peak_pct": 14.05,
      "reason": "\u2702\ufe0f Loss stop (-1%)",
      "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.3493314,
+     "pnl": -0.1307,
+     "pct": -1.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (-1%)",
+     "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1193113,
+     "pnl": -0.327,
+     "pct": -1.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+1% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -5531,6 +6110,10 @@
     [
      "2026-10-29",
      999.72
+    ],
+    [
+     "2026-10-30",
+     999.27
     ]
    ],
    "eq_base": 1000.0,
@@ -5545,36 +6128,21 @@
    "name": "F + -2% Loss Stop",
    "lock": false,
    "guard": false,
-   "cash": 957.5007836041577,
+   "cash": 980.6378256697068,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 33.990770821288905,
-     "entry": 0.35286,
-     "cost": 11.993983392000002,
-     "collateral": 0.0,
-     "fees": 0.0053972925264000006,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 253.83017421484809,
-     "entry": 0.11813,
-     "cost": 29.984958480000003,
-     "collateral": 29.984958480000003,
-     "fees": 0.013493231316000002,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 702.8418258271669,
+     "entry": 0.025575,
+     "cost": 17.975179695529793,
+     "collateral": 17.975179695529793,
+     "fees": 0.008088830862988406,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -5604,6 +6172,32 @@
      "peak_pct": 4.69,
      "reason": "\u2702\ufe0f Loss stop (-2%)",
      "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.3458028,
+     "pnl": -0.2506,
+     "pct": -2.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (-2%)",
+     "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1204926,
+     "pnl": -0.627,
+     "pct": -2.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+2% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -5618,6 +6212,10 @@
     [
      "2026-10-29",
      999.48
+    ],
+    [
+     "2026-10-30",
+     998.61
     ]
    ],
    "eq_base": 1000.0,
@@ -5632,36 +6230,21 @@
    "name": "F + -3% Loss Stop",
    "lock": false,
    "guard": false,
-   "cash": 957.2709716021164,
+   "cash": 979.9902501410668,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 33.98261261690189,
-     "entry": 0.35286,
-     "cost": 11.991104688,
-     "collateral": 0.0,
-     "fees": 0.0053959971096,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 253.7692518411919,
-     "entry": 0.11813,
-     "cost": 29.97776172,
-     "collateral": 29.97776172,
-     "fees": 0.013489992774,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 702.3776960995586,
+     "entry": 0.025575,
+     "cost": 17.963309577746212,
+     "collateral": 17.963309577746212,
+     "fees": 0.008083489309985795,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -5691,6 +6274,32 @@
      "peak_pct": 4.69,
      "reason": "\u2702\ufe0f Loss stop (-3%)",
      "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.3422742,
+     "pnl": -0.3704,
+     "pct": -3.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (-3%)",
+     "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1216739,
+     "pnl": -0.9267,
+     "pct": -3.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+3% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -5705,6 +6314,10 @@
     [
      "2026-10-29",
      999.24
+    ],
+    [
+     "2026-10-30",
+     997.95
     ]
    ],
    "eq_base": 1000.0,
@@ -5719,36 +6332,21 @@
    "name": "F + -4% Loss Stop",
    "lock": false,
    "guard": false,
-   "cash": 957.0411596000752,
+   "cash": 979.34287253107,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 33.97445441251487,
-     "entry": 0.35286,
-     "cost": 11.988225984,
-     "collateral": 0.0,
-     "fees": 0.0053947016928,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 253.70832946753575,
-     "entry": 0.11813,
-     "cost": 29.970564959999997,
-     "collateral": 29.970564959999997,
-     "fees": 0.013486754232,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 701.9137082240154,
+     "entry": 0.025575,
+     "cost": 17.951443087829194,
+     "collateral": 17.951443087829194,
+     "fees": 0.008078149389523137,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -5778,6 +6376,32 @@
      "peak_pct": 4.69,
      "reason": "\u2702\ufe0f Loss stop (-4%)",
      "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.3387456,
+     "pnl": -0.4901,
+     "pct": -4.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (-4%)",
+     "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1228552,
+     "pnl": -1.2263,
+     "pct": -4.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+4% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -5792,6 +6416,10 @@
     [
      "2026-10-29",
      999.0
+    ],
+    [
+     "2026-10-30",
+     997.29
     ]
    ],
    "eq_base": 1000.0,
@@ -5806,36 +6434,21 @@
    "name": "F + -4.5% Loss Stop",
    "lock": false,
    "guard": false,
-   "cash": 956.9262535990546,
+   "cash": 979.0192579455631,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 33.97037531032137,
-     "entry": 0.35286,
-     "cost": 11.986786632,
-     "collateral": 0.0,
-     "fees": 0.005394053984399999,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 253.6778682807077,
-     "entry": 0.11813,
-     "cost": 29.96696658,
-     "collateral": 29.96696658,
-     "fees": 0.013485134961,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 701.6817674807684,
+     "entry": 0.025575,
+     "cost": 17.945511203320653,
+     "collateral": 17.945511203320653,
+     "fees": 0.008075480041494294,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -5865,6 +6478,32 @@
      "peak_pct": 4.69,
      "reason": "\u2702\ufe0f Loss stop (-4.5%)",
      "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.3369813,
+     "pnl": -0.55,
+     "pct": -4.5,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (-4.5%)",
+     "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.12344585,
+     "pnl": -1.3761,
+     "pct": -4.5,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+4.5% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -5879,6 +6518,10 @@
     [
      "2026-10-29",
      998.88
+    ],
+    [
+     "2026-10-30",
+     996.96
     ]
    ],
    "eq_base": 1000.0,
@@ -5893,51 +6536,21 @@
    "name": "F + -5.5% Loss Stop",
    "lock": false,
    "guard": false,
-   "cash": 945.337764864203,
+   "cash": 978.3708722039635,
    "positions": {
-    "kPEPE": {
-     "side": "LONG",
-     "qty": 2609.8303610265334,
-     "entry": 0.004598,
-     "cost": 12.0,
-     "collateral": 0.0,
-     "fees": 0.0054,
-     "opened": "2026-10-27",
-     "peak_px": 0.00571,
-     "stop": null,
-     "last_px": 0.00456,
-     "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.00043670755067853526,
-     "climax": false
-    },
-    "TRX": {
-     "side": "LONG",
-     "qty": 33.981463133694305,
-     "entry": 0.35286,
-     "cost": 11.990699081355372,
-     "collateral": 0.0,
-     "fees": 0.005395814586609917,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 253.76066793692056,
-     "entry": 0.11813,
-     "cost": 29.976747703388426,
-     "collateral": 29.976747703388426,
-     "fees": 0.013489536466524791,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 701.2170570580851,
+     "entry": 0.025575,
+     "cost": 17.933626234260526,
+     "collateral": 17.933626234260526,
+     "fees": 0.008070131805417236,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -5954,6 +6567,45 @@
      "peak_pct": 4.69,
      "reason": "\u2702\ufe0f Loss stop (-5.5%)",
      "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "kPEPE",
+     "side": "LONG",
+     "opened": "2026-10-27",
+     "closed": "2026-10-30",
+     "entry": 0.004598,
+     "exit": 0.004345109999999999,
+     "pnl": -0.6705,
+     "pct": -5.5,
+     "peak_pct": 24.18,
+     "reason": "\u2702\ufe0f Loss stop (-5.5%)",
+     "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.3334527,
+     "pnl": -0.67,
+     "pct": -5.5,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (-5.5%)",
+     "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.12462714999999999,
+     "pnl": -1.6764,
+     "pct": -5.5,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+5.5% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -5968,6 +6620,10 @@
     [
      "2026-10-29",
      999.21
+    ],
+    [
+     "2026-10-30",
+     996.3
     ]
    ],
    "eq_base": 1000.0,
@@ -5982,51 +6638,21 @@
    "name": "F + -6% Loss Stop",
    "lock": false,
    "guard": false,
-   "cash": 945.2803118636928,
+   "cash": 978.0471386647858,
    "positions": {
-    "kPEPE": {
-     "side": "LONG",
-     "qty": 2609.8303610265334,
-     "entry": 0.004598,
-     "cost": 12.0,
-     "collateral": 0.0,
-     "fees": 0.0054,
-     "opened": "2026-10-27",
-     "peak_px": 0.00571,
-     "stop": null,
-     "last_px": 0.00456,
-     "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.00043670755067853526,
-     "climax": false
-    },
-    "TRX": {
-     "side": "LONG",
-     "qty": 33.979423582597555,
-     "entry": 0.35286,
-     "cost": 11.989979405355374,
-     "collateral": 0.0,
-     "fees": 0.0053954907324099185,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 253.74543734350655,
-     "entry": 0.11813,
-     "cost": 29.97494851338843,
-     "collateral": 29.97494851338843,
-     "fees": 0.013488726831024794,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 700.9850310584745,
+     "entry": 0.025575,
+     "cost": 17.927692169320487,
+     "collateral": 17.927692169320487,
+     "fees": 0.00806746147619422,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -6043,6 +6669,45 @@
      "peak_pct": 4.69,
      "reason": "\u2702\ufe0f Loss stop (-6%)",
      "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "kPEPE",
+     "side": "LONG",
+     "opened": "2026-10-27",
+     "closed": "2026-10-30",
+     "entry": 0.004598,
+     "exit": 0.00432212,
+     "pnl": -0.7305,
+     "pct": -6.0,
+     "peak_pct": 24.18,
+     "reason": "\u2702\ufe0f Loss stop (-6%)",
+     "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.3316884,
+     "pnl": -0.7299,
+     "pct": -6.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (-6%)",
+     "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.12521780000000002,
+     "pnl": -1.8263,
+     "pct": -6.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+6% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -6057,6 +6722,10 @@
     [
      "2026-10-29",
      999.15
+    ],
+    [
+     "2026-10-30",
+     995.97
     ]
    ],
    "eq_base": 1000.0,
@@ -6071,7 +6740,7 @@
    "name": "F + -7% Loss Stop",
    "lock": false,
    "guard": false,
-   "cash": 945.1654058626722,
+   "cash": 966.2472933730647,
    "positions": {
     "kPEPE": {
      "side": "LONG",
@@ -6083,39 +6752,24 @@
      "opened": "2026-10-27",
      "peak_px": 0.00571,
      "stop": null,
-     "last_px": 0.00456,
+     "last_px": 0.004916,
      "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.00043670755067853526,
+     "atr": 0.0004777284398299578,
      "climax": false
     },
-    "TRX": {
-     "side": "LONG",
-     "qty": 33.975344480404054,
-     "entry": 0.35286,
-     "cost": 11.988540053355374,
-     "collateral": 0.0,
-     "fees": 0.005394843024009918,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 1% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 253.71497615667852,
-     "entry": 0.11813,
-     "cost": 29.971350133388434,
-     "collateral": 29.971350133388434,
-     "fees": 0.013487107560024796,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 701.7233095801927,
+     "entry": 0.025575,
+     "cost": 17.946573642513428,
+     "collateral": 17.946573642513428,
+     "fees": 0.008075958139131043,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
@@ -6132,6 +6786,32 @@
      "peak_pct": 4.69,
      "reason": "\u2702\ufe0f Loss stop (-7%)",
      "why_in": "band breakout (old breakout, 1% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.12639910000000001,
+     "pnl": -2.1259,
+     "pct": -7.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+7% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
+    },
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.32914,
+     "pnl": -0.8163,
+     "pct": -6.72,
+     "peak_pct": 0.0,
+     "reason": "Close below upper GC band",
+     "why_in": "band breakout (old breakout, 1% NAV)"
     }
    ],
    "equity": [
@@ -6146,6 +6826,10 @@
     [
      "2026-10-29",
      999.03
+    ],
+    [
+     "2026-10-30",
+     997.02
     ]
    ],
    "eq_base": 1000.0,
@@ -6160,40 +6844,52 @@
    "name": "Z4 + Knife Exit (4h red, 2x volume)",
    "lock": "long",
    "guard": false,
-   "cash": 699.865,
+   "cash": 839.503828225,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 425.09777248767216,
-     "entry": 0.35286,
-     "cost": 150.0,
-     "collateral": 0.0,
-     "fees": 0.0675,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1269.7875222212817,
-     "entry": 0.11813,
-     "cost": 150.0,
-     "collateral": 150.0,
-     "fees": 0.0675,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5793.137829912023,
+     "entry": 0.025575,
+     "cost": 148.1595,
+     "collateral": 148.1595,
+     "fees": 0.066671775,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
-   "closed": [],
+   "closed": [
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.3387456,
+     "pnl": -6.1323,
+     "pct": -4.0,
+     "peak_pct": 2.26,
+     "reason": "\u2702\ufe0f Loss stop (-4%, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1228552,
+     "pnl": -6.1377,
+     "pct": -4.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+4% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
+    }
+   ],
    "equity": [
     [
      "2026-10-28",
@@ -6202,6 +6898,10 @@
     [
      "2026-10-29",
      999.87
+    ],
+    [
+     "2026-10-30",
+     987.66
     ]
    ],
    "eq_base": 1000.0,
@@ -6251,40 +6951,52 @@
    "name": "Z4 + Knife Exit (4h red, 1.5x volume)",
    "lock": "long",
    "guard": false,
-   "cash": 699.865,
+   "cash": 839.503828225,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 425.09777248767216,
-     "entry": 0.35286,
-     "cost": 150.0,
-     "collateral": 0.0,
-     "fees": 0.0675,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1269.7875222212817,
-     "entry": 0.11813,
-     "cost": 150.0,
-     "collateral": 150.0,
-     "fees": 0.0675,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5793.137829912023,
+     "entry": 0.025575,
+     "cost": 148.1595,
+     "collateral": 148.1595,
+     "fees": 0.066671775,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
-   "closed": [],
+   "closed": [
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.3387456,
+     "pnl": -6.1323,
+     "pct": -4.0,
+     "peak_pct": 2.26,
+     "reason": "\u2702\ufe0f Loss stop (-4%, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1228552,
+     "pnl": -6.1377,
+     "pct": -4.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+4% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
+    }
+   ],
    "equity": [
     [
      "2026-10-28",
@@ -6293,6 +7005,10 @@
     [
      "2026-10-29",
      999.87
+    ],
+    [
+     "2026-10-30",
+     987.66
     ]
    ],
    "eq_base": 1000.0,
@@ -6342,40 +7058,52 @@
    "name": "Z4 + Knife Exit (4h drop >= 3%)",
    "lock": "long",
    "guard": false,
-   "cash": 699.865,
+   "cash": 839.503828225,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 425.09777248767216,
-     "entry": 0.35286,
-     "cost": 150.0,
-     "collateral": 0.0,
-     "fees": 0.0675,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1269.7875222212817,
-     "entry": 0.11813,
-     "cost": 150.0,
-     "collateral": 150.0,
-     "fees": 0.0675,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5793.137829912023,
+     "entry": 0.025575,
+     "cost": 148.1595,
+     "collateral": 148.1595,
+     "fees": 0.066671775,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
-   "closed": [],
+   "closed": [
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.3387456,
+     "pnl": -6.1323,
+     "pct": -4.0,
+     "peak_pct": 2.26,
+     "reason": "\u2702\ufe0f Loss stop (-4%, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1228552,
+     "pnl": -6.1377,
+     "pct": -4.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+4% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
+    }
+   ],
    "equity": [
     [
      "2026-10-28",
@@ -6384,6 +7112,10 @@
     [
      "2026-10-29",
      999.87
+    ],
+    [
+     "2026-10-30",
+     987.66
     ]
    ],
    "eq_base": 1000.0,
@@ -6433,40 +7165,52 @@
    "name": "Z4 + Knife Exit (4h red, 3x volume)",
    "lock": "long",
    "guard": false,
-   "cash": 699.865,
+   "cash": 839.503828225,
    "positions": {
-    "TRX": {
-     "side": "LONG",
-     "qty": 425.09777248767216,
-     "entry": 0.35286,
-     "cost": 150.0,
-     "collateral": 0.0,
-     "fees": 0.0675,
-     "opened": "2026-10-29",
-     "peak_px": 0.35286,
-     "stop": null,
-     "last_px": 0.35286,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "atr": 0.0059169631807449805,
-     "climax": false
-    },
-    "PURR": {
+    "STBL": {
      "side": "SHORT",
-     "qty": 1269.7875222212817,
-     "entry": 0.11813,
-     "cost": 150.0,
-     "collateral": 150.0,
-     "fees": 0.0675,
-     "opened": "2026-10-29",
-     "peak_px": 0.11813,
+     "qty": 5793.137829912023,
+     "entry": 0.025575,
+     "cost": 148.1595,
+     "collateral": 148.1595,
+     "fees": 0.066671775,
+     "opened": "2026-10-30",
+     "peak_px": 0.025575,
      "stop": null,
-     "last_px": 0.11813,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "atr": 0.014399796708950988,
+     "last_px": 0.025575,
+     "reason": "hedge short (cross under filter)",
+     "atr": 0.0026731204755270055,
      "climax": false
     }
    },
-   "closed": [],
+   "closed": [
+    {
+     "coin": "TRX",
+     "side": "LONG",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.35286,
+     "exit": 0.3387456,
+     "pnl": -6.1323,
+     "pct": -4.0,
+     "peak_pct": 2.26,
+     "reason": "\u2702\ufe0f Loss stop (-4%, 4h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "PURR",
+     "side": "SHORT",
+     "opened": "2026-10-29",
+     "closed": "2026-10-30",
+     "entry": 0.11813,
+     "exit": 0.1228552,
+     "pnl": -6.1377,
+     "pct": -4.0,
+     "peak_pct": 0.0,
+     "reason": "\u2702\ufe0f Loss stop (+4% against)",
+     "why_in": "bear short (rejected bounce, BTC down)"
+    }
+   ],
    "equity": [
     [
      "2026-10-28",
@@ -6475,6 +7219,10 @@
     [
      "2026-10-29",
      999.87
+    ],
+    [
+     "2026-10-30",
+     987.66
     ]
    ],
    "eq_base": 1000.0,
@@ -6520,7 +7268,7 @@
    }
   }
  ],
- "last_processed_day": "2026-10-29",
+ "last_processed_day": "2026-10-30",
  "engine": "GC-PAPER-1.25",
  "started": "2026-10-21"
 }
