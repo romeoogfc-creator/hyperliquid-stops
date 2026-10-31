@@ -9,16 +9,6 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128
-  },
-  "STBL": {
-   "side": "SHORT",
-   "sz": 649.0,
-   "entry": 0.025576,
-   "peak_px": 0.025576,
-   "opened": "2026-10-30",
-   "opened_ms": 1793405046758,
-   "reason": "hedge short (cross under filter)",
-   "stop": 0.02659904
   }
  },
  "closed": [
@@ -68,6 +58,18 @@
    "pct": -4.01,
    "peak_pct": 0.0,
    "pnl": -0.6767,
+   "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
+  },
+  {
+   "coin": "STBL",
+   "side": "SHORT",
+   "opened": "2026-10-30",
+   "closed": "2026-10-31 06:50",
+   "entry": 0.025576,
+   "exit": 0.026625999999999997,
+   "pct": -4.11,
+   "peak_pct": 0.0,
+   "pnl": -0.6889,
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
