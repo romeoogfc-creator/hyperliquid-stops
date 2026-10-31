@@ -1,5 +1,26 @@
 {
- "positions": {},
+ "positions": {
+  "TRX": {
+   "side": "SHORT",
+   "sz": 50.0,
+   "entry": 0.32857,
+   "peak_px": 0.32857,
+   "opened": "2026-10-30",
+   "opened_ms": 1793405045003,
+   "reason": "hedge short (cross under filter)",
+   "stop": 0.3417128
+  },
+  "STBL": {
+   "side": "SHORT",
+   "sz": 649.0,
+   "entry": 0.025576,
+   "peak_px": 0.025576,
+   "opened": "2026-10-30",
+   "opened_ms": 1793405046758,
+   "reason": "hedge short (cross under filter)",
+   "stop": 0.02659904
+  }
+ },
  "closed": [
   {
    "coin": "kPEPE",
@@ -50,7 +71,7 @@
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
- "last_daily_day": "2026-10-29",
+ "last_daily_day": "2026-10-30",
  "started": "2026-10-23",
  "start_nav": 110.8395182,
  "nav_history": [
@@ -85,6 +106,10 @@
   [
    "2026-10-30 00:04",
    112.08
+  ],
+  [
+   "2026-10-31 00:04",
+   110.71
   ]
  ],
  "version": "LS15-LIVE-1.5"
