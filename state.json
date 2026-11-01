@@ -9,6 +9,36 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128
+  },
+  "ZRO": {
+   "side": "LONG",
+   "sz": 9.0,
+   "entry": 1.8374,
+   "peak_px": 1.8374,
+   "opened": "2026-10-31",
+   "opened_ms": 1793491475503,
+   "reason": "band breakout",
+   "stop": 1.763904
+  },
+  "PURR": {
+   "side": "SHORT",
+   "sz": 140.0,
+   "entry": 0.11862,
+   "peak_px": 0.11862,
+   "opened": "2026-10-31",
+   "opened_ms": 1793491477201,
+   "reason": "hedge short (cross under filter)",
+   "stop": 0.12336480000000001
+  },
+  "MORPHO": {
+   "side": "SHORT",
+   "sz": 7.0,
+   "entry": 2.3832,
+   "peak_px": 2.3832,
+   "opened": "2026-10-31",
+   "opened_ms": 1793491478956,
+   "reason": "bear short (rejected bounce, BTC down)",
+   "stop": 2.4785280000000003
   }
  },
  "closed": [
@@ -73,7 +103,7 @@
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
- "last_daily_day": "2026-10-30",
+ "last_daily_day": "2026-10-31",
  "started": "2026-10-23",
  "start_nav": 110.8395182,
  "nav_history": [
@@ -112,6 +142,10 @@
   [
    "2026-10-31 00:04",
    110.71
+  ],
+  [
+   "2026-11-01 00:04",
+   111.32
   ]
  ],
  "version": "LS15-LIVE-1.6"
