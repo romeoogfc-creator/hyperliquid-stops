@@ -14,11 +14,12 @@
    "side": "LONG",
    "sz": 9.0,
    "entry": 1.8374,
-   "peak_px": 1.8374,
+   "peak_px": 1.8826,
    "opened": "2026-10-31",
    "opened_ms": 1793491475503,
    "reason": "band breakout",
-   "stop": 1.763904
+   "stop": 1.763904,
+   "peak_checked_ms": 1793520000000
   },
   "PURR": {
    "side": "SHORT",
