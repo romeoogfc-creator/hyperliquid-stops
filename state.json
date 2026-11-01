@@ -10,17 +10,6 @@
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128
   },
-  "ZRO": {
-   "side": "LONG",
-   "sz": 9.0,
-   "entry": 1.8374,
-   "peak_px": 1.928,
-   "opened": "2026-10-31",
-   "opened_ms": 1793491475503,
-   "reason": "band breakout",
-   "stop": 1.8826999999999996,
-   "peak_checked_ms": 1793548800000
-  },
   "PURR": {
    "side": "SHORT",
    "sz": 140.0,
@@ -101,6 +90,18 @@
    "pct": -4.11,
    "peak_pct": 0.0,
    "pnl": -0.6889,
+   "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
+  },
+  {
+   "coin": "ZRO",
+   "side": "LONG",
+   "opened": "2026-10-31",
+   "closed": "2026-11-01 18:00",
+   "entry": 1.8374,
+   "exit": 1.8794999999999997,
+   "pct": 2.29,
+   "peak_pct": 4.93,
+   "pnl": 0.3716,
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
