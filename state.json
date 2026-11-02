@@ -29,6 +29,16 @@
    "opened_ms": 1793491478956,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 2.4785280000000003
+  },
+  "STBL": {
+   "side": "SHORT",
+   "sz": 673.0,
+   "entry": 0.024942,
+   "peak_px": 0.024942,
+   "opened": "2026-11-01",
+   "opened_ms": 1793577865006,
+   "reason": "hedge short (cross under filter)",
+   "stop": 0.02593968
   }
  },
  "closed": [
@@ -105,7 +115,7 @@
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
- "last_daily_day": "2026-10-31",
+ "last_daily_day": "2026-11-01",
  "started": "2026-10-23",
  "start_nav": 110.8395182,
  "nav_history": [
@@ -148,6 +158,10 @@
   [
    "2026-11-01 00:04",
    111.32
+  ],
+  [
+   "2026-11-02 00:04",
+   111.98
   ]
  ],
  "version": "LS15-LIVE-1.6"
