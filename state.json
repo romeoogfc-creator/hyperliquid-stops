@@ -10,16 +10,6 @@
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128
   },
-  "PURR": {
-   "side": "SHORT",
-   "sz": 140.0,
-   "entry": 0.11862,
-   "peak_px": 0.11862,
-   "opened": "2026-10-31",
-   "opened_ms": 1793491477201,
-   "reason": "hedge short (cross under filter)",
-   "stop": 0.12336480000000001
-  },
   "MORPHO": {
    "side": "SHORT",
    "sz": 7.0,
@@ -112,6 +102,18 @@
    "pct": 2.29,
    "peak_pct": 4.93,
    "pnl": 0.3716,
+   "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
+  },
+  {
+   "coin": "PURR",
+   "side": "SHORT",
+   "opened": "2026-10-31",
+   "closed": "2026-11-02 04:05",
+   "entry": 0.11862,
+   "exit": 0.12348357142857143,
+   "pct": -4.1,
+   "peak_pct": 0.0,
+   "pnl": -0.6884,
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
