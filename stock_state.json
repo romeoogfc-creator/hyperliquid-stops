@@ -1,10 +1,6 @@
 {
  "version": "GCSTK-F-1",
  "positions": {
-  "CRWD": {
-   "opened": "2026-10-23",
-   "breakout": "2026-08-27"
-  },
   "TSLA": {
    "opened": "2026-10-26",
    "bought": "2026-10-26",
@@ -101,6 +97,16 @@
    "pct": -4.12,
    "pnl": -48.43,
    "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "CRWD",
+   "opened": "2026-10-23",
+   "closed": "2026-11-02",
+   "entry": 257.67,
+   "exit": 243.195,
+   "pct": -5.62,
+   "pnl": -66.01,
+   "reason": "\u2702\ufe0f Loss stop (-5%)"
   }
  ],
  "last_decision_day": "2026-10-30",
