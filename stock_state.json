@@ -36,20 +36,10 @@
    "bought": "2026-10-29",
    "breakout": "2025-12-18"
   },
-  "VRTX": {
-   "opened": "2026-10-29",
-   "bought": "2026-10-29",
-   "breakout": "2026-08-05"
-  },
   "PYPL": {
    "opened": "2026-10-29",
    "bought": "2026-10-29",
    "breakout": "2026-09-02"
-  },
-  "MRK": {
-   "opened": "2026-10-30",
-   "bought": "2026-10-30",
-   "breakout": "2026-06-23"
   },
   "PEP": {
    "opened": "2026-10-30",
@@ -80,6 +70,16 @@
    "opened": "2026-11-02",
    "bought": "2026-11-02",
    "breakout": "2026-08-07"
+  },
+  "MSFT": {
+   "opened": "2026-11-03",
+   "bought": "2026-11-03",
+   "breakout": "2026-11-03"
+  },
+  "RTX": {
+   "opened": "2026-11-03",
+   "bought": "2026-11-03",
+   "breakout": "2026-11-03"
   }
  },
  "closed": [
@@ -132,9 +132,29 @@
    "pct": -1.39,
    "pnl": -65.5,
    "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "MRK",
+   "opened": "2026-10-30",
+   "closed": "2026-11-03",
+   "entry": 149.71,
+   "exit": 143.725,
+   "pct": -3.97,
+   "pnl": -46.59,
+   "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "VRTX",
+   "opened": "2026-10-29",
+   "closed": "2026-11-03",
+   "entry": 539.52,
+   "exit": 533.53,
+   "pct": -1.11,
+   "pnl": -13.13,
+   "reason": "Close below upper GC band"
   }
  ],
- "last_decision_day": "2026-11-02",
+ "last_decision_day": "2026-11-03",
  "started": "2026-10-22",
  "start_equity": 97918.51,
  "start_spy": 762.85,
@@ -166,6 +186,10 @@
   [
    "2026-11-02",
    98312.88
+  ],
+  [
+   "2026-11-03",
+   98065.89
   ]
  ]
 }
