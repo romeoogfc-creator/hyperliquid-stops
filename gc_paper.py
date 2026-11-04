@@ -83,6 +83,11 @@ Profit-protection variants of the live setup U (same 9 slots, 4-hour lock, disas
   Book RML / RMFL / RSL / EXL = RM / RMF / RS / EX with the lock and the smart exit on LONGS only
   Book Z4F  = Z4 + the volume-fade exit on longs (2 quiet 4h candles)
   Book Z4HF = Z4H (lock raised every hour, longs) + the volume-fade exit on longs (6 quiet hourly candles)
+  BEST OF BOTH (lock mode "adaptive"): longs always get the lock + volume fade (Option A). Shorts get the lock too
+  (Option B) EXCEPT while BTC is in a STRONG downtrend, when shorts run free to catch the big slide (Option A).
+  The regime is read from the PREVIOUS daily close (no peeking):
+  Book AB1 / AB1H = strong downtrend = BTC down 10%+ over the last 30 days       (4h candles / hourly candles)
+  Book AB2 / AB2H = strong downtrend = BTC closed 5%+ under its GC filter         (4h candles / hourly candles)
   Book VB   = Z4 + V-BOTTOM longs: a coin 15%+ under its 10-day high makes a new 10-day low, then closes in the top 30%
               of the day's range, green, on 1.5x volume -> buy 15% (exits: lock / -4% stop; exempt from the band exit)
 
@@ -123,7 +128,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.33"
+ENGINE_VERSION = "GC-PAPER-1.34"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -252,6 +257,10 @@ BOOKS = [
     ("EXL", "Z4 + Exhaustion-Candle Exit (longs only)", "long", False),
     ("Z4F", "Z4 + Volume-Fade Exit (longs only)", "long", False),
     ("Z4HF", "Z4 + Hourly Lock + Volume Fade (longs only)", "long", False),
+    ("AB1", "Best of Both: shorts run free when BTC -10%/30d (4h)", "adaptive", False),
+    ("AB2", "Best of Both: shorts run free when BTC 5% under filter (4h)", "adaptive", False),
+    ("AB1H", "Best of Both: shorts run free when BTC -10%/30d (hourly)", "adaptive", False),
+    ("AB2H", "Best of Both: shorts run free when BTC 5% under filter (hourly)", "adaptive", False),
 ]
 # Extra per-book settings (books not listed use the LS-15 defaults).
 #   size_mult: scales every entry and the top-up target.  max_pos / slot_size: at most N positions, each slot_size of NAV.
@@ -342,6 +351,8 @@ BOOK_OPTIONS = {
            ("ZSF4", {"fade": {"after_gain": 0.03, "bars": 2, "vol_ratio": 0.5}}))},
 }
 # The long-only versions share the settings; the "long" lock mode in BOOKS keeps shorts on Z4's rules.
+BOOK_OPTIONS.update({**{c: {**BOOK_OPTIONS["ZSF4"], "regime": rg} for c, rg in (("AB1", "r30"), ("AB2", "under_filter"))},
+                     **{c: {**BOOK_OPTIONS["ZSF"], "regime": rg} for c, rg in (("AB1H", "r30"), ("AB2H", "under_filter"))}})
 BOOK_OPTIONS.update({"RML": BOOK_OPTIONS["RM"], "RMFL": BOOK_OPTIONS["RMF"], "RSL": BOOK_OPTIONS["RS"], "EXL": BOOK_OPTIONS["EX"],
                      "Z4F": BOOK_OPTIONS["ZSF4"], "Z4HF": BOOK_OPTIONS["ZSF"]})
 VOL_AVG_DAYS = 20                      # seller-exit: today's volume vs the previous 20 days
@@ -361,9 +372,23 @@ GROWTH_MIN_DAYS = 30                   # below this, annualising a few days of r
 
 
 def lock_applies(book, side):
-    """Profit lock on all positions ("all", or True from older saved state), on longs only ("long"), or off."""
+    """Profit lock on all positions ("all", or True from older saved state), on longs only ("long"), off, or
+    "adaptive": longs always, shorts unless step_day flagged a strong BTC downtrend for today (book["_strong_down"])."""
     mode = book.get("lock")
+    if mode == "adaptive":
+        return side == "LONG" or not book.get("_strong_down")
     return mode is True or mode == "all" or (mode == "long" and side == "LONG")
+
+
+def strong_downtrend(book, data, day):
+    """Adaptive books: is BTC in a strong downtrend as of the PREVIOUS daily close?"""
+    b = data.get(BENCH, {}).get(day)
+    pb = b.get("_prev") if b else None
+    if not pb or not pb.get("valid"):
+        return False
+    if book.get("regime") == "r30":
+        return pb.get("r30") is not None and pb["r30"] <= -0.10
+    return pb["c"] < pb["filter"] * 0.95
 
 
 # ======================================================================================
@@ -422,6 +447,7 @@ def enrich(bars):
         tr = b["h"] - b["l"] if i == 0 else max(b["h"] - b["l"], abs(b["h"] - bars[i - 1]["c"]), abs(b["l"] - bars[i - 1]["c"]))
         atr = tr if atr is None else atr + (tr - atr) / ATR_PERIOD          # Wilder's ATR
         b["atr"] = atr
+        b["r30"] = b["c"] / bars[i - 30]["c"] - 1 if i >= 30 else None
         prior = bars[max(0, i - 10):i]
         b["hh10"] = max(x["h"] for x in prior) if len(prior) == 10 else None
         b["ll10"] = min(x["l"] for x in prior) if len(prior) == 10 else None
@@ -701,6 +727,8 @@ def take_half_hit(book, p, high):
 
 def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=None):
     """Runs one LS-15 decision cycle on the daily candle `day` (YYYY-MM-DD) for one book."""
+    if book.get("lock") == "adaptive":
+        book["_strong_down"] = strong_downtrend(book, data, day)
     bar = {c: data[c][day] for c in data if day in data[c]}
     prev = {c: b["_prev"] for c, b in bar.items() if b.get("_prev")}   # previous bar (previous TRADING day for stocks)
     closes = {c: b["c"] for c, b in bar.items()}
