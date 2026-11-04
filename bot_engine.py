@@ -1,5 +1,12 @@
 """
-bot_engine.py — TR-GC-Crypto-LS-15 LIVE BOT (Hyperliquid, real money) — the "Book Z4" setup from gc_paper.py
+bot_engine.py — TR-GC-Crypto-LS-15 LIVE BOT (Hyperliquid, real money) — the "Book AB2H" setup from gc_paper.py
+(LS15-LIVE-1.7 "best of both": Book Z4 below, with the profit lock raised from HOURLY candles, a VOLUME-FADE exit (in
+ profit after a +3% move, 6 hourly candles in a row on under half the volume of the move's busiest stretch with no new
+ high / low -> take the profit), and the profit lock + fade on SHORTS too, EXCEPT while BTC's last daily close is 5%+
+ under its GC filter (a strong downtrend): then shorts run free (only the -4% stop and the LS-15 short exits) to catch
+ the big slide. Stability checks, 100 coin orders, median: last 200 days AB2H +44% (worst +29%, drop -13%) vs Z4 +0%
+ (worst -16%, drop -32%), ahead in 100/100; 2 years (4h version AB2) +177% (worst +131%, drop -21%) vs Z4 +221%
+ (worst +143%, drop -35%).)
 (Book V's early lock + a -4% loss stop on every position. 100-order stability checks at $111, loss-stop ladder:
  -3% +150% | -3.5% +203% | -4% +248% | -4.5% +206% | -5% +181% | -6% +184% | -7% +165% (median, 2 years).
  -3.5% to -4.5% all beat -5%, so -4% sits in the middle of a broad high zone, not on a lone spike.)
@@ -10,13 +17,14 @@ What it trades (same rules as the paper/backtest engine, which it imports for th
   - LS-15 Gaussian Channel signals on DAILY candles, longs AND shorts, top 100 coins by open interest
   - at most 9 positions, 15% of the account each, up to 135% of the account in positions (cross margin, 3x setting
     -> only ~45% of the account is used as margin, the rest stays free as a safety buffer)
-  - longs: the early profit lock (keep 50-90% of the peak gain from +3%) as a REAL stop on Hyperliquid, raised every 4 hours
+  - longs AND shorts: the early profit lock (keep 50-90% of the peak gain from +3%) as a REAL stop on Hyperliquid,
+    moved after every hourly candle, plus the volume-fade exit (shorts: not while BTC is 5%+ under its filter)
   - every position: a LOSS STOP 4% against the entry, resting on the exchange 24/7 (cut losers fast, wait in cash)
-  - shorts: original LS-15 exits (daily close above the GC filter, or take profit at -35%)
+  - shorts also keep the LS-15 exits (daily close above the GC filter, or take profit at -35%)
 
 Schedule: stops.yml runs it every 5 minutes (external cron) with a 15-minute backup. Most runs only check that every
 stop order is in place (a few seconds). The first run after each 00:00 UTC daily close makes the daily decisions (exits,
-then entries), and after every 4-hour candle closes the long profit-lock stops are raised.
+then entries), and after every hourly candle closes the profit-lock stops are moved and the volume-fade exit is checked.
 
 DRY_RUN=true (default in the workflow until you switch it): reads the real account and market, decides everything,
 emails what it WOULD do, sends no orders.
@@ -31,7 +39,7 @@ from email.mime.text import MIMEText
 
 import gc_paper as engine
 
-BOT_VERSION = "LS15-LIVE-1.6"
+BOT_VERSION = "LS15-LIVE-1.7"
 STATE_FILE = "state.json"                  # same file the old scalper used (stops.yml commits it)
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
 SECRET_KEY = os.getenv("HL_SECRET_KEY")
@@ -43,11 +51,14 @@ SLOT_SIZE = 0.15                       # 15% of the account per position (notion
 GROSS_CAP = 1.35                       # at most 135% of the account in positions
 LEVERAGE_SETTING = 3                   # cross margin setting per coin: margin used = notional / 3
 MIN_ORDER_USD = 11.0                   # Hyperliquid minimum is $10; keep a small buffer for rounding / price moves
-LOCK_TIERS = engine.BOOK_OPTIONS["V"]["lock_tiers"]   # early lock: (peak gain, share of it kept), same as paper Book V
+LOCK_TIERS = engine.BOOK_OPTIONS["ZSF"]["lock_tiers"]  # early lock: (peak gain, share of it kept), same as paper Book ZSF
+FADE = engine.BOOK_OPTIONS["ZSF"]["fade"]                 # volume-fade exit: after_gain, bars (hourly candles), vol_ratio
 DISASTER_STOP = 0.04                   # loss stop: resting stop 4% against every position (paper Book Z4)
 SLIPPAGE = 0.01                        # market orders: worst price accepted 1% away
 LOW_BALANCE_WARN = 67.0                # below this, 15% positions fall under $10 and the bot cannot open trades
-H4_MS = 4 * 3600 * 1000
+H1_MS = 3600 * 1000
+FADE_LOOKBACK = engine.KNIFE_LOOKBACK      # a candle's "busy-ness" = average volume of the 6 candles before it
+STRONG_DOWN = 0.95                         # BTC daily close under 95% of its GC filter = strong downtrend: shorts run free
 
 
 # ======================================================================================
@@ -227,39 +238,95 @@ def exit_fill(info, coin, since_ms):
 # ======================================================================================
 # Stops
 # ======================================================================================
-def desired_stop(p):
-    """Long: the higher of the profit lock and the -4% loss stop. Short: the loss stop (LS-15 short exits are daily)."""
+def btc_regime(info=None, data=None):
+    """(strong downtrend?, close, filter) from BTC's last CLOSED daily candle. Uses the daily-decision download when
+    given, else fetches BTC alone (same candles and channel as gc_paper.fetch_market)."""
+    if data and data.get("BTC"):
+        bars = [data["BTC"][d] for d in sorted(data["BTC"])]
+    else:
+        now_ms = int(time.time() * 1000)
+        candles = api_retry(info.candles_snapshot, "BTC", "1d", now_ms - 430 * 86400000, now_ms)
+        bars = [{"date": datetime.fromtimestamp(int(k["t"]) / 1000, tz=timezone.utc).strftime("%Y-%m-%d"), "o": float(k["o"]),
+                 "h": float(k["h"]), "l": float(k["l"]), "c": float(k["c"]), "v": float(k.get("v", 0) or 0)}
+                for k in sorted(candles, key=lambda k: int(k["t"])) if int(k["t"]) + 86400000 <= now_ms]
+        engine.enrich(bars)
+    b = bars[-1] if bars else None
+    if not b or not b.get("valid"):
+        return False, None, None
+    return b["c"] < b["filter"] * STRONG_DOWN, b["c"], b["filter"]
+
+
+def short_lock_on(state):
+    return not state.get("btc_strong_down")
+
+
+def desired_stop(p, short_lock=True):
+    """The profit lock or the 4% loss stop, whichever is tighter (shorts: the lock only while short_lock is on)."""
     if p["side"] == "LONG":
         stop = p["entry"] * (1 - DISASTER_STOP)
         fl = engine.lock_floor(p["peak_px"] / p["entry"] - 1, LOCK_TIERS)
-        if fl is not None:
-            stop = max(stop, p["entry"] * (1 + fl))
+        return max(stop, p["entry"] * (1 + fl)) if fl is not None else stop
+    stop = p["entry"] * (1 + DISASTER_STOP)
+    if not short_lock:
         return stop
-    return p["entry"] * (1 + DISASTER_STOP)
+    fl = engine.lock_floor(1 - p["peak_px"] / p["entry"], LOCK_TIERS)
+    return min(stop, p["entry"] * (1 - fl)) if fl is not None else stop
 
 
-def raise_peaks(info, state, now_ms, log):
-    """Walk the 4-hour candles closed since each long was opened / last checked and raise its peak."""
+def raise_peaks(info, state, now_ms, mids, log):
+    """Walk the hourly candles closed since each position was opened / last checked: move its best price (peak) and
+    run the volume-fade check (same rule as gc_paper.fade_out). Sets p["fade_exit"] when the move has run out of fuel."""
+    since = state.setdefault("h1_since_ms", now_ms)                 # when hourly tracking started (LS15-LIVE-1.7)
     for coin, p in state["positions"].items():
-        if p["side"] != "LONG":
-            continue
-        start = max(int(p.get("peak_checked_ms", p["opened_ms"])), int(p["opened_ms"]))
-        if now_ms < start + H4_MS:
-            continue                                               # no new 4-hour candle has closed since the last check
+        if "h1_checked_ms" not in p:
+            if int(p["opened_ms"]) < since:
+                # Opened before 1.7: track from now on, counting today's price as the best so far (no retroactive close).
+                px = mids.get(coin)
+                if px and p["side"] == "SHORT":
+                    p["peak_px"] = min(p["peak_px"], px)
+                elif px:
+                    p["peak_px"] = max(p["peak_px"], px)
+                p["h1_checked_ms"] = now_ms - now_ms % H1_MS
+                continue
+            p["h1_checked_ms"] = int(p["opened_ms"])
+        start = int(p["h1_checked_ms"])
+        if now_ms < start - start % H1_MS + 2 * H1_MS:
+            continue                                               # no new hourly candle has closed since the last check
         try:
-            candles = api_retry(info.candles_snapshot, coin, "4h", start - H4_MS, now_ms)
+            candles = api_retry(info.candles_snapshot, coin, "1h", start - (FADE_LOOKBACK + 1) * H1_MS, now_ms)
         except Exception as e:
-            log.append(f"⚠️ {coin}: 4h candles unavailable ({e}) — stop not raised this run")
+            log.append(f"⚠️ {coin}: hourly candles unavailable ({e}) — stop not moved this run")
             continue
-        done = p.get("peak_checked_ms", 0)
+        vols = list(p.get("fade_vols") or [])
+        done = start
         for k in sorted(candles, key=lambda k: int(k["t"])):
             t = int(k["t"])
-            if t < p["opened_ms"] or t + H4_MS > now_ms:          # only candles that started after entry and have closed
+            if t + H1_MS > now_ms:
+                continue                                           # still forming
+            v = float(k.get("v", 0) or 0)
+            if t < start:
+                if not p.get("fade_vols"):
+                    vols = (vols + [v])[-FADE_LOOKBACK:]           # history before entry seeds the volume average
                 continue
-            p["peak_px"] = max(p["peak_px"], float(k["h"]))
-            done = max(done, t + H4_MS)
-        if done:
-            p["peak_checked_ms"] = done
+            h, l, c = float(k["h"]), float(k["l"]), float(k["c"])
+            va = sum(vols) / FADE_LOOKBACK if len(vols) >= FADE_LOOKBACK else None
+            vols = (vols + [v])[-FADE_LOOKBACK:]
+            if p["side"] == "LONG":
+                p["peak_px"] = max(p["peak_px"], h)
+                new_extreme, sign = h >= p["peak_px"], 1
+            else:
+                p["peak_px"] = min(p["peak_px"], l)
+                new_extreme, sign = l <= p["peak_px"], -1
+            p["v_ref"] = max(p.get("v_ref") or 0.0, va or 0.0)
+            quiet = p["v_ref"] > 0 and v < FADE["vol_ratio"] * p["v_ref"]
+            p["fade_n"] = (p.get("fade_n") or 0) + 1 if quiet and not new_extreme else 0
+            peak_gain = sign * (p["peak_px"] / p["entry"] - 1)
+            if p["fade_n"] >= FADE["bars"] and (p["side"] == "LONG" or short_lock_on(state)) and peak_gain >= FADE["after_gain"] and sign * (c / p["entry"] - 1) > 0:
+                p["fade_exit"] = (f"💤 Volume faded ({FADE['bars']} hourly candles under {FADE['vol_ratio']*100:.0f}% of the "
+                                  f"move's volume, no new {'high' if p['side'] == 'LONG' else 'low'})")
+            done = t + H1_MS
+        p["fade_vols"] = vols
+        p["h1_checked_ms"] = done
 
 
 # ======================================================================================
@@ -281,7 +348,10 @@ def daily_decisions(info, exchange, state, nav, ex_pos, sz_dec, log, skips):
     prev = {c: data[c][prev_day] for c in data if prev_day in data[c]}
     rank_of = {c: i + 1 for i, c in enumerate(ranked)}
     btc_down = engine.btc_downtrend(data, day)
-    log.append(f"📅 Daily decisions on the {day} close • BTC {'DOWNTREND (bear shorts allowed)' if btc_down else 'not in downtrend'}")
+    strong, bc, bf = btc_regime(data=data)
+    state["btc_strong_down"] = strong
+    log.append(f"📅 Daily decisions on the {day} close • BTC {'DOWNTREND (bear shorts allowed)' if btc_down else 'not in downtrend'}"
+               + (f" • {'📉 STRONG downtrend (BTC ' + format((bc / bf - 1) * 100, '.1f') + '% vs filter): shorts run free' if strong else '🔒 shorts profit-locked'}" if bc else ""))
     # Coins whose stop filled during this candle's day count as exited today, as in the backtest (no re-entry the same day).
     exited = {t["coin"] for t in state["closed"] if str(t.get("closed", ""))[:10] >= day}
 
@@ -390,7 +460,7 @@ def record_closed(info, state, coin, px, why, log):
     fill_px, pnl = exit_fill(info, coin, int(p["opened_ms"]))
     px = px or fill_px or p["entry"]
     gain = (px / p["entry"] - 1) if p["side"] == "LONG" else (1 - px / p["entry"])
-    peak = p["peak_px"] / p["entry"] - 1 if p["side"] == "LONG" else 0.0
+    peak = p["peak_px"] / p["entry"] - 1 if p["side"] == "LONG" else 1 - p["peak_px"] / p["entry"]
     if pnl is None:
         pnl = gain * p["sz"] * p["entry"]
     state["closed"].append({"coin": coin, "side": p["side"], "opened": p["opened"], "closed": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
@@ -427,7 +497,7 @@ def report(state, nav, ex_pos, mids, log, skips, daily_day):
     for coin, p in sorted(state["positions"].items()):
         now = mids.get(coin, p["entry"])
         g = (now / p["entry"] - 1) if p["side"] == "LONG" else (1 - now / p["entry"])
-        peak = (p["peak_px"] / p["entry"] - 1) * 100 if p["side"] == "LONG" else None
+        peak = ((p["peak_px"] / p["entry"] - 1) if p["side"] == "LONG" else (1 - p["peak_px"] / p["entry"])) * 100
         rows += (f"<tr><td>{coin}</td><td style='color:{'#16a34a' if p['side']=='LONG' else '#dc2626'};'>{p['side']}</td>"
                  f"<td>{p['entry']:.6g}</td><td>{now:.6g}</td><td style='color:{'#15803d' if g>=0 else '#b91c1c'};'>{g*100:+.2f}%</td>"
                  f"<td>{'—' if peak is None else f'{peak:+.1f}%'}</td><td>{fmt_px(p.get('stop'))}</td>"
@@ -468,9 +538,11 @@ def report(state, nav, ex_pos, mids, log, skips, daily_day):
   <table style="width:100%;font-size:11px;border-collapse:collapse;" cellpadding="3"><tr style="background:#f1f5f9;"><th align="left">When</th><th align="left">Coin</th>
    <th align="left">Side</th><th align="left">Result</th><th align="left">Peak</th><th align="left">$</th><th align="left">Why</th></tr>{recent}</table>
   <div style="font-size:10px;color:#64748b;margin-top:10px;">Rules: LS-15 daily signals (long + short), max {MAX_POSITIONS} positions × {SLOT_SIZE*100:.0f}%,
-   up to {GROSS_CAP*100:.0f}% in positions, cross {LEVERAGE_SETTING}x setting. Longs: early profit lock (keeps 50% of the peak gain from +3%,
-   60% from +5%, 70% from +10%, 80/85/90% from +20/35/60%) as a real stop raised every 4 hours. Every position: loss stop {DISASTER_STOP*100:.0f}% against the entry.
-   Shorts exit on a daily close above the GC filter or at -35%.</div>
+   up to {GROSS_CAP*100:.0f}% in positions, cross {LEVERAGE_SETTING}x setting. Early profit lock (keeps 50% of the peak gain from +3%,
+   60% from +5%, 70% from +10%, 80/85/90% from +20/35/60%) as a real stop moved every hour, plus a volume-fade exit (6 quiet hours after +3%).
+   Shorts get the lock and fade too, except while BTC closes 5%+ under its filter
+   (now: {'📉 strong downtrend, shorts run free' if state.get('btc_strong_down') else '🔒 shorts locked'}).
+   Every position: loss stop {DISASTER_STOP*100:.0f}% against the entry. Shorts also exit on a daily close above the GC filter or at -35%.</div>
  </div></div></body></html>"""
     text = f"{BOT_VERSION} {mode}\nNAV ${nav:,.2f}\n" + "\n".join(log)
     summary = f"${nav:,.2f} • {len(state['positions'])} open" + (f" • {len([x for x in log if x[:1] in '✅💰🔻'])} trades" if log else "")
@@ -527,21 +599,36 @@ def main():
     if did_daily and not DRY_RUN:
         nav, ex_pos, mids = read_account(info)
 
-    # 3) Every run: raise long peaks from 4h candles, sync every stop order
-    raise_peaks(info, state, now_ms, log)
+    # 3) Every run: move peaks from hourly candles (+ volume-fade check), sync every stop order
+    if "btc_strong_down" not in state:                             # first run of 1.7: read the regime once
+        try:
+            state["btc_strong_down"] = btc_regime(info)[0]
+        except Exception as e:
+            log.append(f"⚠️ BTC regime unavailable ({e}) — shorts profit-locked until the next daily close")
+            state["btc_strong_down"] = False
+    raise_peaks(info, state, now_ms, mids, log)
     stops_now = stop_orders(info)
     closed_now = False
     for coin, p in list(state["positions"].items()):
-        stop = desired_stop(p)
-        if p["side"] == "LONG" and mids.get(coin) and mids[coin] <= stop:
-            close_own(info, exchange, state, coin, f"🔒 Profit lock (price {mids[coin]:.6g} already under stop {stop:.6g})", log)
+        if p.get("fade_exit"):
+            close_own(info, exchange, state, coin, p["fade_exit"], log)
+            closed_now = True
+            continue
+        stop = desired_stop(p, short_lock_on(state))
+        px = mids.get(coin)
+        if px and ((p["side"] == "LONG" and px <= stop) or (p["side"] == "SHORT" and px >= stop)):
+            locked = (stop > p["entry"]) if p["side"] == "LONG" else (stop < p["entry"])
+            close_own(info, exchange, state, coin, f"{'🔒 Profit lock' if locked else '✂️ Loss stop'} (price {px:.6g} already past stop {stop:.6g})", log)
             closed_now = True
             continue
         if p.get("stop") is None or abs(stop - p["stop"]) / stop > 0.0005:
             old = p.get("stop")
             p["stop"] = stop
-            if old is not None and stop > old and p["side"] == "LONG":
-                log.append(f"⬆️ {coin}: stop raised {old:.6g} → {stop:.6g} (peak {(p['peak_px']/p['entry']-1)*100:+.1f}%)")
+            peak = (p["peak_px"] / p["entry"] - 1) if p["side"] == "LONG" else (1 - p["peak_px"] / p["entry"])
+            if old is not None and p["side"] == "LONG" and stop > old:
+                log.append(f"⬆️ {coin}: stop raised {old:.6g} → {stop:.6g} (peak {peak*100:+.1f}%)")
+            elif old is not None and p["side"] == "SHORT" and stop < old:
+                log.append(f"⬇️ {coin}: short stop lowered {old:.6g} → {stop:.6g} (peak {peak*100:+.1f}%)")
         sync_stop(exchange, stops_now, coin, p["side"], p["sz"], p["stop"], sz_dec.get(coin, 2), log)
     for coin in stops_now:                                          # stops left over from closed positions
         if coin not in ex_pos:
@@ -555,7 +642,7 @@ def main():
     state["version"] = BOT_VERSION
     save_state(state)
     print("\n".join(log), flush=True)
-    if did_daily or IS_MANUAL or any(x[:1] in "✅💰🔻🚨⬆🔄" for x in log):
+    if did_daily or IS_MANUAL or any(x[:1] in "✅💰🔻🚨⬆⬇🔄" for x in log):
         report(state, nav, ex_pos, mids, log, skips, daily_day)
 
 
