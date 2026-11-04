@@ -4,31 +4,34 @@
    "side": "SHORT",
    "sz": 50.0,
    "entry": 0.32857,
-   "peak_px": 0.32857,
+   "peak_px": 0.319795,
    "opened": "2026-10-30",
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
-   "stop": 0.3417128
+   "stop": 0.3417128,
+   "h1_checked_ms": 1793822400000
   },
   "MORPHO": {
    "side": "SHORT",
    "sz": 7.0,
    "entry": 2.3832,
-   "peak_px": 2.3832,
+   "peak_px": 2.224,
    "opened": "2026-10-31",
    "opened_ms": 1793491478956,
    "reason": "bear short (rejected bounce, BTC down)",
-   "stop": 2.4785280000000003
+   "stop": 2.28768,
+   "h1_checked_ms": 1793822400000
   },
   "STBL": {
    "side": "SHORT",
    "sz": 673.0,
    "entry": 0.024942,
-   "peak_px": 0.024942,
+   "peak_px": 0.024555,
    "opened": "2026-11-01",
    "opened_ms": 1793577865006,
    "reason": "hedge short (cross under filter)",
-   "stop": 0.02593968
+   "stop": 0.02593968,
+   "h1_checked_ms": 1793822400000
   },
   "ASTER": {
    "side": "SHORT",
@@ -38,7 +41,8 @@
    "opened": "2026-11-03",
    "opened_ms": 1793750656986,
    "reason": "bear short (rejected bounce, BTC down)",
-   "stop": 0.728364
+   "stop": 0.728364,
+   "h1_checked_ms": 1793822400000
   }
  },
  "closed": [
@@ -220,5 +224,7 @@
    111.41
   ]
  ],
- "version": "LS15-LIVE-1.6"
+ "version": "LS15-LIVE-1.7",
+ "btc_strong_down": false,
+ "h1_since_ms": 1793824939398
 }
