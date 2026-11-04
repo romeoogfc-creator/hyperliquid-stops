@@ -79,6 +79,9 @@ Profit-protection variants of the live setup U (same 9 slots, 4-hour lock, disas
               volume-confirmed entries (1.5x)
   Book ZSF4 = ZSF on 4h candles (so it can be replayed over 2 years): early lock on longs and shorts + volume-fade
               exit after 2 quiet 4h candles
+  Long-side-only versions (shorts keep Z4's rules, so only the new exit differs from Z4):
+  Book RML / RMFL / RSL / EXL = RM / RMF / RS / EX with the lock and the smart exit on LONGS only
+  Book Z4F  = Z4 + the volume-fade exit on longs (2 quiet 4h candles)
   Book VB   = Z4 + V-BOTTOM longs: a coin 15%+ under its 10-day high makes a new 10-day low, then closes in the top 30%
               of the day's range, green, on 1.5x volume -> buy 15% (exits: lock / -4% stop; exempt from the band exit)
 
@@ -119,7 +122,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.31"
+ENGINE_VERSION = "GC-PAPER-1.32"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -242,6 +245,11 @@ BOOKS = [
     ("ALL", "All Smart Exits + Volume Entries", "all", False),
     ("VB", "Z4 + V-Bottom Longs", "long", False),
     ("ZSF4", "Early Lock Both Sides + Volume-Fade Exit (4h)", "all", False),
+    ("RML", "Z4 + Runner Mode (longs only)", "long", False),
+    ("RMFL", "Z4 + Runner Mode + Volume Fade (longs only)", "long", False),
+    ("RSL", "Z4 + Exit When Lagging BTC (longs only)", "long", False),
+    ("EXL", "Z4 + Exhaustion-Candle Exit (longs only)", "long", False),
+    ("Z4F", "Z4 + Volume-Fade Exit (longs only)", "long", False),
 ]
 # Extra per-book settings (books not listed use the LS-15 defaults).
 #   size_mult: scales every entry and the top-up target.  max_pos / slot_size: at most N positions, each slot_size of NAV.
@@ -331,6 +339,9 @@ BOOK_OPTIONS = {
            ("VB", {"vbottom": {"drop": 0.15, "close_top": 0.30, "vol": 1.5}}),
            ("ZSF4", {"fade": {"after_gain": 0.03, "bars": 2, "vol_ratio": 0.5}}))},
 }
+# The long-only versions share the settings; the "long" lock mode in BOOKS keeps shorts on Z4's rules.
+BOOK_OPTIONS.update({"RML": BOOK_OPTIONS["RM"], "RMFL": BOOK_OPTIONS["RMF"], "RSL": BOOK_OPTIONS["RS"], "EXL": BOOK_OPTIONS["EX"],
+                     "Z4F": BOOK_OPTIONS["ZSF4"]})
 VOL_AVG_DAYS = 20                      # seller-exit: today's volume vs the previous 20 days
 ATR_PERIOD = 14
 CLIMAX_ATR = 2.0                       # "parabolic" = daily close more than 2 ATR above the upper band
