@@ -39,7 +39,7 @@ from email.mime.text import MIMEText
 
 import gc_paper as engine
 
-BOT_VERSION = "LS15-LIVE-1.7"
+BOT_VERSION = "LS15-LIVE-1.7.1"
 STATE_FILE = "state.json"                  # same file the old scalper used (stops.yml commits it)
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
 SECRET_KEY = os.getenv("HL_SECRET_KEY")
@@ -64,7 +64,7 @@ STRONG_DOWN = 0.95                         # BTC daily close under 95% of its GC
 # ======================================================================================
 # Helpers
 # ======================================================================================
-def api_retry(func, *args, retries=4, delay=2.0, **kwargs):
+def api_retry(func, *args, retries=6, delay=2.0, **kwargs):    # ~1 minute of retries: rides out short API hiccups
     for attempt in range(retries):
         try:
             return func(*args, **kwargs)
@@ -201,7 +201,11 @@ def sync_stop(exchange, stops_now, coin, side, sz, stop_px, sz_dec, log):
             keep = o["oid"]
     if keep is None:
         is_buy = side == "SHORT"                                   # a short's stop BUYS back
-        res = exchange.order(coin, is_buy, sz, px, {"trigger": {"isMarket": True, "triggerPx": px, "tpsl": "sl"}}, reduce_only=True)
+        try:
+            res = exchange.order(coin, is_buy, sz, px, {"trigger": {"isMarket": True, "triggerPx": px, "tpsl": "sl"}}, reduce_only=True)
+        except Exception as e:                                     # network: keep the old stop, the next run tries again
+            log.append(f"⚠️ {coin}: stop @ {px} not sent ({e}) — old stop kept, retrying next run")
+            return
         ok, _, err = order_result(res)
         if not ok:
             log.append(f"🚨 {coin}: stop @ {px} FAILED ({err}) — old stop kept")
@@ -455,6 +459,14 @@ def close_own(info, exchange, state, coin, why, log):
     record_closed(info, state, coin, avg or None, why, log)
 
 
+def safe_close(info, exchange, state, coin, why, log):
+    """close_own that never crashes the run: on a network error the position (and its stop) stays, next run retries."""
+    try:
+        close_own(info, exchange, state, coin, why, log)
+    except Exception as e:
+        log.append(f"⚠️ {coin}: close not sent ({e}) — stop still resting, retrying next run")
+
+
 def record_closed(info, state, coin, px, why, log):
     p = state["positions"].pop(coin)
     fill_px, pnl = exit_fill(info, coin, int(p["opened_ms"]))
@@ -611,14 +623,14 @@ def main():
     closed_now = False
     for coin, p in list(state["positions"].items()):
         if p.get("fade_exit"):
-            close_own(info, exchange, state, coin, p["fade_exit"], log)
+            safe_close(info, exchange, state, coin, p["fade_exit"], log)
             closed_now = True
             continue
         stop = desired_stop(p, short_lock_on(state))
         px = mids.get(coin)
         if px and ((p["side"] == "LONG" and px <= stop) or (p["side"] == "SHORT" and px >= stop)):
             locked = (stop > p["entry"]) if p["side"] == "LONG" else (stop < p["entry"])
-            close_own(info, exchange, state, coin, f"{'🔒 Profit lock' if locked else '✂️ Loss stop'} (price {px:.6g} already past stop {stop:.6g})", log)
+            safe_close(info, exchange, state, coin, f"{'🔒 Profit lock' if locked else '✂️ Loss stop'} (price {px:.6g} already past stop {stop:.6g})", log)
             closed_now = True
             continue
         if p.get("stop") is None or abs(stop - p["stop"]) / stop > 0.0005:
@@ -640,10 +652,15 @@ def main():
         state.setdefault("nav_history", []).append([datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"), round(nav, 2)])
         state["nav_history"] = state["nav_history"][-400:]
     state["version"] = BOT_VERSION
+    state["error_streak"] = 0                                      # a run got all the way through
     save_state(state)
     print("\n".join(log), flush=True)
     if did_daily or IS_MANUAL or any(x[:1] in "✅💰🔻🚨⬆⬇🔄" for x in log):
         report(state, nav, ex_pos, mids, log, skips, daily_day)
+
+
+NETWORK_WORDS = ("timed out", "timeout", "connection", "temporarily", "502", "503", "504", "429", "reset by peer")
+ERROR_EMAIL_AFTER = 3                      # network errors: email only after 3 failed runs in a row (~15 minutes)
 
 
 if __name__ == "__main__":
@@ -652,8 +669,20 @@ if __name__ == "__main__":
     except Exception as e:
         msg = f"LS-15 LIVE bot error: {e}"
         print(msg, flush=True)
-        try:
-            send_email(f"⚠️ {msg}", f"<pre>{msg}</pre>", msg)
+        streak = 1
+        try:                                                       # count failed runs in a row (only this field changes)
+            with open(STATE_FILE) as f:
+                saved = json.load(f)
+            streak = int(saved.get("error_streak") or 0) + 1
+            saved["error_streak"] = streak
+            save_state(saved)
         except Exception:
             pass
+        network = any(w in str(e).lower() for w in NETWORK_WORDS)
+        if not network or streak >= ERROR_EMAIL_AFTER:
+            note = (f"\n\n{streak} runs in a row have failed. Stops already on Hyperliquid stay in place." if network else "")
+            try:
+                send_email(f"⚠️ {msg}", f"<pre>{msg}{note}</pre>", msg + note)
+            except Exception:
+                pass
         raise
