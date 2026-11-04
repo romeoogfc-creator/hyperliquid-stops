@@ -55,6 +55,30 @@ Profit-protection variants of the live setup U (same 9 slots, 4-hour lock, disas
   Book KN2 = more sensitive: >= 1.5x volume, closes in the bottom 35%
   Book KN3 = no volume check: a red 4h candle that falls >= 3% open-to-close and closes in its bottom 25%
   Book KN4 = only the extreme ones: >= 3x volume, closes in the bottom 25%
+  Profit lock on SHORTS too (Z4 locks longs only):
+  Book ZS  = Z4 with the early lock on shorts as well (keep 50% of the peak gain from +3% ... 90% from +60%)
+  Book ZSY = Z4 with the lock from +1% on longs AND shorts (keep 50% of any gain from +1%)
+  Volume-confirmed entries (skip a breakout / breakdown that comes on ordinary volume):
+  Book ZV15 = Z4, but a new long or short needs the signal day's volume >= 1.5x its 20-day average
+  Book ZV2  = Z4 with >= 2x volume.   Book ZSV = ZS (lock on shorts too) + the 1.5x volume filter
+  Faster trailing (stop raised every HOUR instead of every 4 hours; Hyperliquid keeps ~200 days of 1h candles,
+  so test these with backtest_days 200):
+  Book Z4H  = Z4 with the lock raised every hour
+  Book ZSYH = lock from +1% on longs and shorts, raised every hour
+  Book ZSYF = ZSYH + VOLUME-FADE exit: in profit, and 6 hourly candles in a row on under half the volume of the
+              move's busiest stretch without a new high (low for shorts) -> take the profit at that candle's close
+  Book ZSF  = early lock (from +3%) on longs and shorts, hourly, + the same volume-fade exit
+  Smarter exits on 4h candles (longs AND shorts, on top of the early lock and the -4% stop):
+  Book RM   = RUNNER MODE: once a trade is +5% and the 4h trend line (EMA20) points its way, the tight lock is swapped
+              for a wide stop 3x the 4h ATR behind the best price; the run ends on a 4h close back through the EMA20
+  Book RMF  = RM + volume-fade exit (3 quiet 4h candles in a row, no new extreme, still in profit)
+  Book SW   = STRUCTURE trail: from +3% the stop follows the lowest low (highest high for shorts) of the last 6 4h candles
+  Book RS   = STRENGTH vs BTC: in profit and the coin lags BTC by 3%+ over the last 24 hours (leads it, for shorts) -> exit
+  Book EX   = EXHAUSTION: after +10%, a 4h candle 2x its ATR wide with a 60%+ wick against the trade -> exit at its close
+  Book ALL  = everything together: lock from +1% both sides, runner mode, volume fade, exhaustion, strength vs BTC and
+              volume-confirmed entries (1.5x)
+  Book VB   = Z4 + V-BOTTOM longs: a coin 15%+ under its 10-day high makes a new 10-day low, then closes in the top 30%
+              of the day's range, green, on 1.5x volume -> buy 15% (exits: lock / -4% stop; exempt from the band exit)
 
 Every email also has a GROWTH CALCULATOR: each book's return so far, turned into average $ per day at $1k / $10k / $50k /
 $200k and the capital that would have been needed for $200 and $400 a day.
@@ -93,7 +117,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.25"
+ENGINE_VERSION = "GC-PAPER-1.30"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -199,6 +223,22 @@ BOOKS = [
     ("KN2", "Z4 + Knife Exit (4h red, 1.5x volume)", "long", False),
     ("KN3", "Z4 + Knife Exit (4h drop >= 3%)", "long", False),
     ("KN4", "Z4 + Knife Exit (4h red, 3x volume)", "long", False),
+    ("ZS", "Z4 + Early Lock on Shorts too", "all", False),
+    ("ZSY", "Z4 + Lock from +1% on Longs and Shorts", "all", False),
+    ("ZV15", "Z4 + Volume-Confirmed Entries (1.5x)", "long", False),
+    ("ZV2", "Z4 + Volume-Confirmed Entries (2x)", "long", False),
+    ("ZSV", "ZS + Volume-Confirmed Entries (1.5x)", "all", False),
+    ("Z4H", "Z4 + Lock Raised Every Hour", "long", False),
+    ("ZSYH", "Lock from +1% Both Sides, Every Hour", "all", False),
+    ("ZSYF", "ZSYH + Volume-Fade Exit", "all", False),
+    ("ZSF", "Early Lock Both Sides, Every Hour + Volume-Fade Exit", "all", False),
+    ("RM", "Runner Mode (wide ATR stop while trending)", "all", False),
+    ("RMF", "Runner Mode + Volume-Fade Exit", "all", False),
+    ("SW", "Structure Trail (last 6 4h swing low/high)", "all", False),
+    ("RS", "Exit When Lagging BTC", "all", False),
+    ("EX", "Exhaustion-Candle Exit", "all", False),
+    ("ALL", "All Smart Exits + Volume Entries", "all", False),
+    ("VB", "Z4 + V-Bottom Longs", "long", False),
 ]
 # Extra per-book settings (books not listed use the LS-15 defaults).
 #   size_mult: scales every entry and the top-up target.  max_pos / slot_size: at most N positions, each slot_size of NAV.
@@ -258,6 +298,34 @@ BOOK_OPTIONS = {
               "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50]],
               "knife": {"after_gain": 0.03, "vol_mult": vm, "close_in_bottom": cb, "drop": dr}}
        for code, vm, cb, dr in (("KN1", 2.0, 0.25, None), ("KN2", 1.5, 0.35, None), ("KN3", None, 0.25, 0.03), ("KN4", 3.0, 0.25, None))},
+    # ZS / ZSY: the book's lock mode is "all", so the same ladder also protects shorts (4h candles, stop above the low).
+    "ZS": {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": 0.04,
+           "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50]]},
+    "ZSY": {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": 0.04,
+            "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50], [0.01, 0.50]]},
+    # vol_filter: a new entry (long or short) needs the signal day's volume >= vol_filter x its 20-day average.
+    **{code: {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": 0.04, "vol_filter": vf,
+              "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50]]}
+       for code, vf in (("ZV15", 1.5), ("ZV2", 2.0), ("ZSV", 1.5))},
+    # lock_interval "1h": the lock walks hourly candles. fade: see fade_out().
+    **{code: {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": 0.04, "lock_interval": "1h",
+              "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50]] + ([[0.01, 0.50]] if early else []),
+              **({"fade": {"after_gain": 0.01 if early else 0.03, "bars": 6, "vol_ratio": 0.5}} if fade else {})}
+       for code, early, fade in (("Z4H", False, False), ("ZSYH", True, False), ("ZSYF", True, True), ("ZSF", False, True))},
+    # Smart-exit books (4h candles). runner / swing / rs / exhaust: see smart_exits(). vbottom: see vbottom_signal().
+    **{code: {"max_pos": 9, "slot_size": 0.15, "gross_cap": 1.35, "lock_intraday": True, "disaster": 0.04,
+              "lock_tiers": [[0.60, 0.90], [0.35, 0.85], [0.20, 0.80], [0.10, 0.70], [0.05, 0.60], [0.03, 0.50]] + ([[0.01, 0.50]] if code == "ALL" else []),
+              **extra}
+       for code, extra in (
+           ("RM", {"runner": {"after_gain": 0.05, "atr_mult": 3.0}}),
+           ("RMF", {"runner": {"after_gain": 0.05, "atr_mult": 3.0}, "fade": {"after_gain": 0.03, "bars": 3, "vol_ratio": 0.5}}),
+           ("SW", {"swing": {"after_gain": 0.03}}),
+           ("RS", {"rs": {"after_gain": 0.02, "lag": 0.03}}),
+           ("EX", {"exhaust": {"after_gain": 0.10, "range_atr": 2.0, "wick": 0.6}}),
+           ("ALL", {"runner": {"after_gain": 0.05, "atr_mult": 3.0}, "fade": {"after_gain": 0.01, "bars": 3, "vol_ratio": 0.5},
+                    "rs": {"after_gain": 0.02, "lag": 0.03}, "exhaust": {"after_gain": 0.10, "range_atr": 2.0, "wick": 0.6},
+                    "vol_filter": 1.5}),
+           ("VB", {"vbottom": {"drop": 0.15, "close_top": 0.30, "vol": 1.5}}))},
 }
 VOL_AVG_DAYS = 20                      # seller-exit: today's volume vs the previous 20 days
 ATR_PERIOD = 14
@@ -265,6 +333,8 @@ CLIMAX_ATR = 2.0                       # "parabolic" = daily close more than 2 A
 INTRADAY_INTERVAL = "4h"               # candles used by lock_intraday books (Hyperliquid keeps the last 5000 = ~833 days)
 INTRADAY_MS = 4 * 3600 * 1000
 INTRADAY_MAX_DAYS = 830
+INTERVAL_HOURS = {"4h": 4, "1h": 1}
+DATA_1H = {}                           # hourly candles for lock_interval "1h" books (crypto), loaded only when needed
 KNIFE_LOOKBACK = 6                     # knife exit: a 4h candle's volume vs the previous 6 candles (one day)
 
 # Growth calculator (every email): account sizes to scale results to, and the daily-profit targets to size for.
@@ -335,6 +405,9 @@ def enrich(bars):
         tr = b["h"] - b["l"] if i == 0 else max(b["h"] - b["l"], abs(b["h"] - bars[i - 1]["c"]), abs(b["l"] - bars[i - 1]["c"]))
         atr = tr if atr is None else atr + (tr - atr) / ATR_PERIOD          # Wilder's ATR
         b["atr"] = atr
+        prior = bars[max(0, i - 10):i]
+        b["hh10"] = max(x["h"] for x in prior) if len(prior) == 10 else None
+        b["ll10"] = min(x["l"] for x in prior) if len(prior) == 10 else None
     return bars
 
 
@@ -525,6 +598,81 @@ def knife_hit(book, p, k):
     return True
 
 
+def smart_exits(book, p, k):
+    """Runner mode, structure trail, strength vs BTC, exhaustion. Called after set_lock_stop for each intraday candle.
+    May loosen (runner) or raise (swing) p["stop"]; returns an exit reason to close at this candle's close, or None."""
+    long_ = p["side"] == "LONG"
+    sign = 1 if long_ else -1
+    peak_gain = sign * (p["peak_px"] / p["entry"] - 1)
+    now_gain = sign * (k["c"] / p["entry"] - 1)
+    rm = book.get("runner")
+    if rm and k.get("ema") is not None and k.get("ema_prev") is not None and k.get("atr"):
+        trending = (k["c"] > k["ema"] > k["ema_prev"]) if long_ else (k["c"] < k["ema"] < k["ema_prev"])
+        if not p.get("runner") and peak_gain >= rm["after_gain"] and trending:
+            p["runner"] = True
+        if p.get("runner"):
+            if (k["c"] < k["ema"]) if long_ else (k["c"] > k["ema"]):
+                return "🏃 Runner ended (4h close back through the EMA20)"
+            floor = p["entry"] * (1 + sign * rm["after_gain"] / 2)           # a runner never gives back more than half of +5%
+            room = p["peak_px"] - sign * rm["atr_mult"] * k["atr"]
+            wide = max(floor, room) if long_ else min(floor, room)
+            prev = p.get("runner_stop")
+            p["runner_stop"] = wide if prev is None else (max(prev, wide) if long_ else min(prev, wide))
+            p["stop"] = p["runner_stop"]                                     # wide stop replaces the tight lock
+    sw = book.get("swing")
+    if sw and peak_gain >= sw["after_gain"] and k.get("ll6") is not None:
+        level = k["ll6"] if long_ else k["hh6"]
+        floor = p["entry"] * (1 + sign * 0.01)
+        cand = max(level, floor) if long_ else min(level, floor)
+        prev = p.get("swing_stop")
+        p["swing_stop"] = cand if prev is None else (max(prev, cand) if long_ else min(prev, cand))
+        p["stop"] = p["swing_stop"]
+    rs = book.get("rs")
+    if rs and k.get("rs") is not None and peak_gain >= rs["after_gain"] and now_gain > 0 and not p.get("runner"):
+        if (k["rs"] < -rs["lag"]) if long_ else (k["rs"] > rs["lag"]):
+            return f"🐢 {'Lagging' if long_ else 'Beating'} BTC by {abs(k['rs'])*100:.1f}% over 24h"
+    ex = book.get("exhaust")
+    if ex and k.get("atr") and peak_gain >= ex["after_gain"]:
+        rng = k["h"] - k["l"]
+        wick = (k["h"] - max(k["o"], k["c"])) if long_ else (min(k["o"], k["c"]) - k["l"])
+        if rng >= ex["range_atr"] * k["atr"] and rng > 0 and wick >= ex["wick"] * rng:
+            return f"🌋 Exhaustion candle ({rng / k['atr']:.1f}x ATR, {wick / rng * 100:.0f}% wick)"
+    return None
+
+
+def vbottom_signal(book, b):
+    """VB books: sharp drop to a new 10-day low that closes strong (top of the range, green) on heavy volume."""
+    vb = book.get("vbottom")
+    if not vb or not b.get("hh10") or not b.get("ll10") or not b.get("vavg"):
+        return False
+    rng = b["h"] - b["l"]
+    return (b["l"] <= b["ll10"] and b["l"] <= b["hh10"] * (1 - vb["drop"]) and rng > 0 and b["c"] > b["o"]
+            and (b["h"] - b["c"]) <= vb["close_top"] * rng and b.get("v", 0) >= vb["vol"] * b["vavg"])
+
+
+def fade_out(book, p, k):
+    """Fade books: the move has run out of fuel. Called after set_lock_stop for each intraday candle. Tracks the busiest
+    volume stretch of the trade (the candles' rolling average) and counts candles in a row that trade under vol_ratio of
+    it without making a new high (long) / low (short). True = take the profit at this candle's close."""
+    fd = book.get("fade")
+    if not fd:
+        return False
+    p["v_ref"] = max(p.get("v_ref") or 0.0, k.get("va") or 0.0)
+    new_extreme = k["h"] >= p["peak_px"] if p["side"] == "LONG" else k["l"] <= p["peak_px"]
+    quiet = p["v_ref"] > 0 and k.get("v", 0) < fd["vol_ratio"] * p["v_ref"]
+    p["fade_n"] = (p.get("fade_n") or 0) + 1 if quiet and not new_extreme else 0
+    sign = 1 if p["side"] == "LONG" else -1
+    peak_gain = sign * (p["peak_px"] / p["entry"] - 1)
+    now_gain = sign * (k["c"] / p["entry"] - 1)
+    return p["fade_n"] >= fd["bars"] and peak_gain >= fd["after_gain"] and now_gain > 0
+
+
+def weak_volume(book, b):
+    """vol_filter books: True when the signal day's volume is below vol_filter x the 20-day average (entry skipped)."""
+    vf = book.get("vol_filter")
+    return bool(vf and b.get("vavg") and b.get("v", 0) < vf * b["vavg"])
+
+
 def stop_label(book):
     return "✂️ Loss stop" if book.get("disaster", 1) <= 0.10 else "🧯 Disaster stop"
 
@@ -554,22 +702,31 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
             p, b = book["positions"][c], bar.get(c)
             if not b or not lock_applies(book, p["side"]):
                 continue
-            intraday = (data4h or {}).get(c, {}).get(day) if book.get("lock_intraday") else None
+            hourly = book.get("lock_interval") == "1h" and DATA_1H
+            iv = "1h" if hourly or (book.get("lock_interval") == "1h" and STOCKS) else "4h"
+            intraday = ((DATA_1H if hourly else data4h) or {}).get(c, {}).get(day) if book.get("lock_intraday") else None
             if intraday:
                 for k in intraday:
                     # The loss / disaster stop rests on the exchange too: inside the day it competes with the lock,
                     # candle by candle (checking it only against the daily low let a dip-then-rally day exit at a profit).
                     loss_px = p["entry"] * (1 - book["disaster"]) if book.get("disaster") and p["side"] == "LONG" and p["opened"] != day else None
                     if p["side"] == "LONG" and loss_px and (p["stop"] is None or loss_px > p["stop"]) and k["l"] <= loss_px:
-                        close_position(book, c, min(k["o"], loss_px), day, f"{stop_label(book)} (-{book['disaster']*100:g}%, 4h)", log)
+                        close_position(book, c, min(k["o"], loss_px), day, f"{stop_label(book)} (-{book['disaster']*100:g}%, {iv})", log)
+                        exited.add(c)
+                        break
+                    # Shorts too: a locked short's loss stop must be checked candle by candle, or a rise-then-fall day
+                    # would exit at the lock (a profit) when the exchange had already stopped it out at a loss.
+                    loss_s = p["entry"] * (1 + book["disaster"]) if book.get("disaster") and p["side"] == "SHORT" and p["opened"] != day else None
+                    if loss_s and (p["stop"] is None or loss_s < p["stop"]) and k["h"] >= loss_s:
+                        close_position(book, c, max(k["o"], loss_s), day, f"{stop_label(book)} (+{book['disaster']*100:g}% against, {iv})", log)
                         exited.add(c)
                         break
                     if p["stop"] is not None and p["side"] == "LONG" and k["l"] <= p["stop"]:
-                        close_position(book, c, min(k["o"], p["stop"]), day, f"{lock_label(book)} (stop {p['stop']:.6g}, 4h)", log)
+                        close_position(book, c, min(k["o"], p["stop"]), day, f"{lock_label(book)} (stop {p['stop']:.6g}, {iv})", log)
                         exited.add(c)
                         break
                     if p["stop"] is not None and p["side"] == "SHORT" and k["h"] >= p["stop"]:
-                        close_position(book, c, max(k["o"], p["stop"]), day, f"{lock_label(book)} (stop {p['stop']:.6g}, 4h)", log)
+                        close_position(book, c, max(k["o"], p["stop"]), day, f"{lock_label(book)} (stop {p['stop']:.6g}, {iv})", log)
                         exited.add(c)
                         break
                     if take_half_hit(book, p, k["h"]):
@@ -577,6 +734,16 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
                         partial_close(book, c, max(k["o"], tp), book["take_half"]["frac"], day,
                                       f"💵 Take half at +{book['take_half']['at']*100:.0f}%", log)
                     set_lock_stop(book, p, k["h"], k["l"])    # this candle's high/low raises the peak, stop moves up
+                    why_smart = smart_exits(book, p, k)
+                    if why_smart:
+                        close_position(book, c, k["c"], day, f"{why_smart}, {iv}", log)
+                        exited.add(c)
+                        break
+                    if fade_out(book, p, k):
+                        close_position(book, c, k["c"], day, f"💤 Volume faded ({book['fade']['bars']} {iv} candles under "
+                                       f"{book['fade']['vol_ratio']*100:.0f}% of the move's volume, no new {'high' if p['side'] == 'LONG' else 'low'})", log)
+                        exited.add(c)
+                        break
                     if knife_hit(book, p, k):
                         vol = f", volume {k['v']/k['va']:.1f}x" if k.get("va") else ""
                         close_position(book, c, k["c"], day, f"🔪 Falling knife (4h red candle {(k['c']/k['o']-1)*100:+.1f}%{vol}, closed near the low)", log)
@@ -643,7 +810,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
         elif sellers_took_over(book, p, b):
             close_position(book, c, b["c"], day, f"🐻 Sellers took over (red day, volume {b['v']/b['vavg']:.1f}x avg, closed near the low)", log)
             exited.add(c)
-        elif b["c"] < b["upper"]:
+        elif b["c"] < b["upper"] and not str(p.get("reason", "")).startswith("V-bottom"):
             close_position(book, c, b["c"], day, "Close below upper GC band", log)
             exited.add(c)
 
@@ -674,6 +841,8 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
             continue
         if not (b["c"] > b["upper"] and pb["c"] <= pb["upper"]):
             continue
+        if weak_volume(book, b):
+            skips.append((c, f"Long signal on weak volume ({b['v'] / b['vavg']:.1f}x the 20-day average)")); continue
         if c in exited:
             skips.append((c, "Long signal, but exited earlier this run")); continue
         if c in book["positions"]:
@@ -690,6 +859,21 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
             skips.append((c, f"Long signal, not enough cash (${usd:,.2f} < 1% NAV)")); continue
         tag = f"band breakout ({'recent' if recent else 'old'} breakout, {want / nav * 100:.0f}% NAV{', downsized' if usd < want - 0.01 else ''})"
         open_position(book, c, "LONG", usd, b["c"], day, tag, log, power)
+        entered.add(c)
+
+    # 6b) V-BOTTOM LONGS (VB books, rank order): a sharp drop that closes strong on heavy volume
+    for c in (universe if book.get("vbottom") else []):
+        b = bar.get(c)
+        if not b or not b.get("valid") or c in book["positions"] or c in exited or not vbottom_signal(book, b):
+            continue
+        if slots_full(book, "LONG"):
+            skips.append((c, "V-bottom signal, all long slots in use")); continue
+        power = buying_power(book, nav)
+        usd = min(entry_size(book, nav, LONG_SIZE_RECENT), power / (1 + FEE_RATE))
+        if usd < max(MIN_ORDER_USD, nav * MIN_TRADE_NAV):
+            skips.append((c, f"V-bottom signal, ${usd:,.2f} is too small")); continue
+        open_position(book, c, "LONG", usd, b["c"], day, f"V-bottom bounce ({(1 - b['l'] / b['hh10']) * 100:.0f}% under the 10-day high, "
+                      f"volume {b['v'] / b['vavg']:.1f}x)", log, power)
         entered.add(c)
 
     # 7) LONG TOP-UPS (rank order, free cash only)
@@ -718,6 +902,8 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
         bear = btc_down and b["trend"] == "Red" and b["h"] >= BEAR_SHORT_TOUCH * b["filter"] and b["c"] < b["filter"]
         if not (hedge or bear):
             continue
+        if weak_volume(book, b):
+            skips.append((c, f"Short signal on weak volume ({b['v'] / b['vavg']:.1f}x the 20-day average)")); continue
         if c in exited:
             skips.append((c, "Short signal, but exited earlier this run")); continue
         if slots_full(book, "SHORT"):
@@ -804,19 +990,20 @@ def fetch_market(info, history_days, paced=False):
     return ranked, data
 
 
-def fetch_intraday(info, coins, history_days):
-    """{coin: {date: [4h bars in time order]}} for the lock_intraday books. Paced for Hyperliquid's 1200 weight/minute."""
-    days = min(history_days + 2, INTRADAY_MAX_DAYS)
+def fetch_intraday(info, coins, history_days, interval=INTRADAY_INTERVAL):
+    """{coin: {date: [4h (or 1h) bars in time order]}} for the lock_intraday books. Paced for Hyperliquid's 1200 weight/minute."""
+    hours = INTERVAL_HOURS[interval]
+    days = min(history_days + 2, int(4990 * hours / 24))      # Hyperliquid keeps the last 5000 candles
     now_ms = int(time.time() * 1000)
     start_ms = now_ms - days * 86400000
-    weight = 20 + days * 6 / 60                               # candleSnapshot weight = 20 + candles/60
+    weight = 20 + days * 24 / hours / 60                      # candleSnapshot weight = 20 + candles/60
     out = {}
     for coin in coins:
         time.sleep(max(0.5, weight / 1000 * 60))               # stay under ~1000 weight/minute
         candles = None
         for attempt in range(4):
             try:
-                candles = info.candles_snapshot(coin, INTRADAY_INTERVAL, start_ms, now_ms)
+                candles = info.candles_snapshot(coin, interval, start_ms, now_ms)
                 break
             except Exception:
                 time.sleep(15 * (attempt + 1))                 # 429 / network: back off
@@ -825,15 +1012,45 @@ def fetch_intraday(info, coins, history_days):
         by_day, vols = {}, []
         for k in sorted(candles, key=lambda k: int(k["t"])):
             t = int(k["t"])
-            if t + INTRADAY_MS > now_ms:
+            if t + hours * 3600000 > now_ms:
                 continue
             d = datetime.fromtimestamp(t / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
             v = float(k.get("v", 0) or 0)
             va = sum(vols[-KNIFE_LOOKBACK:]) / KNIFE_LOOKBACK if len(vols) >= KNIFE_LOOKBACK else None
             vols.append(v)
-            by_day.setdefault(d, []).append({"o": float(k["o"]), "h": float(k["h"]), "l": float(k["l"]), "c": float(k["c"]), "v": v, "va": va})
+            by_day.setdefault(d, []).append({"t": t, "o": float(k["o"]), "h": float(k["h"]), "l": float(k["l"]), "c": float(k["c"]), "v": v, "va": va})
         out[coin] = by_day
+    add_intraday_indicators(out)
     return out
+
+
+SMART_BARS = 6                         # smart exits look back 6 intraday candles (24h of 4h candles)
+
+
+def add_intraday_indicators(out):
+    """Per intraday candle: EMA20 (+ its previous value), Wilder ATR14, lowest low / highest high of the last 6 candles,
+    6-candle return, and that return minus BTC's over the same candles (rs)."""
+    for coin, by_day in out.items():
+        bars = [k for d in sorted(by_day) for k in by_day[d]]
+        ema = atr = None
+        for i, k in enumerate(bars):
+            k["ema_prev"] = ema
+            ema = k["c"] if ema is None else ema + (k["c"] - ema) * 2 / 21
+            k["ema"] = ema if i >= 20 else None
+            if k["ema_prev"] is not None and i <= 20:
+                k["ema_prev"] = None
+            tr = k["h"] - k["l"] if i == 0 else max(k["h"] - k["l"], abs(k["h"] - bars[i - 1]["c"]), abs(k["l"] - bars[i - 1]["c"]))
+            atr = tr if atr is None else atr + (tr - atr) / ATR_PERIOD
+            k["atr"] = atr if i >= ATR_PERIOD else None
+            win = bars[max(0, i - SMART_BARS + 1):i + 1]
+            k["ll6"], k["hh6"] = min(x["l"] for x in win), max(x["h"] for x in win)
+            k["r6"] = k["c"] / bars[i - SMART_BARS]["c"] - 1 if i >= SMART_BARS else None
+    btc = {k["t"]: k["r6"] for d in out.get("BTC", {}).values() for k in d}
+    for coin, by_day in out.items():
+        for d in by_day.values():
+            for k in d:
+                b = btc.get(k["t"])
+                k["rs"] = k["r6"] - b if k.get("r6") is not None and b is not None else None
 
 
 # ---------------- Stocks (Alpaca market data; read-only, no orders) ----------------
@@ -1235,6 +1452,13 @@ def load_market(info, history_days):
     return fetch_stock_market(history_days) if STOCKS else fetch_market(info, history_days)
 
 
+def load_hourly(info, coins, history_days, codes):
+    """Fill DATA_1H when a book uses the hourly lock (crypto only; stock 'intraday' bars are hourly already)."""
+    DATA_1H.clear()
+    if not STOCKS and any(BOOK_OPTIONS.get(c, {}).get("lock_interval") == "1h" for c in codes):
+        DATA_1H.update(fetch_intraday(info, coins, history_days, "1h"))
+
+
 def load_intraday(info, coins, history_days):
     return fetch_stock_intraday(coins, history_days) if STOCKS else fetch_intraday(info, coins, history_days)
 
@@ -1246,6 +1470,7 @@ def run_backtest(info):
     days = backtest_days(all_days)
     books = [new_book(code, name, lock, guard) for code, name, lock, guard in BOOKS]
     data4h = load_intraday(info, universe, BACKTEST_DAYS) if needs_intraday(books) else {}
+    load_hourly(info, universe, BACKTEST_DAYS, [b["code"] for b in books])
     min_order_skips = {b["code"]: 0 for b in books}
     for day in days:
         btc_down = btc_downtrend(data, day)
@@ -1282,6 +1507,7 @@ def run_robust(info):
     if not specs:
         raise RuntimeError(f"ROBUST_BOOKS {ROBUST_BOOKS} matches no book")
     data4h = load_intraday(info, universe, BACKTEST_DAYS) if any(BOOK_OPTIONS.get(c, {}).get("lock_intraday") for c, *_ in specs) else {}
+    load_hourly(info, universe, BACKTEST_DAYS, [c for c, *_ in specs])
     btc_down = {d: btc_downtrend(data, d) for d in days}
     last = days[-1]
     prices = {c: data[c][last]["c"] for c in data if last in data[c]}
@@ -1369,6 +1595,8 @@ def run_paper(info):
     held = {c for b in books for c in b["positions"]}
     data4h = (fetch_intraday(info, [c for c in ranked[:DRIFT_OUT_RANK] if c in data or c in held], 10)
               if todo and needs_intraday(books) else {})
+    if todo:
+        load_hourly(info, [c for c in ranked[:DRIFT_OUT_RANK] if c in data or c in held], 10, [b["code"] for b in books])
     for day in todo:
         btc_down = btc_downtrend(data, day)
         entries = []
@@ -1472,7 +1700,13 @@ def ross_fetch_stocks(symbols, tf):
     mins = ROSS_TF_MIN[tf]
     now = datetime.now(timezone.utc)
     tf_api = {"5m": "5Min", "15m": "15Min", "30m": "30Min", "1h": "1Hour", "4h": "1Hour"}[tf]
-    raw = alpaca_bars(list(symbols), tf_api, now - timedelta(days=ROSS_STOCK_DAYS[tf]), now - timedelta(minutes=16))
+    raw = {}
+    symbols = list(symbols)
+    for i in range(0, len(symbols), 8):                       # small batches: one request series per batch, so a long
+        raw.update(alpaca_bars(symbols[i:i + 8], tf_api,     # history can never run into the page limit and drop symbols
+                               now - timedelta(days=ROSS_STOCK_DAYS[tf]), now - timedelta(minutes=16)))
+    missing = [s for s in symbols if not raw.get(s)]
+    print(f"{tf}: Alpaca bars for {len(symbols) - len(missing)}/{len(symbols)} symbols" + (f", missing {missing}" if missing else ""), flush=True)
     out = {}
     for sym, bl in raw.items():
         rows = []
@@ -1722,7 +1956,7 @@ def run_ross(info):
         grid, data = ross_align(raw)
         sigs = {c: ross_signals(data[c], mins, ({"4h": 2}.get(tf) or 390 // mins) if STOCKS else None) for c in data}
         days = (grid[-1] - grid[0]) / 86400000 + (1 if STOCKS else mins / 1440)
-        btc_ret = (btc["c"][-1] / btc["c"][min(int(np.searchsorted(btc["t"], grid[0])), len(btc["c"]) - 1)] - 1) * 100 if btc is not None else float("nan")
+        btc_ret = (btc["c"][-1] / btc["c"][min(int(np.searchsorted(btc["t"], grid[0])), len(btc["c"]) - 1)] - 1) * 100 if btc is not None else None
         first = datetime.fromtimestamp(grid[0] / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
         n_sig = int(sum(int((sigs[c]["setup"] > 0).sum()) for c in sigs))
         for book, s in (("R", 1.0), ("RS", math.sqrt(mins / 15))):
@@ -1737,7 +1971,7 @@ def run_ross(info):
                      f"<td style='color:{pct_color(st['h1'])};'>{st['h1']:+.1f}%</td><td style='color:{pct_color(st['h2'])};'>{st['h2']:+.1f}%</td>"
                      f"<td style='color:#b91c1c;'>{st['mdd']:.1f}%</td><td>{st['n']} ({st['per_day']:.1f}/day)</td><td>{st['win']:.0f}%</td>"
                      f"<td>{st['avg_w']:+.2f}% / {st['avg_l']:+.2f}%</td><td>{pf}</td><td>${st['fees']:,.2f}</td>"
-                     f"<td style='color:{pct_color(st['pnl_before_fees'])};'>${st['pnl_before_fees']:+,.2f}</td><td>{btc_ret:+.1f}%</td></tr>"
+                     f"<td style='color:{pct_color(st['pnl_before_fees'])};'>${st['pnl_before_fees']:+,.2f}</td><td>{'—' if btc_ret is None else f'{btc_ret:+.1f}%'}</td></tr>"
                      f"<tr><td colspan='12' style='font-size:10px;color:#64748b;border-bottom:1px solid #e2e8f0;'>Exits: {why or 'none'} • "
                      f"P&amp;L by setup: {setups or 'none'}</td></tr>")
             summary.append(f"{tf} {book}: {st['ret']:+.1f}% ({st['n']} trades, PF {pf})")
@@ -1764,7 +1998,7 @@ def run_ross(info):
       15-minute scratch and 30-minute flat exits). <b>RS</b> = the same exits stretched to the timeframe (every distance x
       &radic;(timeframe / 15m): 5m x0.58, 30m x1.41, 1h x2, 4h x4). A green row = made money overall AND in both halves of the test
       with profit factor above 1.2. "Before fees" shows whether there is any edge at all before the exchange takes its cut.
-      Longer timeframes cover more days because Hyperliquid keeps only the last 5,000 candles.</div>
+      Longer timeframes cover more days: about 5,000 candles per size{' (at most 2 years)' if STOCKS else ' (all Hyperliquid keeps)'}.</div>
     <div style="overflow-x:auto;"><table style="width:100%;font-size:11px;border-collapse:collapse;" cellpadding="4">
       <tr style="background:#f1f5f9;"><th align="left">Timeframe / book</th><th align="left">Return</th><th align="left">1st half</th>
       <th align="left">2nd half</th><th align="left">Worst drop</th><th align="left">Trades</th><th align="left">Win rate</th>
