@@ -76,10 +76,60 @@
    "bought": "2026-11-03",
    "breakout": "2026-11-03"
   },
-  "RTX": {
-   "opened": "2026-11-03",
-   "bought": "2026-11-03",
-   "breakout": "2026-11-03"
+  "AAPL": {
+   "opened": "2026-11-04",
+   "bought": "2026-11-04",
+   "breakout": "2026-07-02"
+  },
+  "AMZN": {
+   "opened": "2026-11-04",
+   "bought": "2026-11-04",
+   "breakout": "2026-08-24"
+  },
+  "JNJ": {
+   "opened": "2026-11-04",
+   "bought": "2026-11-04",
+   "breakout": "2026-10-29"
+  },
+  "MRK": {
+   "opened": "2026-11-04",
+   "bought": "2026-11-04",
+   "breakout": "2026-06-23"
+  },
+  "AXP": {
+   "opened": "2026-11-04",
+   "bought": "2026-11-04",
+   "breakout": "2026-07-27"
+  },
+  "NKE": {
+   "opened": "2026-11-04",
+   "bought": "2026-11-04",
+   "breakout": "2026-11-04"
+  },
+  "TJX": {
+   "opened": "2026-11-04",
+   "bought": "2026-11-04",
+   "breakout": "2026-10-16"
+  },
+  "VRTX": {
+   "opened": "2026-11-04",
+   "bought": "2026-11-04",
+   "breakout": "2026-08-05"
+  },
+  "CMCSA": {
+   "opened": "2026-11-04",
+   "bought": "2026-11-04",
+   "breakout": "2026-11-04"
+  },
+  "ELV": {
+   "opened": "2026-11-04",
+   "bought": "2026-11-04",
+   "breakout": "2026-09-03"
+  },
+  "ABNB": {
+   "opened": "2026-11-04",
+   "bought": "2026-11-04",
+   "breakout": "2026-06-18"
   }
  },
  "closed": [
@@ -152,9 +202,19 @@
    "pct": -1.11,
    "pnl": -13.13,
    "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "RTX",
+   "opened": "2026-11-03",
+   "closed": "2026-11-04",
+   "entry": 203.68,
+   "exit": 197.56,
+   "pct": -3.0,
+   "pnl": -141.44,
+   "reason": "Close below upper GC band"
   }
  ],
- "last_decision_day": "2026-11-03",
+ "last_decision_day": "2026-11-04",
  "started": "2026-10-22",
  "start_equity": 97918.51,
  "start_spy": 762.85,
@@ -190,6 +250,10 @@
   [
    "2026-11-03",
    98065.89
+  ],
+  [
+   "2026-11-04",
+   99002.67
   ]
  ]
 }
