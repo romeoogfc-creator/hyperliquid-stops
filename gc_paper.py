@@ -77,6 +77,8 @@ Profit-protection variants of the live setup U (same 9 slots, 4-hour lock, disas
   Book EX   = EXHAUSTION: after +10%, a 4h candle 2x its ATR wide with a 60%+ wick against the trade -> exit at its close
   Book ALL  = everything together: lock from +1% both sides, runner mode, volume fade, exhaustion, strength vs BTC and
               volume-confirmed entries (1.5x)
+  Book ZSF4 = ZSF on 4h candles (so it can be replayed over 2 years): early lock on longs and shorts + volume-fade
+              exit after 2 quiet 4h candles
   Book VB   = Z4 + V-BOTTOM longs: a coin 15%+ under its 10-day high makes a new 10-day low, then closes in the top 30%
               of the day's range, green, on 1.5x volume -> buy 15% (exits: lock / -4% stop; exempt from the band exit)
 
@@ -117,7 +119,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.30"
+ENGINE_VERSION = "GC-PAPER-1.31"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -239,6 +241,7 @@ BOOKS = [
     ("EX", "Exhaustion-Candle Exit", "all", False),
     ("ALL", "All Smart Exits + Volume Entries", "all", False),
     ("VB", "Z4 + V-Bottom Longs", "long", False),
+    ("ZSF4", "Early Lock Both Sides + Volume-Fade Exit (4h)", "all", False),
 ]
 # Extra per-book settings (books not listed use the LS-15 defaults).
 #   size_mult: scales every entry and the top-up target.  max_pos / slot_size: at most N positions, each slot_size of NAV.
@@ -325,7 +328,8 @@ BOOK_OPTIONS = {
            ("ALL", {"runner": {"after_gain": 0.05, "atr_mult": 3.0}, "fade": {"after_gain": 0.01, "bars": 3, "vol_ratio": 0.5},
                     "rs": {"after_gain": 0.02, "lag": 0.03}, "exhaust": {"after_gain": 0.10, "range_atr": 2.0, "wick": 0.6},
                     "vol_filter": 1.5}),
-           ("VB", {"vbottom": {"drop": 0.15, "close_top": 0.30, "vol": 1.5}}))},
+           ("VB", {"vbottom": {"drop": 0.15, "close_top": 0.30, "vol": 1.5}}),
+           ("ZSF4", {"fade": {"after_gain": 0.03, "bars": 2, "vol_ratio": 0.5}}))},
 }
 VOL_AVG_DAYS = 20                      # seller-exit: today's volume vs the previous 20 days
 ATR_PERIOD = 14
