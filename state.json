@@ -21,27 +21,6 @@
     48926.0
    ]
   },
-  "MORPHO": {
-   "side": "SHORT",
-   "sz": 7.0,
-   "entry": 2.3832,
-   "peak_px": 2.2105,
-   "opened": "2026-10-31",
-   "opened_ms": 1793491478956,
-   "reason": "bear short (rejected bounce, BTC down)",
-   "stop": 2.27958,
-   "h1_checked_ms": 1793858400000,
-   "v_ref": 24762.600000000002,
-   "fade_n": 0,
-   "fade_vols": [
-    7599.2,
-    6653.1,
-    22388.1,
-    11444.0,
-    10028.7,
-    29953.2
-   ]
-  },
   "STBL": {
    "side": "SHORT",
    "sz": 673.0,
@@ -225,6 +204,18 @@
    "pct": -4.81,
    "peak_pct": 0.0,
    "pnl": -0.8078,
+   "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
+  },
+  {
+   "coin": "MORPHO",
+   "side": "SHORT",
+   "opened": "2026-10-31",
+   "closed": "2026-11-05 07:05",
+   "entry": 2.3832,
+   "exit": 2.2801,
+   "pct": 4.33,
+   "peak_pct": 7.25,
+   "pnl": 0.7148,
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
