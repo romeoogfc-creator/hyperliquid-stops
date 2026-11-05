@@ -21,27 +21,6 @@
     1261006.0
    ]
   },
-  "STBL": {
-   "side": "SHORT",
-   "sz": 673.0,
-   "entry": 0.024942,
-   "peak_px": 0.022396,
-   "opened": "2026-11-01",
-   "opened_ms": 1793577865006,
-   "reason": "hedge short (cross under filter)",
-   "stop": 0.023159799999999998,
-   "h1_checked_ms": 1793894400000,
-   "v_ref": 241733.83333333334,
-   "fade_n": 0,
-   "fade_vols": [
-    89935.0,
-    81530.0,
-    372761.0,
-    444600.0,
-    349585.0,
-    1553071.0
-   ]
-  },
   "ASTER": {
    "side": "SHORT",
    "sz": 23.0,
@@ -208,6 +187,18 @@
    "peak_pct": 7.13,
    "pnl": 0.6706,
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
+  },
+  {
+   "coin": "STBL",
+   "side": "SHORT",
+   "opened": "2026-11-01",
+   "closed": "2026-11-05 16:30",
+   "entry": 0.024942,
+   "exit": 0.023168,
+   "pct": 7.11,
+   "peak_pct": 10.21,
+   "pnl": 1.1872,
+   "reason": "\ud83d\udd12 Profit lock (price 0.023162 already past stop 0.0231598)"
   }
  ],
  "last_daily_day": "2026-11-04",
