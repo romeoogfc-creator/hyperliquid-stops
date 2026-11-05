@@ -33,7 +33,7 @@ import requests
 
 import gc_paper as engine
 
-BOT_VERSION = "V6.2.0"
+BOT_VERSION = "V6.2.1"
 BOT_TITLE = f"TR-GC-Equities-LS-15-F {BOT_VERSION}"
 STATE_VERSION = "GCSTK-F-1"
 
@@ -179,14 +179,60 @@ def buy(sym, usd, px, log):
 
 
 def sell_all(sym, open_orders, log):
+    """Close the whole position and CHECK it is gone. Returns (gone, filled_qty, avg_fill_px).
+    A close order can fill only partly (seen at the open: TSLA left 1.9 of 11.9 shares), so the order is followed until it
+    is done and whatever is left is sold again, up to 3 times. Profit / loss is then recorded from the real fills."""
     for o in open_orders:                                       # an open order can hold the shares: cancel first
         if o.get("symbol") == sym:
             write("delete", f"/v2/orders/{o['id']}", log)
-    res = write("delete", f"/v2/positions/{sym}", log)
-    if DRY_RUN or ok(res):
-        return True
-    log.append(f"🚨 {sym}: sell REJECTED ({res.status_code if res is not None else 'ERR'}: {res.text[:160] if res is not None else ''})")
-    return False
+    if DRY_RUN:
+        write("delete", f"/v2/positions/{sym}", log)
+        return True, None, None
+    fills = []
+    for attempt in range(3):
+        res = call("delete", f"/v2/positions/{sym}")
+        if not ok(res):
+            if res is not None and res.status_code == 404:      # nothing left to sell
+                break
+            log.append(f"🚨 {sym}: sell REJECTED ({res.status_code if res is not None else 'ERR'}: {res.text[:160] if res is not None else ''})")
+            break
+        oid = (res.json() or {}).get("id") if res.content else None
+        order = {}
+        for _ in range(10):                                     # follow the order for up to ~30 seconds
+            time.sleep(3)
+            got = call("get", f"/v2/orders/{oid}") if oid else None
+            order = got.json() if ok(got) else {}
+            if order.get("status") in ("filled", "canceled", "expired", "rejected", "done_for_day"):
+                break
+        qty, px = float(order.get("filled_qty") or 0), float(order.get("filled_avg_price") or 0)
+        if qty > 0 and px > 0:
+            fills.append((qty, px))
+        left = call("get", f"/v2/positions/{sym}")
+        if not ok(left):                                        # 404: the position is gone
+            break
+        for o in (call("get", "/v2/orders", params={"status": "open", "symbols": sym}).json() or []):
+            call("delete", f"/v2/orders/{o['id']}")             # the unfinished close order still holds the rest
+        log.append(f"⚠️ {sym}: sell filled only partly — selling the remaining {float(left.json().get('qty', 0)):g} shares")
+    gone = not ok(call("get", f"/v2/positions/{sym}"))
+    q = sum(a for a, _ in fills)
+    return gone, (q or None), (sum(a * b for a, b in fills) / q if q else None)
+
+
+def record_sell(state, sym, p, qty, px, est_px, today, why, gone):
+    """Closed-trade record from the REAL fills (qty, px); falls back to Alpaca's estimate if no fill was reported.
+    The bot keeps managing a position that was only partly sold (its state entry stays until it is gone)."""
+    entry = float(p["avg_entry_price"])
+    held = float(p.get("qty", 0) or 0)
+    q = qty or held
+    exit_px = px or est_px
+    rec = {"symbol": sym, "opened": state["positions"].get(sym, {}).get("opened", "?"), "closed": today, "entry": entry,
+           "exit": round(exit_px, 4), "pct": round((exit_px / entry - 1) * 100, 2), "pnl": round(q * (exit_px - entry), 2), "reason": why}
+    if not gone:
+        rec["reason"] += f" (partial: {q:g} of {held:g} shares)"
+    state["closed"].append(rec)
+    if gone:
+        state["positions"].pop(sym, None)
+    return rec
 
 
 # ======================================================================================
@@ -212,13 +258,11 @@ def decide(state, equity, cash, positions, open_orders, today, log, skips, catch
             skips.append((sym, "held, but no usable bar today — kept"))
             continue
         if b["c"] < b["upper"]:
-            if sell_all(sym, open_orders, log):
+            gone, qty, px = sell_all(sym, open_orders, log)
+            if gone or qty:
                 exited.add(sym)
-                meta = state["positions"].pop(sym, {})
-                pnl, pct = float(p.get("unrealized_pl", 0) or 0), float(p.get("unrealized_plpc", 0) or 0) * 100
-                state["closed"].append({"symbol": sym, "opened": meta.get("opened", "?"), "closed": today, "entry": float(p["avg_entry_price"]),
-                                        "exit": b["c"], "pct": round(pct, 2), "pnl": round(pnl, 2), "reason": "Close below upper GC band"})
-                log.append(f"{'💰' if pnl > 0 else '🔻'} SELL {sym} @ ~${b['c']:.2f}: {pct:+.2f}% (${pnl:+,.2f}) — close below upper band")
+                rec = record_sell(state, sym, p, qty, px, b["c"], today, "Close below upper GC band", gone)
+                log.append(f"{'💰' if rec['pnl'] > 0 else '🔻'} SELL {sym} @ ~${rec['exit']:.2f}: {rec['pct']:+.2f}% (${rec['pnl']:+,.2f}) — close below upper band")
                 cash += float(p.get("market_value", 0) or 0)
     state["closed"] = state["closed"][-200:]
 
@@ -387,14 +431,15 @@ def main():
             state["positions"].pop(sym)
 
     for sym, p in losers.items():
-        if sym in positions and sell_all(sym, open_orders, log):
-            meta = state["positions"].pop(sym, {})
-            pnl, pct = float(p.get("unrealized_pl", 0) or 0), float(p.get("unrealized_plpc", 0) or 0) * 100
-            state["closed"].append({"symbol": sym, "opened": meta.get("opened", "?"), "closed": today, "entry": float(p["avg_entry_price"]),
-                                    "exit": float(p["current_price"]), "pct": round(pct, 2), "pnl": round(pnl, 2), "reason": f"✂️ Loss stop (-{LOSS_STOP*100:.0f}%)"})
-            log.append(f"✂️ LOSS STOP {sym} @ ~${float(p['current_price']):.2f}: {pct:+.2f}% (${pnl:+,.2f}) — 5% under the entry, sold to wait in cash")
-            positions.pop(sym, None)
-            cash += float(p.get("market_value", 0) or 0)
+        if sym not in positions:
+            continue
+        gone, qty, px = sell_all(sym, open_orders, log)
+        if gone or qty:
+            rec = record_sell(state, sym, p, qty, px, float(p["current_price"]), today, f"✂️ Loss stop (-{LOSS_STOP*100:.0f}%)", gone)
+            log.append(f"✂️ LOSS STOP {sym} @ ~${rec['exit']:.2f}: {rec['pct']:+.2f}% (${rec['pnl']:+,.2f}) — 5% under the entry, sold to wait in cash")
+            if gone:
+                positions.pop(sym, None)
+            cash += (qty or float(p.get("qty", 0) or 0)) * rec["exit"]
 
     spy_now = None
     if due or catchup_day:
