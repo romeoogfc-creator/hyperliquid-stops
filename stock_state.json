@@ -71,11 +71,6 @@
    "bought": "2026-11-04",
    "breakout": "2026-07-02"
   },
-  "AMZN": {
-   "opened": "2026-11-04",
-   "bought": "2026-11-04",
-   "breakout": "2026-08-24"
-  },
   "JNJ": {
    "opened": "2026-11-04",
    "bought": "2026-11-04",
@@ -115,11 +110,6 @@
    "opened": "2026-11-04",
    "bought": "2026-11-04",
    "breakout": "2026-09-03"
-  },
-  "ABNB": {
-   "opened": "2026-11-04",
-   "bought": "2026-11-04",
-   "breakout": "2026-06-18"
   }
  },
  "closed": [
@@ -231,6 +221,26 @@
    "exit": 388.18,
    "pct": -5.2,
    "pnl": -244.28,
+   "reason": "\u2702\ufe0f Loss stop (-5%)"
+  },
+  {
+   "symbol": "ABNB",
+   "opened": "2026-11-04",
+   "closed": "2026-11-05",
+   "entry": 177.37,
+   "exit": 168.41,
+   "pct": -5.05,
+   "pnl": -60.01,
+   "reason": "\u2702\ufe0f Loss stop (-5%)"
+  },
+  {
+   "symbol": "AMZN",
+   "opened": "2026-11-04",
+   "closed": "2026-11-05",
+   "entry": 267.585495,
+   "exit": 253.93,
+   "pct": -5.1,
+   "pnl": -60.63,
    "reason": "\u2702\ufe0f Loss stop (-5%)"
   }
  ],
