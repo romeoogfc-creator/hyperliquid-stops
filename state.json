@@ -62,27 +62,6 @@
     172512.0,
     911838.0
    ]
-  },
-  "HYPE": {
-   "side": "SHORT",
-   "sz": 0.19,
-   "entry": 83.677,
-   "peak_px": 77.711,
-   "opened": "2026-11-04",
-   "opened_ms": 1793837059101,
-   "reason": "hedge short (cross under filter)",
-   "stop": 80.09740000000001,
-   "h1_checked_ms": 1793894400000,
-   "v_ref": 343695.9716666667,
-   "fade_n": 0,
-   "fade_vols": [
-    234046.5,
-    161614.85,
-    362008.57,
-    362285.79,
-    839252.27,
-    2388915.7
-   ]
   }
  },
  "closed": [
@@ -216,6 +195,18 @@
    "pct": 4.33,
    "peak_pct": 7.25,
    "pnl": 0.7148,
+   "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
+  },
+  {
+   "coin": "HYPE",
+   "side": "SHORT",
+   "opened": "2026-11-04",
+   "closed": "2026-11-05 16:15",
+   "entry": 83.677,
+   "exit": 80.113,
+   "pct": 4.26,
+   "peak_pct": 7.13,
+   "pnl": 0.6706,
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
