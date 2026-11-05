@@ -1,11 +1,6 @@
 {
  "version": "GCSTK-F-1",
  "positions": {
-  "TSLA": {
-   "opened": "2026-10-26",
-   "bought": "2026-10-26",
-   "breakout": "2026-10-05"
-  },
   "TXN": {
    "opened": "2026-10-26",
    "bought": "2026-10-26",
@@ -212,6 +207,16 @@
    "pct": -3.0,
    "pnl": -141.44,
    "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "TSLA",
+   "opened": "2026-10-26",
+   "closed": "2026-11-05",
+   "entry": 395.0,
+   "exit": 371.92,
+   "pct": -5.84,
+   "pnl": -274.68,
+   "reason": "\u2702\ufe0f Loss stop (-5%)"
   }
  ],
  "last_decision_day": "2026-11-04",
