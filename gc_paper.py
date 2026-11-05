@@ -83,6 +83,14 @@ Profit-protection variants of the live setup U (same 9 slots, 4-hour lock, disas
   Book RML / RMFL / RSL / EXL = RM / RMF / RS / EX with the lock and the smart exit on LONGS only
   Book Z4F  = Z4 + the volume-fade exit on longs (2 quiet 4h candles)
   Book Z4HF = Z4H (lock raised every hour, longs) + the volume-fade exit on longs (6 quiet hourly candles)
+  STOCK big-winner locks (Book F5 + a loose profit lock on longs; nothing changes below the first step):
+  Book FL5  = keep 40% of the gain from +5%, 50% from +10%, 60% from +20%, 70% from +35%
+  Book FL10 = keep 50% from +10%, 60% from +20%, 70% from +35%, 80% from +60%
+  Book FL15 = keep 50% from +15%, 65% from +30%, 75% from +50%
+  Book FLH  = FL10, with the lock checked on hourly bars instead of once a day
+  The crypto setup on stocks (F5 + the early lock: keep 50% of the gain from +3% ... 90% from +60%):
+  Book FZ   = checked once a day (already above).   Book FZH = checked on hourly bars
+  Book FZHF = FZH + the volume-fade exit (6 quiet hourly bars after +3% -> take the profit)
   BEST OF BOTH (lock mode "adaptive"): longs always get the lock + volume fade (Option A). Shorts get the lock too
   (Option B) EXCEPT while BTC is in a STRONG downtrend, when shorts run free to catch the big slide (Option A).
   The regime is read from the PREVIOUS daily close (no peeking):
@@ -128,7 +136,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.34"
+ENGINE_VERSION = "GC-PAPER-1.36"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -261,6 +269,12 @@ BOOKS = [
     ("AB2", "Best of Both: shorts run free when BTC 5% under filter (4h)", "adaptive", False),
     ("AB1H", "Best of Both: shorts run free when BTC -10%/30d (hourly)", "adaptive", False),
     ("AB2H", "Best of Both: shorts run free when BTC 5% under filter (hourly)", "adaptive", False),
+    ("FL5", "F5 + Loose Lock from +5% (stocks)", "long", False),
+    ("FL10", "F5 + Big-Winner Lock from +10% (stocks)", "long", False),
+    ("FL15", "F5 + Big-Winner Lock from +15% (stocks)", "long", False),
+    ("FLH", "FL10 checked hourly (stocks)", "long", False),
+    ("FZH", "F5 + Early Lock checked hourly (stocks)", "long", False),
+    ("FZHF", "F5 + Early Lock hourly + Volume Fade (stocks)", "long", False),
 ]
 # Extra per-book settings (books not listed use the LS-15 defaults).
 #   size_mult: scales every entry and the top-up target.  max_pos / slot_size: at most N positions, each slot_size of NAV.
@@ -353,6 +367,13 @@ BOOK_OPTIONS = {
 # The long-only versions share the settings; the "long" lock mode in BOOKS keeps shorts on Z4's rules.
 BOOK_OPTIONS.update({**{c: {**BOOK_OPTIONS["ZSF4"], "regime": rg} for c, rg in (("AB1", "r30"), ("AB2", "under_filter"))},
                      **{c: {**BOOK_OPTIONS["ZSF"], "regime": rg} for c, rg in (("AB1H", "r30"), ("AB2H", "under_filter"))}})
+_FL_TIERS = {"FL5": [[0.35, 0.70], [0.20, 0.60], [0.10, 0.50], [0.05, 0.40]],
+             "FL10": [[0.60, 0.80], [0.35, 0.70], [0.20, 0.60], [0.10, 0.50]],
+             "FL15": [[0.50, 0.75], [0.30, 0.65], [0.15, 0.50]]}
+BOOK_OPTIONS.update({c: {"size_mult": 0.60, "disaster": 0.05, "lock_tiers": t} for c, t in _FL_TIERS.items()})
+BOOK_OPTIONS["FLH"] = {**BOOK_OPTIONS["FL10"], "lock_intraday": True}
+BOOK_OPTIONS["FZH"] = {**BOOK_OPTIONS["FZ"], "lock_intraday": True}
+BOOK_OPTIONS["FZHF"] = {**BOOK_OPTIONS["FZH"], "fade": {"after_gain": 0.03, "bars": 6, "vol_ratio": 0.5}}
 BOOK_OPTIONS.update({"RML": BOOK_OPTIONS["RM"], "RMFL": BOOK_OPTIONS["RMF"], "RSL": BOOK_OPTIONS["RS"], "EXL": BOOK_OPTIONS["EX"],
                      "Z4F": BOOK_OPTIONS["ZSF4"], "Z4HF": BOOK_OPTIONS["ZSF"]})
 VOL_AVG_DAYS = 20                      # seller-exit: today's volume vs the previous 20 days
@@ -1192,15 +1213,22 @@ def fetch_stock_market(history_days):
 def fetch_stock_intraday(coins, history_days):
     """{symbol: {date: [regular-hours hourly bars in order]}} for the lock_intraday books."""
     now = datetime.now(timezone.utc)
-    raw = alpaca_bars(list(coins), "1Hour", now - timedelta(days=history_days + 3), now - timedelta(minutes=16))
+    raw, coins = {}, list(coins)
+    for i in range(0, len(coins), 8):                        # small batches: a long history cannot hit the page limit
+        raw.update(alpaca_bars(coins[i:i + 8], "1Hour", now - timedelta(days=history_days + 3), now - timedelta(minutes=16)))
+    print(f"Hourly stock bars for {sum(1 for c in coins if raw.get(c))}/{len(coins)} symbols", flush=True)
     out = {}
     for sym, bl in raw.items():
-        by_day = {}
+        by_day, vols = {}, []
         for k in sorted(bl, key=lambda k: k["t"]):
             t = _et(k["t"])
             if not (9 <= t.hour <= 15):                          # regular session (the 9:00 bar holds the 9:30 open)
                 continue
-            by_day.setdefault(t.strftime("%Y-%m-%d"), []).append({"o": float(k["o"]), "h": float(k["h"]), "l": float(k["l"]), "c": float(k["c"])})
+            v = float(k.get("v", 0) or 0)
+            va = sum(vols[-KNIFE_LOOKBACK:]) / KNIFE_LOOKBACK if len(vols) >= KNIFE_LOOKBACK else None
+            vols.append(v)
+            by_day.setdefault(t.strftime("%Y-%m-%d"), []).append({"o": float(k["o"]), "h": float(k["h"]), "l": float(k["l"]), "c": float(k["c"]),
+                                                                  "v": v, "va": va})
         out[sym] = by_day
     return out
 
