@@ -9,16 +9,16 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1793829600000,
+   "h1_checked_ms": 1793836800000,
    "v_ref": 593864.0,
-   "fade_n": 0,
+   "fade_n": 2,
    "fade_vols": [
-    358357.0,
-    247934.0,
     183175.0,
     168488.0,
     751016.0,
-    168851.0
+    168851.0,
+    57475.0,
+    127130.0
    ]
   },
   "MORPHO": {
@@ -30,16 +30,16 @@
    "opened_ms": 1793491478956,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 2.27958,
-   "h1_checked_ms": 1793829600000,
+   "h1_checked_ms": 1793836800000,
    "v_ref": 24762.600000000002,
    "fade_n": 1,
    "fade_vols": [
-    12139.3,
-    13363.4,
     27210.5,
     5160.9,
     10243.1,
-    9298.9
+    9298.9,
+    13850.6,
+    6206.6
    ]
   },
   "STBL": {
@@ -51,16 +51,16 @@
    "opened_ms": 1793577865006,
    "reason": "hedge short (cross under filter)",
    "stop": 0.02593968,
-   "h1_checked_ms": 1793829600000,
+   "h1_checked_ms": 1793836800000,
    "v_ref": 220852.33333333334,
    "fade_n": 1,
    "fade_vols": [
-    80289.0,
-    155256.0,
     89446.0,
     126544.0,
     201161.0,
-    89784.0
+    89784.0,
+    124537.0,
+    83389.0
    ]
   },
   "ASTER": {
@@ -72,17 +72,28 @@
    "opened_ms": 1793750656986,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.728364,
-   "h1_checked_ms": 1793829600000,
+   "h1_checked_ms": 1793836800000,
    "v_ref": 266877.1666666667,
-   "fade_n": 1,
+   "fade_n": 3,
    "fade_vols": [
-    160132.0,
-    268571.0,
     173968.0,
     423601.0,
     190391.0,
-    5888.0
+    5888.0,
+    30554.0,
+    50418.0
    ]
+  },
+  "HYPE": {
+   "side": "SHORT",
+   "sz": 0.19,
+   "entry": 83.677,
+   "peak_px": 83.677,
+   "opened": "2026-11-04",
+   "opened_ms": 1793837059101,
+   "reason": "hedge short (cross under filter)",
+   "stop": 87.02408000000001,
+   "h1_checked_ms": 1793837059101
   }
  },
  "closed": [
@@ -207,7 +218,7 @@
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
- "last_daily_day": "2026-11-03",
+ "last_daily_day": "2026-11-04",
  "started": "2026-10-23",
  "start_nav": 110.8395182,
  "nav_history": [
@@ -262,6 +273,10 @@
   [
    "2026-11-04 00:04",
    111.41
+  ],
+  [
+   "2026-11-05 00:04",
+   108.95
   ]
  ],
  "version": "LS15-LIVE-1.7.1",
