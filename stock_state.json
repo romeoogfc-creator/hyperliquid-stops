@@ -125,10 +125,6 @@
    "opened": "2026-11-04",
    "bought": "2026-11-04",
    "breakout": "2026-06-18"
-  },
-  "TSLA": {
-   "opened": "before 2026-11-05",
-   "breakout": null
   }
  },
  "closed": [
@@ -220,6 +216,16 @@
    "exit": 371.92,
    "pct": -5.84,
    "pnl": -274.68,
+   "reason": "\u2702\ufe0f Loss stop (-5%)"
+  },
+  {
+   "symbol": "TSLA",
+   "opened": "before 2026-11-05",
+   "closed": "2026-11-05",
+   "entry": 395.0,
+   "exit": 358.51,
+   "pct": -9.24,
+   "pnl": -69.38,
    "reason": "\u2702\ufe0f Loss stop (-5%)"
   }
  ],
