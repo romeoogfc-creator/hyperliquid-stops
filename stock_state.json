@@ -125,6 +125,10 @@
    "opened": "2026-11-04",
    "bought": "2026-11-04",
    "breakout": "2026-06-18"
+  },
+  "TSLA": {
+   "opened": "before 2026-11-05",
+   "breakout": null
   }
  },
  "closed": [
