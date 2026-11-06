@@ -9,16 +9,16 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1793923200000,
+   "h1_checked_ms": 1793930400000,
    "v_ref": 629318.8333333334,
-   "fade_n": 0,
+   "fade_n": 1,
    "fade_vols": [
-    109107.0,
-    153174.0,
     301404.0,
     113706.0,
     53486.0,
-    1100899.0
+    1100899.0,
+    385952.0,
+    39546.0
    ]
   },
   "ASTER": {
@@ -30,39 +30,59 @@
    "opened_ms": 1793750656986,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.728364,
-   "h1_checked_ms": 1793923200000,
+   "h1_checked_ms": 1793930400000,
    "v_ref": 286019.5,
-   "fade_n": 0,
+   "fade_n": 2,
    "fade_vols": [
-    97897.0,
-    152886.0,
     96569.0,
     104281.0,
     65209.0,
-    1030254.0
+    1030254.0,
+    113986.0,
+    47891.0
    ]
   },
   "INJ": {
    "side": "LONG",
    "sz": 2.0,
    "entry": 8.1799,
-   "peak_px": 8.1799,
+   "peak_px": 8.3409,
    "opened": "2026-11-05",
    "opened_ms": 1793923464171,
    "reason": "band breakout",
    "stop": 7.852703999999999,
-   "h1_checked_ms": 1793923464171
+   "h1_checked_ms": 1793930400000,
+   "v_ref": 49677.38333333333,
+   "fade_n": 0,
+   "fade_vols": [
+    40609.2,
+    51586.2,
+    43701.5,
+    50076.4,
+    63610.5,
+    38380.9
+   ]
   },
   "PURR": {
    "side": "SHORT",
    "sz": 164.0,
    "entry": 0.10117,
-   "peak_px": 0.10117,
+   "peak_px": 0.099855,
    "opened": "2026-11-05",
    "opened_ms": 1793923466365,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.1052168,
-   "h1_checked_ms": 1793923466365
+   "h1_checked_ms": 1793930400000,
+   "v_ref": 557791.0,
+   "fade_n": 0,
+   "fade_vols": [
+    432245.0,
+    965414.0,
+    457850.0,
+    420271.0,
+    248903.0,
+    736208.0
+   ]
   },
   "POL": {
    "side": "SHORT",
@@ -73,7 +93,17 @@
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.09685312,
-   "h1_checked_ms": 1793923468385
+   "h1_checked_ms": 1793930400000,
+   "v_ref": 742230.1666666666,
+   "fade_n": 1,
+   "fade_vols": [
+    640723.0,
+    460892.0,
+    339421.0,
+    937990.0,
+    1272825.0,
+    341859.0
+   ]
   }
  },
  "closed": [
