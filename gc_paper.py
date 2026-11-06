@@ -96,6 +96,8 @@ Profit-protection variants of the live setup U (same 9 slots, 4-hour lock, disas
   The regime is read from the PREVIOUS daily close (no peeking):
   Book AB1 / AB1H = strong downtrend = BTC down 10%+ over the last 30 days       (4h candles / hourly candles)
   Book AB2 / AB2H = strong downtrend = BTC closed 5%+ under its GC filter         (4h candles / hourly candles)
+  Switch-point ladder (does the 5% line sit in a broad good zone?): AB2 with the line at 2/3/4/6/8% under the filter
+  Book AB2_2 / AB2_3 / AB2_4 / AB2_6 / AB2_8 (4h, for 2 years) and AB2H_2 ... AB2H_8 (hourly, for 200 days)
   Book VB   = Z4 + V-BOTTOM longs: a coin 15%+ under its 10-day high makes a new 10-day low, then closes in the top 30%
               of the day's range, green, on 1.5x volume -> buy 15% (exits: lock / -4% stop; exempt from the band exit)
 
@@ -136,7 +138,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.36"
+ENGINE_VERSION = "GC-PAPER-1.37"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -275,6 +277,8 @@ BOOKS = [
     ("FLH", "FL10 checked hourly (stocks)", "long", False),
     ("FZH", "F5 + Early Lock checked hourly (stocks)", "long", False),
     ("FZHF", "F5 + Early Lock hourly + Volume Fade (stocks)", "long", False),
+    *[(f"AB2{h}_{n}", f"Best of Both, shorts free when BTC {n}% under filter ({'hourly' if h else '4h'})", "adaptive", False)
+      for h in ("", "H") for n in (2, 3, 4, 6, 8)],
 ]
 # Extra per-book settings (books not listed use the LS-15 defaults).
 #   size_mult: scales every entry and the top-up target.  max_pos / slot_size: at most N positions, each slot_size of NAV.
@@ -372,6 +376,7 @@ _FL_TIERS = {"FL5": [[0.35, 0.70], [0.20, 0.60], [0.10, 0.50], [0.05, 0.40]],
              "FL15": [[0.50, 0.75], [0.30, 0.65], [0.15, 0.50]]}
 BOOK_OPTIONS.update({c: {"size_mult": 0.60, "disaster": 0.05, "lock_tiers": t} for c, t in _FL_TIERS.items()})
 BOOK_OPTIONS["FLH"] = {**BOOK_OPTIONS["FL10"], "lock_intraday": True}
+BOOK_OPTIONS.update({f"AB2{h}_{n}": {**BOOK_OPTIONS["AB2" + h], "regime_pct": n / 100} for h in ("", "H") for n in (2, 3, 4, 6, 8)})
 BOOK_OPTIONS["FZH"] = {**BOOK_OPTIONS["FZ"], "lock_intraday": True}
 BOOK_OPTIONS["FZHF"] = {**BOOK_OPTIONS["FZH"], "fade": {"after_gain": 0.03, "bars": 6, "vol_ratio": 0.5}}
 BOOK_OPTIONS.update({"RML": BOOK_OPTIONS["RM"], "RMFL": BOOK_OPTIONS["RMF"], "RSL": BOOK_OPTIONS["RS"], "EXL": BOOK_OPTIONS["EX"],
@@ -409,7 +414,7 @@ def strong_downtrend(book, data, day):
         return False
     if book.get("regime") == "r30":
         return pb.get("r30") is not None and pb["r30"] <= -0.10
-    return pb["c"] < pb["filter"] * 0.95
+    return pb["c"] < pb["filter"] * (1 - book.get("regime_pct", 0.05))
 
 
 # ======================================================================================
