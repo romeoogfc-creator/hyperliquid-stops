@@ -42,27 +42,6 @@
     114046.0
    ]
   },
-  "INJ": {
-   "side": "LONG",
-   "sz": 2.0,
-   "entry": 8.1799,
-   "peak_px": 8.4466,
-   "opened": "2026-11-05",
-   "opened_ms": 1793923464171,
-   "reason": "band breakout",
-   "stop": 8.313249999999998,
-   "h1_checked_ms": 1793937600000,
-   "v_ref": 49677.38333333333,
-   "fade_n": 0,
-   "fade_vols": [
-    43701.5,
-    50076.4,
-    63610.5,
-    38380.9,
-    32265.7,
-    21550.3
-   ]
-  },
   "PURR": {
    "side": "SHORT",
    "sz": 164.0,
@@ -262,6 +241,18 @@
    "peak_pct": 10.21,
    "pnl": 1.1872,
    "reason": "\ud83d\udd12 Profit lock (price 0.023162 already past stop 0.0231598)"
+  },
+  {
+   "coin": "INJ",
+   "side": "LONG",
+   "opened": "2026-11-05",
+   "closed": "2026-11-06 04:35",
+   "entry": 8.1799,
+   "exit": 8.3101,
+   "pct": 1.59,
+   "peak_pct": 3.26,
+   "pnl": 0.2532,
+   "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
  "last_daily_day": "2026-11-05",
