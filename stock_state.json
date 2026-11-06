@@ -6,11 +6,6 @@
    "bought": "2026-10-26",
    "breakout": "2026-10-16"
   },
-  "UNP": {
-   "opened": "2026-10-26",
-   "bought": "2026-10-26",
-   "breakout": "2026-01-30"
-  },
   "HD": {
    "opened": "2026-10-29",
    "bought": "2026-10-29",
@@ -66,11 +61,6 @@
    "bought": "2026-11-04",
    "breakout": "2026-10-29"
   },
-  "NKE": {
-   "opened": "2026-11-04",
-   "bought": "2026-11-04",
-   "breakout": "2026-11-04"
-  },
   "VRTX": {
    "opened": "2026-11-04",
    "bought": "2026-11-04",
@@ -85,6 +75,16 @@
    "opened": "2026-11-04",
    "bought": "2026-11-04",
    "breakout": "2026-09-03"
+  },
+  "CVX": {
+   "opened": "2026-11-06",
+   "bought": "2026-11-06",
+   "breakout": "2026-08-10"
+  },
+  "ABNB": {
+   "opened": "2026-11-06",
+   "bought": "2026-11-06",
+   "breakout": "2026-11-06"
   }
  },
  "closed": [
@@ -267,9 +267,29 @@
    "pct": -4.43,
    "pnl": -210.67,
    "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "NKE",
+   "opened": "2026-11-04",
+   "closed": "2026-11-06",
+   "entry": 40.14,
+   "exit": 38.56,
+   "pct": -3.94,
+   "pnl": -187.05,
+   "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "UNP",
+   "opened": "2026-10-26",
+   "closed": "2026-11-06",
+   "entry": 296.19,
+   "exit": 291.4,
+   "pct": -1.62,
+   "pnl": -19.01,
+   "reason": "Close below upper GC band"
   }
  ],
- "last_decision_day": "2026-11-05",
+ "last_decision_day": "2026-11-06",
  "started": "2026-10-22",
  "start_equity": 97918.51,
  "start_spy": 762.85,
@@ -313,6 +333,10 @@
   [
    "2026-11-05",
    96901.69
+  ],
+  [
+   "2026-11-06",
+   96489.91
   ]
  ]
 }
