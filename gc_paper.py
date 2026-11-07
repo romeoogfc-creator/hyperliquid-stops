@@ -91,6 +91,10 @@ Profit-protection variants of the live setup U (same 9 slots, 4-hour lock, disas
   The crypto setup on stocks (F5 + the early lock: keep 50% of the gain from +3% ... 90% from +60%):
   Book FZ   = checked once a day (already above).   Book FZH = checked on hourly bars
   Book FZHF = FZH + the volume-fade exit (6 quiet hourly bars after +3% -> take the profit)
+  LOCK + RE-ENTRY (fixes the locks' weak spot: after a lock sells, the bot used to wait for a brand-new breakout, so
+  a winner that dipped and kept climbing was missed). These books buy back when the stock CLOSES ABOVE ITS OLD PEAK
+  while still above the upper band; the chance expires once a close falls under the band:
+  Book FL10R = FL10 + re-entry.   Book FL5R = FL5 + re-entry.   Book FZR = FZ (crypto-style lock) + re-entry
   BEST OF BOTH (lock mode "adaptive"): longs always get the lock + volume fade (Option A). Shorts get the lock too
   (Option B) EXCEPT while BTC is in a STRONG downtrend, when shorts run free to catch the big slide (Option A).
   The regime is read from the PREVIOUS daily close (no peeking):
@@ -138,7 +142,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.37"
+ENGINE_VERSION = "GC-PAPER-1.38"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -277,6 +281,9 @@ BOOKS = [
     ("FLH", "FL10 checked hourly (stocks)", "long", False),
     ("FZH", "F5 + Early Lock checked hourly (stocks)", "long", False),
     ("FZHF", "F5 + Early Lock hourly + Volume Fade (stocks)", "long", False),
+    ("FL10R", "FL10 + Re-entry on a new high (stocks)", "long", False),
+    ("FL5R", "FL5 + Re-entry on a new high (stocks)", "long", False),
+    ("FZR", "FZ (early lock) + Re-entry on a new high (stocks)", "long", False),
     *[(f"AB2{h}_{n}", f"Best of Both, shorts free when BTC {n}% under filter ({'hourly' if h else '4h'})", "adaptive", False)
       for h in ("", "H") for n in (2, 3, 4, 6, 8)],
 ]
@@ -376,6 +383,7 @@ _FL_TIERS = {"FL5": [[0.35, 0.70], [0.20, 0.60], [0.10, 0.50], [0.05, 0.40]],
              "FL15": [[0.50, 0.75], [0.30, 0.65], [0.15, 0.50]]}
 BOOK_OPTIONS.update({c: {"size_mult": 0.60, "disaster": 0.05, "lock_tiers": t} for c, t in _FL_TIERS.items()})
 BOOK_OPTIONS["FLH"] = {**BOOK_OPTIONS["FL10"], "lock_intraday": True}
+BOOK_OPTIONS.update({c + "R": {**BOOK_OPTIONS[c], "reenter": True} for c in ("FL10", "FL5", "FZ")})
 BOOK_OPTIONS.update({f"AB2{h}_{n}": {**BOOK_OPTIONS["AB2" + h], "regime_pct": n / 100} for h in ("", "H") for n in (2, 3, 4, 6, 8)})
 BOOK_OPTIONS["FZH"] = {**BOOK_OPTIONS["FZ"], "lock_intraday": True}
 BOOK_OPTIONS["FZHF"] = {**BOOK_OPTIONS["FZH"], "fade": {"after_gain": 0.03, "bars": 6, "vol_ratio": 0.5}}
@@ -574,6 +582,8 @@ def topup_position(book, coin, usd, px, date, log):
 
 def close_position(book, coin, px, date, reason, log):
     p = book["positions"].pop(coin)
+    if book.get("reenter") and p["side"] == "LONG" and reason.startswith(lock_label(book)):
+        book.setdefault("relock", {})[coin] = p["peak_px"]          # may buy back above this peak (see LONG ENTRIES)
     value = pos_value(p, px)
     fee = p["qty"] * px * FEE_RATE
     book["cash"] += value - fee
@@ -906,11 +916,17 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
     nav = book_nav(book, closes)
 
     # 6) LONG ENTRIES (rank order)
+    relock = book.get("relock") or {}
+    for c in list(relock):                                    # re-entry chance ends once the trend breaks
+        b = bar.get(c)
+        if b and b.get("valid") and b["c"] < b["upper"]:
+            relock.pop(c)
     for c in universe:
         b, pb = bar.get(c), prev.get(c)
         if not b or not pb or not b.get("valid"):
             continue
-        if not (b["c"] > b["upper"] and pb["c"] <= pb["upper"]):
+        reentry = c in relock and c not in book["positions"] and b["c"] > b["upper"] and b["c"] > relock[c]
+        if not (b["c"] > b["upper"] and pb["c"] <= pb["upper"]) and not reentry:
             continue
         if weak_volume(book, b):
             skips.append((c, f"Long signal on weak volume ({b['v'] / b['vavg']:.1f}x the 20-day average)")); continue
@@ -929,6 +945,9 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
         if usd < nav * MIN_TRADE_NAV:
             skips.append((c, f"Long signal, not enough cash (${usd:,.2f} < 1% NAV)")); continue
         tag = f"band breakout ({'recent' if recent else 'old'} breakout, {want / nav * 100:.0f}% NAV{', downsized' if usd < want - 0.01 else ''})"
+        if reentry:
+            tag = f"re-entry: new high after a lock exit ({want / nav * 100:.0f}% NAV)"
+            relock.pop(c, None)
         open_position(book, c, "LONG", usd, b["c"], day, tag, log, power)
         entered.add(c)
 
