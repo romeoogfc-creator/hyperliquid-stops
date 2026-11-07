@@ -9,37 +9,37 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1794052800000,
+   "h1_checked_ms": 1794060000000,
    "v_ref": 629318.8333333334,
-   "fade_n": 1,
+   "fade_n": 3,
    "fade_vols": [
-    510675.0,
-    54757.0,
     55934.0,
     184908.0,
     371341.0,
-    156607.0
+    156607.0,
+    243435.0,
+    210504.0
    ]
   },
   "ASTER": {
    "side": "SHORT",
    "sz": 23.0,
    "entry": 0.70035,
-   "peak_px": 0.67565,
+   "peak_px": 0.67304,
    "opened": "2026-11-03",
    "opened_ms": 1793750656986,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.728364,
-   "h1_checked_ms": 1794052800000,
+   "h1_checked_ms": 1794060000000,
    "v_ref": 688798.0,
-   "fade_n": 5,
+   "fade_n": 0,
    "fade_vols": [
-    56918.0,
-    76901.0,
     119681.0,
     11390.0,
     21314.0,
-    14851.0
+    14851.0,
+    61731.0,
+    105422.0
    ]
   },
   "PURR": {
@@ -51,37 +51,37 @@
    "opened_ms": 1793923466365,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.1052168,
-   "h1_checked_ms": 1794052800000,
+   "h1_checked_ms": 1794060000000,
    "v_ref": 557791.0,
-   "fade_n": 20,
+   "fade_n": 1,
    "fade_vols": [
-    39451.0,
-    33872.0,
     19716.0,
     25961.0,
     94935.0,
-    6487.0
+    6487.0,
+    340998.0,
+    87673.0
    ]
   },
   "POL": {
    "side": "SHORT",
    "sz": 178.0,
    "entry": 0.093128,
-   "peak_px": 0.090628,
+   "peak_px": 0.09034,
    "opened": "2026-11-05",
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.09685312,
-   "h1_checked_ms": 1794052800000,
+   "h1_checked_ms": 1794060000000,
    "v_ref": 742230.1666666666,
    "fade_n": 0,
    "fade_vols": [
-    20376.0,
-    20479.0,
     169804.0,
     262384.0,
     415918.0,
-    45060.0
+    45060.0,
+    257595.0,
+    94995.0
    ]
   }
  },
