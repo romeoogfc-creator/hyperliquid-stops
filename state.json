@@ -83,27 +83,6 @@
     215209.0,
     52632.0
    ]
-  },
-  "MEGA": {
-   "side": "LONG",
-   "sz": 333.0,
-   "entry": 0.050194,
-   "peak_px": 0.052326,
-   "opened": "2026-11-07",
-   "opened_ms": 1794096261118,
-   "reason": "band breakout",
-   "stop": 0.05125999999999999,
-   "h1_checked_ms": 1794139200000,
-   "v_ref": 1268752.0,
-   "fade_n": 0,
-   "fade_vols": [
-    196730.0,
-    686380.0,
-    355573.0,
-    919995.0,
-    793352.0,
-    1494806.0
-   ]
   }
  },
  "closed": [
@@ -273,6 +252,18 @@
    "pct": 1.59,
    "peak_pct": 3.26,
    "pnl": 0.2532,
+   "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
+  },
+  {
+   "coin": "MEGA",
+   "side": "LONG",
+   "opened": "2026-11-07",
+   "closed": "2026-11-08 12:40",
+   "entry": 0.050194,
+   "exit": 0.051224,
+   "pct": 2.05,
+   "peak_pct": 4.25,
+   "pnl": 0.3356,
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
