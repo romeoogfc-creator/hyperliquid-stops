@@ -9,37 +9,37 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1794175200000,
+   "h1_checked_ms": 1794182400000,
    "v_ref": 629318.8333333334,
    "fade_n": 0,
    "fade_vols": [
-    438879.0,
-    149184.0,
     63651.0,
     66747.0,
     87190.0,
-    1096997.0
+    1096997.0,
+    361021.0,
+    449110.0
    ]
   },
   "ASTER": {
    "side": "SHORT",
    "sz": 23.0,
    "entry": 0.70035,
-   "peak_px": 0.64644,
+   "peak_px": 0.63319,
    "opened": "2026-11-03",
    "opened_ms": 1793750656986,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.728364,
-   "h1_checked_ms": 1794175200000,
+   "h1_checked_ms": 1794182400000,
    "v_ref": 688798.0,
    "fade_n": 0,
    "fade_vols": [
-    40583.0,
-    41165.0,
     47902.0,
     9420.0,
     23515.0,
-    793092.0
+    793092.0,
+    540226.0,
+    608678.0
    ]
   },
   "PURR": {
@@ -51,16 +51,16 @@
    "opened_ms": 1793923466365,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.1052168,
-   "h1_checked_ms": 1794175200000,
-   "v_ref": 557791.0,
-   "fade_n": 0,
+   "h1_checked_ms": 1794182400000,
+   "v_ref": 952556.1666666666,
+   "fade_n": 2,
    "fade_vols": [
-    629682.0,
-    949347.0,
     378202.0,
     112663.0,
     300896.0,
-    3344547.0
+    3344547.0,
+    374279.0,
+    304725.0
    ]
   },
   "POL": {
@@ -72,16 +72,16 @@
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.09685312,
-   "h1_checked_ms": 1794175200000,
+   "h1_checked_ms": 1794182400000,
    "v_ref": 742230.1666666666,
    "fade_n": 0,
    "fade_vols": [
-    437383.0,
-    166141.0,
     74843.0,
     47910.0,
     260446.0,
-    1930340.0
+    1930340.0,
+    624464.0,
+    524432.0
    ]
   }
  },
@@ -267,7 +267,7 @@
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
- "last_daily_day": "2026-11-07",
+ "last_daily_day": "2026-11-08",
  "started": "2026-10-23",
  "start_nav": 110.8395182,
  "nav_history": [
@@ -338,6 +338,10 @@
   [
    "2026-11-08 00:04",
    111.7
+  ],
+  [
+   "2026-11-09 00:04",
+   115.2
   ]
  ],
  "version": "LS15-LIVE-1.7.1",
