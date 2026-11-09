@@ -71,20 +71,40 @@
    "bought": "2026-11-04",
    "breakout": "2026-11-04"
   },
-  "ELV": {
-   "opened": "2026-11-04",
-   "bought": "2026-11-04",
-   "breakout": "2026-09-03"
-  },
-  "CVX": {
-   "opened": "2026-11-06",
-   "bought": "2026-11-06",
-   "breakout": "2026-08-10"
-  },
   "ABNB": {
    "opened": "2026-11-06",
    "bought": "2026-11-06",
    "breakout": "2026-11-06"
+  },
+  "AMZN": {
+   "opened": "2026-11-09",
+   "bought": "2026-11-09",
+   "breakout": "2026-08-24"
+  },
+  "TXN": {
+   "opened": "2026-11-09",
+   "bought": "2026-11-09",
+   "breakout": "2026-10-26"
+  },
+  "GE": {
+   "opened": "2026-11-09",
+   "bought": "2026-11-09",
+   "breakout": "2026-11-09"
+  },
+  "NKE": {
+   "opened": "2026-11-09",
+   "bought": "2026-11-09",
+   "breakout": "2026-11-04"
+  },
+  "UNP": {
+   "opened": "2026-11-09",
+   "bought": "2026-11-09",
+   "breakout": "2026-11-09"
+  },
+  "DE": {
+   "opened": "2026-11-09",
+   "bought": "2026-11-09",
+   "breakout": "2026-07-22"
   }
  },
  "closed": [
@@ -287,9 +307,29 @@
    "pct": -1.62,
    "pnl": -19.01,
    "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "CVX",
+   "opened": "2026-11-06",
+   "closed": "2026-11-09",
+   "entry": 213.72,
+   "exit": 209.6926,
+   "pct": -1.88,
+   "pnl": -21.82,
+   "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "ELV",
+   "opened": "2026-11-04",
+   "closed": "2026-11-09",
+   "entry": 436.41,
+   "exit": 418.33,
+   "pct": -4.14,
+   "pnl": -49.22,
+   "reason": "Close below upper GC band"
   }
  ],
- "last_decision_day": "2026-11-06",
+ "last_decision_day": "2026-11-09",
  "started": "2026-10-22",
  "start_equity": 97918.51,
  "start_spy": 762.85,
@@ -337,6 +377,10 @@
   [
    "2026-11-06",
    96489.91
+  ],
+  [
+   "2026-11-09",
+   97136.97
   ]
  ]
 }
