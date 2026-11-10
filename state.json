@@ -84,27 +84,6 @@
     90123.0
    ]
   },
-  "INIT": {
-   "side": "LONG",
-   "sz": 94.0,
-   "entry": 0.18253,
-   "peak_px": 0.19654,
-   "opened": "2026-11-09",
-   "opened_ms": 1794269052603,
-   "reason": "band breakout",
-   "stop": 0.19093599999999997,
-   "h1_checked_ms": 1794276000000,
-   "v_ref": 4225614.333333333,
-   "fade_n": 0,
-   "fade_vols": [
-    8901044.0,
-    4009282.0,
-    2851958.0,
-    2498075.0,
-    3691296.0,
-    3188406.0
-   ]
-  },
   "PAXG": {
    "side": "SHORT",
    "sz": 0.004,
@@ -306,6 +285,18 @@
    "pct": 2.05,
    "peak_pct": 4.25,
    "pnl": 0.3356,
+   "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
+  },
+  {
+   "coin": "INIT",
+   "side": "LONG",
+   "opened": "2026-11-09",
+   "closed": "2026-11-10 02:45",
+   "entry": 0.18253,
+   "exit": 0.19076,
+   "pct": 4.51,
+   "peak_pct": 7.68,
+   "pnl": 0.7659,
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
