@@ -105,6 +105,11 @@
    "opened": "2026-11-09",
    "bought": "2026-11-09",
    "breakout": "2026-07-22"
+  },
+  "ELV": {
+   "opened": "2026-11-10",
+   "bought": "2026-11-10",
+   "breakout": "2026-09-03"
   }
  },
  "closed": [
@@ -329,7 +334,7 @@
    "reason": "Close below upper GC band"
   }
  ],
- "last_decision_day": "2026-11-09",
+ "last_decision_day": "2026-11-10",
  "started": "2026-10-22",
  "start_equity": 97918.51,
  "start_spy": 762.85,
@@ -381,6 +386,10 @@
   [
    "2026-11-09",
    97136.97
+  ],
+  [
+   "2026-11-10",
+   96753.22
   ]
  ]
 }
