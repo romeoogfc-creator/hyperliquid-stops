@@ -9,16 +9,16 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1794261600000,
+   "h1_checked_ms": 1794268800000,
    "v_ref": 629318.8333333334,
-   "fade_n": 5,
+   "fade_n": 0,
    "fade_vols": [
-    669997.0,
-    197091.0,
     65055.0,
     61838.0,
     52269.0,
-    84364.0
+    84364.0,
+    240055.0,
+    1152687.0
    ]
   },
   "ASTER": {
@@ -30,16 +30,16 @@
    "opened_ms": 1793750656986,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.728364,
-   "h1_checked_ms": 1794261600000,
+   "h1_checked_ms": 1794268800000,
    "v_ref": 688798.0,
-   "fade_n": 11,
+   "fade_n": 13,
    "fade_vols": [
-    55373.0,
-    11668.0,
     15199.0,
     87520.0,
     34722.0,
-    24168.0
+    24168.0,
+    26244.0,
+    21790.0
    ]
   },
   "PURR": {
@@ -51,16 +51,16 @@
    "opened_ms": 1793923466365,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.1052168,
-   "h1_checked_ms": 1794261600000,
+   "h1_checked_ms": 1794268800000,
    "v_ref": 5562807.333333333,
    "fade_n": 0,
    "fade_vols": [
-    527096.0,
-    671551.0,
     106794.0,
     8760981.0,
     6497898.0,
-    5761582.0
+    5761582.0,
+    7649728.0,
+    6860160.0
    ]
   },
   "POL": {
@@ -72,17 +72,39 @@
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.09685312,
-   "h1_checked_ms": 1794261600000,
+   "h1_checked_ms": 1794268800000,
    "v_ref": 749571.1666666666,
-   "fade_n": 2,
+   "fade_n": 4,
    "fade_vols": [
-    357886.0,
-    286098.0,
     89411.0,
     753940.0,
     321557.0,
-    185189.0
+    185189.0,
+    85752.0,
+    35960.0
    ]
+  },
+  "INIT": {
+   "side": "LONG",
+   "sz": 94.0,
+   "entry": 0.18253,
+   "peak_px": 0.18253,
+   "opened": "2026-11-09",
+   "opened_ms": 1794269052603,
+   "reason": "band breakout",
+   "stop": 0.1752288,
+   "h1_checked_ms": 1794269052603
+  },
+  "PAXG": {
+   "side": "SHORT",
+   "sz": 0.004,
+   "entry": 4120.5,
+   "peak_px": 4120.5,
+   "opened": "2026-11-09",
+   "opened_ms": 1794269054441,
+   "reason": "bear short (rejected bounce, BTC down)",
+   "stop": 4285.32,
+   "h1_checked_ms": 1794269054441
   }
  },
  "closed": [
@@ -267,7 +289,7 @@
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
- "last_daily_day": "2026-11-08",
+ "last_daily_day": "2026-11-09",
  "started": "2026-10-23",
  "start_nav": 110.8395182,
  "nav_history": [
@@ -342,6 +364,10 @@
   [
    "2026-11-09 00:04",
    115.2
+  ],
+  [
+   "2026-11-10 00:04",
+   114.38
   ]
  ],
  "version": "LS15-LIVE-1.7.1",
