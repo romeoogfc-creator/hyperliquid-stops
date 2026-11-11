@@ -71,11 +71,6 @@
    "bought": "2026-11-04",
    "breakout": "2026-11-04"
   },
-  "ABNB": {
-   "opened": "2026-11-06",
-   "bought": "2026-11-06",
-   "breakout": "2026-11-06"
-  },
   "AMZN": {
    "opened": "2026-11-09",
    "bought": "2026-11-09",
@@ -332,6 +327,16 @@
    "pct": -4.14,
    "pnl": -49.22,
    "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "ABNB",
+   "opened": "2026-11-06",
+   "closed": "2026-11-11",
+   "entry": 191.292828,
+   "exit": 180.88,
+   "pct": -5.44,
+   "pnl": -252.11,
+   "reason": "\u2702\ufe0f Loss stop (-5%)"
   }
  ],
  "last_decision_day": "2026-11-10",
