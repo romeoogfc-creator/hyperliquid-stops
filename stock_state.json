@@ -46,11 +46,6 @@
    "bought": "2026-11-02",
    "breakout": "2026-11-02"
   },
-  "MSFT": {
-   "opened": "2026-11-03",
-   "bought": "2026-11-03",
-   "breakout": "2026-11-03"
-  },
   "AAPL": {
    "opened": "2026-11-04",
    "bought": "2026-11-04",
@@ -100,6 +95,16 @@
    "opened": "2026-11-10",
    "bought": "2026-11-10",
    "breakout": "2026-09-03"
+  },
+  "TSLA": {
+   "opened": "2026-11-11",
+   "bought": "2026-11-11",
+   "breakout": "2026-10-05"
+  },
+  "ADI": {
+   "opened": "2026-11-11",
+   "bought": "2026-11-11",
+   "breakout": "2026-10-26"
   }
  },
  "closed": [
@@ -342,9 +347,19 @@
    "pct": -5.04,
    "pnl": -234.93,
    "reason": "\u2702\ufe0f Loss stop (-5%)"
+  },
+  {
+   "symbol": "MSFT",
+   "opened": "2026-11-03",
+   "closed": "2026-11-11",
+   "entry": 522.662227,
+   "exit": 519.72,
+   "pct": -0.56,
+   "pnl": -26.5,
+   "reason": "Close below upper GC band"
   }
  ],
- "last_decision_day": "2026-11-10",
+ "last_decision_day": "2026-11-11",
  "started": "2026-10-22",
  "start_equity": 97918.51,
  "start_spy": 762.85,
@@ -400,6 +415,10 @@
   [
    "2026-11-10",
    96753.22
+  ],
+  [
+   "2026-11-11",
+   96665.92
   ]
  ]
 }
