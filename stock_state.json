@@ -86,11 +86,6 @@
    "bought": "2026-11-09",
    "breakout": "2026-11-09"
   },
-  "NKE": {
-   "opened": "2026-11-09",
-   "bought": "2026-11-09",
-   "breakout": "2026-11-04"
-  },
   "UNP": {
    "opened": "2026-11-09",
    "bought": "2026-11-09",
@@ -336,6 +331,16 @@
    "exit": 180.88,
    "pct": -5.44,
    "pnl": -252.11,
+   "reason": "\u2702\ufe0f Loss stop (-5%)"
+  },
+  {
+   "symbol": "NKE",
+   "opened": "2026-11-09",
+   "closed": "2026-11-11",
+   "entry": 40.09,
+   "exit": 38.07,
+   "pct": -5.04,
+   "pnl": -234.93,
    "reason": "\u2702\ufe0f Loss stop (-5%)"
   }
  ],
