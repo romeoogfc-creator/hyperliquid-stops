@@ -76,11 +76,6 @@
    "bought": "2026-11-09",
    "breakout": "2026-10-26"
   },
-  "GE": {
-   "opened": "2026-11-09",
-   "bought": "2026-11-09",
-   "breakout": "2026-11-09"
-  },
   "UNP": {
    "opened": "2026-11-09",
    "bought": "2026-11-09",
@@ -105,6 +100,16 @@
    "opened": "2026-11-11",
    "bought": "2026-11-11",
    "breakout": "2026-10-26"
+  },
+  "UNH": {
+   "opened": "2026-11-12",
+   "bought": "2026-11-12",
+   "breakout": "2026-11-10"
+  },
+  "CVX": {
+   "opened": "2026-11-12",
+   "bought": "2026-11-12",
+   "breakout": "2026-08-10"
   }
  },
  "closed": [
@@ -357,9 +362,19 @@
    "pct": -0.56,
    "pnl": -26.5,
    "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "GE",
+   "opened": "2026-11-09",
+   "closed": "2026-11-12",
+   "entry": 337.14,
+   "exit": 334.02,
+   "pct": -0.93,
+   "pnl": -43.15,
+   "reason": "Close below upper GC band"
   }
  ],
- "last_decision_day": "2026-11-11",
+ "last_decision_day": "2026-11-12",
  "started": "2026-10-22",
  "start_equity": 97918.51,
  "start_spy": 762.85,
@@ -419,6 +434,10 @@
   [
    "2026-11-11",
    96665.92
+  ],
+  [
+   "2026-11-12",
+   96466.13
   ]
  ]
 }
