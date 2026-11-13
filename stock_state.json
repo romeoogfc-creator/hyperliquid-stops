@@ -81,11 +81,6 @@
    "bought": "2026-11-09",
    "breakout": "2026-11-09"
   },
-  "DE": {
-   "opened": "2026-11-09",
-   "bought": "2026-11-09",
-   "breakout": "2026-07-22"
-  },
   "ELV": {
    "opened": "2026-11-10",
    "bought": "2026-11-10",
@@ -95,11 +90,6 @@
    "opened": "2026-11-11",
    "bought": "2026-11-11",
    "breakout": "2026-10-05"
-  },
-  "ADI": {
-   "opened": "2026-11-11",
-   "bought": "2026-11-11",
-   "breakout": "2026-10-26"
   },
   "UNH": {
    "opened": "2026-11-12",
@@ -372,9 +362,29 @@
    "pct": -0.93,
    "pnl": -43.15,
    "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "ADI",
+   "opened": "2026-11-11",
+   "closed": "2026-11-13",
+   "entry": 408.67,
+   "exit": 399.4,
+   "pct": -2.27,
+   "pnl": -105.25,
+   "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "DE",
+   "opened": "2026-11-09",
+   "closed": "2026-11-13",
+   "entry": 695.144,
+   "exit": 672.94,
+   "pct": -3.19,
+   "pnl": -37.23,
+   "reason": "Close below upper GC band"
   }
  ],
- "last_decision_day": "2026-11-12",
+ "last_decision_day": "2026-11-13",
  "started": "2026-10-22",
  "start_equity": 97918.51,
  "start_spy": 762.85,
@@ -438,6 +448,10 @@
   [
    "2026-11-12",
    96466.13
+  ],
+  [
+   "2026-11-13",
+   96400.0
   ]
  ]
 }
