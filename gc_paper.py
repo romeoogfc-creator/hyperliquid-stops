@@ -142,7 +142,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.38"
+ENGINE_VERSION = "GC-PAPER-1.39"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -284,6 +284,12 @@ BOOKS = [
     ("FL10R", "FL10 + Re-entry on a new high (stocks)", "long", False),
     ("FL5R", "FL5 + Re-entry on a new high (stocks)", "long", False),
     ("FZR", "FZ (early lock) + Re-entry on a new high (stocks)", "long", False),
+    ("FLM", "FL10 + buy only when SPY is above its filter (stocks)", "long", False),
+    ("FLV", "FL10 + buy only on 1.5x volume breakouts (stocks)", "long", False),
+    ("FLT", "FL10 + sell if still red after 3 days (stocks)", "long", False),
+    ("FL4", "FL10 with a -4% loss stop (stocks)", "long", False),
+    ("FL3", "FL10 with a -3% loss stop (stocks)", "long", False),
+    ("FLX", "FL10 + SPY filter + volume + 3-day rule (stocks)", "long", False),
     *[(f"AB2{h}_{n}", f"Best of Both, shorts free when BTC {n}% under filter ({'hourly' if h else '4h'})", "adaptive", False)
       for h in ("", "H") for n in (2, 3, 4, 6, 8)],
 ]
@@ -387,6 +393,16 @@ BOOK_OPTIONS.update({c + "R": {**BOOK_OPTIONS[c], "reenter": True} for c in ("FL
 BOOK_OPTIONS.update({f"AB2{h}_{n}": {**BOOK_OPTIONS["AB2" + h], "regime_pct": n / 100} for h in ("", "H") for n in (2, 3, 4, 6, 8)})
 BOOK_OPTIONS["FZH"] = {**BOOK_OPTIONS["FZ"], "lock_intraday": True}
 BOOK_OPTIONS["FZHF"] = {**BOOK_OPTIONS["FZH"], "fade": {"after_gain": 0.03, "bars": 6, "vol_ratio": 0.5}}
+# 1.39 smarter-loser tests on top of FL10. mkt_filter: new longs only while the benchmark (SPY) closes above its GC filter.
+# time_stop: sell a long still below its entry after N trading days (no follow-through).
+BOOK_OPTIONS.update({
+    "FLM": {**BOOK_OPTIONS["FL10"], "mkt_filter": True},
+    "FLV": {**BOOK_OPTIONS["FL10"], "vol_filter": 1.5},
+    "FLT": {**BOOK_OPTIONS["FL10"], "time_stop": 3},
+    "FL4": {**BOOK_OPTIONS["FL10"], "disaster": 0.04},
+    "FL3": {**BOOK_OPTIONS["FL10"], "disaster": 0.03},
+    "FLX": {**BOOK_OPTIONS["FL10"], "mkt_filter": True, "vol_filter": 1.5, "time_stop": 3},
+})
 BOOK_OPTIONS.update({"RML": BOOK_OPTIONS["RM"], "RMFL": BOOK_OPTIONS["RMF"], "RSL": BOOK_OPTIONS["RS"], "EXL": BOOK_OPTIONS["EX"],
                      "Z4F": BOOK_OPTIONS["ZSF4"], "Z4HF": BOOK_OPTIONS["ZSF"]})
 VOL_AVG_DAYS = 20                      # seller-exit: today's volume vs the previous 20 days
@@ -775,6 +791,8 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
     for c, p in book["positions"].items():
         if c in closes:
             p["last_px"] = closes[c]
+            if p["opened"] != day:
+                p["held"] = p.get("held", 0) + 1                 # trading days held (time_stop books)
 
     # Profit-lock books: resting stop (set at the end of yesterday) can fill during today's candle.
     # lock_intraday books walk the day's 4-hour candles instead, raising the stop after each one.
@@ -894,6 +912,9 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
         elif b["c"] < b["upper"] and not str(p.get("reason", "")).startswith("V-bottom"):
             close_position(book, c, b["c"], day, "Close below upper GC band", log)
             exited.add(c)
+        elif book.get("time_stop") and p.get("held", 0) >= book["time_stop"] and b["c"] < p["entry"]:
+            close_position(book, c, b["c"], day, f"⏱️ No follow-through (still red after {book['time_stop']} days)", log)
+            exited.add(c)
 
     # 5) SHORT EXITS
     for c in list(book["positions"]):
@@ -921,6 +942,8 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
         b = bar.get(c)
         if b and b.get("valid") and b["c"] < b["upper"]:
             relock.pop(c)
+    mb = data.get(BENCH, {}).get(day) if book.get("mkt_filter") else None
+    mkt_weak = bool(mb and mb.get("valid") and mb["c"] <= mb["filter"])
     for c in universe:
         b, pb = bar.get(c), prev.get(c)
         if not b or not pb or not b.get("valid"):
@@ -930,6 +953,8 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
             continue
         if weak_volume(book, b):
             skips.append((c, f"Long signal on weak volume ({b['v'] / b['vavg']:.1f}x the 20-day average)")); continue
+        if mkt_weak:
+            skips.append((c, f"Long signal, but {BENCH} is below its GC filter (choppy/weak market)")); continue
         if c in exited:
             skips.append((c, "Long signal, but exited earlier this run")); continue
         if c in book["positions"]:
