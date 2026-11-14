@@ -290,6 +290,8 @@ BOOKS = [
     ("FL4", "FL10 with a -4% loss stop (stocks)", "long", False),
     ("FL3", "FL10 with a -3% loss stop (stocks)", "long", False),
     ("FLX", "FL10 + SPY filter + volume + 3-day rule (stocks)", "long", False),
+    ("FL2", "FL10 with a -2% loss stop (stocks)", "long", False),
+    ("FLS", "FL10 + Smart Cut: sell at -1.5% on a heavy-volume red day (stocks)", "long", False),
     *[(f"AB2{h}_{n}", f"Best of Both, shorts free when BTC {n}% under filter ({'hourly' if h else '4h'})", "adaptive", False)
       for h in ("", "H") for n in (2, 3, 4, 6, 8)],
 ]
@@ -402,6 +404,9 @@ BOOK_OPTIONS.update({
     "FL4": {**BOOK_OPTIONS["FL10"], "disaster": 0.04},
     "FL3": {**BOOK_OPTIONS["FL10"], "disaster": 0.03},
     "FLX": {**BOOK_OPTIONS["FL10"], "mkt_filter": True, "vol_filter": 1.5, "time_stop": 3},
+    "FL2": {**BOOK_OPTIONS["FL10"], "disaster": 0.02},
+    # smart_cut: cut a long early (at the daily close) only when it is down `loss` AND sellers clearly control the day.
+    "FLS": {**BOOK_OPTIONS["FL10"], "smart_cut": {"loss": 0.015, "vol_mult": 1.2, "close_in_bottom": 0.4}},
 })
 BOOK_OPTIONS.update({"RML": BOOK_OPTIONS["RM"], "RMFL": BOOK_OPTIONS["RMF"], "RSL": BOOK_OPTIONS["RS"], "EXL": BOOK_OPTIONS["EX"],
                      "Z4F": BOOK_OPTIONS["ZSF4"], "Z4HF": BOOK_OPTIONS["ZSF"]})
@@ -677,6 +682,16 @@ def sellers_took_over(book, p, b):
             and rng > 0 and (b["c"] - b["l"]) <= se["close_in_bottom"] * rng)
 
 
+def smart_cut(book, p, b):
+    """FLS: the long is down at least `loss` from entry on a red day with heavy volume that closes near its low."""
+    sc = book.get("smart_cut")
+    if not sc or p["side"] != "LONG" or p["opened"] == b.get("date") or not b.get("vavg"):
+        return False
+    rng = b["h"] - b["l"]
+    return (b["c"] <= p["entry"] * (1 - sc["loss"]) and b["c"] < b["o"] and b.get("v", 0) >= sc["vol_mult"] * b["vavg"]
+            and rng > 0 and (b["c"] - b["l"]) <= sc["close_in_bottom"] * rng)
+
+
 def knife_hit(book, p, k):
     """Knife books: the long has been up `after_gain`, and this 4h candle is red, closes near its low, and either came on
     heavy volume (vol_mult x the previous KNIFE_LOOKBACK candles) or fell at least `drop` open-to-close."""
@@ -908,6 +923,9 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
             skips.append((c, "Long held but indicator data missing — kept"))
         elif sellers_took_over(book, p, b):
             close_position(book, c, b["c"], day, f"🐻 Sellers took over (red day, volume {b['v']/b['vavg']:.1f}x avg, closed near the low)", log)
+            exited.add(c)
+        elif smart_cut(book, p, b):
+            close_position(book, c, b["c"], day, f"🔪 Smart cut (down {(1 - b['c'] / p['entry']) * 100:.1f}%, red day on {b['v']/b['vavg']:.1f}x volume)", log)
             exited.add(c)
         elif b["c"] < b["upper"] and not str(p.get("reason", "")).startswith("V-bottom"):
             close_position(book, c, b["c"], day, "Close below upper GC band", log)
