@@ -39,7 +39,7 @@ from email.mime.text import MIMEText
 
 import gc_paper as engine
 
-BOT_VERSION = "LS15-LIVE-1.10"
+BOT_VERSION = "LS15-LIVE-1.10.1"
 STATE_FILE = "state.json"                  # same file the old scalper used (stops.yml commits it)
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
 SECRET_KEY = os.getenv("HL_SECRET_KEY")
@@ -64,6 +64,7 @@ FREE_TIERS = engine.FREE_TIERS             # 1.8.1: free-running shorts still ke
 BANK_HALF = engine.BOOK_OPTIONS["F25T"]["free_half"]  # 1.9: a free-running short at +20% closes HALF (paper Book F25T: beat
                                            # AB2HF25 in 100 of 100 runs, both the 2-year test and the older-year check).
                                            # Skipped while half the position is under Hyperliquid's $10 minimum order.
+DEPOSITS_SINCE = "2026-11-14"              # 1.10.1: deposits / withdrawals from this day on are tracked (earlier money = start_nav)
 LONG_HALF = engine.BOOK_OPTIONS["F25L5"]["take_half"]  # 1.10: a long at +5% closes HALF (paper Book F25L5: beat F25T in the
                                            # 2-year test with funding, +342% vs +262%, and in the older-year check, +131% vs +94%);
                                            # the other half keeps the hourly lock. Same $10 minimum-order rule.
@@ -505,6 +506,27 @@ def bank_half(info, exchange, state, coin, px, sz_dec, log):
     return True
 
 
+def track_deposits(info, state, log):
+    """Add new deposits / subtract withdrawals (+ their fee) to state['net_deposits'], so added money is never shown as profit."""
+    try:
+        cursor = state.get("ledger_ms") or int(datetime.strptime(DEPOSITS_SINCE, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp() * 1000)
+        rows = api_retry(info.user_non_funding_ledger_updates, ACCOUNT_ADDRESS, cursor + 1) or []
+        for r in sorted(rows, key=lambda x: int(x.get("time", 0))):
+            d, amt = r.get("delta", {}) or {}, 0.0
+            if d.get("type") == "deposit":
+                amt = float(d.get("usdc", 0) or 0)
+            elif d.get("type") == "withdraw":
+                amt = -(float(d.get("usdc", 0) or 0) + float(d.get("fee", 0) or 0))
+            if amt:
+                state["net_deposits"] = round(state.get("net_deposits", 0.0) + amt, 2)
+                log.append(f"🏦 {'Deposit' if amt > 0 else 'Withdrawal'} ${abs(amt):,.2f} — not counted as profit "
+                           f"(net added since {DEPOSITS_SINCE}: ${state['net_deposits']:+,.2f})")
+            cursor = max(cursor, int(r.get("time", 0)))
+        state["ledger_ms"] = cursor
+    except Exception as e:
+        print(f"deposit check skipped: {e}", flush=True)
+
+
 def safe_close(info, exchange, state, coin, why, log):
     """close_own that never crashes the run: on a network error the position (and its stop) stays, next run retries."""
     try:
@@ -551,6 +573,7 @@ def fmt_px(v):
 
 def report(state, nav, ex_pos, mids, log, skips, daily_day):
     start = state.get("start_nav") or nav
+    added = state.get("net_deposits", 0.0)
     rows = ""
     for coin, p in sorted(state["positions"].items()):
         now = mids.get(coin, p["entry"])
@@ -583,8 +606,8 @@ def report(state, nav, ex_pos, mids, log, skips, daily_day):
  <div style="background:#0f172a;color:#fff;padding:14px;"><div style="font-size:15px;font-weight:700;">{BOT_VERSION} • {mode}</div>
   <div style="font-size:11px;color:#94a3b8;">{datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')} • daily candle {daily_day or '—'}</div></div>
  <div style="padding:12px;font-size:12px;">{warn}
-  <div style="font-size:22px;font-weight:700;color:{'#15803d' if nav>=start else '#b91c1c'};">${nav:,.2f}
-   <span style="font-size:13px;">({(nav/start-1)*100 if start else 0:+.2f}% since {state.get('started') or 'today'}, start ${start:,.2f})</span></div>
+  <div style="font-size:22px;font-weight:700;color:{'#15803d' if nav>=start+added else '#b91c1c'};">${nav:,.2f}
+   <span style="font-size:13px;">({((nav-added)/start-1)*100 if start else 0:+.2f}% trading result since {state.get('started') or 'today'}, start ${start:,.2f}{f" + ${added:,.2f} added" if added else ""})</span></div>
   <div style="color:#475569;font-size:11px;">In positions ${gross:,.2f} ({gross/nav*100 if nav else 0:.0f}% of the account, cap {GROSS_CAP*100:.0f}%) •
    {len(state['positions'])}/{MAX_POSITIONS} slots • Closed trades {len(closed)} ({wins} wins) • Realised ${realised:+,.2f}</div>
   <table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:8px;" cellpadding="3">
@@ -633,6 +656,7 @@ def main():
     nav, ex_pos, mids = read_account(info)
     if state.get("start_nav") is None:
         state["start_nav"], state["started"] = nav, datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    track_deposits(info, state, log)
 
     # 0) Positions on the exchange that the state does not know (e.g. a run that started from an older state.json):
     #    adopt them so they still get their disaster stop / profit lock instead of being left unprotected.
@@ -707,7 +731,7 @@ def main():
     state["error_streak"] = 0                                      # a run got all the way through
     save_state(state)
     print("\n".join(log), flush=True)
-    if did_daily or IS_MANUAL or any(x[:1] in "✅💰🔻🚨⬆⬇🔄" for x in log):
+    if did_daily or IS_MANUAL or any(x[:1] in "✅💰🔻🚨⬆⬇🔄🏦" for x in log):
         report(state, nav, ex_pos, mids, log, skips, daily_day)
 
 

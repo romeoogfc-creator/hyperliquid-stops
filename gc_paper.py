@@ -142,7 +142,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.47"
+ENGINE_VERSION = "GC-PAPER-1.47.1"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -1576,7 +1576,8 @@ def real_nav():
     """Paper emails show every book scaled to the REAL live account (the live bot's starting balance in state.json)."""
     try:
         with open("state.json") as f:
-            v = float(json.load(f).get("start_nav") or 0)
+            st = json.load(f)
+            v = float(st.get("start_nav") or 0) + float(st.get("net_deposits") or 0)   # real money in (start + deposits)
         if v > 0:
             return v
     except Exception:
