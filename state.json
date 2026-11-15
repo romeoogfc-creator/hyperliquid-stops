@@ -425,8 +425,9 @@
    128.39
   ]
  ],
- "version": "LS15-LIVE-1.10",
+ "version": "LS15-LIVE-1.10.1",
  "btc_strong_down": true,
  "h1_since_ms": 1793824939398,
- "error_streak": 0
+ "error_streak": 0,
+ "ledger_ms": 1794773497440
 }
