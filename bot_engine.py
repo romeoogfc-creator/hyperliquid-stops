@@ -39,7 +39,7 @@ from email.mime.text import MIMEText
 
 import gc_paper as engine
 
-BOT_VERSION = "LS15-LIVE-1.10.1"
+BOT_VERSION = "LS15-LIVE-1.10.2"
 STATE_FILE = "state.json"                  # same file the old scalper used (stops.yml commits it)
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
 SECRET_KEY = os.getenv("HL_SECRET_KEY")
@@ -506,25 +506,51 @@ def bank_half(info, exchange, state, coin, px, sz_dec, log):
     return True
 
 
+def _ledger_amount(d):
+    """USDC moved IN (+) or OUT (-) of this account by one ledger entry, 0 for internal moves (spot <-> perp)."""
+    me = (ACCOUNT_ADDRESS or "").lower()
+    t = d.get("type", "")
+    num = lambda *keys: next((float(d[k]) for k in keys if d.get(k) not in (None, "")), 0.0)
+    if t in ("accountClassTransfer", "spotGenesis", "vaultCreate"):
+        return 0.0
+    if t == "deposit":
+        return num("usdc", "usdcValue", "amount")
+    if t == "withdraw":
+        return -(num("usdc", "usdcValue", "amount") + num("fee"))
+    if t in ("send", "spotTransfer", "internalTransfer", "subAccountTransfer"):
+        token = (d.get("token") or "USDC").upper()
+        if not token.startswith("USDC"):
+            return 0.0
+        amt = num("usdcValue", "usdc", "amount")
+        dest, src = (d.get("destination") or "").lower(), (d.get("user") or "").lower()
+        if dest == me and src != me:
+            return amt
+        if src == me and dest != me:
+            return -(amt + num("fee"))
+    return 0.0
+
+
 def track_deposits(info, state, log):
-    """Add new deposits / subtract withdrawals (+ their fee) to state['net_deposits'], so added money is never shown as profit."""
+    """Re-reads the ledger since DEPOSITS_SINCE every run (idempotent): state['net_deposits'] = money added - taken out.
+    New entries get a 🏦 line; unknown entry types and errors are reported in the email (state['ledger_note'])."""
     try:
-        cursor = state.get("ledger_ms") or int(datetime.strptime(DEPOSITS_SINCE, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp() * 1000)
-        rows = api_retry(info.user_non_funding_ledger_updates, ACCOUNT_ADDRESS, cursor + 1) or []
+        since = int(datetime.strptime(DEPOSITS_SINCE, "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp() * 1000)
+        rows = api_retry(info.user_non_funding_ledger_updates, ACCOUNT_ADDRESS, since) or []
+        seen = state.get("ledger_seen_ms", 0)
+        net, types = 0.0, {}
         for r in sorted(rows, key=lambda x: int(x.get("time", 0))):
-            d, amt = r.get("delta", {}) or {}, 0.0
-            if d.get("type") == "deposit":
-                amt = float(d.get("usdc", 0) or 0)
-            elif d.get("type") == "withdraw":
-                amt = -(float(d.get("usdc", 0) or 0) + float(d.get("fee", 0) or 0))
-            if amt:
-                state["net_deposits"] = round(state.get("net_deposits", 0.0) + amt, 2)
-                log.append(f"🏦 {'Deposit' if amt > 0 else 'Withdrawal'} ${abs(amt):,.2f} — not counted as profit "
-                           f"(net added since {DEPOSITS_SINCE}: ${state['net_deposits']:+,.2f})")
-            cursor = max(cursor, int(r.get("time", 0)))
-        state["ledger_ms"] = cursor
+            d = r.get("delta", {}) or {}
+            types[d.get("type", "?")] = types.get(d.get("type", "?"), 0) + 1
+            amt = _ledger_amount(d)
+            net += amt
+            if amt and int(r.get("time", 0)) > seen:
+                log.append(f"🏦 {'Deposit' if amt > 0 else 'Withdrawal'} ${abs(amt):,.2f} ({d.get('type')}) — not counted as profit")
+        state["net_deposits"] = round(net, 2)
+        state["ledger_seen_ms"] = max([seen] + [int(r.get("time", 0)) for r in rows])
+        state["ledger_note"] = f"Ledger since {DEPOSITS_SINCE}: {len(rows)} entries ({', '.join(f'{k} x{v}' for k, v in types.items()) or 'none'}), net added ${net:+,.2f}"
     except Exception as e:
-        print(f"deposit check skipped: {e}", flush=True)
+        state["ledger_note"] = f"⚠️ deposit check failed: {str(e)[:160]}"
+        print(state["ledger_note"], flush=True)
 
 
 def safe_close(info, exchange, state, coin, why, log):
@@ -624,7 +650,8 @@ def report(state, nav, ex_pos, mids, log, skips, daily_day):
    Longs bank half at +5% (when half is over the $10 minimum order).
    Shorts get the lock and fade too, except while BTC closes 5%+ under its filter
    (now: {'📉 strong downtrend, shorts run free (half banked at +20%, big winners keep 60-80% from +25%)' if state.get('btc_strong_down') else '🔒 shorts locked'}).
-   Every position: loss stop {DISASTER_STOP*100:.0f}% against the entry. Shorts also exit on a daily close above the GC filter or at -35%.</div>
+   Every position: loss stop {DISASTER_STOP*100:.0f}% against the entry. Shorts also exit on a daily close above the GC filter or at -35%.
+   <br>🏦 {state.get('ledger_note', '')}</div>
  </div></div></body></html>"""
     text = f"{BOT_VERSION} {mode}\nNAV ${nav:,.2f}\n" + "\n".join(log)
     summary = f"${nav:,.2f} • {len(state['positions'])} open" + (f" • {len([x for x in log if x[:1] in '✅💰🔻'])} trades" if log else "")
