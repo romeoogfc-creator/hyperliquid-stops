@@ -142,7 +142,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.40"
+ENGINE_VERSION = "GC-PAPER-1.41"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -276,6 +276,8 @@ BOOKS = [
     ("AB1H", "Best of Both: shorts run free when BTC -10%/30d (hourly)", "adaptive", False),
     ("AB2H", "Best of Both: shorts run free when BTC 5% under filter (hourly)", "adaptive", False),
     ("AB2HF", "AB2H + big-winner floor on free shorts (keep 60-80% from +15%) — LIVE 1.8", "adaptive", False),
+    ("AB2HF10", "AB2H + floor on free shorts from +10% (keep 50-80%)", "adaptive", False),
+    ("AB2HF5", "AB2H + floor on free shorts from +5% (keep 50-80%)", "adaptive", False),
     ("FL5", "F5 + Loose Lock from +5% (stocks)", "long", False),
     ("FL10", "F5 + Big-Winner Lock from +10% (stocks)", "long", False),
     ("FL15", "F5 + Big-Winner Lock from +15% (stocks)", "long", False),
@@ -412,6 +414,8 @@ BOOK_OPTIONS.update({
 # free_tiers: while shorts "run free" (adaptive books, strong BTC downtrend) big winners still get this wide floor.
 FREE_TIERS = [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.15, 0.60]]
 BOOK_OPTIONS["AB2HF"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": FREE_TIERS}
+BOOK_OPTIONS["AB2HF10"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.10, 0.50]]}
+BOOK_OPTIONS["AB2HF5"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.10, 0.60], [0.05, 0.50]]}
 BOOK_OPTIONS.update({"RML": BOOK_OPTIONS["RM"], "RMFL": BOOK_OPTIONS["RMF"], "RSL": BOOK_OPTIONS["RS"], "EXL": BOOK_OPTIONS["EX"],
                      "Z4F": BOOK_OPTIONS["ZSF4"], "Z4HF": BOOK_OPTIONS["ZSF"]})
 VOL_AVG_DAYS = 20                      # seller-exit: today's volume vs the previous 20 days
