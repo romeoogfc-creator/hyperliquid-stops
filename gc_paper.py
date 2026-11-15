@@ -142,7 +142,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.46"
+ENGINE_VERSION = "GC-PAPER-1.47"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -301,6 +301,9 @@ BOOKS = [
     ("F25E", "F25T + crowded days: cleanest trends (10-day efficiency) get the slots first", "adaptive", False),
     ("F25V", "F25T + size by volatility (7.5-22.5% per slot, same risk per trade)", "adaptive", False),
     ("F25X", "F25T + guardrail on free shorts: keep 35% from +18%", "adaptive", False),
+    ("F25L5", "F25T + bank half of a LONG at +5%", "adaptive", False),
+    ("F25L10", "F25T + bank half of a LONG at +10%", "adaptive", False),
+    ("F25L20", "F25T + bank half of a LONG at +20%", "adaptive", False),
     ("FL5", "F5 + Loose Lock from +5% (stocks)", "long", False),
     ("FL10", "F5 + Big-Winner Lock from +10% (stocks)", "long", False),
     ("FL15", "F5 + Big-Winner Lock from +15% (stocks)", "long", False),
@@ -463,6 +466,8 @@ BOOK_OPTIONS.update({
     "F25V": {**BOOK_OPTIONS["F25T"], "vol_size": {"risk": 0.006, "atr_mult": 0.8, "min": 0.075, "max": 0.225}},
     "F25X": {**BOOK_OPTIONS["F25T"], "free_tiers": FREE_TIERS + [[0.18, 0.35]]},
 })
+# 1.47: bank half of a long (Book X's take_half) on top of F25T; the rest keeps the normal hourly lock.
+BOOK_OPTIONS.update({f"F25L{n}": {**BOOK_OPTIONS["F25T"], "take_half": {"at": n / 100, "frac": 0.5}} for n in (5, 10, 20)})
 BOOK_OPTIONS["AB2HF5"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.10, 0.60], [0.05, 0.50]]}
 BOOK_OPTIONS.update({"RML": BOOK_OPTIONS["RM"], "RMFL": BOOK_OPTIONS["RMF"], "RSL": BOOK_OPTIONS["RS"], "EXL": BOOK_OPTIONS["EX"],
                      "Z4F": BOOK_OPTIONS["ZSF4"], "Z4HF": BOOK_OPTIONS["ZSF"]})
