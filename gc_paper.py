@@ -142,7 +142,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.39"
+ENGINE_VERSION = "GC-PAPER-1.40"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -275,6 +275,7 @@ BOOKS = [
     ("AB2", "Best of Both: shorts run free when BTC 5% under filter (4h)", "adaptive", False),
     ("AB1H", "Best of Both: shorts run free when BTC -10%/30d (hourly)", "adaptive", False),
     ("AB2H", "Best of Both: shorts run free when BTC 5% under filter (hourly)", "adaptive", False),
+    ("AB2HF", "AB2H + big-winner floor on free shorts (keep 60-80% from +15%) — LIVE 1.8", "adaptive", False),
     ("FL5", "F5 + Loose Lock from +5% (stocks)", "long", False),
     ("FL10", "F5 + Big-Winner Lock from +10% (stocks)", "long", False),
     ("FL15", "F5 + Big-Winner Lock from +15% (stocks)", "long", False),
@@ -408,6 +409,9 @@ BOOK_OPTIONS.update({
     # smart_cut: cut a long early (at the daily close) only when it is down `loss` AND sellers clearly control the day.
     "FLS": {**BOOK_OPTIONS["FL10"], "smart_cut": {"loss": 0.015, "vol_mult": 1.2, "close_in_bottom": 0.4}},
 })
+# free_tiers: while shorts "run free" (adaptive books, strong BTC downtrend) big winners still get this wide floor.
+FREE_TIERS = [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.15, 0.60]]
+BOOK_OPTIONS["AB2HF"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": FREE_TIERS}
 BOOK_OPTIONS.update({"RML": BOOK_OPTIONS["RM"], "RMFL": BOOK_OPTIONS["RMF"], "RSL": BOOK_OPTIONS["RS"], "EXL": BOOK_OPTIONS["EX"],
                      "Z4F": BOOK_OPTIONS["ZSF4"], "Z4HF": BOOK_OPTIONS["ZSF"]})
 VOL_AVG_DAYS = 20                      # seller-exit: today's volume vs the previous 20 days
@@ -433,6 +437,11 @@ def lock_applies(book, side):
     if mode == "adaptive":
         return side == "LONG" or not book.get("_strong_down")
     return mode is True or mode == "all" or (mode == "long" and side == "LONG")
+
+
+def free_floor(book, p):
+    """AB2HF: a short that 'runs free' (adaptive lock off for shorts today) still gets the wide big-winner floor."""
+    return bool(book.get("free_tiers") and p["side"] == "SHORT" and book.get("lock") == "adaptive" and book.get("_strong_down"))
 
 
 def strong_downtrend(book, data, day):
@@ -649,7 +658,8 @@ def set_lock_stop(book, p, high, low):
         p["stop"] = None if fl is None else p["entry"] * (1 + fl)
     else:
         p["peak_px"] = min(p["peak_px"], low)
-        fl = lock_floor(1 - p["peak_px"] / p["entry"], book.get("lock_tiers"))
+        tiers = book["free_tiers"] if free_floor(book, p) else book.get("lock_tiers")
+        fl = lock_floor(1 - p["peak_px"] / p["entry"], tiers)
         p["stop"] = None if fl is None else p["entry"] * (1 - fl)
 
 
@@ -814,7 +824,8 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
     if book.get("lock"):
         for c in list(book["positions"]):
             p, b = book["positions"][c], bar.get(c)
-            if not b or not lock_applies(book, p["side"]):
+            free = free_floor(book, p)
+            if not b or not (lock_applies(book, p["side"]) or free):
                 continue
             hourly = book.get("lock_interval") == "1h" and DATA_1H
             iv = "1h" if hourly or (book.get("lock_interval") == "1h" and STOCKS) else "4h"
@@ -848,6 +859,8 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
                         partial_close(book, c, max(k["o"], tp), book["take_half"]["frac"], day,
                                       f"💵 Take half at +{book['take_half']['at']*100:.0f}%", log)
                     set_lock_stop(book, p, k["h"], k["l"])    # this candle's high/low raises the peak, stop moves up
+                    if free:
+                        continue                              # free-running short: only the wide floor, no fade / smart exits
                     why_smart = smart_exits(book, p, k)
                     if why_smart:
                         close_position(book, c, k["c"], day, f"{why_smart}, {iv}", log)
@@ -1062,7 +1075,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
             p["climax"] = p["side"] == "LONG" and b["c"] - b["upper"] > CLIMAX_ATR * b["atr"]
         if not b or p["opened"] == day:
             continue                                          # entered at today's close: today's high/low came BEFORE the entry
-        if lock_applies(book, p["side"]):
+        if lock_applies(book, p["side"]) or free_floor(book, p):
             set_lock_stop(book, p, b["h"], b["l"])
         elif p["side"] == "LONG":
             p["peak_px"] = max(p["peak_px"], b["h"])
