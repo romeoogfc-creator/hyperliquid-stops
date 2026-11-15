@@ -142,9 +142,12 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.44"
+ENGINE_VERSION = "GC-PAPER-1.45"
 MODE = os.getenv("MODE", "paper").strip().lower()
-BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
+# "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
+_BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
+BACKTEST_DAYS = int(_BD.split("-")[0])
+BACKTEST_SKIP_DAYS = int(_BD.split("-")[1]) if "-" in _BD else 0
 STATE_FILE = "gc_paper_state.json"
 START_NAV = float(os.getenv("START_NAV", "1000") or 1000)   # starting balance of each NEW book (Run workflow option)
 ROBUST_RUNS = int(os.getenv("ROBUST_RUNS", "20") or 20)
@@ -284,6 +287,11 @@ BOOKS = [
     ("AB2HS", "AB2H + squeeze guard: shorts locked again once BTC bounces 8% off its 10-day low", "adaptive", False),
     ("AB2HS5", "AB2H + squeeze guard: shorts locked again once BTC bounces 5% off its 10-day low", "adaptive", False),
     ("AB2HF25", "AB2H + floor on free shorts only from +25% (keep 60-80%) — LIVE 1.8.1", "adaptive", False),
+    ("F25T", "AB2HF25 + bank half of a free short at +20%", "adaptive", False),
+    ("F25R", "AB2HF25 + re-short after a lock exit when the coin makes a new low", "adaptive", False),
+    ("F25N", "AB2HF25 + no new longs while BTC is in a strong downtrend", "adaptive", False),
+    ("F25W", "AB2HF25 + 12 slots / 180% in use while BTC is in a strong downtrend", "adaptive", False),
+    ("F25P", "AB2HF25 + add 7.5% to a free short once it is +10%", "adaptive", False),
     ("FL5", "F5 + Loose Lock from +5% (stocks)", "long", False),
     ("FL10", "F5 + Big-Winner Lock from +10% (stocks)", "long", False),
     ("FL15", "F5 + Big-Winner Lock from +15% (stocks)", "long", False),
@@ -431,6 +439,14 @@ BOOK_OPTIONS.update({
     "AB2HS": {**BOOK_OPTIONS["AB2H"], "squeeze": 0.08},
     "AB2HS5": {**BOOK_OPTIONS["AB2H"], "squeeze": 0.05},
     "AB2HF25": {**BOOK_OPTIONS["AB2H"], "free_tiers": FREE_TIERS},
+})
+# 1.45 ideas on top of AB2HF25 (see step_day): reenter_short, no_long_crash, crash_slots, short_add.
+BOOK_OPTIONS.update({
+    "F25T": {**BOOK_OPTIONS["AB2HF25"], "free_half": {"at": 0.20, "frac": 0.5}},
+    "F25R": {**BOOK_OPTIONS["AB2HF25"], "reenter_short": True},
+    "F25N": {**BOOK_OPTIONS["AB2HF25"], "no_long_crash": True},
+    "F25W": {**BOOK_OPTIONS["AB2HF25"], "crash_slots": {"max_pos": 12, "gross_cap": 1.80}},
+    "F25P": {**BOOK_OPTIONS["AB2HF25"], "short_add": {"at": 0.10, "size": 0.075}},
 })
 BOOK_OPTIONS["AB2HF5"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.10, 0.60], [0.05, 0.50]]}
 BOOK_OPTIONS.update({"RML": BOOK_OPTIONS["RM"], "RMFL": BOOK_OPTIONS["RMF"], "RSL": BOOK_OPTIONS["RS"], "EXL": BOOK_OPTIONS["EX"],
@@ -649,6 +665,8 @@ def close_position(book, coin, px, date, reason, log):
     p = book["positions"].pop(coin)
     if book.get("reenter") and p["side"] == "LONG" and reason.startswith(lock_label(book)):
         book.setdefault("relock", {})[coin] = p["peak_px"]          # may buy back above this peak (see LONG ENTRIES)
+    if book.get("reenter_short") and p["side"] == "SHORT" and reason.startswith(lock_label(book)):
+        book.setdefault("relock_s", {})[coin] = p["peak_px"]        # may short again below this low (see SHORT ENTRIES)
     value = pos_value(p, px)
     fee = p["qty"] * px * FEE_RATE
     book["cash"] += value - fee
@@ -847,6 +865,10 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
     """Runs one LS-15 decision cycle on the daily candle `day` (YYYY-MM-DD) for one book."""
     if book.get("lock") == "adaptive":
         book["_strong_down"] = strong_downtrend(book, data, day)
+    if book.get("crash_slots"):
+        cs, base = book["crash_slots"], BOOK_OPTIONS["AB2H"]
+        book["max_pos"] = cs["max_pos"] if book.get("_strong_down") else base["max_pos"]
+        book["gross_cap"] = cs["gross_cap"] if book.get("_strong_down") else base["gross_cap"]
     bar = {c: data[c][day] for c in data if day in data[c]}
     prev = {c: b["_prev"] for c, b in bar.items() if b.get("_prev")}   # previous bar (previous TRADING day for stocks)
     closes = {c: b["c"] for c, b in bar.items()}
@@ -1035,6 +1057,8 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
             skips.append((c, f"Long signal on weak volume ({b['v'] / b['vavg']:.1f}x the 20-day average)")); continue
         if mkt_weak:
             skips.append((c, f"Long signal, but {BENCH} is below its GC filter (choppy/weak market)")); continue
+        if book.get("no_long_crash") and book.get("_strong_down"):
+            skips.append((c, "Long signal, but BTC is in a strong downtrend (no new longs)")); continue
         if c in exited:
             skips.append((c, "Long signal, but exited earlier this run")); continue
         if c in book["positions"]:
@@ -1089,13 +1113,21 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
         topup_position(book, c, usd, b["c"], day, log)
 
     # 8) SHORT ENTRIES (rank order)
+    relock_s = book.get("relock_s") or {}
+    for c in list(relock_s):                                  # re-short chance ends once the coin closes above its filter
+        b = bar.get(c)
+        if b and b.get("valid") and b["c"] > b["filter"]:
+            relock_s.pop(c)
     for c in ([] if LONG_ONLY else universe):
         b, pb = bar.get(c), prev.get(c)
         if not b or not pb or not b.get("valid") or c in book["positions"]:
             continue
         hedge = b["trend"] == "Red" and b["c"] < b["filter"] and pb["c"] >= pb["filter"]
         bear = btc_down and b["trend"] == "Red" and b["h"] >= BEAR_SHORT_TOUCH * b["filter"] and b["c"] < b["filter"]
-        if not (hedge or bear):
+        reshort = btc_down and c in relock_s and b["c"] < relock_s[c]
+        if reshort:
+            relock_s.pop(c, None)
+        if not (hedge or bear or reshort):
             continue
         if weak_volume(book, b):
             skips.append((c, f"Short signal on weak volume ({b['v'] / b['vavg']:.1f}x the 20-day average)")); continue
@@ -1114,7 +1146,24 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
             skips.append((c, f"Short signal, ${usd:,.2f} is below the ${MIN_ORDER_USD:.0f} minimum order")); continue
         if usd < nav * MIN_TRADE_NAV:
             skips.append((c, f"Short signal, not enough cash (${usd:,.2f} < 1% NAV)")); continue
-        open_position(book, c, "SHORT", usd, b["c"], day, "hedge short (cross under filter)" if hedge else f"bear short (rejected bounce, {BENCH} down)", log, power)
+        why = "hedge short (cross under filter)" if hedge else (f"bear short (rejected bounce, {BENCH} down)" if bear else "re-short: new low after a lock exit")
+        open_position(book, c, "SHORT", usd, b["c"], day, why, log, power)
+
+    # 8b) ADD TO FREE-RUNNING SHORTS (F25P): once per short, when it is up short_add["at"]
+    sa = book.get("short_add")
+    for c, p in (list(book["positions"].items()) if sa else []):
+        b = bar.get(c)
+        if not b or p["side"] != "SHORT" or p.get("added") or not book.get("_strong_down") or 1 - b["c"] / p["entry"] < sa["at"]:
+            continue
+        nav = book_nav(book, closes)
+        usd = min(nav * sa["size"], buying_power(book, nav) / (1 + FEE_RATE))
+        if usd < max(MIN_ORDER_USD, nav * MIN_TRADE_NAV):
+            continue
+        fee, qty = usd * FEE_RATE, usd / b["c"]
+        p["entry"] = (p["entry"] * p["qty"] + b["c"] * qty) / (p["qty"] + qty)
+        p["qty"] += qty; p["cost"] += usd; p["collateral"] += usd; p["fees"] += fee; p["added"] = True
+        book["cash"] -= usd + fee
+        log.append(("TOP-UP", c, f"SHORT +${usd:,.2f} @ {b['c']:.6g} (winner add, avg entry now {p['entry']:.6g})"))
 
     # Update peaks with today's candle and (profit-lock books) set tomorrow's resting stop.
     for c, p in book["positions"].items():
@@ -1646,8 +1695,10 @@ def btc_buy_hold(data, days):
 # ======================================================================================
 def backtest_days(all_days):
     """Candles of the last BACKTEST_DAYS calendar days (crypto: one per day; stocks: trading days only)."""
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=BACKTEST_DAYS)).strftime("%Y-%m-%d")
-    return [d for d in all_days if d >= cutoff]
+    now = datetime.now(timezone.utc)
+    cutoff = (now - timedelta(days=BACKTEST_DAYS)).strftime("%Y-%m-%d")
+    end = (now - timedelta(days=BACKTEST_SKIP_DAYS)).strftime("%Y-%m-%d") if BACKTEST_SKIP_DAYS else "9999"
+    return [d for d in all_days if cutoff <= d < end]
 
 
 def load_market(info, history_days):
