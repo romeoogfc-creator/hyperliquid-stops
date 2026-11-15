@@ -9,16 +9,16 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1794722400000,
+   "h1_checked_ms": 1794729600000,
    "v_ref": 1092995.6666666667,
-   "fade_n": 4,
+   "fade_n": 6,
    "fade_vols": [
-    573885.0,
-    227216.0,
     230570.0,
     129871.0,
     153881.0,
-    30037.0
+    30037.0,
+    96123.0,
+    168620.0
    ]
   },
   "ASTER": {
@@ -30,16 +30,16 @@
    "opened_ms": 1793750656986,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.567078,
-   "h1_checked_ms": 1794722400000,
+   "h1_checked_ms": 1794729600000,
    "v_ref": 3955189.3333333335,
-   "fade_n": 5,
+   "fade_n": 7,
    "fade_vols": [
-    2413472.0,
-    996394.0,
     1088643.0,
     477958.0,
     185462.0,
-    121936.0
+    121936.0,
+    177612.0,
+    207019.0
    ],
    "half_small_logged": true
   },
@@ -52,16 +52,16 @@
    "opened_ms": 1793923466365,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.1052168,
-   "h1_checked_ms": 1794722400000,
+   "h1_checked_ms": 1794729600000,
    "v_ref": 5940314.666666667,
-   "fade_n": 8,
+   "fade_n": 10,
    "fade_vols": [
-    821941.0,
-    502474.0,
     764585.0,
     805551.0,
     183414.0,
-    68900.0
+    68900.0,
+    114349.0,
+    347470.0
    ],
    "half_small_logged": true
   },
@@ -74,16 +74,16 @@
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.09685312,
-   "h1_checked_ms": 1794722400000,
+   "h1_checked_ms": 1794729600000,
    "v_ref": 992036.0,
-   "fade_n": 5,
+   "fade_n": 7,
    "fade_vols": [
-    514607.0,
-    421924.0,
     335145.0,
     205773.0,
     83399.0,
-    48080.0
+    48080.0,
+    106557.0,
+    126474.0
    ]
   },
   "PAXG": {
@@ -95,16 +95,16 @@
    "opened_ms": 1794269054441,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 4285.32,
-   "h1_checked_ms": 1794722400000,
+   "h1_checked_ms": 1794729600000,
    "v_ref": 100.17699999999998,
-   "fade_n": 5,
+   "fade_n": 7,
    "fade_vols": [
-    121.882,
-    22.858,
     26.247,
     27.734,
     11.036,
-    8.285
+    8.285,
+    25.582,
+    10.829
    ]
   },
   "ETHFI": {
@@ -116,16 +116,16 @@
    "opened_ms": 1794441849836,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.53445,
-   "h1_checked_ms": 1794722400000,
+   "h1_checked_ms": 1794729600000,
    "v_ref": 552918.8333333334,
-   "fade_n": 1,
+   "fade_n": 3,
    "fade_vols": [
-    224604.8,
-    121615.3,
     292029.1,
     83255.9,
     369508.0,
-    46825.8
+    46825.8,
+    40693.0,
+    44069.0
    ],
    "half_small_logged": true
   }
