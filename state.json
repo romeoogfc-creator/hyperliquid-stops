@@ -21,28 +21,6 @@
     105684.0
    ]
   },
-  "ASTER": {
-   "side": "SHORT",
-   "sz": 23.0,
-   "entry": 0.70035,
-   "peak_px": 0.47823,
-   "opened": "2026-11-03",
-   "opened_ms": 1793750656986,
-   "reason": "bear short (rejected bounce, BTC down)",
-   "stop": 0.567078,
-   "h1_checked_ms": 1794772800000,
-   "v_ref": 3955189.3333333335,
-   "fade_n": 19,
-   "fade_vols": [
-    130527.0,
-    145673.0,
-    191319.0,
-    422430.0,
-    570267.0,
-    418894.0
-   ],
-   "half_small_logged": true
-  },
   "PURR": {
    "side": "SHORT",
    "sz": 164.0,
@@ -321,6 +299,18 @@
    "pct": 4.51,
    "peak_pct": 7.68,
    "pnl": 0.7659,
+   "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
+  },
+  {
+   "coin": "ASTER",
+   "side": "SHORT",
+   "opened": "2026-11-03",
+   "closed": "2026-11-15 20:29",
+   "entry": 0.70035,
+   "exit": 0.56757,
+   "pct": 18.96,
+   "peak_pct": 31.72,
+   "pnl": 3.0483,
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
