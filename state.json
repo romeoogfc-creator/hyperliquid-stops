@@ -425,9 +425,12 @@
    128.39
   ]
  ],
- "version": "LS15-LIVE-1.10.1",
+ "version": "LS15-LIVE-1.10.2",
  "btc_strong_down": true,
  "h1_since_ms": 1793824939398,
  "error_streak": 0,
- "ledger_ms": 1794773497440
+ "ledger_ms": 1794773497440,
+ "net_deposits": 342.09,
+ "ledger_seen_ms": 1794773497440,
+ "ledger_note": "Ledger since 2026-11-14: 3 entries (send x3), net added $+342.09"
 }
