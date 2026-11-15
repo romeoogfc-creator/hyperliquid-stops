@@ -142,7 +142,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.47.1"
+ENGINE_VERSION = "GC-PAPER-1.49"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -304,6 +304,13 @@ BOOKS = [
     ("F25L5", "F25T + bank half of a LONG at +5%", "adaptive", False),
     ("F25L10", "F25T + bank half of a LONG at +10%", "adaptive", False),
     ("F25L20", "F25T + bank half of a LONG at +20%", "adaptive", False),
+    ("K70", "LIVE 1.10 rules, free-short floor from +25% keeps 70-85%", "adaptive", False),
+    ("K80", "LIVE 1.10 rules, free-short floor from +25% keeps 80-90%", "adaptive", False),
+    ("K90", "LIVE 1.10 rules, free-short floor from +25% keeps 90%", "adaptive", False),
+    ("G1", "LIVE 1.10 + stall exit: no new peak for 6 x 4h after +6%, still >=68% of peak", "adaptive", False),
+    ("G2", "LIVE 1.10 + shelf stop: quiet 4h bar after +5% -> stop just past the 2-bar shelf", "adaptive", False),
+    ("G3", "LIVE 1.10 + churn exit: 6 x 4h efficiency < 0.18 after +6%, close on the weak side", "adaptive", False),
+    ("G4", "LIVE 1.10 + rejection exit: 2 x 4h closes back past the peak candle's middle after +5%", "adaptive", False),
     ("FL5", "F5 + Loose Lock from +5% (stocks)", "long", False),
     ("FL10", "F5 + Big-Winner Lock from +10% (stocks)", "long", False),
     ("FL15", "F5 + Big-Winner Lock from +15% (stocks)", "long", False),
@@ -468,6 +475,19 @@ BOOK_OPTIONS.update({
 })
 # 1.47: bank half of a long (Book X's take_half) on top of F25T; the rest keeps the normal hourly lock.
 BOOK_OPTIONS.update({f"F25L{n}": {**BOOK_OPTIONS["F25T"], "take_half": {"at": n / 100, "frac": 0.5}} for n in (5, 10, 20)})
+# 1.48: same start (+25%) for the free-short floor, but it keeps MORE of the peak (live = F25L5 = 60/70/80%).
+BOOK_OPTIONS.update({
+    "K70": {**BOOK_OPTIONS["F25L5"], "free_tiers": [[0.50, 0.85], [0.35, 0.80], [0.25, 0.70]]},
+    "K80": {**BOOK_OPTIONS["F25L5"], "free_tiers": [[0.50, 0.90], [0.35, 0.85], [0.25, 0.80]]},
+    "K90": {**BOOK_OPTIONS["F25L5"], "free_tiers": [[0.25, 0.90]]},
+})
+# 1.49 Gemini's exit ideas on 4h candles, on top of the live rules (see exit_rules()).
+BOOK_OPTIONS.update({
+    "G1": {**BOOK_OPTIONS["F25L5"], "exit_rule": {"kind": "stall", "min_peak": 0.06, "bars": 6, "retain": 0.68}},
+    "G2": {**BOOK_OPTIONS["F25L5"], "exit_rule": {"kind": "shelf", "min_peak": 0.05, "ratio": 0.55, "buffer": 0.002}},
+    "G3": {**BOOK_OPTIONS["F25L5"], "exit_rule": {"kind": "churn", "min_peak": 0.06, "window": 6, "max_er": 0.18}},
+    "G4": {**BOOK_OPTIONS["F25L5"], "exit_rule": {"kind": "reject", "min_peak": 0.05, "confirm": 2}},
+})
 BOOK_OPTIONS["AB2HF5"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.10, 0.60], [0.05, 0.50]]}
 BOOK_OPTIONS.update({"RML": BOOK_OPTIONS["RM"], "RMFL": BOOK_OPTIONS["RMF"], "RSL": BOOK_OPTIONS["RS"], "EXL": BOOK_OPTIONS["EX"],
                      "Z4F": BOOK_OPTIONS["ZSF4"], "Z4HF": BOOK_OPTIONS["ZSF"]})
@@ -882,6 +902,56 @@ def stop_label(book):
     return "✂️ Loss stop" if book.get("disaster", 1) <= 0.10 else "🧯 Disaster stop"
 
 
+def exit_rules(rule, p, candles):
+    """Gemini's four exit ideas, kept as running state in p['rs'] so each candle is O(1). Returns (reason, price) or None."""
+    long_ = p["side"] == "LONG"
+    rs = p.setdefault("rs", {"peak": p["entry"], "since": 0, "mid": None, "n": 0, "rsum": 0.0, "last": [], "stop": None})
+    for k in candles:
+        # a shelf stop set on an earlier candle can fill inside this one
+        if rs["stop"] is not None and ((long_ and k["l"] <= rs["stop"]) or (not long_ and k["h"] >= rs["stop"])):
+            px = min(k["o"], rs["stop"]) if long_ else max(k["o"], rs["stop"])
+            return ("🧱 Shelf stop (4h consolidation broke)", px)
+        new_ext = (k["h"] > rs["peak"]) if long_ else (k["l"] < rs["peak"])
+        if new_ext:
+            rs["peak"], rs["since"], rs["mid"] = (k["h"] if long_ else k["l"]), 0, 0.5 * (k["o"] + k["c"])
+        else:
+            rs["since"] += 1
+        peak_gain = (rs["peak"] / p["entry"] - 1) if long_ else (1 - rs["peak"] / p["entry"])
+        now_gain = (k["c"] / p["entry"] - 1) if long_ else (1 - k["c"] / p["entry"])
+        rng = max(k["h"] - k["l"], 1e-12)
+        avg_prev = rs["rsum"] / rs["n"] if rs["n"] else None
+        rs["last"] = (rs["last"] + [k])[-max(6, rule.get("window", 6), rule.get("confirm", 2)):]
+        kind, hit = rule["kind"], None
+        if peak_gain >= rule["min_peak"]:
+            if kind == "stall" and rs["since"] >= rule["bars"] and now_gain >= peak_gain * rule["retain"]:
+                hit = (f"⏳ Stalled: no new {'high' if long_ else 'low'} for {rs['since']} x 4h (kept {now_gain*100:.1f}% of a "
+                       f"{peak_gain*100:.1f}% peak)", k["c"])
+            elif kind == "shelf" and avg_prev and rng < rule["ratio"] * avg_prev and len(rs["last"]) >= 2:
+                two = rs["last"][-2:]
+                cand = (min(b["l"] for b in two) * (1 - rule["buffer"])) if long_ else (max(b["h"] for b in two) * (1 + rule["buffer"]))
+                if long_ and cand < k["c"] and (rs["stop"] is None or cand > rs["stop"]):
+                    rs["stop"] = cand
+                elif not long_ and cand > k["c"] and (rs["stop"] is None or cand < rs["stop"]):
+                    rs["stop"] = cand
+            elif kind == "churn" and len(rs["last"]) >= rule["window"]:
+                win = rs["last"][-rule["window"]:]
+                path = sum(abs(b["c"] - b["o"]) for b in win)
+                er = abs(win[-1]["c"] - win[0]["o"]) / path if path else 1.0
+                mid = 0.5 * (max(b["h"] for b in win) + min(b["l"] for b in win))
+                weak = (k["c"] < mid) if long_ else (k["c"] > mid)
+                if er < rule["max_er"] and weak and now_gain > 0:
+                    hit = (f"🌀 Churn: 6 x 4h efficiency {er:.2f}, closed on the weak side", k["c"])
+            elif kind == "reject" and rs["mid"] is not None and rs["since"] >= rule["confirm"] and now_gain > 0:
+                recent = rs["last"][-rule["confirm"]:]
+                if all((b["c"] < rs["mid"]) if long_ else (b["c"] > rs["mid"]) for b in recent):
+                    hit = (f"↩️ Rejected: {rule['confirm']} x 4h closes back past the peak candle's middle", k["c"])
+        rs["n"] += 1
+        rs["rsum"] += rng
+        if hit:
+            return hit
+    return None
+
+
 def take_half_hit(book, p, high):
     th = book.get("take_half")
     return bool(th and p["side"] == "LONG" and not p.get("half_taken") and high >= p["entry"] * (1 + th["at"]))
@@ -996,6 +1066,17 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
                 exited.add(c)
             elif p["side"] == "SHORT" and b["h"] >= p["stop"]:
                 close_position(book, c, max(b["o"], p["stop"]), day, f"{lock_label(book)} (stop {p['stop']:.6g})", log)
+                exited.add(c)
+
+    # 1.49 exit-rule books: walk today's 4h candles in order (no look-ahead) for each position opened before today.
+    if book.get("exit_rule"):
+        for c in list(book["positions"]):
+            p = book["positions"][c]
+            if p["opened"] == day:
+                continue
+            why = exit_rules(book["exit_rule"], p, (data4h or {}).get(c, {}).get(day) or [])
+            if why:
+                close_position(book, c, why[1], day, why[0], log)
                 exited.add(c)
 
     # Disaster stop (Book U / live bot): a resting stop far from entry on every position, long or short.
