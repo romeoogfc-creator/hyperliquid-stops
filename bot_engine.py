@@ -39,7 +39,7 @@ from email.mime.text import MIMEText
 
 import gc_paper as engine
 
-BOT_VERSION = "LS15-LIVE-1.8"
+BOT_VERSION = "LS15-LIVE-1.8.1"
 STATE_FILE = "state.json"                  # same file the old scalper used (stops.yml commits it)
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
 SECRET_KEY = os.getenv("HL_SECRET_KEY")
@@ -59,8 +59,8 @@ LOW_BALANCE_WARN = 67.0                # below this, 15% positions fall under $1
 H1_MS = 3600 * 1000
 FADE_LOOKBACK = engine.KNIFE_LOOKBACK      # a candle's "busy-ness" = average volume of the 6 candles before it
 STRONG_DOWN = 0.95                         # BTC daily close under 95% of its GC filter = strong downtrend: shorts run free
-FREE_TIERS = engine.FREE_TIERS             # 1.8: free-running shorts still keep 60% of the peak gain from +15%, 70% from +20%,
-                                           # 75% from +30%, 80% from +50% (paper Book AB2HF)
+FREE_TIERS = engine.FREE_TIERS             # 1.8.1: free-running shorts still keep 60% of the peak gain from +25%, 70% from +35%,
+                                           # 80% from +50% (paper Book AB2HF25: beat plain AB2H in 95 of 100 runs)
 
 
 # ======================================================================================
@@ -553,7 +553,7 @@ def report(state, nav, ex_pos, mids, log, skips, daily_day):
    up to {GROSS_CAP*100:.0f}% in positions, cross {LEVERAGE_SETTING}x setting. Early profit lock (keeps 50% of the peak gain from +3%,
    60% from +5%, 70% from +10%, 80/85/90% from +20/35/60%) as a real stop moved every hour, plus a volume-fade exit (6 quiet hours after +3%).
    Shorts get the lock and fade too, except while BTC closes 5%+ under its filter
-   (now: {'📉 strong downtrend, shorts run free (big winners keep 60-80% from +15%)' if state.get('btc_strong_down') else '🔒 shorts locked'}).
+   (now: {'📉 strong downtrend, shorts run free (big winners keep 60-80% from +25%)' if state.get('btc_strong_down') else '🔒 shorts locked'}).
    Every position: loss stop {DISASTER_STOP*100:.0f}% against the entry. Shorts also exit on a daily close above the GC filter or at -35%.</div>
  </div></div></body></html>"""
     text = f"{BOT_VERSION} {mode}\nNAV ${nav:,.2f}\n" + "\n".join(log)

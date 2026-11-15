@@ -142,7 +142,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.43"
+ENGINE_VERSION = "GC-PAPER-1.44"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -275,7 +275,7 @@ BOOKS = [
     ("AB2", "Best of Both: shorts run free when BTC 5% under filter (4h)", "adaptive", False),
     ("AB1H", "Best of Both: shorts run free when BTC -10%/30d (hourly)", "adaptive", False),
     ("AB2H", "Best of Both: shorts run free when BTC 5% under filter (hourly)", "adaptive", False),
-    ("AB2HF", "AB2H + big-winner floor on free shorts (keep 60-80% from +15%) — LIVE 1.8", "adaptive", False),
+    ("AB2HF", "AB2H + big-winner floor on free shorts (keep 60-80% from +15%)", "adaptive", False),
     ("AB2HF10", "AB2H + floor on free shorts from +10% (keep 50-80%)", "adaptive", False),
     ("AB2HF5", "AB2H + floor on free shorts from +5% (keep 50-80%)", "adaptive", False),
     ("AB2HFV", "AB2HF + volume-fade exit on free shorts too", "adaptive", False),
@@ -283,7 +283,7 @@ BOOKS = [
     ("AB2HT15", "AB2H + bank HALF of a free short at +15%, the rest runs free", "adaptive", False),
     ("AB2HS", "AB2H + squeeze guard: shorts locked again once BTC bounces 8% off its 10-day low", "adaptive", False),
     ("AB2HS5", "AB2H + squeeze guard: shorts locked again once BTC bounces 5% off its 10-day low", "adaptive", False),
-    ("AB2HF25", "AB2H + floor on free shorts only from +25% (keep 60-80%)", "adaptive", False),
+    ("AB2HF25", "AB2H + floor on free shorts only from +25% (keep 60-80%) — LIVE 1.8.1", "adaptive", False),
     ("FL5", "F5 + Loose Lock from +5% (stocks)", "long", False),
     ("FL10", "F5 + Big-Winner Lock from +10% (stocks)", "long", False),
     ("FL15", "F5 + Big-Winner Lock from +15% (stocks)", "long", False),
@@ -418,8 +418,9 @@ BOOK_OPTIONS.update({
     "FLS": {**BOOK_OPTIONS["FL10"], "smart_cut": {"loss": 0.015, "vol_mult": 1.2, "close_in_bottom": 0.4}},
 })
 # free_tiers: while shorts "run free" (adaptive books, strong BTC downtrend) big winners still get this wide floor.
-FREE_TIERS = [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.15, 0.60]]
-BOOK_OPTIONS["AB2HF"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": FREE_TIERS}
+# 1.44: the live bot uses the +25% ladder (AB2HF25 beat plain AB2H in 95 of 100 runs; the +15% ladder lost to it).
+FREE_TIERS = [[0.50, 0.80], [0.35, 0.70], [0.25, 0.60]]
+BOOK_OPTIONS["AB2HF"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.15, 0.60]]}
 BOOK_OPTIONS["AB2HF10"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.10, 0.50]]}
 BOOK_OPTIONS["AB2HFV"] = {**BOOK_OPTIONS["AB2HF"], "free_fade": True}
 # free_half: bank `frac` of a free-running short once it is up `at`; the rest keeps running free (-4% stop only).
@@ -429,7 +430,7 @@ BOOK_OPTIONS.update({
     "AB2HT15": {**BOOK_OPTIONS["AB2H"], "free_half": {"at": 0.15, "frac": 0.5}},
     "AB2HS": {**BOOK_OPTIONS["AB2H"], "squeeze": 0.08},
     "AB2HS5": {**BOOK_OPTIONS["AB2H"], "squeeze": 0.05},
-    "AB2HF25": {**BOOK_OPTIONS["AB2H"], "free_tiers": [[0.50, 0.80], [0.35, 0.70], [0.25, 0.60]]},
+    "AB2HF25": {**BOOK_OPTIONS["AB2H"], "free_tiers": FREE_TIERS},
 })
 BOOK_OPTIONS["AB2HF5"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.10, 0.60], [0.05, 0.50]]}
 BOOK_OPTIONS.update({"RML": BOOK_OPTIONS["RM"], "RMFL": BOOK_OPTIONS["RMF"], "RSL": BOOK_OPTIONS["RS"], "EXL": BOOK_OPTIONS["EX"],
