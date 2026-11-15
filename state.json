@@ -40,7 +40,8 @@
     477958.0,
     185462.0,
     121936.0
-   ]
+   ],
+   "half_small_logged": true
   },
   "PURR": {
    "side": "SHORT",
@@ -124,7 +125,8 @@
     83255.9,
     369508.0,
     46825.8
-   ]
+   ],
+   "half_small_logged": true
   }
  },
  "closed": [
@@ -422,7 +424,7 @@
    128.39
   ]
  ],
- "version": "LS15-LIVE-1.8.1",
+ "version": "LS15-LIVE-1.9",
  "btc_strong_down": true,
  "h1_since_ms": 1793824939398,
  "error_streak": 0
