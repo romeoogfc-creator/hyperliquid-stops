@@ -39,7 +39,7 @@ from email.mime.text import MIMEText
 
 import gc_paper as engine
 
-BOT_VERSION = "LS15-LIVE-1.8.1"
+BOT_VERSION = "LS15-LIVE-1.9"
 STATE_FILE = "state.json"                  # same file the old scalper used (stops.yml commits it)
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
 SECRET_KEY = os.getenv("HL_SECRET_KEY")
@@ -61,6 +61,9 @@ FADE_LOOKBACK = engine.KNIFE_LOOKBACK      # a candle's "busy-ness" = average vo
 STRONG_DOWN = 0.95                         # BTC daily close under 95% of its GC filter = strong downtrend: shorts run free
 FREE_TIERS = engine.FREE_TIERS             # 1.8.1: free-running shorts still keep 60% of the peak gain from +25%, 70% from +35%,
                                            # 80% from +50% (paper Book AB2HF25: beat plain AB2H in 95 of 100 runs)
+BANK_HALF = engine.BOOK_OPTIONS["F25T"]["free_half"]  # 1.9: a free-running short at +20% closes HALF (paper Book F25T: beat
+                                           # AB2HF25 in 100 of 100 runs, both the 2-year test and the older-year check).
+                                           # Skipped while half the position is under Hyperliquid's $10 minimum order.
 
 
 # ======================================================================================
@@ -459,6 +462,42 @@ def close_own(info, exchange, state, coin, why, log):
     record_closed(info, state, coin, avg or None, why, log)
 
 
+def bank_half(info, exchange, state, coin, px, sz_dec, log):
+    """F25T: close half of a free-running short that is up BANK_HALF['at'] or more. Returns True if it closed some."""
+    p = state["positions"][coin]
+    half = round_sz_down(p["sz"] * BANK_HALF["frac"], sz_dec)
+    if half <= 0 or half * px < MIN_ORDER_USD:
+        if not p.get("half_small_logged"):
+            log.append(f"ℹ️ {coin}: +{(1 - px / p['entry']) * 100:.1f}% — bank-half skipped (half = ${half * px:,.2f}, "
+                       f"under the ${MIN_ORDER_USD:.0f} minimum order); the +25% floor protects it")
+            p["half_small_logged"] = True
+        return False
+    try:
+        res = exchange.market_close(coin, half, None, SLIPPAGE)
+    except Exception as e:
+        log.append(f"⚠️ {coin}: bank-half not sent ({e}) — retrying next run")
+        return False
+    ok, statuses, err = order_result(res)
+    filled, avg = filled_of(statuses)
+    if not ok or filled <= 0:
+        log.append(f"🚨 {coin}: bank-half FAILED ({err or 'not filled'}) — not retried, the +25% floor protects it")
+        p["half_taken"] = True                                      # do not hammer the exchange every 5 minutes
+        return False
+    p["half_taken"] = True
+    if DRY_RUN:
+        return False
+    avg = avg or px
+    gain = 1 - avg / p["entry"]
+    pnl = gain * filled * p["entry"]
+    peak = 1 - p["peak_px"] / p["entry"]
+    p["sz"] = max(0.0, p["sz"] - filled)
+    state["closed"].append({"coin": coin, "side": "SHORT", "opened": p["opened"], "closed": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
+                            "entry": p["entry"], "exit": avg, "pct": round(gain * 100, 2), "peak_pct": round(max(peak, gain) * 100, 2),
+                            "pnl": round(pnl, 4), "reason": f"💵 Banked half at +{BANK_HALF['at']*100:.0f}% (free short)"})
+    log.append(f"💰 {coin}: SHORT half closed {gain*100:+.2f}% (${pnl:+,.2f}) — 💵 banked half, the rest keeps running")
+    return True
+
+
 def safe_close(info, exchange, state, coin, why, log):
     """close_own that never crashes the run: on a network error the position (and its stop) stays, next run retries."""
     try:
@@ -553,7 +592,7 @@ def report(state, nav, ex_pos, mids, log, skips, daily_day):
    up to {GROSS_CAP*100:.0f}% in positions, cross {LEVERAGE_SETTING}x setting. Early profit lock (keeps 50% of the peak gain from +3%,
    60% from +5%, 70% from +10%, 80/85/90% from +20/35/60%) as a real stop moved every hour, plus a volume-fade exit (6 quiet hours after +3%).
    Shorts get the lock and fade too, except while BTC closes 5%+ under its filter
-   (now: {'📉 strong downtrend, shorts run free (big winners keep 60-80% from +25%)' if state.get('btc_strong_down') else '🔒 shorts locked'}).
+   (now: {'📉 strong downtrend, shorts run free (half banked at +20%, big winners keep 60-80% from +25%)' if state.get('btc_strong_down') else '🔒 shorts locked'}).
    Every position: loss stop {DISASTER_STOP*100:.0f}% against the entry. Shorts also exit on a daily close above the GC filter or at -35%.</div>
  </div></div></body></html>"""
     text = f"{BOT_VERSION} {mode}\nNAV ${nav:,.2f}\n" + "\n".join(log)
@@ -626,8 +665,12 @@ def main():
             safe_close(info, exchange, state, coin, p["fade_exit"], log)
             closed_now = True
             continue
-        stop = desired_stop(p, short_lock_on(state))
         px = mids.get(coin)
+        if (px and p["side"] == "SHORT" and not short_lock_on(state) and not p.get("half_taken")
+                and px <= p["entry"] * (1 - BANK_HALF["at"])):
+            if bank_half(info, exchange, state, coin, px, sz_dec.get(coin, 2), log):
+                closed_now = True
+        stop = desired_stop(p, short_lock_on(state))
         if px and ((p["side"] == "LONG" and px <= stop) or (p["side"] == "SHORT" and px >= stop)):
             locked = (stop > p["entry"]) if p["side"] == "LONG" else (stop < p["entry"])
             safe_close(info, exchange, state, coin, f"{'🔒 Profit lock' if locked else '✂️ Loss stop'} (price {px:.6g} already past stop {stop:.6g})", log)
