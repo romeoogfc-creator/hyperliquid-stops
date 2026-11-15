@@ -142,12 +142,18 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.45"
+ENGINE_VERSION = "GC-PAPER-1.46"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
 BACKTEST_DAYS = int(_BD.split("-")[0])
 BACKTEST_SKIP_DAYS = int(_BD.split("-")[1]) if "-" in _BD else 0
+# 1.46 funding: backtest / robust runs (crypto) charge Hyperliquid funding every day a position is held. The rate is a
+# market average from FUNDING_COINS coins spread across the universe (hourly fundingHistory, ~2.4 s per request).
+FUNDING = os.getenv("FUNDING", "on").strip().lower() != "off"
+FUNDING_COINS = int(os.getenv("FUNDING_COINS", "12") or 12)
+FUNDING_DAY = {}                       # day -> average hourly funding rate (positive = longs pay shorts)
+FUNDING_NOTE = ""
 STATE_FILE = "gc_paper_state.json"
 START_NAV = float(os.getenv("START_NAV", "1000") or 1000)   # starting balance of each NEW book (Run workflow option)
 ROBUST_RUNS = int(os.getenv("ROBUST_RUNS", "20") or 20)
@@ -292,6 +298,9 @@ BOOKS = [
     ("F25N", "AB2HF25 + no new longs while BTC is in a strong downtrend", "adaptive", False),
     ("F25W", "AB2HF25 + 12 slots / 180% in use while BTC is in a strong downtrend", "adaptive", False),
     ("F25P", "AB2HF25 + add 7.5% to a free short once it is +10%", "adaptive", False),
+    ("F25E", "F25T + crowded days: cleanest trends (10-day efficiency) get the slots first", "adaptive", False),
+    ("F25V", "F25T + size by volatility (7.5-22.5% per slot, same risk per trade)", "adaptive", False),
+    ("F25X", "F25T + guardrail on free shorts: keep 35% from +18%", "adaptive", False),
     ("FL5", "F5 + Loose Lock from +5% (stocks)", "long", False),
     ("FL10", "F5 + Big-Winner Lock from +10% (stocks)", "long", False),
     ("FL15", "F5 + Big-Winner Lock from +15% (stocks)", "long", False),
@@ -448,6 +457,12 @@ BOOK_OPTIONS.update({
     "F25W": {**BOOK_OPTIONS["AB2HF25"], "crash_slots": {"max_pos": 12, "gross_cap": 1.80}},
     "F25P": {**BOOK_OPTIONS["AB2HF25"], "short_add": {"at": 0.10, "size": 0.075}},
 })
+# 1.46 (Gemini's ideas) on top of F25T, the best book of 1.45: er_rank, vol_size, a low-keep guardrail.
+BOOK_OPTIONS.update({
+    "F25E": {**BOOK_OPTIONS["F25T"], "er_rank": True},
+    "F25V": {**BOOK_OPTIONS["F25T"], "vol_size": {"risk": 0.006, "atr_mult": 0.8, "min": 0.075, "max": 0.225}},
+    "F25X": {**BOOK_OPTIONS["F25T"], "free_tiers": FREE_TIERS + [[0.18, 0.35]]},
+})
 BOOK_OPTIONS["AB2HF5"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.10, 0.60], [0.05, 0.50]]}
 BOOK_OPTIONS.update({"RML": BOOK_OPTIONS["RM"], "RMFL": BOOK_OPTIONS["RMF"], "RSL": BOOK_OPTIONS["RS"], "EXL": BOOK_OPTIONS["EX"],
                      "Z4F": BOOK_OPTIONS["ZSF4"], "Z4HF": BOOK_OPTIONS["ZSF"]})
@@ -563,6 +578,9 @@ def enrich(bars):
         atr = tr if atr is None else atr + (tr - atr) / ATR_PERIOD          # Wilder's ATR
         b["atr"] = atr
         b["r30"] = b["c"] / bars[i - 30]["c"] - 1 if i >= 30 else None
+        if i >= 10:                                           # Kaufman efficiency ratio: 1 = straight line, 0 = chop
+            path = sum(abs(bars[j]["c"] - bars[j - 1]["c"]) for j in range(i - 9, i + 1))
+            b["er10"] = abs(b["c"] - bars[i - 10]["c"]) / path if path else 0.0
         prior = bars[max(0, i - 10):i]
         b["hh10"] = max(x["h"] for x in prior) if len(prior) == 10 else None
         b["ll10"] = min(x["l"] for x in prior) if len(prior) == 10 else None
@@ -594,6 +612,9 @@ def slotted(book):
 def entry_size(book, nav, base_fraction):
     """Position size in USD: a fixed slot (max-N books) or the LS-15 size scaled by size_mult."""
     if slotted(book):
+        vs, natr = book.get("vol_size"), book.get("_natr")
+        if vs and natr:
+            return nav * min(vs["max"], max(vs["min"], vs["risk"] / (vs["atr_mult"] * natr)))
         return nav * book["slot_size"]
     return nav * base_fraction * book.get("size_mult", 1.0)
 
@@ -874,7 +895,19 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
     closes = {c: b["c"] for c, b in bar.items()}
     rank_of = {c: i + 1 for i, c in enumerate(ranked)}
     universe = ranked[:UNIVERSE_SIZE]
+    if book.get("er_rank"):                                   # crowded days: the cleanest trends claim the slots first
+        universe = sorted(universe, key=lambda c: -((bar.get(c) or {}).get("er10") or 0.0))
     exited, entered = set(), set()
+
+    rate = FUNDING_DAY.get(day)                               # funding for positions held through this day
+    if rate:
+        for c, p in book["positions"].items():
+            if p["opened"] == day:
+                continue
+            px = (prev.get(c) or {}).get("c") or p["last_px"]
+            pay = p["qty"] * px * rate * 24 * (1 if p["side"] == "LONG" else -1)
+            book["cash"] -= pay
+            book["funding"] = book.get("funding", 0.0) + pay
 
     for c, p in book["positions"].items():
         if c in closes:
@@ -1066,6 +1099,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
         if slots_full(book, "LONG"):
             skips.append((c, f"Long signal, all {slot_cap(book, 'LONG')} long slots in use")); continue
         recent = b.get("breakout") and (datetime.strptime(day, "%Y-%m-%d") - datetime.strptime(b["breakout"], "%Y-%m-%d")).days <= BREAKOUT_RECENT_DAYS
+        book["_natr"] = (b["atr"] / b["c"]) if b.get("atr") and b["c"] else None
         want = entry_size(book, nav, LONG_SIZE_RECENT if recent else LONG_SIZE_OLD)
         power = buying_power(book, nav)
         usd = min(want, power / (1 + FEE_RATE))
@@ -1135,6 +1169,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
             skips.append((c, "Short signal, but exited earlier this run")); continue
         if slots_full(book, "SHORT"):
             skips.append((c, f"Short signal, all {slot_cap(book, 'SHORT')} short slots in use")); continue
+        book["_natr"] = (b["atr"] / b["c"]) if b.get("atr") and b["c"] else None
         want = entry_size(book, nav, HEDGE_SHORT_SIZE if hedge else BEAR_SHORT_SIZE)
         power = buying_power(book, nav)
         usd = min(want, power / (1 + FEE_RATE))
@@ -1716,6 +1751,56 @@ def load_intraday(info, coins, history_days):
     return fetch_stock_intraday(coins, history_days) if STOCKS else fetch_intraday(info, coins, history_days)
 
 
+def load_funding(info, universe, data, days):
+    """Fill FUNDING_DAY with the average hourly funding rate per day of FUNDING_COINS coins spread across the universe."""
+    global FUNDING_NOTE
+    FUNDING_DAY.clear()
+    if STOCKS or not FUNDING or not days:
+        FUNDING_NOTE = "" if STOCKS else "Funding not modelled (FUNDING=off)."
+        return
+    step = max(1, len(universe) // FUNDING_COINS)
+    sample = [c for c in universe[::step] if c != BENCH][:FUNDING_COINS]
+    start0 = int(datetime.strptime(days[0], "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp() * 1000) - 86400000
+    end_ms = int(datetime.strptime(days[-1], "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp() * 1000) + 2 * 86400000
+    per_day, got = {}, []
+    for coin in sample:
+        start, rows = start0, 0
+        while start < end_ms:
+            res = None
+            for attempt in range(5):
+                try:
+                    res = info.funding_history(coin, start, end_ms)
+                    break
+                except Exception as e:
+                    print(f"funding {coin}: {e} (retry {attempt + 1})", flush=True)
+                    time.sleep(10 * (attempt + 1))
+            time.sleep(2.4)                                   # stay under Hyperliquid's request-weight limit
+            if not res:
+                break
+            for r in res:
+                d = datetime.fromtimestamp(int(r["time"]) / 1000, timezone.utc).strftime("%Y-%m-%d")
+                per_day.setdefault(d, {}).setdefault(coin, []).append(float(r["fundingRate"]))
+            rows += len(res)
+            start = int(res[-1]["time"]) + 1
+            if len(res) < 2:
+                break
+        print(f"funding {coin}: {rows} hourly rates", flush=True)
+        if rows:
+            got.append(coin)
+    for d, by_coin in per_day.items():
+        means = [sum(v) / len(v) for v in by_coin.values() if v]
+        if means:
+            FUNDING_DAY[d] = sum(means) / len(means)
+    vals = [FUNDING_DAY[d] for d in days if d in FUNDING_DAY]
+    crash = [FUNDING_DAY[d] for d in days if d in FUNDING_DAY and (data.get(BENCH, {}).get(d) or {}).get("_prev")
+             and data[BENCH][d]["_prev"].get("valid") and data[BENCH][d]["_prev"]["c"] < data[BENCH][d]["_prev"]["filter"] * 0.95]
+    avg = lambda v: sum(v) / len(v) * 24 * 100 if v else 0.0
+    FUNDING_NOTE = (f"Funding modelled: average of {len(got)} coins ({', '.join(got)}), {len(vals)} of {len(days)} days covered. "
+                    f"Average {avg(vals):+.3f}%/day (longs pay when positive, shorts when negative); on strong-downtrend days "
+                    f"{(format(avg(crash), '+.3f') + '%/day') if crash else 'n/a'}. Coin-specific spikes are not included (a crowded coin can cost more).")
+    print(FUNDING_NOTE, flush=True)
+
+
 def run_backtest(info):
     ranked, data = load_market(info, BACKTEST_DAYS)
     universe = ranked[:UNIVERSE_SIZE]
@@ -1724,6 +1809,7 @@ def run_backtest(info):
     books = [new_book(code, name, lock, guard) for code, name, lock, guard in BOOKS]
     data4h = load_intraday(info, universe, BACKTEST_DAYS) if needs_intraday(books) else {}
     load_hourly(info, universe, BACKTEST_DAYS, [b["code"] for b in books])
+    load_funding(info, universe, data, days)
     min_order_skips = {b["code"]: 0 for b in books}
     for day in days:
         btc_down = btc_downtrend(data, day)
@@ -1761,6 +1847,7 @@ def run_robust(info):
         raise RuntimeError(f"ROBUST_BOOKS {ROBUST_BOOKS} matches no book")
     data4h = load_intraday(info, universe, BACKTEST_DAYS) if any(BOOK_OPTIONS.get(c, {}).get("lock_intraday") for c, *_ in specs) else {}
     load_hourly(info, universe, BACKTEST_DAYS, [c for c, *_ in specs])
+    load_funding(info, universe, data, days)
     btc_down = {d: btc_downtrend(data, d) for d in days}
     last = days[-1]
     prices = {c: data[c][last]["c"] for c in data if last in data[c]}
@@ -1809,6 +1896,7 @@ def run_robust(info):
       <th align="left">Best</th><th align="left">Median drop</th><th align="left">Worst drop</th><th align="left">Beat {BENCH}</th><th align="left">Beat {ref or "D"} (same order)</th></tr>
       {rows}</table></div>
     {f"<div style='background:#fee2e2;border:1px solid #fecaca;border-radius:6px;padding:8px;color:#991b1b;margin-top:10px;'>⚠️ Books not found in this gc_paper.py ({ENGINE_VERSION}): <b>{', '.join(unknown)}</b> — skipped. Is the newest gc_paper.py committed?</div>" if unknown else ""}
+    {f"<div style='font-size:11px;color:#475569;margin-top:8px;'>💸 {FUNDING_NOTE}</div>" if FUNDING_NOTE else ""}
     <div style="font-weight:700;margin-top:12px;">Every run</div><div style="font-size:11px;color:#475569;">{every}</div>
   </div></div></body></html>"""
     text = f"{title}\n" + "\n".join(summary)
