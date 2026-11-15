@@ -142,7 +142,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.41"
+ENGINE_VERSION = "GC-PAPER-1.43"
 MODE = os.getenv("MODE", "paper").strip().lower()
 BACKTEST_DAYS = int(os.getenv("BACKTEST_DAYS", "365") or 365)
 STATE_FILE = "gc_paper_state.json"
@@ -278,6 +278,12 @@ BOOKS = [
     ("AB2HF", "AB2H + big-winner floor on free shorts (keep 60-80% from +15%) — LIVE 1.8", "adaptive", False),
     ("AB2HF10", "AB2H + floor on free shorts from +10% (keep 50-80%)", "adaptive", False),
     ("AB2HF5", "AB2H + floor on free shorts from +5% (keep 50-80%)", "adaptive", False),
+    ("AB2HFV", "AB2HF + volume-fade exit on free shorts too", "adaptive", False),
+    ("AB2HT20", "AB2H + bank HALF of a free short at +20%, the rest runs free", "adaptive", False),
+    ("AB2HT15", "AB2H + bank HALF of a free short at +15%, the rest runs free", "adaptive", False),
+    ("AB2HS", "AB2H + squeeze guard: shorts locked again once BTC bounces 8% off its 10-day low", "adaptive", False),
+    ("AB2HS5", "AB2H + squeeze guard: shorts locked again once BTC bounces 5% off its 10-day low", "adaptive", False),
+    ("AB2HF25", "AB2H + floor on free shorts only from +25% (keep 60-80%)", "adaptive", False),
     ("FL5", "F5 + Loose Lock from +5% (stocks)", "long", False),
     ("FL10", "F5 + Big-Winner Lock from +10% (stocks)", "long", False),
     ("FL15", "F5 + Big-Winner Lock from +15% (stocks)", "long", False),
@@ -415,6 +421,16 @@ BOOK_OPTIONS.update({
 FREE_TIERS = [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.15, 0.60]]
 BOOK_OPTIONS["AB2HF"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": FREE_TIERS}
 BOOK_OPTIONS["AB2HF10"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.10, 0.50]]}
+BOOK_OPTIONS["AB2HFV"] = {**BOOK_OPTIONS["AB2HF"], "free_fade": True}
+# free_half: bank `frac` of a free-running short once it is up `at`; the rest keeps running free (-4% stop only).
+# squeeze: the strong-downtrend switch turns OFF (shorts locked again) once BTC's close is `squeeze` above its 10-day low close.
+BOOK_OPTIONS.update({
+    "AB2HT20": {**BOOK_OPTIONS["AB2H"], "free_half": {"at": 0.20, "frac": 0.5}},
+    "AB2HT15": {**BOOK_OPTIONS["AB2H"], "free_half": {"at": 0.15, "frac": 0.5}},
+    "AB2HS": {**BOOK_OPTIONS["AB2H"], "squeeze": 0.08},
+    "AB2HS5": {**BOOK_OPTIONS["AB2H"], "squeeze": 0.05},
+    "AB2HF25": {**BOOK_OPTIONS["AB2H"], "free_tiers": [[0.50, 0.80], [0.35, 0.70], [0.25, 0.60]]},
+})
 BOOK_OPTIONS["AB2HF5"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.10, 0.60], [0.05, 0.50]]}
 BOOK_OPTIONS.update({"RML": BOOK_OPTIONS["RM"], "RMFL": BOOK_OPTIONS["RMF"], "RSL": BOOK_OPTIONS["RS"], "EXL": BOOK_OPTIONS["EX"],
                      "Z4F": BOOK_OPTIONS["ZSF4"], "Z4HF": BOOK_OPTIONS["ZSF"]})
@@ -445,7 +461,14 @@ def lock_applies(book, side):
 
 def free_floor(book, p):
     """AB2HF: a short that 'runs free' (adaptive lock off for shorts today) still gets the wide big-winner floor."""
-    return bool(book.get("free_tiers") and p["side"] == "SHORT" and book.get("lock") == "adaptive" and book.get("_strong_down"))
+    return bool((book.get("free_tiers") or book.get("free_half")) and p["side"] == "SHORT" and book.get("lock") == "adaptive"
+                and book.get("_strong_down"))
+
+
+def free_half_hit(book, p, low):
+    """AB2HT books: a free-running short reached the bank-half level (checked against a candle's low)."""
+    fh = book.get("free_half")
+    return bool(fh and free_floor(book, p) and not p.get("half_taken") and low <= p["entry"] * (1 - fh["at"]))
 
 
 def strong_downtrend(book, data, day):
@@ -456,7 +479,14 @@ def strong_downtrend(book, data, day):
         return False
     if book.get("regime") == "r30":
         return pb.get("r30") is not None and pb["r30"] <= -0.10
-    return pb["c"] < pb["filter"] * (1 - book.get("regime_pct", 0.05))
+    strong = pb["c"] < pb["filter"] * (1 - book.get("regime_pct", 0.05))
+    if strong and book.get("squeeze"):
+        closes, x = [], pb
+        while x is not None and len(closes) < 10:
+            closes.append(x["c"]); x = x.get("_prev")
+        if pb["c"] >= min(closes) * (1 + book["squeeze"]):
+            return False                                      # BTC is bouncing hard: lock the shorts again
+    return strong
 
 
 # ======================================================================================
@@ -662,28 +692,34 @@ def set_lock_stop(book, p, high, low):
         p["stop"] = None if fl is None else p["entry"] * (1 + fl)
     else:
         p["peak_px"] = min(p["peak_px"], low)
+        if free_floor(book, p) and not book.get("free_tiers"):
+            p["stop"] = None                                  # free short with no floor (AB2HT): only the -4% stop
+            return
         tiers = book["free_tiers"] if free_floor(book, p) else book.get("lock_tiers")
         fl = lock_floor(1 - p["peak_px"] / p["entry"], tiers)
         p["stop"] = None if fl is None else p["entry"] * (1 - fl)
 
 
 def partial_close(book, coin, px, frac, date, reason, log):
-    """Sell `frac` of a long at px (Book X take-half). The rest of the position keeps running."""
+    """Close `frac` of a position at px (Book X take-half on longs, AB2HT bank-half on free shorts). The rest keeps running."""
     p = book["positions"][coin]
     q = p["qty"] * frac
     fee = q * px * FEE_RATE
     fees_part = p["fees"] * frac
-    book["cash"] += q * px - fee
-    pnl = (px - p["entry"]) * q - fees_part - fee
+    book["cash"] += pos_value(p, px) * frac - fee
+    short = p["side"] == "SHORT"
+    pnl = ((p["entry"] - px) if short else (px - p["entry"])) * q - fees_part - fee
     p["qty"] -= q
     p["cost"] *= (1 - frac)
+    p["collateral"] = p.get("collateral", 0.0) * (1 - frac)
     p["fees"] -= fees_part
     p["half_taken"] = True
-    gain = px / p["entry"] - 1
-    book["closed"].append({"coin": coin, "side": "LONG", "opened": p["opened"], "closed": date, "entry": p["entry"], "exit": px,
-                           "pnl": round(pnl, 4), "pct": round(gain * 100, 2), "peak_pct": round(max(p["peak_px"] / p["entry"] - 1, gain) * 100, 2),
+    gain = (1 - px / p["entry"]) if short else (px / p["entry"] - 1)
+    peak = (1 - p["peak_px"] / p["entry"]) if short else (p["peak_px"] / p["entry"] - 1)
+    book["closed"].append({"coin": coin, "side": p["side"], "opened": p["opened"], "closed": date, "entry": p["entry"], "exit": px,
+                           "pnl": round(pnl, 4), "pct": round(gain * 100, 2), "peak_pct": round(max(peak, gain) * 100, 2),
                            "reason": reason, "why_in": p["reason"]})
-    log.append(("EXIT", coin, f"LONG {reason} — {frac*100:.0f}% sold at {gain*100:+.2f}%, ${pnl:+,.2f}"))
+    log.append(("EXIT", coin, f"{p['side']} {reason} — {frac*100:.0f}% closed at {gain*100:+.2f}%, ${pnl:+,.2f}"))
 
 
 def sellers_took_over(book, p, b):
@@ -862,8 +898,12 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
                         tp = p["entry"] * (1 + book["take_half"]["at"])
                         partial_close(book, c, max(k["o"], tp), book["take_half"]["frac"], day,
                                       f"💵 Take half at +{book['take_half']['at']*100:.0f}%", log)
+                    if free_half_hit(book, p, k["l"]):
+                        tp = p["entry"] * (1 - book["free_half"]["at"])
+                        partial_close(book, c, min(k["o"], tp), book["free_half"]["frac"], day,
+                                      f"💵 Banked half at +{book['free_half']['at']*100:.0f}% (free short)", log)
                     set_lock_stop(book, p, k["h"], k["l"])    # this candle's high/low raises the peak, stop moves up
-                    if free:
+                    if free and not book.get("free_fade"):
                         continue                              # free-running short: only the wide floor, no fade / smart exits
                     why_smart = smart_exits(book, p, k)
                     if why_smart:
@@ -881,6 +921,10 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
                         exited.add(c)
                         break
                 continue
+            if free_half_hit(book, p, b["l"]):
+                tp = p["entry"] * (1 - book["free_half"]["at"])
+                partial_close(book, c, min(b["o"], tp), book["free_half"]["frac"], day,
+                              f"💵 Banked half at +{book['free_half']['at']*100:.0f}% (free short)", log)
             if take_half_hit(book, p, b["h"]) and not (p["stop"] is not None and b["l"] <= p["stop"]):
                 tp = p["entry"] * (1 + book["take_half"]["at"])
                 partial_close(book, c, max(b["o"], tp), book["take_half"]["frac"], day, f"💵 Take half at +{book['take_half']['at']*100:.0f}%", log)
