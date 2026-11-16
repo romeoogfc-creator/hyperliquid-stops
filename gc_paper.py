@@ -142,7 +142,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.50"
+ENGINE_VERSION = "GC-PAPER-1.51"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -313,6 +313,8 @@ BOOKS = [
     ("G4", "LIVE 1.10 + rejection exit: 2 x 4h closes back past the peak candle's middle after +5%", "adaptive", False),
     ("CB", "LIVE 1.10 rules on Coinbase US perps only (17 coins)", "adaptive", False),
     ("CB5", "CB with 5 slots x 25% (fewer, bigger positions)", "adaptive", False),
+    ("CBM", "Coinbase mix: longs on all coins (spot), shorts only on the 17 US perps", "adaptive", False),
+    ("CBL", "Coinbase spot only: longs on all coins, no shorts", "adaptive", False),
     ("FL5", "F5 + Loose Lock from +5% (stocks)", "long", False),
     ("FL10", "F5 + Big-Winner Lock from +10% (stocks)", "long", False),
     ("FL15", "F5 + Big-Winner Lock from +15% (stocks)", "long", False),
@@ -489,6 +491,8 @@ COINBASE_US_PERPS = {"BTC", "ETH", "ZEC", "XRP", "NEAR", "SOL", "PAXG", "HYPE", 
 BOOK_OPTIONS_LATE = {
     "CB": {"coins": COINBASE_US_PERPS},
     "CB5": {"coins": COINBASE_US_PERPS, "max_pos": 5, "slot_size": 0.25},
+    "CBM": {"short_coins": COINBASE_US_PERPS},
+    "CBL": {"short_coins": set()},
 }
 # 1.49 Gemini's exit ideas on 4h candles, on top of the live rules (see exit_rules()).
 BOOK_OPTIONS.update({
@@ -1254,6 +1258,8 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
         b, pb = bar.get(c), prev.get(c)
         if not b or not pb or not b.get("valid") or c in book["positions"]:
             continue
+        if book.get("short_coins") is not None and c not in book["short_coins"]:
+            continue                                          # CBM / CBL: shorts only where the venue allows them
         hedge = b["trend"] == "Red" and b["c"] < b["filter"] and pb["c"] >= pb["filter"]
         bear = btc_down and b["trend"] == "Red" and b["h"] >= BEAR_SHORT_TOUCH * b["filter"] and b["c"] < b["filter"]
         reshort = btc_down and c in relock_s and b["c"] < relock_s[c]
