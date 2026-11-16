@@ -56,20 +56,10 @@
    "bought": "2026-11-04",
    "breakout": "2026-10-29"
   },
-  "VRTX": {
-   "opened": "2026-11-04",
-   "bought": "2026-11-04",
-   "breakout": "2026-08-05"
-  },
   "CMCSA": {
    "opened": "2026-11-04",
    "bought": "2026-11-04",
    "breakout": "2026-11-04"
-  },
-  "AMZN": {
-   "opened": "2026-11-09",
-   "bought": "2026-11-09",
-   "breakout": "2026-08-24"
   },
   "TXN": {
    "opened": "2026-11-09",
@@ -86,20 +76,10 @@
    "bought": "2026-11-10",
    "breakout": "2026-09-03"
   },
-  "TSLA": {
-   "opened": "2026-11-11",
-   "bought": "2026-11-11",
-   "breakout": "2026-10-05"
-  },
   "UNH": {
    "opened": "2026-11-12",
    "bought": "2026-11-12",
    "breakout": "2026-11-10"
-  },
-  "CVX": {
-   "opened": "2026-11-12",
-   "bought": "2026-11-12",
-   "breakout": "2026-08-10"
   }
  },
  "closed": [
@@ -382,9 +362,49 @@
    "pct": -3.19,
    "pnl": -37.23,
    "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "AMZN",
+   "opened": "2026-11-09",
+   "closed": "2026-11-16",
+   "entry": 269.09,
+   "exit": 257.8154,
+   "pct": -4.19,
+   "pnl": -48.84,
+   "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "CVX",
+   "opened": "2026-11-12",
+   "closed": "2026-11-16",
+   "entry": 217.586917,
+   "exit": 216.83,
+   "pct": -0.35,
+   "pnl": -4.03,
+   "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "TSLA",
+   "opened": "2026-11-11",
+   "closed": "2026-11-16",
+   "entry": 391.06,
+   "exit": 377.22,
+   "pct": -3.54,
+   "pnl": -41.05,
+   "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "VRTX",
+   "opened": "2026-11-04",
+   "closed": "2026-11-16",
+   "entry": 546.55,
+   "exit": 534.329,
+   "pct": -2.24,
+   "pnl": -26.56,
+   "reason": "Close below upper GC band"
   }
  ],
- "last_decision_day": "2026-11-13",
+ "last_decision_day": "2026-11-16",
  "started": "2026-10-22",
  "start_equity": 97918.51,
  "start_spy": 762.85,
@@ -452,6 +472,10 @@
   [
    "2026-11-13",
    96400.0
+  ],
+  [
+   "2026-11-16",
+   96198.24
   ]
  ]
 }
