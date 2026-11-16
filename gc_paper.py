@@ -142,7 +142,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.49"
+ENGINE_VERSION = "GC-PAPER-1.50"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -311,6 +311,8 @@ BOOKS = [
     ("G2", "LIVE 1.10 + shelf stop: quiet 4h bar after +5% -> stop just past the 2-bar shelf", "adaptive", False),
     ("G3", "LIVE 1.10 + churn exit: 6 x 4h efficiency < 0.18 after +6%, close on the weak side", "adaptive", False),
     ("G4", "LIVE 1.10 + rejection exit: 2 x 4h closes back past the peak candle's middle after +5%", "adaptive", False),
+    ("CB", "LIVE 1.10 rules on Coinbase US perps only (17 coins)", "adaptive", False),
+    ("CB5", "CB with 5 slots x 25% (fewer, bigger positions)", "adaptive", False),
     ("FL5", "F5 + Loose Lock from +5% (stocks)", "long", False),
     ("FL10", "F5 + Big-Winner Lock from +10% (stocks)", "long", False),
     ("FL15", "F5 + Big-Winner Lock from +15% (stocks)", "long", False),
@@ -481,6 +483,13 @@ BOOK_OPTIONS.update({
     "K80": {**BOOK_OPTIONS["F25L5"], "free_tiers": [[0.50, 0.90], [0.35, 0.85], [0.25, 0.80]]},
     "K90": {**BOOK_OPTIONS["F25L5"], "free_tiers": [[0.25, 0.90]]},
 })
+# 1.50 Coinbase backup test: only the coins Coinbase lets US accounts trade as perps (CDE), Hyperliquid names.
+COINBASE_US_PERPS = {"BTC", "ETH", "ZEC", "XRP", "NEAR", "SOL", "PAXG", "HYPE", "kPEPE", "AAVE", "LINK", "ONDO", "ENA",
+                     "BNB", "LTC", "DOT", "kSHIB"}
+BOOK_OPTIONS_LATE = {
+    "CB": {"coins": COINBASE_US_PERPS},
+    "CB5": {"coins": COINBASE_US_PERPS, "max_pos": 5, "slot_size": 0.25},
+}
 # 1.49 Gemini's exit ideas on 4h candles, on top of the live rules (see exit_rules()).
 BOOK_OPTIONS.update({
     "G1": {**BOOK_OPTIONS["F25L5"], "exit_rule": {"kind": "stall", "min_peak": 0.06, "bars": 6, "retain": 0.68}},
@@ -488,6 +497,7 @@ BOOK_OPTIONS.update({
     "G3": {**BOOK_OPTIONS["F25L5"], "exit_rule": {"kind": "churn", "min_peak": 0.06, "window": 6, "max_er": 0.18}},
     "G4": {**BOOK_OPTIONS["F25L5"], "exit_rule": {"kind": "reject", "min_peak": 0.05, "confirm": 2}},
 })
+BOOK_OPTIONS.update({c: {**BOOK_OPTIONS["F25L5"], **o} for c, o in BOOK_OPTIONS_LATE.items()})
 BOOK_OPTIONS["AB2HF5"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.10, 0.60], [0.05, 0.50]]}
 BOOK_OPTIONS.update({"RML": BOOK_OPTIONS["RM"], "RMFL": BOOK_OPTIONS["RMF"], "RSL": BOOK_OPTIONS["RS"], "EXL": BOOK_OPTIONS["EX"],
                      "Z4F": BOOK_OPTIONS["ZSF4"], "Z4HF": BOOK_OPTIONS["ZSF"]})
@@ -970,6 +980,8 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
     closes = {c: b["c"] for c, b in bar.items()}
     rank_of = {c: i + 1 for i, c in enumerate(ranked)}
     universe = ranked[:UNIVERSE_SIZE]
+    if book.get("coins"):                                     # restricted coin list (CB books: Coinbase US perps only)
+        universe = [c for c in universe if c in book["coins"]]
     if book.get("er_rank"):                                   # crowded days: the cleanest trends claim the slots first
         universe = sorted(universe, key=lambda c: -((bar.get(c) or {}).get("er10") or 0.0))
     exited, entered = set(), set()
