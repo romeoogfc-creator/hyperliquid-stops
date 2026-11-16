@@ -142,7 +142,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.51"
+ENGINE_VERSION = "GC-PAPER-1.52"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -315,6 +315,11 @@ BOOKS = [
     ("CB5", "CB with 5 slots x 25% (fewer, bigger positions)", "adaptive", False),
     ("CBM", "Coinbase mix: longs on all coins (spot), shorts only on the 17 US perps", "adaptive", False),
     ("CBL", "Coinbase spot only: longs on all coins, no shorts", "adaptive", False),
+    ("F5L5", "F5 + bank half at +5%, the rest rides the GC band (stocks)", False, False),
+    ("F5L10", "F5 + bank half at +10%, the rest rides the GC band (stocks)", False, False),
+    ("F5M", "F5 + buy only when SPY is above its filter (stocks)", False, False),
+    ("F5A", "F5 + add to +10% winners up to 6.6% (stocks)", False, False),
+    ("F5X", "F5 without SPY / QQQ as tradable stocks", False, False),
     ("FL5", "F5 + Loose Lock from +5% (stocks)", "long", False),
     ("FL10", "F5 + Big-Winner Lock from +10% (stocks)", "long", False),
     ("FL15", "F5 + Big-Winner Lock from +15% (stocks)", "long", False),
@@ -502,6 +507,14 @@ BOOK_OPTIONS.update({
     "G4": {**BOOK_OPTIONS["F25L5"], "exit_rule": {"kind": "reject", "min_peak": 0.05, "confirm": 2}},
 })
 BOOK_OPTIONS.update({c: {**BOOK_OPTIONS["F25L5"], **o} for c, o in BOOK_OPTIONS_LATE.items()})
+# 1.52 stock ideas on top of F5 (Gemini review): bank half without a lock, SPY filter, bigger top-ups, no index ETFs.
+BOOK_OPTIONS.update({
+    "F5L5": {**BOOK_OPTIONS["F5"], "take_half": {"at": 0.05, "frac": 0.5}},
+    "F5L10": {**BOOK_OPTIONS["F5"], "take_half": {"at": 0.10, "frac": 0.5}},
+    "F5M": {**BOOK_OPTIONS["F5"], "mkt_filter": True},
+    "F5A": {**BOOK_OPTIONS["F5"], "topup_target": 0.066},
+    "F5X": {**BOOK_OPTIONS["F5"], "exclude": {"SPY", "QQQ"}},
+})
 BOOK_OPTIONS["AB2HF5"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.10, 0.60], [0.05, 0.50]]}
 BOOK_OPTIONS.update({"RML": BOOK_OPTIONS["RM"], "RMFL": BOOK_OPTIONS["RMF"], "RSL": BOOK_OPTIONS["RS"], "EXL": BOOK_OPTIONS["EX"],
                      "Z4F": BOOK_OPTIONS["ZSF4"], "Z4HF": BOOK_OPTIONS["ZSF"]})
@@ -984,6 +997,8 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
     closes = {c: b["c"] for c, b in bar.items()}
     rank_of = {c: i + 1 for i, c in enumerate(ranked)}
     universe = ranked[:UNIVERSE_SIZE]
+    if book.get("exclude"):
+        universe = [c for c in universe if c not in book["exclude"]]
     if book.get("coins"):                                     # restricted coin list (CB books: Coinbase US perps only)
         universe = [c for c in universe if c in book["coins"]]
     if book.get("er_rank"):                                   # crowded days: the cleanest trends claim the slots first
@@ -1005,6 +1020,17 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
             p["last_px"] = closes[c]
             if p["opened"] != day:
                 p["held"] = p.get("held", 0) + 1                 # trading days held (time_stop books)
+
+    # 1.52: bank-half on books WITHOUT a profit lock (F5L5 / F5L10): the daily high reaching the level sells half there.
+    if not book.get("lock") and book.get("take_half"):
+        for c in list(book["positions"]):
+            p, b = book["positions"][c], bar.get(c)
+            if b and p["opened"] != day and take_half_hit(book, p, b["h"]):
+                if book.get("disaster") and b["l"] <= p["entry"] * (1 - book["disaster"]):
+                    continue                                  # both levels hit in one day: assume the loss stop came first
+                tp = p["entry"] * (1 + book["take_half"]["at"])
+                partial_close(book, c, max(b["o"], tp), book["take_half"]["frac"], day,
+                              f"💵 Take half at +{book['take_half']['at']*100:.0f}%", log)
 
     # Profit-lock books: resting stop (set at the end of yesterday) can fill during today's candle.
     # lock_intraday books walk the day's 4-hour candles instead, raising the stop after each one.
@@ -1240,7 +1266,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
             continue
         roe = (b["c"] - p["entry"]) / p["entry"]
         held = p["qty"] * b["c"]
-        target = nav * TOPUP_TARGET * book.get("size_mult", 1.0)
+        target = nav * book.get("topup_target", TOPUP_TARGET * book.get("size_mult", 1.0))
         if roe < TOPUP_MIN_ROE or held >= target:
             continue
         usd = min(target - held, buying_power(book, nav) / (1 + FEE_RATE))

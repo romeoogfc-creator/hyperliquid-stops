@@ -14,7 +14,7 @@ The rules are Book F from gc_paper.py (stocks backtest: beat SPY in 100/100 coin
   - long-only, cash only (no margin, no shorts) — exactly what a $1,000 account at Alpaca can do
 
 Timing: stock_bot.yml runs every 5 minutes (external trigger + GitHub schedule as backup). Only ONE run per day acts: the
-first run in the last 45 minutes before the close (normally 3:15-3:57 PM ET / 2:15-2:57 PM CT). It uses the price at that
+first run in the last 20 minutes before the close (normally 3:40-3:57 PM ET / 2:40-2:57 PM CT; V6.2.2). It uses the price at that
 moment as "today's close", so the orders fill close to the real close, like in the backtest. Positions are HELD OVERNIGHT.
 CATCH-UP: if GitHub skipped every run in that window, the next trading day's first run after 9:45 AM ET makes the missed
 day's decisions on that day's real closing bar (orders fill at that morning's price). All other runs exit in seconds.
@@ -33,7 +33,7 @@ import requests
 
 import gc_paper as engine
 
-BOT_VERSION = "V6.2.1"
+BOT_VERSION = "V6.2.2"
 BOT_TITLE = f"TR-GC-Equities-LS-15-F {BOT_VERSION}"
 STATE_VERSION = "GCSTK-F-1"
 
@@ -54,7 +54,7 @@ MIN_TRADE_NAV = engine.MIN_TRADE_NAV                      # skip anything under 
 MIN_ORDER_USD = 1.0                           # Alpaca fractional orders go down to $1
 UNIVERSE_SIZE = 100
 LOSS_STOP = 0.05                              # Book F5: sell at -5% from the average entry
-DECISION_WINDOW_MINS = (3, 45)                # act when the close is 3-45 minutes away
+DECISION_WINDOW_MINS = (3, 20)                # V6.2.2: act when the close is 3-20 minutes away (closer to the real close)
 CATCHUP_AFTER_OPEN_MINS = 15                  # missed-day catch-up waits 15 minutes after the open
 
 HEADERS = {"APCA-API-KEY-ID": API_KEY or "", "APCA-API-SECRET-KEY": SECRET_KEY or "", "accept": "application/json"}
@@ -365,7 +365,7 @@ def report(state, equity, positions, spy_now, log, skips, decided, next_window):
    <th align="left">Stock</th><th align="left">Result</th><th align="left">$</th><th align="left">Bought</th></tr>{recent}</table>
   <div style="font-size:10px;color:#64748b;margin-top:10px;">Book F rules: daily Gaussian Channel on ~100 large US stocks. Buy on a close above the
    upper band (4.8% of the account if the breakout is ≤25 days old, else 1.2%), add up to 3.3% on +10% winners, sell on a close back below
-   the band. -5% loss stop (checked every 5 minutes while the market is open, never on the buy day). Long-only, cash only, held overnight. Decisions once a day in the last 45 minutes before the close
+   the band. -5% loss stop (checked every 5 minutes while the market is open, never on the buy day). Long-only, cash only, held overnight. Decisions once a day in the last 20 minutes before the close
    (a missed day is caught up the next morning).</div>
  </div></div></body></html>"""
     text = f"{BOT_TITLE}\nEquity ${equity:,.2f} ({ret:+.2f}%)\n" + "\n".join(log)
@@ -461,8 +461,8 @@ def main():
             positions = {p["symbol"]: p for p in (call("get", "/v2/positions").json() or []) if p.get("side", "long") == "long"}
     save_state(state)
     print("\n".join(log), flush=True)
-    next_window = "today in the last 45 min before the close" if clock.get("is_open") and state.get("last_decision_day") != today else \
-        f"next trading day, 45 min before the close (next open {parse_ts(clock['next_open']).astimezone(engine.ET_ZONE).strftime('%a %m-%d %H:%M ET')})"
+    next_window = "today in the last 20 min before the close" if clock.get("is_open") and state.get("last_decision_day") != today else \
+        f"next trading day, 20 min before the close (next open {parse_ts(clock['next_open']).astimezone(engine.ET_ZONE).strftime('%a %m-%d %H:%M ET')})"
     if losers and not DRY_RUN and not (due or catchup_day):
         time.sleep(2)
         acct = call("get", "/v2/account").json()
