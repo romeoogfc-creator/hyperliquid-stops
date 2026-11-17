@@ -13,11 +13,11 @@ on:
   workflow_dispatch:
     inputs:
       market:
-        description: "crypto = Hyperliquid coins | stocks = ~100 large US stocks | stocks_wide = up to 1000 US stocks picked by liquidity (Alpaca data; backtest / robust only)"
+        description: "crypto = Hyperliquid coins | stocks = ~100 large US stocks | stocks_wide = up to 1000 US stocks picked by liquidity | crypto_all = every Hyperliquid coin (backtest / robust only)"
         required: true
         default: crypto
         type: choice
-        options: [crypto, stocks, stocks_wide]
+        options: [crypto, crypto_all, stocks, stocks_wide]
       mode:
         description: "paper = update the paper books (daily) | backtest = replay history | robust = stability check (same history, shuffled coin order) | ross = old Ross scalper on several candle sizes"
         required: true
@@ -56,7 +56,7 @@ concurrency:
 jobs:
   run-gc-paper:
     runs-on: ubuntu-latest
-    timeout-minutes: 150  # 730-day backtests download candles (~10 min) + funding history (~20 min); ross ~30 min
+    timeout-minutes: 300  # 730-day backtests download candles (~10 min) + funding history (~20 min); crypto_all ~2x longer
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
