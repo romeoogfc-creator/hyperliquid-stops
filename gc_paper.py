@@ -149,7 +149,7 @@ TOP_OI = set()                         # crypto: today's top 100 by open interes
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.60"
+ENGINE_VERSION = "GC-PAPER-1.61"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -339,6 +339,10 @@ BOOKS = [
     ("CALL", "LIVE RULES on EVERY Hyperliquid coin", "adaptive", False),
     ("CDAY", "LIVE RULES on the top 100 coins by dollar volume AS OF EACH DAY (no hindsight)", "adaptive", False),
     ("CALLV", "LIVE RULES on every coin trading $1M+/day (skips coins too thin to fill well)", "adaptive", False),
+    ("CALLS", "LIVE RULES on every coin, small coins pay 0.5% extra slippage (honest CALL)", "adaptive", False),
+    ("CS1", "Small coins: half size, max 2, lock 60-92% from +3%, bank half at +10%", "adaptive", False),
+    ("CS2", "Small coins: half size, max 2, lock 55-85% from +5%, bank half at +20% (let flyers fly)", "adaptive", False),
+    ("CS3", "Small coins: FULL size, max 3, lock 60-92% from +3%, bank half at +10%", "adaptive", False),
     ("FL5", "F5 + Loose Lock from +5% (stocks)", "long", False),
     ("FL10", "F5 + Big-Winner Lock from +10% (stocks)", "long", False),
     ("FL15", "F5 + Big-Winner Lock from +15% (stocks)", "long", False),
@@ -542,6 +546,13 @@ BOOK_OPTIONS.update({
     "CALL": {**BOOK_OPTIONS["F25L5"]},
     "CDAY": {**BOOK_OPTIONS["F25L5"], "size_group": "daily_top"},
     "CALLV": {**BOOK_OPTIONS["F25L5"], "min_dv": 1_000_000},
+    "CALLS": {**BOOK_OPTIONS["F25L5"], "small": {"slip": 0.005, "size": 1.0, "max": 99}},
+    "CS1": {**BOOK_OPTIONS["F25L5"], "small": {"slip": 0.005, "size": 0.5, "max": 2, "take_half": {"at": 0.10, "frac": 0.5},
+            "lock_tiers": [[1.00, 0.92], [0.50, 0.88], [0.25, 0.85], [0.10, 0.80], [0.05, 0.70], [0.03, 0.60]]}},
+    "CS2": {**BOOK_OPTIONS["F25L5"], "small": {"slip": 0.005, "size": 0.5, "max": 2, "take_half": {"at": 0.20, "frac": 0.5},
+            "lock_tiers": [[1.00, 0.85], [0.50, 0.80], [0.25, 0.75], [0.10, 0.65], [0.05, 0.55]]}},
+    "CS3": {**BOOK_OPTIONS["F25L5"], "small": {"slip": 0.005, "size": 1.0, "max": 3, "take_half": {"at": 0.10, "frac": 0.5},
+            "lock_tiers": [[1.00, 0.92], [0.50, 0.88], [0.25, 0.85], [0.10, 0.80], [0.05, 0.70], [0.03, 0.60]]}},
 })
 BOOK_OPTIONS["AB2HF5"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.10, 0.60], [0.05, 0.50]]}
 BOOK_OPTIONS.update({"RML": BOOK_OPTIONS["RM"], "RMFL": BOOK_OPTIONS["RMF"], "RSL": BOOK_OPTIONS["RS"], "EXL": BOOK_OPTIONS["EX"],
@@ -560,6 +571,29 @@ KNIFE_LOOKBACK = 6                     # knife exit: a 4h candle's volume vs the
 GROWTH_SIZES = [1000, 10000, 50000, 200000]
 GROWTH_TARGETS = [200, 400]
 GROWTH_MIN_DAYS = 30                   # below this, annualising a few days of results is meaningless
+
+
+def is_small(book, coin):
+    """CS books: a coin outside today's top 100 by open interest gets the book's own small-coin rules (book["small"])."""
+    return bool(book.get("small")) and coin not in TOP_OI
+
+
+def fee_of(book, p=None, coin=None):
+    """Fee per side; small coins also pay the book's extra slippage (thin order books fill worse than the candle price)."""
+    small = p.get("small") if p is not None else is_small(book, coin)
+    return FEE_RATE + (book["small"].get("slip", 0.0) if small and book.get("small") else 0.0)
+
+
+def th_of(book, p):
+    """Take-half rule for this position: small coins use the small rule when the book has one."""
+    if p.get("small") and (book.get("small") or {}).get("take_half"):
+        return book["small"]["take_half"]
+    return book.get("take_half")
+
+
+def small_tiers(book, p):
+    """The small-coin profit ladder for this position, or None (= the book's normal rules)."""
+    return (book.get("small") or {}).get("lock_tiers") if p.get("small") else None
 
 
 def lock_applies(book, side):
@@ -741,14 +775,16 @@ def lock_floor(peak_gain, tiers=None):
 
 def open_position(book, coin, side, usd, px, date, reason, log, budget=None):
     budget = book["cash"] if budget is None else budget
-    fee = usd * FEE_RATE
+    rate = fee_of(book, coin=coin)
+    fee = usd * rate
     if usd + fee > budget:
-        usd = max(0.0, budget / (1 + FEE_RATE))
-        fee = usd * FEE_RATE
+        usd = max(0.0, budget / (1 + rate))
+        fee = usd * rate
     qty = usd / px
     book["cash"] -= usd + fee
     book["positions"][coin] = {"side": side, "qty": qty, "entry": px, "cost": usd, "collateral": usd if side == "SHORT" else 0.0,
-                               "fees": fee, "opened": date, "peak_px": px, "stop": None, "last_px": px, "reason": reason}
+                               "fees": fee, "opened": date, "peak_px": px, "stop": None, "last_px": px, "reason": reason,
+                               "small": is_small(book, coin)}
     log.append(("ENTRY", coin, f"{side} {reason} — ${usd:,.2f} @ {px:.6g}"))
 
 
@@ -771,7 +807,7 @@ def close_position(book, coin, px, date, reason, log):
     if book.get("reenter_short") and p["side"] == "SHORT" and reason.startswith(lock_label(book)):
         book.setdefault("relock_s", {})[coin] = p["peak_px"]        # may short again below this low (see SHORT ENTRIES)
     value = pos_value(p, px)
-    fee = p["qty"] * px * FEE_RATE
+    fee = p["qty"] * px * fee_of(book, p)
     book["cash"] += value - fee
     move = (p["entry"] - px) if p["side"] == "SHORT" else (px - p["entry"])
     pnl = move * p["qty"] - p["fees"] - fee
@@ -810,10 +846,14 @@ def set_lock_stop(book, p, high, low):
         return
     if p["side"] == "LONG":
         p["peak_px"] = max(p["peak_px"], high)
-        fl = lock_floor(p["peak_px"] / p["entry"] - 1, book.get("lock_tiers"))
+        fl = lock_floor(p["peak_px"] / p["entry"] - 1, small_tiers(book, p) or book.get("lock_tiers"))
         p["stop"] = None if fl is None else p["entry"] * (1 + fl)
     else:
         p["peak_px"] = min(p["peak_px"], low)
+        if small_tiers(book, p):                              # small coins: their own ladder, free-running or not
+            fl = lock_floor(1 - p["peak_px"] / p["entry"], small_tiers(book, p))
+            p["stop"] = None if fl is None else p["entry"] * (1 - fl)
+            return
         if free_floor(book, p) and not book.get("free_tiers"):
             p["stop"] = None                                  # free short with no floor (AB2HT): only the -4% stop
             return
@@ -826,7 +866,7 @@ def partial_close(book, coin, px, frac, date, reason, log):
     """Close `frac` of a position at px (Book X take-half on longs, AB2HT bank-half on free shorts). The rest keeps running."""
     p = book["positions"][coin]
     q = p["qty"] * frac
-    fee = q * px * FEE_RATE
+    fee = q * px * fee_of(book, p)
     fees_part = p["fees"] * frac
     book["cash"] += pos_value(p, px) * frac - fee
     short = p["side"] == "SHORT"
@@ -1010,7 +1050,7 @@ def exit_rules(rule, p, candles):
 
 
 def take_half_hit(book, p, high):
-    th = book.get("take_half")
+    th = th_of(book, p)
     return bool(th and p["side"] == "LONG" and not p.get("half_taken") and high >= p["entry"] * (1 + th["at"]))
 
 
@@ -1069,9 +1109,9 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
             if b and p["opened"] != day and take_half_hit(book, p, b["h"]):
                 if book.get("disaster") and b["l"] <= p["entry"] * (1 - book["disaster"]):
                     continue                                  # both levels hit in one day: assume the loss stop came first
-                tp = p["entry"] * (1 + book["take_half"]["at"])
-                partial_close(book, c, max(b["o"], tp), book["take_half"]["frac"], day,
-                              f"💵 Take half at +{book['take_half']['at']*100:.0f}%", log)
+                tp = p["entry"] * (1 + th_of(book, p)["at"])
+                partial_close(book, c, max(b["o"], tp), th_of(book, p)["frac"], day,
+                              f"💵 Take half at +{th_of(book, p)['at']*100:.0f}%", log)
 
     # Profit-lock books: resting stop (set at the end of yesterday) can fill during today's candle.
     # lock_intraday books walk the day's 4-hour candles instead, raising the stop after each one.
@@ -1109,9 +1149,9 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
                         exited.add(c)
                         break
                     if take_half_hit(book, p, k["h"]):
-                        tp = p["entry"] * (1 + book["take_half"]["at"])
-                        partial_close(book, c, max(k["o"], tp), book["take_half"]["frac"], day,
-                                      f"💵 Take half at +{book['take_half']['at']*100:.0f}%", log)
+                        tp = p["entry"] * (1 + th_of(book, p)["at"])
+                        partial_close(book, c, max(k["o"], tp), th_of(book, p)["frac"], day,
+                                      f"💵 Take half at +{th_of(book, p)['at']*100:.0f}%", log)
                     if free_half_hit(book, p, k["l"]):
                         tp = p["entry"] * (1 - book["free_half"]["at"])
                         partial_close(book, c, min(k["o"], tp), book["free_half"]["frac"], day,
@@ -1140,8 +1180,8 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
                 partial_close(book, c, min(b["o"], tp), book["free_half"]["frac"], day,
                               f"💵 Banked half at +{book['free_half']['at']*100:.0f}% (free short)", log)
             if take_half_hit(book, p, b["h"]) and not (p["stop"] is not None and b["l"] <= p["stop"]):
-                tp = p["entry"] * (1 + book["take_half"]["at"])
-                partial_close(book, c, max(b["o"], tp), book["take_half"]["frac"], day, f"💵 Take half at +{book['take_half']['at']*100:.0f}%", log)
+                tp = p["entry"] * (1 + th_of(book, p)["at"])
+                partial_close(book, c, max(b["o"], tp), th_of(book, p)["frac"], day, f"💵 Take half at +{th_of(book, p)['at']*100:.0f}%", log)
             if p["stop"] is None:
                 continue
             if p["side"] == "LONG" and b["l"] <= p["stop"]:
@@ -1267,9 +1307,11 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
             skips.append((c, f"Long signal, already holding {book['positions'][c]['side']}")); continue
         if slots_full(book, "LONG"):
             skips.append((c, f"Long signal, all {slot_cap(book, 'LONG')} long slots in use")); continue
+        if is_small(book, c) and sum(1 for q in book["positions"].values() if q.get("small")) >= book["small"]["max"]:
+            skips.append((c, f"Long signal on a small coin, all {book['small']['max']} small-coin slots in use")); continue
         recent = b.get("breakout") and (datetime.strptime(day, "%Y-%m-%d") - datetime.strptime(b["breakout"], "%Y-%m-%d")).days <= BREAKOUT_RECENT_DAYS
         book["_natr"] = (b["atr"] / b["c"]) if b.get("atr") and b["c"] else None
-        want = entry_size(book, nav, LONG_SIZE_RECENT if recent else LONG_SIZE_OLD)
+        want = entry_size(book, nav, LONG_SIZE_RECENT if recent else LONG_SIZE_OLD) * (book["small"]["size"] if is_small(book, c) else 1.0)
         power = buying_power(book, nav)
         usd = min(want, power / (1 + FEE_RATE))
         if usd < MIN_ORDER_USD:
@@ -1340,8 +1382,10 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
             skips.append((c, "Short signal, but exited earlier this run")); continue
         if slots_full(book, "SHORT"):
             skips.append((c, f"Short signal, all {slot_cap(book, 'SHORT')} short slots in use")); continue
+        if is_small(book, c) and sum(1 for q in book["positions"].values() if q.get("small")) >= book["small"]["max"]:
+            skips.append((c, f"Short signal on a small coin, all {book['small']['max']} small-coin slots in use")); continue
         book["_natr"] = (b["atr"] / b["c"]) if b.get("atr") and b["c"] else None
-        want = entry_size(book, nav, HEDGE_SHORT_SIZE if hedge else BEAR_SHORT_SIZE)
+        want = entry_size(book, nav, HEDGE_SHORT_SIZE if hedge else BEAR_SHORT_SIZE) * (book["small"]["size"] if is_small(book, c) else 1.0)
         power = buying_power(book, nav)
         usd = min(want, power / (1 + FEE_RATE))
         if STOCKS:                                            # stock shorts: whole shares only
