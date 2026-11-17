@@ -9,16 +9,16 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1794873600000,
+   "h1_checked_ms": 1794880800000,
    "v_ref": 1092995.6666666667,
-   "fade_n": 16,
+   "fade_n": 18,
    "fade_vols": [
-    43051.0,
-    51788.0,
     26847.0,
     19199.0,
     25595.0,
-    23785.0
+    23785.0,
+    218392.0,
+    73381.0
    ]
   },
   "PURR": {
@@ -30,16 +30,16 @@
    "opened_ms": 1793923466365,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.1052168,
-   "h1_checked_ms": 1794873600000,
+   "h1_checked_ms": 1794880800000,
    "v_ref": 5940314.666666667,
-   "fade_n": 1,
+   "fade_n": 3,
    "fade_vols": [
-    362989.0,
-    294767.0,
     580753.0,
     5700224.0,
     4485234.0,
-    624303.0
+    624303.0,
+    766794.0,
+    216544.0
    ],
    "half_small_logged": true
   },
@@ -52,16 +52,16 @@
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.09685312,
-   "h1_checked_ms": 1794873600000,
+   "h1_checked_ms": 1794880800000,
    "v_ref": 992036.0,
-   "fade_n": 39,
+   "fade_n": 41,
    "fade_vols": [
-    101347.0,
-    162438.0,
     98052.0,
     66577.0,
     87024.0,
-    94491.0
+    94491.0,
+    197239.0,
+    67395.0
    ]
   },
   "PAXG": {
@@ -73,37 +73,37 @@
    "opened_ms": 1794269054441,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 4285.32,
-   "h1_checked_ms": 1794873600000,
+   "h1_checked_ms": 1794880800000,
    "v_ref": 100.17699999999998,
-   "fade_n": 5,
+   "fade_n": 7,
    "fade_vols": [
-    79.414,
-    21.332,
     11.548,
     9.81,
     3.959,
-    4.646
+    4.646,
+    39.056,
+    24.867
    ]
   },
   "ETHFI": {
    "side": "SHORT",
    "sz": 27.4,
    "entry": 0.63645,
-   "peak_px": 0.46444,
+   "peak_px": 0.46241,
    "opened": "2026-11-11",
    "opened_ms": 1794441849836,
    "reason": "bear short (rejected bounce, BTC down)",
-   "stop": 0.5332439999999999,
-   "h1_checked_ms": 1794873600000,
+   "stop": 0.532026,
+   "h1_checked_ms": 1794880800000,
    "v_ref": 552918.8333333334,
-   "fade_n": 0,
+   "fade_n": 1,
    "fade_vols": [
-    62113.4,
-    54599.3,
     293408.5,
     64369.1,
     180120.3,
-    49737.0
+    49737.0,
+    270141.2,
+    78634.9
    ],
    "half_small_logged": true
   }
