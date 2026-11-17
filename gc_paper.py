@@ -147,7 +147,7 @@ WIDE_SIZE = int(os.getenv("WIDE_SIZE", "1000") or 1000)
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.54"
+ENGINE_VERSION = "GC-PAPER-1.55"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -163,10 +163,10 @@ STATE_FILE = "gc_paper_state.json"
 START_NAV = float(os.getenv("START_NAV", "1000") or 1000)   # starting balance of each NEW book (Run workflow option)
 ROBUST_RUNS = int(os.getenv("ROBUST_RUNS", "20") or 20)
 ROBUST_BOOKS = [c.strip().upper() for c in os.getenv("ROBUST_BOOKS", "V,Y,Z,Z3,YZ").split(",") if c.strip()]
-# Daily paper email + plain backtest only run these books (live rules first). Every other book stays defined in this
-# file and can still be tested any time with mode=robust and its code in robust_books. Stocks backtest: F5 vs F5X.
+# Daily paper email + plain backtest only run the LIVE rules (crypto F25L5 = bot 1.10.2, stocks F5 = V6.2.2). Every other book stays defined in this
+# file and can still be tested any time with mode=robust and its code in robust_books.
 PAPER_BOOKS = [c.strip().upper() for c in os.getenv("PAPER_BOOKS", "").split(",") if c.strip()] or (
-    ["F5", "F5X"] if MARKET.startswith("stocks") else ["F25L5", "F25T", "AB2H", "A", "CBM"])
+    ["F5"] if MARKET.startswith("stocks") else ["F25L5"])
 MIN_ORDER_USD = 1.0 if STOCKS else 10.0   # Hyperliquid rejects orders under ~$10; Alpaca fractional orders go down to $1
 _LONG_ONLY_ENV = os.getenv("LONG_ONLY", "auto").strip().lower()
 LONG_ONLY = (_LONG_ONLY_ENV in ("1", "true", "yes")) or (_LONG_ONLY_ENV == "auto" and STOCKS and START_NAV < 2000)
