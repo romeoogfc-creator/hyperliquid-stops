@@ -19,11 +19,11 @@ on:
         type: choice
         options: [crypto, crypto_all, stocks, stocks_wide]
       mode:
-        description: "paper = update the paper books (daily) | backtest = replay history | robust = stability check (same history, shuffled coin order) | ross = old Ross scalper on several candle sizes"
+        description: "paper = update the paper books (daily) | backtest = replay history | robust = stability check (same history, shuffled coin order) | ross = old Ross scalper on several candle sizes | rotation = stock momentum + SPY trend test (market stocks_wide)"
         required: true
         default: paper
         type: choice
-        options: [paper, backtest, robust, ross]
+        options: [paper, backtest, robust, ross, rotation]
       backtest_days:
         description: "Backtest length in days"
         required: false
