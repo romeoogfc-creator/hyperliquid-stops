@@ -142,7 +142,7 @@ MARKET = os.getenv("MARKET", "crypto").strip().lower()
 STOCKS = MARKET == "stocks"
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.52"
+ENGINE_VERSION = "GC-PAPER-1.52.1"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -494,10 +494,11 @@ BOOK_OPTIONS.update({
 COINBASE_US_PERPS = {"BTC", "ETH", "ZEC", "XRP", "NEAR", "SOL", "PAXG", "HYPE", "kPEPE", "AAVE", "LINK", "ONDO", "ENA",
                      "BNB", "LTC", "DOT", "kSHIB"}
 BOOK_OPTIONS_LATE = {
-    "CB": {"coins": COINBASE_US_PERPS},
-    "CB5": {"coins": COINBASE_US_PERPS, "max_pos": 5, "slot_size": 0.25},
-    "CBM": {"short_coins": COINBASE_US_PERPS},
-    "CBL": {"short_coins": set()},
+    # lists, not sets: book settings are saved in gc_paper_state.json (1.52.1)
+    "CB": {"coins": sorted(COINBASE_US_PERPS)},
+    "CB5": {"coins": sorted(COINBASE_US_PERPS), "max_pos": 5, "slot_size": 0.25},
+    "CBM": {"short_coins": sorted(COINBASE_US_PERPS)},
+    "CBL": {"short_coins": []},
 }
 # 1.49 Gemini's exit ideas on 4h candles, on top of the live rules (see exit_rules()).
 BOOK_OPTIONS.update({
@@ -513,7 +514,7 @@ BOOK_OPTIONS.update({
     "F5L10": {**BOOK_OPTIONS["F5"], "take_half": {"at": 0.10, "frac": 0.5}},
     "F5M": {**BOOK_OPTIONS["F5"], "mkt_filter": True},
     "F5A": {**BOOK_OPTIONS["F5"], "topup_target": 0.066},
-    "F5X": {**BOOK_OPTIONS["F5"], "exclude": {"SPY", "QQQ"}},
+    "F5X": {**BOOK_OPTIONS["F5"], "exclude": ["SPY", "QQQ"]},
 })
 BOOK_OPTIONS["AB2HF5"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.10, 0.60], [0.05, 0.50]]}
 BOOK_OPTIONS.update({"RML": BOOK_OPTIONS["RM"], "RMFL": BOOK_OPTIONS["RMF"], "RSL": BOOK_OPTIONS["RS"], "EXL": BOOK_OPTIONS["EX"],
@@ -2081,7 +2082,7 @@ def run_paper(info):
     state.update({"books": books, "last_processed_day": todo[-1] if todo else last_done, "engine": ENGINE_VERSION,
                   "started": state.get("started") or (todo[0] if todo else latest)})
     with open(STATE_FILE, "w") as f:
-        json.dump(state, f, indent=1)
+        json.dump(state, f, indent=1, default=lambda o: sorted(o) if isinstance(o, (set, frozenset)) else str(o))
 
     prices = {c: data[c][latest]["c"] for c in data if latest in data[c]}
     btc_down = btc_downtrend(data, latest)
