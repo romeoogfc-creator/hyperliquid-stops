@@ -149,7 +149,7 @@ TOP_OI = set()                         # crypto: today's top 100 by open interes
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.61"
+ENGINE_VERSION = "GC-PAPER-1.62"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -2611,6 +2611,140 @@ def run_ross(info):
     send_email(f"⚡ {title} — " + " | ".join(summary), html, text, None)
 
 
+# ---------------- STOCK ROTATION test (MODE=rotation, market stocks_wide): two well-documented, low-trading ideas vs SPY ----------------
+# Paper only. No hindsight in the picks: every decision uses only closes up to the PREVIOUS day and trades at today's close.
+#   T200 = hold SPY while SPY closed above its 200-day average, otherwise sit in cash
+#   M10 / M20 = once a month (every 21 trading days) hold the 10 / 20 stocks with the best 12-month return (skipping the last
+#               month), picked from the 500 most-traded stocks AS OF THAT DAY, equal weight
+#   M10T / M20T = the same, but everything goes to cash on days SPY is below its 200-day average
+# Robust check: the monthly rebalance day is moved through all 21 possible days (21 runs); T200 and SPY have one answer.
+ROT_UNIVERSE = 500
+ROT_EVERY = 21
+ROT_BOOKS = [("T200", "SPY, but cash when SPY is under its 200-day average", 0, True),
+             ("M10", "Momentum: best 10 of the 500 most-traded stocks, monthly", 10, False),
+             ("M20", "Momentum: best 20 of the 500 most-traded stocks, monthly", 20, False),
+             ("M10T", "M10, but cash when SPY is under its 200-day average", 10, True),
+             ("M20T", "M20, but cash when SPY is under its 200-day average", 20, True)]
+
+
+def rot_simulate(data, all_days, start_i, end_i, top, trend, offset, spy_ok):
+    """Returns (daily NAV list, number of trades). top=0: hold SPY. Decisions on day i use closes up to i-1."""
+    cash, held, nav_curve, trades, last_px = 1000.0, {}, [], 0, {}
+    for i in range(start_i, end_i):
+        d, j = all_days[i], all_days[i - 1]
+        for s in list(held) + (["SPY"] if top == 0 else []):
+            b = data.get(s, {}).get(d)
+            if b:
+                last_px[s] = b["c"]
+        nav = cash + sum(q * last_px[s] for s, q in held.items())
+        on = spy_ok.get(j, False) if trend else True
+        rebal = i == start_i or (i - start_i) % ROT_EVERY == offset or (trend and on and not held)
+        target = None
+        if not on and held:
+            target = {}
+        elif on and rebal:
+            if top == 0:
+                target = {"SPY": 1.0}
+            else:
+                pool = [s for s in data if s not in ("SPY", "QQQ") and (data[s].get(j) or {}).get("dv20") and data[s][j]["c"] >= 5]
+                pool = sorted(pool, key=lambda s: -data[s][j]["dv20"])[:ROT_UNIVERSE]
+                k12, k1 = all_days[i - 1 - 252] if i - 1 - 252 >= 0 else None, all_days[i - 1 - 21]
+                score = {}
+                for s in pool:
+                    a, b_ = (data[s].get(k12) or {}).get("c") if k12 else None, (data[s].get(k1) or {}).get("c")
+                    if a and b_ and d in data[s]:
+                        score[s] = b_ / a - 1
+                picks = sorted(score, key=lambda s: -score[s])[:top]
+                target = {s: 1.0 / len(picks) for s in picks} if picks else {}
+        if target is not None:
+            for s in list(held):                               # sell what is no longer wanted (or trim)
+                want = nav * target.get(s, 0.0)
+                have = held[s] * last_px[s]
+                if have > want + 1e-9:
+                    sell = have - want
+                    cash += sell * (1 - FEE_RATE)
+                    held[s] -= sell / last_px[s]
+                    trades += 1
+                    if held[s] * last_px[s] < 0.01:
+                        held.pop(s)
+            for s, w in target.items():                        # then buy up to the target weights
+                b = data.get(s, {}).get(d)
+                if not b:
+                    continue
+                last_px[s] = b["c"]
+                have = held.get(s, 0.0) * b["c"]
+                buy = min(nav * w - have, cash / (1 + FEE_RATE))
+                if buy > 1.0:
+                    cash -= buy * (1 + FEE_RATE)
+                    held[s] = held.get(s, 0.0) + buy / b["c"]
+                    trades += 1
+        nav_curve.append(cash + sum(q * last_px[s] for s, q in held.items()))
+    return nav_curve, trades
+
+
+def _mdd(curve):
+    peak, worst = curve[0], 0.0
+    for v in curve:
+        peak = max(peak, v)
+        worst = min(worst, v / peak - 1)
+    return worst * 100
+
+
+def run_rotation():
+    if not STOCKS:
+        raise RuntimeError("rotation mode is a stock test: choose market stocks_wide")
+    ranked, data = fetch_stock_market(BACKTEST_DAYS + 160)     # ~1 extra year of history for the 12-month return
+    if "SPY" not in data:
+        raise RuntimeError("No SPY candles returned — cannot run")
+    all_days = sorted(data["SPY"])
+    test = backtest_days(all_days)
+    start_i, end_i = all_days.index(test[0]), all_days.index(test[-1]) + 1
+    if start_i < 254:
+        raise RuntimeError(f"Only {start_i} trading days of history before the test start — need 254 for the 12-month return")
+    spy_c = [data["SPY"][d]["c"] for d in all_days]
+    spy_ok = {all_days[i]: spy_c[i] > sum(spy_c[i - 199:i + 1]) / 200 for i in range(199, len(all_days))}
+    mid = (end_i - start_i) // 2
+
+    def halves(curve):
+        return (curve[mid - 1] / 1000 - 1) * 100, (curve[-1] / curve[mid - 1] - 1) * 100
+
+    spy_curve = [1000 * data["SPY"][all_days[i]]["c"] / data["SPY"][all_days[start_i - 1]]["c"] for i in range(start_i, end_i)]
+    spy_ret, spy_dd, (spy_h1, spy_h2) = (spy_curve[-1] / 1000 - 1) * 100, _mdd(spy_curve), halves(spy_curve)
+    rows, summary = "", [f"SPY {spy_ret:+.0f}% (DD {spy_dd:.0f}%)"]
+    cell = lambda v: f"<td style='color:{pct_color(v)};'>{v:+.1f}%</td>"
+    rows += (f"<tr style='background:#f8fafc;'><td><b>SPY</b> buy &amp; hold (the bar to beat)</td>{cell(spy_ret)}<td>—</td><td>—</td>"
+             f"{cell(spy_h1)}{cell(spy_h2)}<td style='color:#b91c1c;'>{spy_dd:.1f}%</td><td>—</td><td>1</td></tr>")
+    for code, name, top, trend in ROT_BOOKS:
+        runs = [rot_simulate(data, all_days, start_i, end_i, top, trend, off, spy_ok) for off in (range(ROT_EVERY) if top else [0])]
+        rets = [(c[-1] / 1000 - 1) * 100 for c, _ in runs]
+        dds = [_mdd(c) for c, _ in runs]
+        h1 = float(np.median([halves(c)[0] for c, _ in runs]))
+        h2 = float(np.median([halves(c)[1] for c, _ in runs]))
+        med = float(np.median(rets))
+        rows += (f"<tr><td><b>{code}</b> {name}</td>{cell(med)}{cell(min(rets))}{cell(max(rets))}{cell(h1)}{cell(h2)}"
+                 f"<td style='color:#b91c1c;'>{min(dds):.1f}%</td><td>{sum(1 for r in rets if r > spy_ret)}/{len(rets)}</td>"
+                 f"<td>{int(np.median([t for _, t in runs]))}</td></tr>")
+        summary.append(f"{code}: {med:+.0f}% (worst {min(rets):+.0f}%, DD {min(dds):.0f}%)")
+        print(f"{code}: median {med:+.1f}% worst {min(rets):+.1f}% DD {min(dds):.1f}%", flush=True)
+    title = f"TR-GC-Equities ROTATION TEST — {test[0]} → {test[-1]}"
+    html = f"""<html><body style="margin:0;background:#f1f5f9;font-family:Arial,sans-serif;">
+  <div style="max-width:900px;margin:0 auto;padding:12px;"><div style="background:#fff;border-radius:10px;padding:14px;">
+    <div style="font-size:17px;font-weight:700;">{title}</div>
+    <div style="font-size:11px;color:#94a3b8;margin-top:3px;">market {MARKET}: {len(data)} stocks with candles • {ENGINE_VERSION}</div>
+    <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:8px;font-size:11px;color:#92400e;margin:10px 0;">
+      📝 PAPER ONLY. Every pick uses only data up to the day before and trades at that day's close, with 0.05% cost per side.
+      Momentum books are run once for each of the 21 possible monthly rebalance days (Median / Worst / Best of those 21).
+      Stocks that no longer exist are missing from the list, which flatters every book a little, momentum included.</div>
+    <div style="overflow-x:auto;"><table style="width:100%;font-size:11px;border-collapse:collapse;" cellpadding="4">
+      <tr style="background:#f1f5f9;"><th align="left">Book</th><th align="left">Median</th><th align="left">Worst</th><th align="left">Best</th>
+      <th align="left">Older half</th><th align="left">Newer half</th><th align="left">Worst drop</th><th align="left">Beat SPY</th><th align="left">Trades</th></tr>
+      {rows}</table></div>
+  </div></div></body></html>"""
+    text = f"{title}\n" + "\n".join(summary)
+    print(text, flush=True)
+    send_email(f"🔄 {title} — " + " | ".join(summary), html, text, None)
+
+
 def main():
     if STOCKS:                                                # Alpaca data only: no Hyperliquid connection needed
         if MODE == "backtest":
@@ -2619,6 +2753,8 @@ def main():
             return run_ross(None)
         if MODE == "robust":
             return run_robust(None)
+        if MODE == "rotation":
+            return run_rotation()
         return run_paper(None)
     from hyperliquid.info import Info
     from hyperliquid.utils import constants
