@@ -9,16 +9,16 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1794888000000,
+   "h1_checked_ms": 1794895200000,
    "v_ref": 1092995.6666666667,
-   "fade_n": 20,
+   "fade_n": 22,
    "fade_vols": [
-    25595.0,
-    23785.0,
     218392.0,
     73381.0,
     22875.0,
-    101011.0
+    101011.0,
+    72338.0,
+    38112.0
    ]
   },
   "PURR": {
@@ -30,16 +30,16 @@
    "opened_ms": 1793923466365,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.1052168,
-   "h1_checked_ms": 1794888000000,
+   "h1_checked_ms": 1794895200000,
    "v_ref": 5940314.666666667,
-   "fade_n": 5,
+   "fade_n": 7,
    "fade_vols": [
-    4485234.0,
-    624303.0,
     766794.0,
     216544.0,
     158015.0,
-    469378.0
+    469378.0,
+    535688.0,
+    215562.0
    ],
    "half_small_logged": true
   },
@@ -52,16 +52,16 @@
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.09685312,
-   "h1_checked_ms": 1794888000000,
+   "h1_checked_ms": 1794895200000,
    "v_ref": 992036.0,
-   "fade_n": 43,
+   "fade_n": 45,
    "fade_vols": [
-    87024.0,
-    94491.0,
     197239.0,
     67395.0,
     51476.0,
-    289514.0
+    289514.0,
+    125984.0,
+    229518.0
    ]
   },
   "PAXG": {
@@ -73,16 +73,16 @@
    "opened_ms": 1794269054441,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 4285.32,
-   "h1_checked_ms": 1794888000000,
+   "h1_checked_ms": 1794895200000,
    "v_ref": 100.17699999999998,
-   "fade_n": 9,
+   "fade_n": 11,
    "fade_vols": [
-    3.959,
-    4.646,
     39.056,
     24.867,
     5.993,
-    9.93
+    9.93,
+    10.672,
+    9.218
    ]
   },
   "ETHFI": {
@@ -94,16 +94,16 @@
    "opened_ms": 1794441849836,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.532026,
-   "h1_checked_ms": 1794888000000,
+   "h1_checked_ms": 1794895200000,
    "v_ref": 552918.8333333334,
-   "fade_n": 3,
+   "fade_n": 0,
    "fade_vols": [
-    180120.3,
-    49737.0,
     270141.2,
     78634.9,
     24552.8,
-    52568.2
+    52568.2,
+    32548.0,
+    361455.2
    ],
    "half_small_logged": true
   }
