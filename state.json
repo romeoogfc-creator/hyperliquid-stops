@@ -9,16 +9,16 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1794866400000,
+   "h1_checked_ms": 1794873600000,
    "v_ref": 1092995.6666666667,
-   "fade_n": 14,
+   "fade_n": 16,
    "fade_vols": [
-    196995.0,
-    104969.0,
     43051.0,
     51788.0,
     26847.0,
-    19199.0
+    19199.0,
+    25595.0,
+    23785.0
    ]
   },
   "PURR": {
@@ -30,16 +30,16 @@
    "opened_ms": 1793923466365,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.1052168,
-   "h1_checked_ms": 1794866400000,
+   "h1_checked_ms": 1794873600000,
    "v_ref": 5940314.666666667,
-   "fade_n": 0,
+   "fade_n": 1,
    "fade_vols": [
-    98491.0,
-    887271.0,
     362989.0,
     294767.0,
     580753.0,
-    5700224.0
+    5700224.0,
+    4485234.0,
+    624303.0
    ],
    "half_small_logged": true
   },
@@ -52,16 +52,16 @@
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.09685312,
-   "h1_checked_ms": 1794866400000,
+   "h1_checked_ms": 1794873600000,
    "v_ref": 992036.0,
-   "fade_n": 37,
+   "fade_n": 39,
    "fade_vols": [
-    398719.0,
-    119193.0,
     101347.0,
     162438.0,
     98052.0,
-    66577.0
+    66577.0,
+    87024.0,
+    94491.0
    ]
   },
   "PAXG": {
@@ -73,37 +73,37 @@
    "opened_ms": 1794269054441,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 4285.32,
-   "h1_checked_ms": 1794866400000,
+   "h1_checked_ms": 1794873600000,
    "v_ref": 100.17699999999998,
-   "fade_n": 3,
+   "fade_n": 5,
    "fade_vols": [
-    10.366,
-    3.883,
     79.414,
     21.332,
     11.548,
-    9.81
+    9.81,
+    3.959,
+    4.646
    ]
   },
   "ETHFI": {
    "side": "SHORT",
    "sz": 27.4,
    "entry": 0.63645,
-   "peak_px": 0.46645,
+   "peak_px": 0.46444,
    "opened": "2026-11-11",
    "opened_ms": 1794441849836,
    "reason": "bear short (rejected bounce, BTC down)",
-   "stop": 0.53445,
-   "h1_checked_ms": 1794866400000,
+   "stop": 0.5332439999999999,
+   "h1_checked_ms": 1794873600000,
    "v_ref": 552918.8333333334,
-   "fade_n": 1,
+   "fade_n": 0,
    "fade_vols": [
-    60159.2,
-    61457.2,
     62113.4,
     54599.3,
     293408.5,
-    64369.1
+    64369.1,
+    180120.3,
+    49737.0
    ],
    "half_small_logged": true
   }
@@ -314,7 +314,7 @@
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
- "last_daily_day": "2026-11-15",
+ "last_daily_day": "2026-11-16",
  "started": "2026-10-23",
  "start_nav": 110.8395182,
  "nav_history": [
@@ -417,6 +417,10 @@
   [
    "2026-11-16 00:04",
    466.83
+  ],
+  [
+   "2026-11-17 00:04",
+   467.31
   ]
  ],
  "version": "LS15-LIVE-1.10.2",
