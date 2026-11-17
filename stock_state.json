@@ -26,11 +26,6 @@
    "bought": "2026-10-30",
    "breakout": "2026-10-30"
   },
-  "INTU": {
-   "opened": "2026-10-30",
-   "bought": "2026-10-30",
-   "breakout": "2026-09-14"
-  },
   "NEE": {
    "opened": "2026-10-30",
    "bought": "2026-10-30",
@@ -402,6 +397,16 @@
    "pct": -2.24,
    "pnl": -26.56,
    "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "INTU",
+   "opened": "2026-10-30",
+   "closed": "2026-11-17",
+   "entry": 341.61,
+   "exit": 323.91,
+   "pct": -5.18,
+   "pnl": -60.85,
+   "reason": "\u2702\ufe0f Loss stop (-5%)"
   }
  ],
  "last_decision_day": "2026-11-16",
