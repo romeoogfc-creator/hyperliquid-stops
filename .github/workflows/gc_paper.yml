@@ -13,11 +13,11 @@ on:
   workflow_dispatch:
     inputs:
       market:
-        description: "crypto = Hyperliquid coins | stocks = ~100 large US stocks (Alpaca data; backtest / robust only)"
+        description: "crypto = Hyperliquid coins | stocks = ~100 large US stocks | stocks_wide = up to 1000 US stocks picked by liquidity (Alpaca data; backtest / robust only)"
         required: true
         default: crypto
         type: choice
-        options: [crypto, stocks]
+        options: [crypto, stocks, stocks_wide]
       mode:
         description: "paper = update the paper books (daily) | backtest = replay history | robust = stability check (same history, shuffled coin order) | ross = old Ross scalper on several candle sizes"
         required: true
