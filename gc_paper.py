@@ -149,7 +149,7 @@ TOP_OI = set()                         # crypto: today's top 100 by open interes
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.59"
+ENGINE_VERSION = "GC-PAPER-1.60"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -338,6 +338,7 @@ BOOKS = [
     ("C100", "LIVE RULES on today's top 100 coins by open interest (what we test now)", "adaptive", False),
     ("CALL", "LIVE RULES on EVERY Hyperliquid coin", "adaptive", False),
     ("CDAY", "LIVE RULES on the top 100 coins by dollar volume AS OF EACH DAY (no hindsight)", "adaptive", False),
+    ("CALLV", "LIVE RULES on every coin trading $1M+/day (skips coins too thin to fill well)", "adaptive", False),
     ("FL5", "F5 + Loose Lock from +5% (stocks)", "long", False),
     ("FL10", "F5 + Big-Winner Lock from +10% (stocks)", "long", False),
     ("FL15", "F5 + Big-Winner Lock from +15% (stocks)", "long", False),
@@ -540,6 +541,7 @@ BOOK_OPTIONS.update({
     "C100": {**BOOK_OPTIONS["F25L5"], "size_group": "top100"},
     "CALL": {**BOOK_OPTIONS["F25L5"]},
     "CDAY": {**BOOK_OPTIONS["F25L5"], "size_group": "daily_top"},
+    "CALLV": {**BOOK_OPTIONS["F25L5"], "min_dv": 1_000_000},
 })
 BOOK_OPTIONS["AB2HF5"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.10, 0.60], [0.05, 0.50]]}
 BOOK_OPTIONS.update({"RML": BOOK_OPTIONS["RM"], "RMFL": BOOK_OPTIONS["RMF"], "RSL": BOOK_OPTIONS["RS"], "EXL": BOOK_OPTIONS["EX"],
@@ -1036,6 +1038,8 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
     elif book.get("size_group") == "daily_top":               # WDAY: the 100 most-traded names as of that day
         top = set(sorted((c for c in universe if (bar.get(c) or {}).get("dv20")), key=lambda c: -bar[c]["dv20"])[:100])
         universe = [c for c in universe if c in top]          # keep the run's (shuffled) order: only the membership changes
+    if book.get("min_dv"):                                    # CALLV: only coins that traded enough the 20 days before
+        universe = [c for c in universe if ((bar.get(c) or {}).get("dv20") or 0) >= book["min_dv"]]
     if book.get("coins"):                                     # restricted coin list (CB books: Coinbase US perps only)
         universe = [c for c in universe if c in book["coins"]]
     if book.get("er_rank"):                                   # crowded days: the cleanest trends claim the slots first
