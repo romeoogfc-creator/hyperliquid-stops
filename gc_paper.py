@@ -147,7 +147,7 @@ WIDE_SIZE = int(os.getenv("WIDE_SIZE", "1000") or 1000)
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.53"
+ENGINE_VERSION = "GC-PAPER-1.54"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -163,6 +163,10 @@ STATE_FILE = "gc_paper_state.json"
 START_NAV = float(os.getenv("START_NAV", "1000") or 1000)   # starting balance of each NEW book (Run workflow option)
 ROBUST_RUNS = int(os.getenv("ROBUST_RUNS", "20") or 20)
 ROBUST_BOOKS = [c.strip().upper() for c in os.getenv("ROBUST_BOOKS", "V,Y,Z,Z3,YZ").split(",") if c.strip()]
+# Daily paper email + plain backtest only run these books (live rules first). Every other book stays defined in this
+# file and can still be tested any time with mode=robust and its code in robust_books. Stocks backtest: F5 vs F5X.
+PAPER_BOOKS = [c.strip().upper() for c in os.getenv("PAPER_BOOKS", "").split(",") if c.strip()] or (
+    ["F5", "F5X"] if MARKET.startswith("stocks") else ["F25L5", "F25T", "AB2H", "A", "CBM"])
 MIN_ORDER_USD = 1.0 if STOCKS else 10.0   # Hyperliquid rejects orders under ~$10; Alpaca fractional orders go down to $1
 _LONG_ONLY_ENV = os.getenv("LONG_ONLY", "auto").strip().lower()
 LONG_ONLY = (_LONG_ONLY_ENV in ("1", "true", "yes")) or (_LONG_ONLY_ENV == "auto" and STOCKS and START_NAV < 2000)
@@ -306,7 +310,7 @@ BOOKS = [
     ("F25E", "F25T + crowded days: cleanest trends (10-day efficiency) get the slots first", "adaptive", False),
     ("F25V", "F25T + size by volatility (7.5-22.5% per slot, same risk per trade)", "adaptive", False),
     ("F25X", "F25T + guardrail on free shorts: keep 35% from +18%", "adaptive", False),
-    ("F25L5", "F25T + bank half of a LONG at +5%", "adaptive", False),
+    ("F25L5", "LIVE RULES (bot 1.10.2): F25T + bank half of a LONG at +5%", "adaptive", False),
     ("F25L10", "F25T + bank half of a LONG at +10%", "adaptive", False),
     ("F25L20", "F25T + bank half of a LONG at +20%", "adaptive", False),
     ("K70", "LIVE 1.10 rules, free-short floor from +25% keeps 70-85%", "adaptive", False),
@@ -1991,7 +1995,8 @@ def run_backtest(info):
     universe = ranked[:UNIVERSE_SIZE]
     all_days = sorted({d for c in data for d in data[c]})
     days = backtest_days(all_days)
-    books = [new_book(code, name, lock, guard) for code, name, lock, guard in BOOKS]
+    books = [new_book(code, name, lock, guard) for code, name, lock, guard in
+             sorted((b for b in BOOKS if b[0] in PAPER_BOOKS), key=lambda b: PAPER_BOOKS.index(b[0]))]
     data4h = load_intraday(info, universe, BACKTEST_DAYS) if needs_intraday(books) else {}
     load_hourly(info, universe, BACKTEST_DAYS, [b["code"] for b in books])
     load_funding(info, universe, data, days)
@@ -2101,10 +2106,9 @@ def run_paper(info):
     if not manual and (state.get("last_processed_day") or "") >= newest_closed:
         print(f"Paper books already processed {state.get('last_processed_day')} — nothing new (no email)", flush=True)
         return                                                # the 5-minute trigger: quiet until the next daily candle
-    books = state.get("books") or [new_book(code, name, lock, guard) for code, name, lock, guard in BOOKS]
-    for code, name, lock, guard in BOOKS:                     # books added in later versions join with a fresh balance
-        if code not in {b["code"] for b in books}:
-            books.append(new_book(code, name, lock, guard))
+    keep = sorted((b for b in BOOKS if b[0] in PAPER_BOOKS), key=lambda b: PAPER_BOOKS.index(b[0]))
+    saved = {b["code"]: b for b in state.get("books") or [] if b["code"] in PAPER_BOOKS}   # retired books are dropped
+    books = [saved.get(code) or new_book(code, name, lock, guard) for code, name, lock, guard in keep]
     for b in books:                                           # settings changes (e.g. slot size) apply to saved books too
         b.update(BOOK_OPTIONS.get(b["code"], {}))
         b["name"] = next((n for c, n, _, _ in BOOKS if c == b["code"]), b["name"])
