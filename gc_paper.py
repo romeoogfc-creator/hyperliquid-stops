@@ -143,11 +143,12 @@ STOCKS = MARKET in ("stocks", "stocks_wide")
 # 1.53 stocks_wide: the universe is picked by rule from every active Alpaca US stock (not a hand list): price >= $5,
 # average daily dollar volume >= $5M, top WIDE_SIZE by dollar volume. ETFs / funds are skipped by name.
 WIDE = MARKET == "stocks_wide"
+ALL_COINS = MARKET == "crypto_all"     # every Hyperliquid perp with open interest, not just the top 100 (backtest / robust)
 WIDE_SIZE = int(os.getenv("WIDE_SIZE", "1000") or 1000)
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.56"
+ENGINE_VERSION = "GC-PAPER-1.58"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -189,8 +190,8 @@ GC_MULT = 1.414
 GC_WARMUP_BARS = 200                   # recursive filter needs history before its values are trustworthy
 
 # ---------------- LS-15 rules ----------------
-UNIVERSE_SIZE = WIDE_SIZE if WIDE else 100   # TRSORTORDER: first 100 by rank (stocks_wide: the whole picked list)
-DRIFT_OUT_RANK = 120                   # paper mode: exit when rank falls below 120 (hysteresis so rank #99/#101 doesn't churn)
+UNIVERSE_SIZE = WIDE_SIZE if (WIDE or ALL_COINS) else 100   # TRSORTORDER: first 100 by rank (stocks_wide: the whole picked list)
+DRIFT_OUT_RANK = 10 ** 4 if ALL_COINS else 120                   # paper mode: exit when rank falls below 120 (hysteresis so rank #99/#101 doesn't churn)
 LONG_SIZE_RECENT = 0.08                # breakout <= 25 days ago
 LONG_SIZE_OLD = 0.02
 BREAKOUT_RECENT_DAYS = 25
@@ -333,6 +334,9 @@ BOOKS = [
     ("WMID", "F5 rules on mid-size stocks only (wide list minus its top 100)", False, False),
     ("WTOP", "F5 rules on today's top 100 of the wide list (hindsight pick)", False, False),
     ("WDAY", "F5 rules on the top 100 by dollar volume AS OF EACH DAY (no hindsight)", False, False),
+    ("C100", "LIVE RULES on today's top 100 coins by open interest (what we test now)", "adaptive", False),
+    ("CALL", "LIVE RULES on EVERY Hyperliquid coin", "adaptive", False),
+    ("CDAY", "LIVE RULES on the top 100 coins by dollar volume AS OF EACH DAY (no hindsight)", "adaptive", False),
     ("FL5", "F5 + Loose Lock from +5% (stocks)", "long", False),
     ("FL10", "F5 + Big-Winner Lock from +10% (stocks)", "long", False),
     ("FL15", "F5 + Big-Winner Lock from +15% (stocks)", "long", False),
@@ -532,6 +536,9 @@ BOOK_OPTIONS.update({
     "WMID": {**BOOK_OPTIONS["F5"], "exclude": ["SPY", "QQQ"], "size_group": "mid"},
     "WTOP": {**BOOK_OPTIONS["F5"], "exclude": ["SPY", "QQQ"], "size_group": "large"},
     "WDAY": {**BOOK_OPTIONS["F5"], "exclude": ["SPY", "QQQ"], "size_group": "daily_top"},
+    "C100": {**BOOK_OPTIONS["F25L5"], "size_group": "top100"},
+    "CALL": {**BOOK_OPTIONS["F25L5"]},
+    "CDAY": {**BOOK_OPTIONS["F25L5"], "size_group": "daily_top"},
 })
 BOOK_OPTIONS["AB2HF5"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.10, 0.60], [0.05, 0.50]]}
 BOOK_OPTIONS.update({"RML": BOOK_OPTIONS["RM"], "RMFL": BOOK_OPTIONS["RMF"], "RSL": BOOK_OPTIONS["RS"], "EXL": BOOK_OPTIONS["EX"],
@@ -1023,8 +1030,11 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
         universe = [c for c in universe if c not in LARGE_CAPS]
     elif book.get("size_group") == "large":                   # WL: only the 100 biggest names
         universe = [c for c in universe if c in LARGE_CAPS]
+    elif book.get("size_group") == "top100":                  # C100: today's top 100 by open interest only
+        universe = universe[:100]
     elif book.get("size_group") == "daily_top":               # WDAY: the 100 most-traded names as of that day
-        universe = sorted((c for c in universe if (bar.get(c) or {}).get("dv20")), key=lambda c: -bar[c]["dv20"])[:100]
+        top = set(sorted((c for c in universe if (bar.get(c) or {}).get("dv20")), key=lambda c: -bar[c]["dv20"])[:100])
+        universe = [c for c in universe if c in top]          # keep the run's (shuffled) order: only the membership changes
     if book.get("coins"):                                     # restricted coin list (CB books: Coinbase US perps only)
         universe = [c for c in universe if c in book["coins"]]
     if book.get("er_rank"):                                   # crowded days: the cleanest trends claim the slots first
