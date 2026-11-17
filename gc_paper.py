@@ -139,10 +139,15 @@ from email.mime.image import MIMEImage
 import numpy as np
 
 MARKET = os.getenv("MARKET", "crypto").strip().lower()
-STOCKS = MARKET == "stocks"
+STOCKS = MARKET in ("stocks", "stocks_wide")
+# 1.53 stocks_wide: the universe is picked by rule from every active Alpaca US stock (not a hand list): price >= $5,
+# average daily dollar volume >= $5M, top WIDE_SIZE by dollar volume. ETFs / funds are skipped by name.
+WIDE = MARKET == "stocks_wide"
+WIDE_SIZE = int(os.getenv("WIDE_SIZE", "1000") or 1000)
+LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.52.1"
+ENGINE_VERSION = "GC-PAPER-1.53"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -180,7 +185,7 @@ GC_MULT = 1.414
 GC_WARMUP_BARS = 200                   # recursive filter needs history before its values are trustworthy
 
 # ---------------- LS-15 rules ----------------
-UNIVERSE_SIZE = 100                    # TRSORTORDER: first 100 by rank
+UNIVERSE_SIZE = WIDE_SIZE if WIDE else 100   # TRSORTORDER: first 100 by rank (stocks_wide: the whole picked list)
 DRIFT_OUT_RANK = 120                   # paper mode: exit when rank falls below 120 (hysteresis so rank #99/#101 doesn't churn)
 LONG_SIZE_RECENT = 0.08                # breakout <= 25 days ago
 LONG_SIZE_OLD = 0.02
@@ -320,6 +325,9 @@ BOOKS = [
     ("F5M", "F5 + buy only when SPY is above its filter (stocks)", False, False),
     ("F5A", "F5 + add to +10% winners up to 6.6% (stocks)", False, False),
     ("F5X", "F5 without SPY / QQQ as tradable stocks", False, False),
+    ("W", "F5 rules on the WIDE stock list (up to 1000 stocks)", False, False),
+    ("WM", "F5 rules on mid-size stocks only (wide list minus its top 100)", False, False),
+    ("WL", "F5 rules on the top 100 of the wide list only", False, False),
     ("FL5", "F5 + Loose Lock from +5% (stocks)", "long", False),
     ("FL10", "F5 + Big-Winner Lock from +10% (stocks)", "long", False),
     ("FL15", "F5 + Big-Winner Lock from +15% (stocks)", "long", False),
@@ -515,6 +523,9 @@ BOOK_OPTIONS.update({
     "F5M": {**BOOK_OPTIONS["F5"], "mkt_filter": True},
     "F5A": {**BOOK_OPTIONS["F5"], "topup_target": 0.066},
     "F5X": {**BOOK_OPTIONS["F5"], "exclude": ["SPY", "QQQ"]},
+    "W": {**BOOK_OPTIONS["F5"], "exclude": ["SPY", "QQQ"]},
+    "WM": {**BOOK_OPTIONS["F5"], "exclude": ["SPY", "QQQ"], "size_group": "mid"},
+    "WL": {**BOOK_OPTIONS["F5"], "exclude": ["SPY", "QQQ"], "size_group": "large"},
 })
 BOOK_OPTIONS["AB2HF5"] = {**BOOK_OPTIONS["AB2H"], "free_tiers": [[0.50, 0.80], [0.30, 0.75], [0.20, 0.70], [0.10, 0.60], [0.05, 0.50]]}
 BOOK_OPTIONS.update({"RML": BOOK_OPTIONS["RM"], "RMFL": BOOK_OPTIONS["RMF"], "RSL": BOOK_OPTIONS["RS"], "EXL": BOOK_OPTIONS["EX"],
@@ -1000,6 +1011,10 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
     universe = ranked[:UNIVERSE_SIZE]
     if book.get("exclude"):
         universe = [c for c in universe if c not in book["exclude"]]
+    if book.get("size_group") == "mid":                       # WM: skip the 100 biggest names
+        universe = [c for c in universe if c not in LARGE_CAPS]
+    elif book.get("size_group") == "large":                   # WL: only the 100 biggest names
+        universe = [c for c in universe if c in LARGE_CAPS]
     if book.get("coins"):                                     # restricted coin list (CB books: Coinbase US perps only)
         universe = [c for c in universe if c in book["coins"]]
     if book.get("er_rank"):                                   # crowded days: the cleanest trends claim the slots first
@@ -1529,12 +1544,47 @@ def _et(ts):
     return datetime.fromisoformat(ts.replace("Z", "+00:00")).astimezone(ET_ZONE)
 
 
+ALPACA_TRADE = os.getenv("APCA_TRADE_URL", "https://paper-api.alpaca.markets")
+FUND_WORDS = ("ETF", "ETN", " FUND", "TRUST", "ISHARES", "PROSHARES", "SPDR", "INVESCO", "DIREXION", "VANGUARD", "WISDOMTREE",
+              "GRANITESHARES", "LEVERAGED", " 2X", " 3X", "ULTRA", "INVERSE", "BITCOIN", "ETHER", "ACQUISITION CORP")
+
+
+def wide_symbols(now):
+    """stocks_wide: pick the universe by rule from every active, tradable Alpaca US stock on a main exchange."""
+    import requests
+    headers = {"APCA-API-KEY-ID": os.getenv("APAL_API_KEY_ID", ""), "APCA-API-SECRET-KEY": os.getenv("APAL_SECRET_KEY", "")}
+    res = requests.get(f"{ALPACA_TRADE}/v2/assets", params={"status": "active", "asset_class": "us_equity"}, headers=headers, timeout=60)
+    if res.status_code != 200:
+        raise RuntimeError(f"Alpaca assets list failed ({res.status_code}): {res.text[:200]}")
+    cands = sorted({a["symbol"] for a in res.json()
+                    if a.get("tradable") and a.get("exchange") in ("NYSE", "NASDAQ", "AMEX", "ARCA", "BATS")
+                    and a["symbol"].isalpha() and not any(w in (a.get("name") or "").upper() for w in FUND_WORDS)})
+    print(f"Wide stocks: {len(cands)} candidate symbols from Alpaca", flush=True)
+    dv = {}
+    for i in range(0, len(cands), 200):                       # last ~30 days only, to rank by liquidity
+        raw = alpaca_bars(cands[i:i + 200], "1Day", now - timedelta(days=45), now - timedelta(minutes=16))
+        for sym, bl in raw.items():
+            bl = sorted(bl, key=lambda k: k["t"])[-20:]
+            if len(bl) >= 15 and float(bl[-1]["c"]) >= 5:
+                dv[sym] = float(np.mean([float(k["c"]) * float(k.get("v", 0)) for k in bl]))
+    picked = [s for s in sorted(dv, key=dv.get, reverse=True) if dv[s] >= 5e6][:WIDE_SIZE]
+    print(f"Wide stocks: {len(picked)} picked (price >= $5, dollar volume >= $5M/day, top {WIDE_SIZE})", flush=True)
+    return picked
+
+
 def fetch_stock_market(history_days):
     """Same shape as fetch_market: (ranked symbols, {symbol: {date: bar}}). Rank = average dollar volume, last 20 days."""
     now = datetime.now(timezone.utc)
     end = now - timedelta(minutes=16)
     start = now - timedelta(days=history_days + 340)          # + ~230 trading days for the channel warm-up
-    raw = alpaca_bars(STOCK_UNIVERSE, "1Day", start, end)
+    if WIDE:
+        syms = wide_symbols(now)
+        syms = syms + [BENCH] if BENCH not in syms else syms
+        raw = {}
+        for i in range(0, len(syms), 100):
+            raw.update(alpaca_bars(syms[i:i + 100], "1Day", start, end))
+    else:
+        raw = alpaca_bars(STOCK_UNIVERSE, "1Day", start, end)
     today_et = now.astimezone(ET_ZONE)
     data, dollar_vol = {}, {}
     for sym, bl in raw.items():
@@ -1550,6 +1600,9 @@ def fetch_stock_market(history_days):
         data[sym] = {r["date"]: r for r in rows}
         dollar_vol[sym] = float(np.mean([r["c"] * r["v"] for r in rows[-20:]]))
     ranked = sorted(data, key=lambda s: dollar_vol.get(s, 0), reverse=True)
+    if WIDE:
+        LARGE_CAPS.clear()
+        LARGE_CAPS.update([s for s in ranked if s not in ("SPY", "QQQ")][:100])
     print(f"Stocks: {len(data)} symbols with daily bars (feed {_feed['name']})", flush=True)
     return ranked, data
 
