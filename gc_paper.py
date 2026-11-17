@@ -145,10 +145,11 @@ STOCKS = MARKET in ("stocks", "stocks_wide")
 WIDE = MARKET == "stocks_wide"
 ALL_COINS = MARKET == "crypto_all"     # every Hyperliquid perp with open interest, not just the top 100 (backtest / robust)
 WIDE_SIZE = int(os.getenv("WIDE_SIZE", "1000") or 1000)
+TOP_OI = set()                         # crypto: today's top 100 by open interest (C100), fixed before any shuffle
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.58"
+ENGINE_VERSION = "GC-PAPER-1.59"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -1031,7 +1032,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
     elif book.get("size_group") == "large":                   # WL: only the 100 biggest names
         universe = [c for c in universe if c in LARGE_CAPS]
     elif book.get("size_group") == "top100":                  # C100: today's top 100 by open interest only
-        universe = universe[:100]
+        universe = [c for c in universe if c in TOP_OI]
     elif book.get("size_group") == "daily_top":               # WDAY: the 100 most-traded names as of that day
         top = set(sorted((c for c in universe if (bar.get(c) or {}).get("dv20")), key=lambda c: -bar[c]["dv20"])[:100])
         universe = [c for c in universe if c in top]          # keep the run's (shuffled) order: only the membership changes
@@ -1407,6 +1408,8 @@ def fetch_market(info, history_days, paced=False):
             rows.append((oi_usd, asset["name"]))
     rows.sort(reverse=True)
     ranked = [c for _, c in rows]
+    TOP_OI.clear()
+    TOP_OI.update(ranked[:100])
     if "BTC" not in ranked[:UNIVERSE_SIZE]:
         ranked.insert(0, "BTC")
     now_ms = int(time.time() * 1000)
@@ -2091,7 +2094,7 @@ def run_robust(info):
 <body style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f4f6f8;margin:0;padding:8px;color:#333;">
 <div style="max-width:680px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;">
   <div style="background:#0f172a;color:#fff;padding:14px;"><div style="font-size:15px;font-weight:700;">{title}</div>
-    <div style="font-size:11px;color:#94a3b8;margin-top:3px;">{days[0]} → {last} • {BENCH} buy &amp; hold {btc_ret:+.1f}%</div></div>
+    <div style="font-size:11px;color:#94a3b8;margin-top:3px;">{days[0]} → {last} • {BENCH} buy &amp; hold {btc_ret:+.1f}% • market {MARKET}: {len(universe)} {'stocks' if STOCKS else 'coins'} in the test • {ENGINE_VERSION}</div></div>
   <div style="padding:12px;font-size:12px;">
     <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:8px;font-size:11px;color:#92400e;margin-bottom:12px;">
       📝 PAPER ONLY. Same coins, same candles, same rules — only the ORDER in which same-day signals are considered changes
