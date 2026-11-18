@@ -149,7 +149,7 @@ TOP_OI = set()                         # crypto: today's top 100 by open interes
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.62"
+ENGINE_VERSION = "GC-PAPER-1.63"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -315,6 +315,9 @@ BOOKS = [
     ("F25L5", "LIVE RULES (bot 1.10.2): F25T + bank half of a LONG at +5%", "adaptive", False),
     ("F25L10", "F25T + bank half of a LONG at +10%", "adaptive", False),
     ("F25L20", "F25T + bank half of a LONG at +20%", "adaptive", False),
+    ("F25T5", "F25T + bank a THIRD of a LONG at +5% (two thirds keep running)", "adaptive", False),
+    ("F25B15", "F25L5, but while BTC closes 5%+ ABOVE its filter the long half-bank waits until +15%", "adaptive", False),
+    ("F25B20", "F25L5, but while BTC closes 5%+ ABOVE its filter the long half-bank waits until +20%", "adaptive", False),
     ("K70", "LIVE 1.10 rules, free-short floor from +25% keeps 70-85%", "adaptive", False),
     ("K80", "LIVE 1.10 rules, free-short floor from +25% keeps 80-90%", "adaptive", False),
     ("K90", "LIVE 1.10 rules, free-short floor from +25% keeps 90%", "adaptive", False),
@@ -507,6 +510,10 @@ BOOK_OPTIONS.update({
 })
 # 1.47: bank half of a long (Book X's take_half) on top of F25T; the rest keeps the normal hourly lock.
 BOOK_OPTIONS.update({f"F25L{n}": {**BOOK_OPTIONS["F25T"], "take_half": {"at": n / 100, "frac": 0.5}} for n in (5, 10, 20)})
+# 1.63 (tests of two ideas, not live): F25T5 banks a third instead of half; F25B15 / F25B20 keep the +5% half-bank except in a strong BTC UPtrend
+# (BTC closed 5%+ above its filter on the previous day), where longs run full size until +15% / +20%.
+BOOK_OPTIONS["F25T5"] = {**BOOK_OPTIONS["F25T"], "take_half": {"at": 0.05, "frac": 1 / 3}}
+BOOK_OPTIONS.update({f"F25B{n}": {**BOOK_OPTIONS["F25L5"], "bull_half": {"pct": 0.05, "at": n / 100}} for n in (15, 20)})
 # 1.48: same start (+25%) for the free-short floor, but it keeps MORE of the peak (live = F25L5 = 60/70/80%).
 BOOK_OPTIONS.update({
     "K70": {**BOOK_OPTIONS["F25L5"], "free_tiers": [[0.50, 0.85], [0.35, 0.80], [0.25, 0.70]]},
@@ -588,7 +595,10 @@ def th_of(book, p):
     """Take-half rule for this position: small coins use the small rule when the book has one."""
     if p.get("small") and (book.get("small") or {}).get("take_half"):
         return book["small"]["take_half"]
-    return book.get("take_half")
+    th = book.get("take_half")
+    if th and book.get("bull_half") and book.get("_strong_up") and p["side"] == "LONG":
+        return {**th, "at": book["bull_half"]["at"]}      # strong BTC uptrend: longs run full size until the higher level
+    return th
 
 
 def small_tiers(book, p):
@@ -615,6 +625,15 @@ def free_half_hit(book, p, low):
     """AB2HT books: a free-running short reached the bank-half level (checked against a candle's low)."""
     fh = book.get("free_half")
     return bool(fh and free_floor(book, p) and not p.get("half_taken") and low <= p["entry"] * (1 - fh["at"]))
+
+
+def strong_uptrend(book, data, day):
+    """1.63: is BTC more than bull_half['pct'] ABOVE its filter as of the PREVIOUS daily close?"""
+    b = data.get(BENCH, {}).get(day)
+    pb = b.get("_prev") if b else None
+    if not pb or not pb.get("valid") or not book.get("bull_half"):
+        return False
+    return pb["c"] > pb["filter"] * (1 + book["bull_half"]["pct"])
 
 
 def strong_downtrend(book, data, day):
@@ -1058,6 +1077,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
     """Runs one LS-15 decision cycle on the daily candle `day` (YYYY-MM-DD) for one book."""
     if book.get("lock") == "adaptive":
         book["_strong_down"] = strong_downtrend(book, data, day)
+        book["_strong_up"] = strong_uptrend(book, data, day)
     if book.get("crash_slots"):
         cs, base = book["crash_slots"], BOOK_OPTIONS["AB2H"]
         book["max_pos"] = cs["max_pos"] if book.get("_strong_down") else base["max_pos"]
