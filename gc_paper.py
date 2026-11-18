@@ -149,7 +149,7 @@ TOP_OI = set()                         # crypto: today's top 100 by open interes
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.66"
+ENGINE_VERSION = "GC-PAPER-1.67"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -337,6 +337,7 @@ BOOKS = [
     ("F5V", "F5 + volume filter: a breakout needs the day's volume >= 1.5x its 20-day average (stocks)", False, False),
     ("F5W", "F5 + sellers-took-over exit: once +3%, sell on a red day with 1.5x+ volume that closes near its low (stocks)", False, False),
     ("F5LV", "F5L5, but half is only banked at +5% on a heavy-volume day (>= 1.5x average): blow-off volume = take it, else let it run (stocks)", False, False),
+    ("F5LM", "F5L5, but half is only banked at +5% while SPY's last close is under its GC filter (weak / choppy market); in a strong market it runs full size (stocks)", False, False),
     ("F5M", "F5 + buy only when SPY is above its filter (stocks)", False, False),
     ("F5A", "F5 + add to +10% winners up to 6.6% (stocks)", False, False),
     ("F5X", "F5 without SPY / QQQ as tradable stocks", False, False),
@@ -557,6 +558,8 @@ BOOK_OPTIONS.update({
     "F5V": {**BOOK_OPTIONS["F5"], "vol_filter": 1.5},
     "F5W": {**BOOK_OPTIONS["F5"], "seller_exit": {"after_gain": 0.03, "vol_mult": 1.5, "close_in_bottom": 0.35}},
     "F5LV": {**BOOK_OPTIONS["F5"], "take_half": {"at": 0.05, "frac": 0.5, "vol_mult": 1.5}},
+    # 1.67 (test, not live): bank half only while the benchmark (SPY) is weak.
+    "F5LM": {**BOOK_OPTIONS["F5"], "take_half": {"at": 0.05, "frac": 0.5, "only_weak_mkt": True}},
     "F5M": {**BOOK_OPTIONS["F5"], "mkt_filter": True},
     "F5A": {**BOOK_OPTIONS["F5"], "topup_target": 0.066},
     "F5X": {**BOOK_OPTIONS["F5"], "exclude": ["SPY", "QQQ"]},
@@ -1110,6 +1113,8 @@ def exit_rules(rule, p, candles):
 
 def take_half_hit(book, p, high, day=None, bar=None):
     th = th_of(book, p)
+    if th and th.get("only_weak_mkt") and not book.get("_mkt_weak"):
+        return False                                          # 1.67: strong market = let the winner run at full size
     if th and th.get("vol_mult") and bar is not None:         # 1.66: only bank on a heavy-volume day (blow-off), else let it run
         if not bar.get("vavg") or bar.get("v", 0) < th["vol_mult"] * bar["vavg"]:
             return False
@@ -1124,6 +1129,10 @@ def take_half_hit(book, p, high, day=None, bar=None):
 
 def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=None):
     """Runs one LS-15 decision cycle on the daily candle `day` (YYYY-MM-DD) for one book."""
+    if (book.get("take_half") or {}).get("only_weak_mkt"):    # 1.67: benchmark regime as of the PREVIOUS close (no peeking)
+        mb = data.get(BENCH, {}).get(day)
+        pmb = mb.get("_prev") if mb else None
+        book["_mkt_weak"] = bool(pmb and pmb.get("valid") and pmb["c"] <= pmb["filter"])
     if book.get("lock") == "adaptive":
         book["_strong_down"] = strong_downtrend(book, data, day)
         book["_strong_up"] = strong_uptrend(book, data, day)
