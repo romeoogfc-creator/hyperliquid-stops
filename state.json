@@ -109,7 +109,7 @@
   },
   "MEGA": {
    "side": "LONG",
-   "sz": 1359.0,
+   "sz": 680.0,
    "entry": 0.051466,
    "peak_px": 0.053572,
    "opened": "2026-11-17",
@@ -126,7 +126,8 @@
     611701.0,
     310277.0,
     668138.0
-   ]
+   ],
+   "half_taken": true
   }
  },
  "closed": [
@@ -333,6 +334,18 @@
    "peak_pct": 31.72,
    "pnl": 3.0483,
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
+  },
+  {
+   "coin": "MEGA",
+   "side": "LONG",
+   "opened": "2026-11-17",
+   "closed": "2026-11-18 11:40",
+   "entry": 0.051466,
+   "exit": 0.054039,
+   "pct": 5.0,
+   "peak_pct": 5.0,
+   "pnl": 1.7471,
+   "reason": "\ud83d\udcb5 Banked half at +5% (long)"
   }
  ],
  "last_daily_day": "2026-11-17",
