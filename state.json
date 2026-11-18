@@ -9,16 +9,16 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1794960000000,
+   "h1_checked_ms": 1794967200000,
    "v_ref": 1092995.6666666667,
-   "fade_n": 40,
+   "fade_n": 42,
    "fade_vols": [
-    160720.0,
-    116123.0,
     23352.0,
     41824.0,
     88858.0,
-    112719.0
+    112719.0,
+    172730.0,
+    51136.0
    ]
   },
   "PURR": {
@@ -30,16 +30,16 @@
    "opened_ms": 1793923466365,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.1052168,
-   "h1_checked_ms": 1794960000000,
+   "h1_checked_ms": 1794967200000,
    "v_ref": 5940314.666666667,
-   "fade_n": 25,
+   "fade_n": 27,
    "fade_vols": [
-    117151.0,
-    101839.0,
     228191.0,
     122352.0,
     285686.0,
-    199122.0
+    199122.0,
+    83002.0,
+    155263.0
    ],
    "half_small_logged": true
   },
@@ -52,16 +52,16 @@
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.09685312,
-   "h1_checked_ms": 1794960000000,
+   "h1_checked_ms": 1794967200000,
    "v_ref": 992036.0,
-   "fade_n": 8,
+   "fade_n": 10,
    "fade_vols": [
-    163663.0,
-    78691.0,
     339655.0,
     128162.0,
     39293.0,
-    65631.0
+    65631.0,
+    117507.0,
+    36598.0
    ]
   },
   "PAXG": {
@@ -73,16 +73,16 @@
    "opened_ms": 1794269054441,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 4285.32,
-   "h1_checked_ms": 1794960000000,
+   "h1_checked_ms": 1794967200000,
    "v_ref": 100.17699999999998,
-   "fade_n": 9,
+   "fade_n": 0,
    "fade_vols": [
-    4.558,
-    3.242,
     10.0,
     5.21,
     1.569,
-    5.788
+    5.788,
+    148.557,
+    71.147
    ]
   },
   "ETHFI": {
@@ -94,16 +94,16 @@
    "opened_ms": 1794441849836,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.532026,
-   "h1_checked_ms": 1794960000000,
+   "h1_checked_ms": 1794967200000,
    "v_ref": 552918.8333333334,
-   "fade_n": 18,
+   "fade_n": 20,
    "fade_vols": [
-    61796.0,
-    27863.0,
     150061.4,
     207723.6,
     47211.1,
-    100185.1
+    100185.1,
+    95627.0,
+    20441.5
    ],
    "half_small_logged": true
   },
@@ -111,12 +111,22 @@
    "side": "LONG",
    "sz": 1359.0,
    "entry": 0.051466,
-   "peak_px": 0.051466,
+   "peak_px": 0.0519,
    "opened": "2026-11-17",
    "opened_ms": 1794960251756,
    "reason": "band breakout",
    "stop": 0.04940736,
-   "h1_checked_ms": 1794960251756
+   "h1_checked_ms": 1794967200000,
+   "v_ref": 182331.5,
+   "fade_n": 0,
+   "fade_vols": [
+    179387.0,
+    98735.0,
+    122146.0,
+    242171.0,
+    260850.0,
+    581359.0
+   ]
   }
  },
  "closed": [
