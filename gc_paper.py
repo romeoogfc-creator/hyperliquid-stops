@@ -149,7 +149,7 @@ TOP_OI = set()                         # crypto: today's top 100 by open interes
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.63"
+ENGINE_VERSION = "GC-PAPER-1.64"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -318,6 +318,7 @@ BOOKS = [
     ("F25T5", "F25T + bank a THIRD of a LONG at +5% (two thirds keep running)", "adaptive", False),
     ("F25B15", "F25L5, but while BTC closes 5%+ ABOVE its filter the long half-bank waits until +15%", "adaptive", False),
     ("F25B20", "F25L5, but while BTC closes 5%+ ABOVE its filter the long half-bank waits until +20%", "adaptive", False),
+    ("F25VT", "F25L5 + volatility target: new slots shrink (down to 55%) when BTC's 10-day volatility runs above its 60-day norm", "adaptive", False),
     ("K70", "LIVE 1.10 rules, free-short floor from +25% keeps 70-85%", "adaptive", False),
     ("K80", "LIVE 1.10 rules, free-short floor from +25% keeps 80-90%", "adaptive", False),
     ("K90", "LIVE 1.10 rules, free-short floor from +25% keeps 90%", "adaptive", False),
@@ -514,6 +515,8 @@ BOOK_OPTIONS.update({f"F25L{n}": {**BOOK_OPTIONS["F25T"], "take_half": {"at": n 
 # (BTC closed 5%+ above its filter on the previous day), where longs run full size until +15% / +20%.
 BOOK_OPTIONS["F25T5"] = {**BOOK_OPTIONS["F25T"], "take_half": {"at": 0.05, "frac": 1 / 3}}
 BOOK_OPTIONS.update({f"F25B{n}": {**BOOK_OPTIONS["F25L5"], "bull_half": {"pct": 0.05, "at": n / 100}} for n in (15, 20)})
+# 1.64 (test, not live): market volatility target. Slot size x clamp(60-day BTC volatility / 10-day BTC volatility, floor, 1). Only ever smaller than normal.
+BOOK_OPTIONS["F25VT"] = {**BOOK_OPTIONS["F25L5"], "vol_target": {"short": 10, "long": 60, "floor": 0.55}}
 # 1.48: same start (+25%) for the free-short floor, but it keeps MORE of the peak (live = F25L5 = 60/70/80%).
 BOOK_OPTIONS.update({
     "K70": {**BOOK_OPTIONS["F25L5"], "free_tiers": [[0.50, 0.85], [0.35, 0.80], [0.25, 0.70]]},
@@ -625,6 +628,31 @@ def free_half_hit(book, p, low):
     """AB2HT books: a free-running short reached the bank-half level (checked against a candle's low)."""
     fh = book.get("free_half")
     return bool(fh and free_floor(book, p) and not p.get("half_taken") and low <= p["entry"] * (1 - fh["at"]))
+
+
+def vol_mult(book, data, day):
+    """1.64: slot-size multiplier from the benchmark's (BTC / SPY) recent volatility, using bars up to the PREVIOUS close only. 1.0 = normal size."""
+    vt = book.get("vol_target")
+    if not vt:
+        return 1.0
+    b = data.get(BENCH, {}).get(day)
+    x = b.get("_prev") if b else None
+    closes = []
+    while x is not None and len(closes) < vt["long"] + 1:
+        closes.append(x["c"]); x = x.get("_prev")
+    if len(closes) < vt["long"] + 1:
+        return 1.0                                            # not enough history yet: normal size
+    rets = [math.log(closes[i] / closes[i + 1]) for i in range(len(closes) - 1) if closes[i] > 0 and closes[i + 1] > 0]   # newest first
+    if len(rets) < vt["long"]:
+        return 1.0
+
+    def sd(v):
+        m = sum(v) / len(v)
+        return (sum((r - m) ** 2 for r in v) / len(v)) ** 0.5
+    s_short, s_long = sd(rets[:vt["short"]]), sd(rets[:vt["long"]])
+    if s_short <= 0:
+        return 1.0
+    return max(vt["floor"], min(1.0, s_long / s_short))
 
 
 def strong_uptrend(book, data, day):
@@ -750,7 +778,7 @@ def entry_size(book, nav, base_fraction):
         vs, natr = book.get("vol_size"), book.get("_natr")
         if vs and natr:
             return nav * min(vs["max"], max(vs["min"], vs["risk"] / (vs["atr_mult"] * natr)))
-        return nav * book["slot_size"]
+        return nav * book["slot_size"] * book.get("_vol_mult", 1.0)
     return nav * base_fraction * book.get("size_mult", 1.0)
 
 
@@ -1078,6 +1106,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
     if book.get("lock") == "adaptive":
         book["_strong_down"] = strong_downtrend(book, data, day)
         book["_strong_up"] = strong_uptrend(book, data, day)
+        book["_vol_mult"] = vol_mult(book, data, day)
     if book.get("crash_slots"):
         cs, base = book["crash_slots"], BOOK_OPTIONS["AB2H"]
         book["max_pos"] = cs["max_pos"] if book.get("_strong_down") else base["max_pos"]
