@@ -149,7 +149,7 @@ TOP_OI = set()                         # crypto: today's top 100 by open interes
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.64"
+ENGINE_VERSION = "GC-PAPER-1.65"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -332,6 +332,8 @@ BOOKS = [
     ("CBL", "Coinbase spot only: longs on all coins, no shorts", "adaptive", False),
     ("F5L5", "F5 + bank half at +5%, the rest rides the GC band (stocks)", False, False),
     ("F5L10", "F5 + bank half at +10%, the rest rides the GC band (stocks)", False, False),
+    ("F5LF7", "F5L5, but only for FAST pops: bank half at +5% if reached within 7 days of the buy, else let it run (stocks)", False, False),
+    ("F5LF14", "F5L5, but only for FAST pops: bank half at +5% if reached within 14 days of the buy, else let it run (stocks)", False, False),
     ("F5M", "F5 + buy only when SPY is above its filter (stocks)", False, False),
     ("F5A", "F5 + add to +10% winners up to 6.6% (stocks)", False, False),
     ("F5X", "F5 without SPY / QQQ as tradable stocks", False, False),
@@ -545,6 +547,9 @@ BOOK_OPTIONS.update({c: {**BOOK_OPTIONS["F25L5"], **o} for c, o in BOOK_OPTIONS_
 BOOK_OPTIONS.update({
     "F5L5": {**BOOK_OPTIONS["F5"], "take_half": {"at": 0.05, "frac": 0.5}},
     "F5L10": {**BOOK_OPTIONS["F5"], "take_half": {"at": 0.10, "frac": 0.5}},
+    # 1.65 (test, not live): bank half only when the +5% came FAST (a spike, which tends to fade); a slow steady climb keeps full size.
+    "F5LF7": {**BOOK_OPTIONS["F5"], "take_half": {"at": 0.05, "frac": 0.5, "max_days": 7}},
+    "F5LF14": {**BOOK_OPTIONS["F5"], "take_half": {"at": 0.05, "frac": 0.5, "max_days": 14}},
     "F5M": {**BOOK_OPTIONS["F5"], "mkt_filter": True},
     "F5A": {**BOOK_OPTIONS["F5"], "topup_target": 0.066},
     "F5X": {**BOOK_OPTIONS["F5"], "exclude": ["SPY", "QQQ"]},
@@ -1096,8 +1101,14 @@ def exit_rules(rule, p, candles):
     return None
 
 
-def take_half_hit(book, p, high):
+def take_half_hit(book, p, high, day=None):
     th = th_of(book, p)
+    if th and th.get("max_days") and day:                     # 1.65: only a FAST move (within max_days calendar days of the buy) is banked
+        try:
+            if (datetime.strptime(day, "%Y-%m-%d") - datetime.strptime(p["opened"][:10], "%Y-%m-%d")).days > th["max_days"]:
+                return False
+        except ValueError:
+            pass
     return bool(th and p["side"] == "LONG" and not p.get("half_taken") and high >= p["entry"] * (1 + th["at"]))
 
 
@@ -1155,7 +1166,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
     if not book.get("lock") and book.get("take_half"):
         for c in list(book["positions"]):
             p, b = book["positions"][c], bar.get(c)
-            if b and p["opened"] != day and take_half_hit(book, p, b["h"]):
+            if b and p["opened"] != day and take_half_hit(book, p, b["h"], day):
                 if book.get("disaster") and b["l"] <= p["entry"] * (1 - book["disaster"]):
                     continue                                  # both levels hit in one day: assume the loss stop came first
                 tp = p["entry"] * (1 + th_of(book, p)["at"])
