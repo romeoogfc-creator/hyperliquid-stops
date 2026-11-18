@@ -60,11 +60,6 @@
    "opened": "2026-11-09",
    "bought": "2026-11-09",
    "breakout": "2026-11-09"
-  },
-  "ELV": {
-   "opened": "2026-11-10",
-   "bought": "2026-11-10",
-   "breakout": "2026-09-03"
   }
  },
  "closed": [
@@ -417,6 +412,16 @@
    "pct": -4.29,
    "pnl": -198.73,
    "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "ELV",
+   "opened": "2026-11-10",
+   "closed": "2026-11-18",
+   "entry": 426.95,
+   "exit": 405.11,
+   "pct": -5.12,
+   "pnl": -59.39,
+   "reason": "\u2702\ufe0f Loss stop (-5%)"
   }
  ],
  "last_decision_day": "2026-11-17",
