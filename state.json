@@ -106,28 +106,6 @@
     14522.7
    ],
    "half_small_logged": true
-  },
-  "MEGA": {
-   "side": "LONG",
-   "sz": 680.0,
-   "entry": 0.051466,
-   "peak_px": 0.055138,
-   "opened": "2026-11-17",
-   "opened_ms": 1794960251756,
-   "reason": "band breakout",
-   "stop": 0.0536692,
-   "h1_checked_ms": 1795010400000,
-   "v_ref": 600064.5,
-   "fade_n": 0,
-   "fade_vols": [
-    310277.0,
-    668138.0,
-    417752.0,
-    814702.0,
-    777817.0,
-    336167.0
-   ],
-   "half_taken": true
   }
  },
  "closed": [
@@ -346,6 +324,18 @@
    "peak_pct": 5.0,
    "pnl": 1.7471,
    "reason": "\ud83d\udcb5 Banked half at +5% (long)"
+  },
+  {
+   "coin": "MEGA",
+   "side": "LONG",
+   "opened": "2026-11-17",
+   "closed": "2026-11-18 14:55",
+   "entry": 0.051466,
+   "exit": 0.053833849153789554,
+   "pct": 4.6,
+   "peak_pct": 7.13,
+   "pnl": 3.1863,
+   "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
  "last_daily_day": "2026-11-17",
