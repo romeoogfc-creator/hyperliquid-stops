@@ -149,7 +149,7 @@ TOP_OI = set()                         # crypto: today's top 100 by open interes
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.69"
+ENGINE_VERSION = "GC-PAPER-1.70"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -324,6 +324,8 @@ BOOKS = [
     ("F25C15", "F25L5 + volatility trail on free shorts: from +10% the stop trails the low by 1.5 x the coin's daily ATR, never worse than breakeven", "adaptive", False),
     ("F25C20", "F25L5 + volatility trail on free shorts: from +10% the stop trails the low by 2.0 x the coin's daily ATR, never worse than breakeven", "adaptive", False),
     ("F25C30", "F25L5 + volatility trail on free shorts: from +10% the stop trails the low by 3.0 x the coin's daily ATR, never worse than breakeven", "adaptive", False),
+    ("F25D1", "F25L5, but a free short banks a QUARTER at +8% and another quarter at +15% (half keeps running)", "adaptive", False),
+    ("F25D2", "F25L5, but a free short banks a FIFTH at +5%, +10% and +15% (40% keeps running)", "adaptive", False),
     ("K70", "LIVE 1.10 rules, free-short floor from +25% keeps 70-85%", "adaptive", False),
     ("K80", "LIVE 1.10 rules, free-short floor from +25% keeps 80-90%", "adaptive", False),
     ("K90", "LIVE 1.10 rules, free-short floor from +25% keeps 90%", "adaptive", False),
@@ -533,6 +535,11 @@ BOOK_OPTIONS["F25VT"] = {**BOOK_OPTIONS["F25L5"], "vol_target": {"short": 10, "l
 # loose stop, so ordinary bounces do not trigger it) and is never worse than breakeven. It works together with the +25% floor (the tighter one wins).
 BOOK_OPTIONS.update({f"F25S{n}": {**BOOK_OPTIONS["F25L5"], "free_half": {"at": n / 100, "frac": 0.5}} for n in (10, 15)})
 BOOK_OPTIONS.update({f"F25C{int(k * 10)}": {**BOOK_OPTIONS["F25L5"], "free_trail": {"start": 0.10, "k": k}} for k in (1.5, 2.0, 3.0)})
+# 1.70 (tests, not live): a LADDER for free-running shorts. Each rung banks `frac0` of the ORIGINAL position when the short is up `at`; the rest keeps
+# running free with the +25% floor. Replaces the single +20% bank-half (free_half is switched off for these books).
+BOOK_OPTIONS["F25D1"] = {**BOOK_OPTIONS["F25L5"], "free_half": None, "free_ladder": [{"at": 0.08, "frac0": 0.25}, {"at": 0.15, "frac0": 0.25}]}
+BOOK_OPTIONS["F25D2"] = {**BOOK_OPTIONS["F25L5"], "free_half": None,
+                         "free_ladder": [{"at": 0.05, "frac0": 0.20}, {"at": 0.10, "frac0": 0.20}, {"at": 0.15, "frac0": 0.20}]}
 # 1.48: same start (+25%) for the free-short floor, but it keeps MORE of the peak (live = F25L5 = 60/70/80%).
 BOOK_OPTIONS.update({
     "K70": {**BOOK_OPTIONS["F25L5"], "free_tiers": [[0.50, 0.85], [0.35, 0.80], [0.25, 0.70]]},
@@ -647,6 +654,27 @@ def free_floor(book, p):
     """AB2HF: a short that 'runs free' (adaptive lock off for shorts today) still gets the wide big-winner floor."""
     return bool((book.get("free_tiers") or book.get("free_half")) and p["side"] == "SHORT" and book.get("lock") == "adaptive"
                 and book.get("_strong_down"))
+
+
+def free_ladder_next(book, p, low):
+    """1.70: the next unfilled rung of a free-short ladder that a candle's low has reached, or None."""
+    lad = book.get("free_ladder")
+    i = p.get("rung", 0)
+    if lad and free_floor(book, p) and i < len(lad) and low <= p["entry"] * (1 - lad[i]["at"]):
+        return lad[i]
+    return None
+
+
+def ladder_exec(book, p, coin, open_px, low, day, log):
+    """Sell every rung the candle's low reached, one after the other (fills at the rung price, or the open if it gapped through)."""
+    rung = free_ladder_next(book, p, low)
+    while rung:
+        p.setdefault("qty0", p["qty"])
+        frac = min(1.0, rung["frac0"] * p["qty0"] / p["qty"]) if p["qty"] > 0 else 1.0
+        tp = p["entry"] * (1 - rung["at"])
+        partial_close(book, coin, min(open_px, tp), frac, day, f"💵 Banked {rung['frac0']*100:.0f}% at +{rung['at']*100:.0f}% (free short ladder)", log)
+        p["rung"] = p.get("rung", 0) + 1
+        rung = free_ladder_next(book, p, low)
 
 
 def free_half_hit(book, p, low):
@@ -1252,6 +1280,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
                         tp = p["entry"] * (1 - book["free_half"]["at"])
                         partial_close(book, c, min(k["o"], tp), book["free_half"]["frac"], day,
                                       f"💵 Banked half at +{book['free_half']['at']*100:.0f}% (free short)", log)
+                    ladder_exec(book, p, c, k["o"], k["l"], day, log)
                     set_lock_stop(book, p, k["h"], k["l"])    # this candle's high/low raises the peak, stop moves up
                     if free and not book.get("free_fade"):
                         continue                              # free-running short: only the wide floor, no fade / smart exits
@@ -1275,6 +1304,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
                 tp = p["entry"] * (1 - book["free_half"]["at"])
                 partial_close(book, c, min(b["o"], tp), book["free_half"]["frac"], day,
                               f"💵 Banked half at +{book['free_half']['at']*100:.0f}% (free short)", log)
+            ladder_exec(book, p, c, b["o"], b["l"], day, log)
             if take_half_hit(book, p, b["h"]) and not (p["stop"] is not None and b["l"] <= p["stop"]):
                 tp = p["entry"] * (1 + th_of(book, p)["at"])
                 partial_close(book, c, max(b["o"], tp), th_of(book, p)["frac"], day, f"💵 Take half at +{th_of(book, p)['at']*100:.0f}%", log)
