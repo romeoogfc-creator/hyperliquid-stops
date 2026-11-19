@@ -149,7 +149,7 @@ TOP_OI = set()                         # crypto: today's top 100 by open interes
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.71"
+ENGINE_VERSION = "GC-PAPER-1.72"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -328,6 +328,9 @@ BOOKS = [
     ("F25D2", "F25L5, but a free short banks a FIFTH at +5%, +10% and +15% (40% keeps running)", "adaptive", False),
     ("F25DM5", "F25L5 normally; while BTC is 5%+ off its 10-day low (a bounce) free shorts use the ladder (quarter at +8%, quarter at +15%)", "adaptive", False),
     ("F25DM8", "F25L5 normally; while BTC is 8%+ off its 10-day low (a bounce) free shorts use the ladder (quarter at +8%, quarter at +15%)", "adaptive", False),
+    ("F25DR", "F25L5 normally; free shorts on the SMALLER coins (open-interest rank 51-100 at entry) use the ladder (quarter at +8%, quarter at +15%)", "adaptive", False),
+    ("F25DV", "F25L5 normally; free shorts on the MORE VOLATILE coins (daily ATR % above that day's median at entry) use the ladder", "adaptive", False),
+    ("F25DRB", "F25L5 normally; the ladder only for SMALLER coins (rank 51-100) AND only while BTC is 8%+ off its 10-day low", "adaptive", False),
     ("K70", "LIVE 1.10 rules, free-short floor from +25% keeps 70-85%", "adaptive", False),
     ("K80", "LIVE 1.10 rules, free-short floor from +25% keeps 80-90%", "adaptive", False),
     ("K90", "LIVE 1.10 rules, free-short floor from +25% keeps 90%", "adaptive", False),
@@ -544,6 +547,11 @@ BOOK_OPTIONS["F25D1"] = {**BOOK_OPTIONS["F25L5"], "free_half": None, "free_ladde
 # as of the previous day) the ladder rungs of F25D1 are switched on; once a rung has fired the single +20% half-bank is skipped for that position.
 BOOK_OPTIONS.update({f"F25DM{n}": {**BOOK_OPTIONS["F25L5"], "free_ladder": BOOK_OPTIONS["F25D1"]["free_ladder"], "ladder_when_bounce": n / 100}
                      for n in (5, 8)})
+# 1.72: team books with a COIN condition. The trait is measured when the position is opened (rank by open interest, or the coin's daily ATR % against the
+# median of all coins that day), never picked by name.
+BOOK_OPTIONS["F25DR"] = {**BOOK_OPTIONS["F25L5"], "free_ladder": BOOK_OPTIONS["F25D1"]["free_ladder"], "ladder_rank_min": 51}
+BOOK_OPTIONS["F25DV"] = {**BOOK_OPTIONS["F25L5"], "free_ladder": BOOK_OPTIONS["F25D1"]["free_ladder"], "ladder_hivol": True}
+BOOK_OPTIONS["F25DRB"] = {**BOOK_OPTIONS["F25DR"], "ladder_when_bounce": 0.08}
 BOOK_OPTIONS["F25D2"] = {**BOOK_OPTIONS["F25L5"], "free_half": None,
                          "free_ladder": [{"at": 0.05, "frac0": 0.20}, {"at": 0.10, "frac0": 0.20}, {"at": 0.15, "frac0": 0.20}]}
 # 1.48: same start (+25%) for the free-short floor, but it keeps MORE of the peak (live = F25L5 = 60/70/80%).
@@ -668,6 +676,10 @@ def free_ladder_next(book, p, low):
     i = p.get("rung", 0)
     if book.get("ladder_when_bounce") and not book.get("_bounce"):
         return None                                           # 1.71: ladder only while BTC is bouncing
+    if book.get("ladder_rank_min") and (p.get("rank") or 0) < book["ladder_rank_min"]:
+        return None                                           # 1.72: ladder only for the smaller coins (rank 51-100)
+    if book.get("ladder_hivol") and not p.get("hi_vol"):
+        return None                                           # 1.72: ladder only for the more volatile coins
     if lad and free_floor(book, p) and i < len(lad) and low <= p["entry"] * (1 - lad[i]["at"]):
         return lad[i]
     return None
@@ -1564,8 +1576,13 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
         log.append(("TOP-UP", c, f"SHORT +${usd:,.2f} @ {b['c']:.6g} (winner add, avg entry now {p['entry']:.6g})"))
 
     # Update peaks with today's candle and (profit-lock books) set tomorrow's resting stop.
+    natrs = sorted(x["atr"] / x["c"] for x in bar.values() if x.get("atr") and x.get("c")) if book.get("ladder_hivol") else []
+    med_natr = natrs[len(natrs) // 2] if natrs else None
     for c, p in book["positions"].items():
         b = bar.get(c)
+        if "rank" not in p:                                   # 1.72: tag the coin once, on the day it is opened
+            p["rank"] = rank_of.get(c, 10 ** 6)
+            p["hi_vol"] = bool(b and b.get("atr") and b.get("c") and med_natr and b["atr"] / b["c"] >= med_natr)
         if b and b.get("atr"):
             p["atr"] = b["atr"]                               # trail room for the next day comes from today's ATR
             p["climax"] = p["side"] == "LONG" and b["c"] - b["upper"] > CLIMAX_ATR * b["atr"]
