@@ -149,7 +149,7 @@ TOP_OI = set()                         # crypto: today's top 100 by open interes
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.70"
+ENGINE_VERSION = "GC-PAPER-1.71"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -326,6 +326,8 @@ BOOKS = [
     ("F25C30", "F25L5 + volatility trail on free shorts: from +10% the stop trails the low by 3.0 x the coin's daily ATR, never worse than breakeven", "adaptive", False),
     ("F25D1", "F25L5, but a free short banks a QUARTER at +8% and another quarter at +15% (half keeps running)", "adaptive", False),
     ("F25D2", "F25L5, but a free short banks a FIFTH at +5%, +10% and +15% (40% keeps running)", "adaptive", False),
+    ("F25DM5", "F25L5 normally; while BTC is 5%+ off its 10-day low (a bounce) free shorts use the ladder (quarter at +8%, quarter at +15%)", "adaptive", False),
+    ("F25DM8", "F25L5 normally; while BTC is 8%+ off its 10-day low (a bounce) free shorts use the ladder (quarter at +8%, quarter at +15%)", "adaptive", False),
     ("K70", "LIVE 1.10 rules, free-short floor from +25% keeps 70-85%", "adaptive", False),
     ("K80", "LIVE 1.10 rules, free-short floor from +25% keeps 80-90%", "adaptive", False),
     ("K90", "LIVE 1.10 rules, free-short floor from +25% keeps 90%", "adaptive", False),
@@ -538,6 +540,10 @@ BOOK_OPTIONS.update({f"F25C{int(k * 10)}": {**BOOK_OPTIONS["F25L5"], "free_trail
 # 1.70 (tests, not live): a LADDER for free-running shorts. Each rung banks `frac0` of the ORIGINAL position when the short is up `at`; the rest keeps
 # running free with the +25% floor. Replaces the single +20% bank-half (free_half is switched off for these books).
 BOOK_OPTIONS["F25D1"] = {**BOOK_OPTIONS["F25L5"], "free_half": None, "free_ladder": [{"at": 0.08, "frac0": 0.25}, {"at": 0.15, "frac0": 0.25}]}
+# 1.71: the two books work as a team. Normal days = F25L5 (bank half at +20%). While BTC bounces (closed `ladder_when_bounce` above its 10-day low
+# as of the previous day) the ladder rungs of F25D1 are switched on; once a rung has fired the single +20% half-bank is skipped for that position.
+BOOK_OPTIONS.update({f"F25DM{n}": {**BOOK_OPTIONS["F25L5"], "free_ladder": BOOK_OPTIONS["F25D1"]["free_ladder"], "ladder_when_bounce": n / 100}
+                     for n in (5, 8)})
 BOOK_OPTIONS["F25D2"] = {**BOOK_OPTIONS["F25L5"], "free_half": None,
                          "free_ladder": [{"at": 0.05, "frac0": 0.20}, {"at": 0.10, "frac0": 0.20}, {"at": 0.15, "frac0": 0.20}]}
 # 1.48: same start (+25%) for the free-short floor, but it keeps MORE of the peak (live = F25L5 = 60/70/80%).
@@ -660,6 +666,8 @@ def free_ladder_next(book, p, low):
     """1.70: the next unfilled rung of a free-short ladder that a candle's low has reached, or None."""
     lad = book.get("free_ladder")
     i = p.get("rung", 0)
+    if book.get("ladder_when_bounce") and not book.get("_bounce"):
+        return None                                           # 1.71: ladder only while BTC is bouncing
     if lad and free_floor(book, p) and i < len(lad) and low <= p["entry"] * (1 - lad[i]["at"]):
         return lad[i]
     return None
@@ -680,7 +688,7 @@ def ladder_exec(book, p, coin, open_px, low, day, log):
 def free_half_hit(book, p, low):
     """AB2HT books: a free-running short reached the bank-half level (checked against a candle's low)."""
     fh = book.get("free_half")
-    return bool(fh and free_floor(book, p) and not p.get("half_taken") and low <= p["entry"] * (1 - fh["at"]))
+    return bool(fh and free_floor(book, p) and not p.get("half_taken") and not p.get("rung") and low <= p["entry"] * (1 - fh["at"]))
 
 
 def vol_mult(book, data, day):
@@ -706,6 +714,19 @@ def vol_mult(book, data, day):
     if s_short <= 0:
         return 1.0
     return max(vt["floor"], min(1.0, s_long / s_short))
+
+
+def btc_bounce(book, data, day):
+    """1.71: has BTC closed at least ladder_when_bounce above its lowest close of the last 10 days, as of the PREVIOUS day?"""
+    pct = book.get("ladder_when_bounce")
+    b = data.get(BENCH, {}).get(day)
+    pb = b.get("_prev") if b else None
+    if not pct or not pb or not pb.get("valid"):
+        return False
+    closes, x = [], pb
+    while x is not None and len(closes) < 10:
+        closes.append(x["c"]); x = x.get("_prev")
+    return pb["c"] >= min(closes) * (1 + pct)
 
 
 def strong_uptrend(book, data, day):
@@ -1182,6 +1203,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
         book["_strong_down"] = strong_downtrend(book, data, day)
         book["_strong_up"] = strong_uptrend(book, data, day)
         book["_vol_mult"] = vol_mult(book, data, day)
+        book["_bounce"] = btc_bounce(book, data, day)
     if book.get("crash_slots"):
         cs, base = book["crash_slots"], BOOK_OPTIONS["AB2H"]
         book["max_pos"] = cs["max_pos"] if book.get("_strong_down") else base["max_pos"]
