@@ -9,16 +9,16 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1795118400000,
+   "h1_checked_ms": 1795125600000,
    "v_ref": 1092995.6666666667,
-   "fade_n": 11,
+   "fade_n": 13,
    "fade_vols": [
-    512478.0,
-    364614.0,
     292704.0,
     279607.0,
     215312.0,
-    219852.0
+    219852.0,
+    283666.0,
+    161299.0
    ]
   },
   "POL": {
@@ -30,37 +30,37 @@
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.09685312,
-   "h1_checked_ms": 1795118400000,
+   "h1_checked_ms": 1795125600000,
    "v_ref": 992036.0,
-   "fade_n": 2,
+   "fade_n": 4,
    "fade_vols": [
-    133707.0,
-    309168.0,
     450610.0,
     4035332.0,
     135702.0,
-    38466.0
+    38466.0,
+    68009.0,
+    76471.0
    ]
   },
   "PAXG": {
    "side": "SHORT",
    "sz": 0.004,
    "entry": 4120.5,
-   "peak_px": 3658.7,
+   "peak_px": 3611.1,
    "opened": "2026-11-09",
    "opened_ms": 1794269054441,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 4285.32,
-   "h1_checked_ms": 1795118400000,
+   "h1_checked_ms": 1795125600000,
    "v_ref": 115.53899999999999,
-   "fade_n": 2,
+   "fade_n": 0,
    "fade_vols": [
-    45.171,
-    129.454,
     119.36,
     152.194,
     11.028,
-    15.797
+    15.797,
+    15.954,
+    43.186
    ]
   },
   "ETHFI": {
@@ -72,16 +72,16 @@
    "opened_ms": 1794441849836,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.529578,
-   "h1_checked_ms": 1795118400000,
+   "h1_checked_ms": 1795125600000,
    "v_ref": 552918.8333333334,
-   "fade_n": 2,
+   "fade_n": 1,
    "fade_vols": [
-    313327.8,
-    151356.0,
     241594.5,
     676340.3,
     159734.3,
-    71551.6
+    71551.6,
+    358174.8,
+    52899.0
    ],
    "half_small_logged": true
   }
