@@ -9,16 +9,16 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1795039200000,
+   "h1_checked_ms": 1795046400000,
    "v_ref": 1092995.6666666667,
-   "fade_n": 62,
+   "fade_n": 64,
    "fade_vols": [
-    345439.0,
-    243723.0,
     113320.0,
     118173.0,
     91456.0,
-    151369.0
+    151369.0,
+    83772.0,
+    347055.0
    ]
   },
   "PURR": {
@@ -30,16 +30,16 @@
    "opened_ms": 1793923466365,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.0853516,
-   "h1_checked_ms": 1795039200000,
+   "h1_checked_ms": 1795046400000,
    "v_ref": 5940314.666666667,
-   "fade_n": 0,
+   "fade_n": 2,
    "fade_vols": [
-    6258735.0,
-    1446549.0,
     232307.0,
     1172682.0,
     1228630.0,
-    1615874.0
+    1615874.0,
+    559404.0,
+    241362.0
    ],
    "half_small_logged": true
   },
@@ -52,16 +52,16 @@
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.09685312,
-   "h1_checked_ms": 1795039200000,
+   "h1_checked_ms": 1795046400000,
    "v_ref": 992036.0,
-   "fade_n": 13,
+   "fade_n": 15,
    "fade_vols": [
-    485949.0,
-    92685.0,
     72774.0,
     40932.0,
     61719.0,
-    65468.0
+    65468.0,
+    57319.0,
+    50246.0
    ]
   },
   "PAXG": {
@@ -73,16 +73,16 @@
    "opened_ms": 1794269054441,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 4285.32,
-   "h1_checked_ms": 1795039200000,
+   "h1_checked_ms": 1795046400000,
    "v_ref": 100.17699999999998,
    "fade_n": 0,
    "fade_vols": [
-    51.231,
-    26.136,
     9.14,
     30.284,
     24.081,
-    159.533
+    159.533,
+    18.388,
+    55.931
    ]
   },
   "ETHFI": {
@@ -94,16 +94,16 @@
    "opened_ms": 1794441849836,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.529578,
-   "h1_checked_ms": 1795039200000,
+   "h1_checked_ms": 1795046400000,
    "v_ref": 552918.8333333334,
-   "fade_n": 5,
+   "fade_n": 0,
    "fade_vols": [
-    304439.4,
-    149369.9,
     23053.4,
     40055.8,
     77093.7,
-    23865.2
+    23865.2,
+    148668.1,
+    285960.5
    ],
    "half_small_logged": true
   }
@@ -338,7 +338,7 @@
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
- "last_daily_day": "2026-11-17",
+ "last_daily_day": "2026-11-18",
  "started": "2026-10-23",
  "start_nav": 110.8395182,
  "nav_history": [
@@ -449,6 +449,10 @@
   [
    "2026-11-18 00:04",
    466.46
+  ],
+  [
+   "2026-11-19 00:04",
+   472.46
   ]
  ],
  "version": "LS15-LIVE-1.10.2",
