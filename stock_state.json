@@ -1,11 +1,6 @@
 {
  "version": "GCSTK-F-1",
  "positions": {
-  "BLK": {
-   "opened": "2026-10-26",
-   "bought": "2026-10-26",
-   "breakout": "2026-10-16"
-  },
   "HD": {
    "opened": "2026-10-29",
    "bought": "2026-10-29",
@@ -15,11 +10,6 @@
    "opened": "2026-10-29",
    "bought": "2026-10-29",
    "breakout": "2025-12-18"
-  },
-  "PYPL": {
-   "opened": "2026-10-29",
-   "bought": "2026-10-29",
-   "breakout": "2026-09-02"
   },
   "PEP": {
    "opened": "2026-10-30",
@@ -41,45 +31,10 @@
    "bought": "2026-11-04",
    "breakout": "2026-07-02"
   },
-  "JNJ": {
-   "opened": "2026-11-04",
-   "bought": "2026-11-04",
-   "breakout": "2026-10-29"
-  },
   "CMCSA": {
    "opened": "2026-11-04",
    "bought": "2026-11-04",
    "breakout": "2026-11-04"
-  },
-  "TXN": {
-   "opened": "2026-11-09",
-   "bought": "2026-11-09",
-   "breakout": "2026-10-26"
-  },
-  "UNP": {
-   "opened": "2026-11-09",
-   "bought": "2026-11-09",
-   "breakout": "2026-11-09"
-  },
-  "AMZN": {
-   "opened": "2026-11-18",
-   "bought": "2026-11-18",
-   "breakout": "2026-11-18"
-  },
-  "DHR": {
-   "opened": "2026-11-18",
-   "bought": "2026-11-18",
-   "breakout": "2026-07-23"
-  },
-  "VRTX": {
-   "opened": "2026-11-18",
-   "bought": "2026-11-18",
-   "breakout": "2026-11-18"
-  },
-  "HON": {
-   "opened": "2026-11-18",
-   "bought": "2026-11-18",
-   "breakout": "2026-11-18"
   }
  },
  "closed": [
@@ -442,9 +397,99 @@
    "pct": -5.12,
    "pnl": -59.39,
    "reason": "\u2702\ufe0f Loss stop (-5%)"
+  },
+  {
+   "symbol": "AMZN",
+   "opened": "2026-11-18",
+   "closed": "2026-11-19",
+   "entry": 266.54,
+   "exit": 257.61,
+   "pct": -3.35,
+   "pnl": -152.89,
+   "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "BLK",
+   "opened": "2026-10-26",
+   "closed": "2026-11-19",
+   "entry": 1133.36,
+   "exit": 1138.24,
+   "pct": 0.43,
+   "pnl": 20.24,
+   "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "DHR",
+   "opened": "2026-11-18",
+   "closed": "2026-11-19",
+   "entry": 228.64,
+   "exit": 226.73,
+   "pct": -0.84,
+   "pnl": -9.53,
+   "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "HON",
+   "opened": "2026-11-18",
+   "closed": "2026-11-19",
+   "entry": 223.69,
+   "exit": 217.63,
+   "pct": -2.71,
+   "pnl": -123.63,
+   "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "JNJ",
+   "opened": "2026-11-04",
+   "closed": "2026-11-19",
+   "entry": 276.59,
+   "exit": 266.3895,
+   "pct": -3.69,
+   "pnl": -175.26,
+   "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "PYPL",
+   "opened": "2026-10-29",
+   "closed": "2026-11-19",
+   "entry": 57.26,
+   "exit": 56.4142,
+   "pct": -1.48,
+   "pnl": -17.45,
+   "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "TXN",
+   "opened": "2026-11-09",
+   "closed": "2026-11-19",
+   "entry": 296.106067,
+   "exit": 286.52,
+   "pct": -3.24,
+   "pnl": -150.94,
+   "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "UNP",
+   "opened": "2026-11-09",
+   "closed": "2026-11-19",
+   "entry": 296.64,
+   "exit": 290.17,
+   "pct": -2.18,
+   "pnl": -101.69,
+   "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "VRTX",
+   "opened": "2026-11-18",
+   "closed": "2026-11-19",
+   "entry": 538.59,
+   "exit": 518.32,
+   "pct": -3.76,
+   "pnl": -171.75,
+   "reason": "Close below upper GC band"
   }
  ],
- "last_decision_day": "2026-11-18",
+ "last_decision_day": "2026-11-19",
  "started": "2026-10-22",
  "start_equity": 97918.51,
  "start_spy": 762.85,
@@ -524,6 +569,10 @@
   [
    "2026-11-18",
    95072.69
+  ],
+  [
+   "2026-11-19",
+   93741.62
   ]
  ]
 }
