@@ -5,25 +5,8 @@
    "name": "LIVE RULES (bot 1.10.2): F25T + bank half of a LONG at +5%",
    "lock": "adaptive",
    "guard": false,
-   "cash": 844.7158692947501,
-   "positions": {
-    "MEGA": {
-     "side": "LONG",
-     "qty": 2879.7030075914154,
-     "entry": 0.051769,
-     "cost": 149.079345,
-     "collateral": 0.0,
-     "fees": 0.06708570524999999,
-     "opened": "2026-11-17",
-     "peak_px": 0.051769,
-     "stop": null,
-     "last_px": 0.051769,
-     "reason": "band breakout (old breakout, 15% NAV)",
-     "small": false,
-     "atr": 0.004331598250354262,
-     "climax": false
-    }
-   },
+   "cash": 1000.362641169518,
+   "positions": {},
    "closed": [
     {
      "coin": "ASTER",
@@ -37,6 +20,32 @@
      "peak_pct": 5.48,
      "reason": "\u2702\ufe0f Loss stop (+4% against, 1h)",
      "why_in": "bear short (rejected bounce, BTC down)"
+    },
+    {
+     "coin": "MEGA",
+     "side": "LONG",
+     "opened": "2026-11-17",
+     "closed": "2026-11-18",
+     "entry": 0.051769,
+     "exit": 0.05435745,
+     "pnl": 3.6582,
+     "pct": 5.0,
+     "peak_pct": 5.0,
+     "reason": "\ud83d\udcb5 Take half at +5%",
+     "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "MEGA",
+     "side": "LONG",
+     "opened": "2026-11-17",
+     "closed": "2026-11-18",
+     "entry": 0.051769,
+     "exit": 0.053790399999999995,
+     "pnl": 2.8421,
+     "pct": 3.9,
+     "peak_pct": 6.51,
+     "reason": "\ud83d\udd12 Profit lock (stop 0.0537904, 1h)",
+     "why_in": "band breakout (old breakout, 15% NAV)"
     }
    ],
    "equity": [
@@ -51,6 +60,10 @@
     [
      "2026-11-17",
      993.8
+    ],
+    [
+     "2026-11-18",
+     1000.36
     ]
    ],
    "eq_base": 1000.0,
@@ -118,10 +131,12 @@
     "frac": 0.5
    },
    "_strong_down": true,
-   "_natr": 0.08367166161900486
+   "_natr": 0.08367166161900486,
+   "_strong_up": false,
+   "_vol_mult": 1.0
   }
  ],
- "last_processed_day": "2026-11-17",
- "engine": "GC-PAPER-1.62",
+ "last_processed_day": "2026-11-18",
+ "engine": "GC-PAPER-1.67",
  "started": "2026-10-21"
 }
