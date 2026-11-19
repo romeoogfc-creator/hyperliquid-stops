@@ -149,7 +149,7 @@ TOP_OI = set()                         # crypto: today's top 100 by open interes
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.67"
+ENGINE_VERSION = "GC-PAPER-1.69"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -319,6 +319,11 @@ BOOKS = [
     ("F25B15", "F25L5, but while BTC closes 5%+ ABOVE its filter the long half-bank waits until +15%", "adaptive", False),
     ("F25B20", "F25L5, but while BTC closes 5%+ ABOVE its filter the long half-bank waits until +20%", "adaptive", False),
     ("F25VT", "F25L5 + volatility target: new slots shrink (down to 55%) when BTC's 10-day volatility runs above its 60-day norm", "adaptive", False),
+    ("F25S10", "F25L5, but a free-running short banks HALF at +10% (not +20%)", "adaptive", False),
+    ("F25S15", "F25L5, but a free-running short banks HALF at +15% (not +20%)", "adaptive", False),
+    ("F25C15", "F25L5 + volatility trail on free shorts: from +10% the stop trails the low by 1.5 x the coin's daily ATR, never worse than breakeven", "adaptive", False),
+    ("F25C20", "F25L5 + volatility trail on free shorts: from +10% the stop trails the low by 2.0 x the coin's daily ATR, never worse than breakeven", "adaptive", False),
+    ("F25C30", "F25L5 + volatility trail on free shorts: from +10% the stop trails the low by 3.0 x the coin's daily ATR, never worse than breakeven", "adaptive", False),
     ("K70", "LIVE 1.10 rules, free-short floor from +25% keeps 70-85%", "adaptive", False),
     ("K80", "LIVE 1.10 rules, free-short floor from +25% keeps 80-90%", "adaptive", False),
     ("K90", "LIVE 1.10 rules, free-short floor from +25% keeps 90%", "adaptive", False),
@@ -523,6 +528,11 @@ BOOK_OPTIONS["F25T5"] = {**BOOK_OPTIONS["F25T"], "take_half": {"at": 0.05, "frac
 BOOK_OPTIONS.update({f"F25B{n}": {**BOOK_OPTIONS["F25L5"], "bull_half": {"pct": 0.05, "at": n / 100}} for n in (15, 20)})
 # 1.64 (test, not live): market volatility target. Slot size x clamp(60-day BTC volatility / 10-day BTC volatility, floor, 1). Only ever smaller than normal.
 BOOK_OPTIONS["F25VT"] = {**BOOK_OPTIONS["F25L5"], "vol_target": {"short": 10, "long": 60, "floor": 0.55}}
+# 1.69 (tests, not live): protect free-running shorts earlier. S = bank half at +10% / +15%. C = a volatility (ATR) trailing stop for free shorts:
+# once the short is up `start`, the stop trails the lowest price by k x the coin's own daily ATR (a calm coin gets a tight stop, a wild one a
+# loose stop, so ordinary bounces do not trigger it) and is never worse than breakeven. It works together with the +25% floor (the tighter one wins).
+BOOK_OPTIONS.update({f"F25S{n}": {**BOOK_OPTIONS["F25L5"], "free_half": {"at": n / 100, "frac": 0.5}} for n in (10, 15)})
+BOOK_OPTIONS.update({f"F25C{int(k * 10)}": {**BOOK_OPTIONS["F25L5"], "free_trail": {"start": 0.10, "k": k}} for k in (1.5, 2.0, 3.0)})
 # 1.48: same start (+25%) for the free-short floor, but it keeps MORE of the peak (live = F25L5 = 60/70/80%).
 BOOK_OPTIONS.update({
     "K70": {**BOOK_OPTIONS["F25L5"], "free_tiers": [[0.50, 0.85], [0.35, 0.80], [0.25, 0.70]]},
@@ -922,6 +932,13 @@ def set_lock_stop(book, p, high, low):
         tiers = book["free_tiers"] if free_floor(book, p) else book.get("lock_tiers")
         fl = lock_floor(1 - p["peak_px"] / p["entry"], tiers)
         p["stop"] = None if fl is None else p["entry"] * (1 - fl)
+        ft = book.get("free_trail")
+        if ft and free_floor(book, p):                        # 1.69: ATR trailing stop for free-running shorts (only ever tightens)
+            if p.get("atr") and 1 - p["peak_px"] / p["entry"] >= ft["start"]:
+                new = min(p["peak_px"] + ft["k"] * p["atr"], p["entry"])
+                p["chand"] = new if p.get("chand") is None else min(p["chand"], new)
+            if p.get("chand") is not None:
+                p["stop"] = p["chand"] if p["stop"] is None else min(p["stop"], p["chand"])
 
 
 def partial_close(book, coin, px, frac, date, reason, log):
@@ -1854,8 +1871,9 @@ def fmt_usd_short(v):
 
 
 def growth_section(books, prices):
-    """Growth calculator: each book's results scaled to bigger accounts, and the capital a $/day target would need."""
-    rows = ""
+    """1.68: measured results only (no projections). Replaces the old growth calculator, which scaled a few days of results to
+    $10k-$200k accounts and 'capital needed for $200/day' - guesses, not facts."""
+    rows, min_days = "", None
     for book in books:
         start = book_start(book)
         s = book_stats(book)
@@ -1863,33 +1881,29 @@ def growth_section(books, prices):
         days = len(book["equity"])
         if not days or start <= 0:
             continue
-        growth = nav / start
-        if days >= GROWTH_MIN_DAYS and growth > 0:
-            yearly = growth ** (365.0 / days) - 1
-            per_day = yearly / 365                             # average daily profit per $1 over a year at this pace
-            pace = f"{yearly*100:+.0f}%/yr"
-        else:
-            per_day = (growth - 1) / days                      # too early to annualise: plain average so far
-            pace = f"<span style='color:#b45309;'>too early ({days}d)</span>"
-        size_cells = "".join(f"<td style='color:{pct_color(per_day)};'>{'+' if per_day >= 0 else '-'}${abs(size*per_day):,.{2 if abs(size*per_day) < 10 else 0}f}</td>"
-                             for size in GROWTH_SIZES)
-        need = "".join(f"<td>{fmt_usd_short(t/per_day) if per_day > 0 else '—'}</td>" for t in GROWTH_TARGETS)
-        dip = (f"{s['mdd']:.0f}%" + (f" (≈-{fmt_usd_short(abs(s['mdd'])/100*GROWTH_TARGETS[0]/per_day)})" if per_day > 0 else ""))
-        rows += (f"<tr><td><b>{book['code']}</b></td><td style='color:{pct_color(growth-1)};'>{(growth-1)*100:+.1f}%</td><td>{pace}</td>"
-                 f"{size_cells}{need}<td style='color:#b91c1c;'>{dip}</td></tr>")
+        min_days = days if min_days is None else min(min_days, days)
+        realised = sum(t["pnl"] for t in book["closed"])
+        open_pnl = nav - start - realised                       # what the open positions are worth right now
+        rows += (f"<tr><td><b>{book['code']}</b></td><td>{days}</td>"
+                 f"<td style='color:{pct_color(nav / start - 1)};'>{(nav / start - 1) * 100:+.2f}%</td>"
+                 f"<td>{s['trades']} ({s['wins']}W / {s['losses']}L)</td>"
+                 f"<td>{s['avg_w']:+.2f}% / {s['avg_l']:+.2f}%</td>"
+                 f"<td style='color:{pct_color(realised)};'>${realised:+,.2f}</td>"
+                 f"<td style='color:{pct_color(open_pnl)};'>${open_pnl:+,.2f}</td>"
+                 f"<td style='color:#b91c1c;'>{s['mdd']:.1f}%</td></tr>")
     if not rows:
         return ""
-    heads = "".join(f"<th align='left'>$/day @ {fmt_usd_short(x)}</th>" for x in GROWTH_SIZES)
-    heads += "".join(f"<th align='left'>Capital for ${t}/day</th>" for t in GROWTH_TARGETS)
+    young = (f"<div style='color:#b45309;margin-top:6px;'>Only {min_days} day(s) of results so far, too few trades to judge the strategy.</div>"
+             if min_days is not None and min_days < GROWTH_MIN_DAYS else "")
     return f"""
     <div style="border:1px solid #e2e8f0;border-radius:8px;padding:10px;font-size:11px;margin-bottom:14px;overflow-x:auto;">
-      <div style="font-weight:700;text-transform:uppercase;font-size:10px;color:#0f172a;">💰 Growth calculator</div>
+      <div style="font-weight:700;text-transform:uppercase;font-size:10px;color:#0f172a;">📊 Results so far (measured, no projections)</div>
       <table style="width:100%;font-size:11px;border-collapse:collapse;" cellpadding="3">
-        <tr style="background:#f1f5f9;"><th align="left">Book</th><th align="left">Return</th><th align="left">Pace</th>{heads}<th align="left">Worst drop (at the $200/day size)</th></tr>
+        <tr style="background:#f1f5f9;"><th align="left">Book</th><th align="left">Days</th><th align="left">Return</th><th align="left">Closed trades</th>
+        <th align="left">Avg win / loss</th><th align="left">Realised $</th><th align="left">Open positions $</th><th align="left">Worst drop so far</th></tr>
         {rows}</table>
-      <div style="color:#64748b;margin-top:6px;">$/day = average over a year at this book's pace (30+ days of results), or the plain average so far
-        if it is younger. Real profit is lumpy: most days are flat or red and a few big winners make the month. Bigger accounts also get
-        worse fills on small coins. The last column shows the worst account drop in dollars at the size needed for $200/day.</div>
+      <div style="color:#64748b;margin-top:6px;">Per paper book ($ amounts are on the book's own balance). Only what has actually happened is shown: no yearly pace,
+        no what-if account sizes. Fills at the daily close, fees included, funding not modelled.</div>{young}
     </div>"""
 
 
@@ -2014,41 +2028,21 @@ def send_email(subject, html, text, chart_path):
     print(f"Email sent: {subject}", flush=True)
 
 
-NOTES = [
-    "Virtual books (each with its own starting balance), all taking the same LS-15 entry signals. Book A = SIGNUM LS-15 rules as written. Book B = the same, plus a per-trade profit lock: "
-    "after +5% the stop moves to +1%; after +10/20/35/60/100% it keeps 80/85/90/93/97% of the peak (resting stop, checked against each day's low/high).",
-    "Book C = Book A plus an ACCOUNT guard: once the book is up 4%+ from where it was last flat, it closes everything if it falls back to keeping "
-    "only 60% of that run-up (your $500 → $530 example would lock about $518 instead of $495).",
-    "Book D = profit lock on LONGS only (shorts keep the original stop / -35% take-profit). Book E = Book D plus the account guard.",
-    "Book F = Book A with every position 60% as big. Book G = at most 3 positions (long or short), 15% of NAV each, filled in rank order, no top-ups. "
-    "Book H = Book G plus the long-only profit lock (the proposed live setup: LS-15 signals, max 3 positions, profit lock).",
-    "Book I = separate pools: up to 3 longs AND up to 3 shorts, 15% of NAV each (up to ~90% of the account in use). Book J = Book I plus the long-only profit lock.",
-    "Book K = at most 6 positions (long or short), 20% of NAV each, no top-ups: up to 120% of the account in use, which needs ~1.2x leverage "
-    "(margin; 'Flat' shows $0 while borrowed margin is in use). Book L = Book K plus the long-only profit lock.",
-    "Book M = Book D, but the profit-lock stop is checked and raised on every 4-hour candle (6x a day) instead of once a day — entries and "
-    "exits are still decided on the daily close. Book N = max 6 positions @ 15% with the 4-hour lock. Book O = max 10 @ 15% (up to 150% in use, "
-    "~1.5x margin) with the 4-hour lock. Within each 4-hour candle the stop is checked before the candle's high raises it (conservative).",
-    "Book P = LS-15 + SMART TRAIL on longs: stop = highest price since entry minus 3x the coin's daily ATR (its normal daily swing), raised every "
-    "4 hours, never below +1% once the trade has been +5%. Volatile coins get more room, and the room grows as the price grows, so big runners "
-    "are not cut by normal pullbacks. Book Q = Book P, but it tightens to 1.5x ATR when the coin goes parabolic (close > 2 ATR above the upper band).",
-    "Books R and S = 1x, NO margin: max 10 positions with the 4-hour long lock. R = 15% each (cash runs out after ~6 full positions; later "
-    "entries are downsized or skipped). S = 10% each (10 positions fit exactly in 100%) — Book O scaled down to 1x.",
-    "Book T = Book D with every size doubled and up to 2x margin (200% of the account in positions) — gains AND losses roughly double.",
-    "Book U = THE LIVE SETUP (ls15_live.py): max 9 positions @ 15% (up to 135% in use, ~1.35x), 4-hour long lock, and a disaster stop "
-    "35% from entry on every position.",
-    "Book V = U with an EARLY lock: keeps 50% of the peak gain from +3%, 60% from +5%, 70% from +10%, 80/85/90% from +20/35/60%. "
-    "Book W = V plus a SELLERS-TOOK-OVER exit: once a long has been +3%, it sells on a red day whose volume is 1.5x+ the 20-day average "
-    "and that closes in the bottom third of its range. Book X = U plus TAKE HALF: sells half at +10%, the other half runs on U's lock.",
-    "Book Y = V with the lock starting at +1% (keeps 50% of any gain from +1%). Book Z = V with a -5% loss stop on every position "
-    "(replaces the -35% disaster stop). Book Z3 = V with a -3% loss stop. Book YZ = Y plus the -5% loss stop. Loss stops are resting "
-    "stops checked against each day's low/high (fill at the stop, or at the open if it gapped through).",
-    "Books F5 / F8 = Book F (60% sizes, no lock) plus a -5% / -8% loss stop. Book FZ = Book F plus the early lock and the -5% loss stop "
-    "(daily checks). Built to test loss stops for the stock bot. Z1/Z2/Z4 = V with a -1/-2/-4% loss stop; F1-F4 = F with a -1..-4% loss stop.",
-    "Gaussian Channel computed here from Hyperliquid daily candles (hlc3, 4 poles, period 144, x1.414) — close to SIGNUM's Trend Radar, not identical.",
-    "Rank = Hyperliquid open-interest value (no market cap on Hyperliquid). breakoutDate = first close above the upper band since the channel turned Green.",
-    "Fills at the daily close (lock stops at the stop price, or the open if it gapped through). 0.045% fee per side. Funding is not modelled.",
-    "Orders under $10 are skipped, as Hyperliquid would reject them (matters for small accounts: 2% of $111 = $2.22).",
-]
+NOTES = ([
+    "Book F5 is the paper twin of the Alpaca stock bot: daily Gaussian Channel on ~100 large US stocks, buy a close above the upper band "
+    "(4.8% of the account if the breakout is 25 days old or less, else 1.2%), add up to 3.3% on +10% winners, sell on a close back below the band, "
+    "-5% loss stop, long-only, cash only. Fills at the daily close.",
+    "All other books stay in gc_paper.py for tests (mode robust); they are not shown here.",
+] if STOCKS else [
+    "Book F25L5 is the paper twin of the live crypto bot (LS15-LIVE-1.10.2): LS-15 daily Gaussian Channel signals on the top 100 coins by open "
+    "interest, up to 9 positions of 15% each, up to 135% of the account in use. Early profit lock (keeps 50-90% of the peak gain from +3%), "
+    "volume-fade exit, -4% loss stop on every position. In a strong BTC downtrend shorts run free (half banked at +20%, floor from +25%). "
+    "A long banks half at +5%.",
+    "It only takes signals from its own start date on, so it does not hold positions the live bot opened earlier.",
+    "Gaussian Channel from Hyperliquid daily candles (hlc3, 4 poles, period 144, x1.414). Rank = open interest. Fills at the daily close "
+    "(lock stops at the stop price, or at the open if it gapped through), 0.045% fee per side, funding not modelled. Orders under $10 are skipped.",
+    "All other books stay in gc_paper.py for tests (mode robust); they are not shown here.",
+])
 
 
 def btc_buy_hold(data, days):
