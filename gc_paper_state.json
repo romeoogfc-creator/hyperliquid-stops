@@ -5,8 +5,27 @@
    "name": "LIVE RULES (bot 1.10.2): F25T + bank half of a LONG at +5%",
    "lock": "adaptive",
    "guard": false,
-   "cash": 1000.362641169518,
-   "positions": {},
+   "cash": 850.2407205158114,
+   "positions": {
+    "VVV": {
+     "side": "SHORT",
+     "qty": 6.830589774919324,
+     "entry": 21.968,
+     "cost": 150.0543961754277,
+     "collateral": 150.0543961754277,
+     "fees": 0.06752447827894247,
+     "opened": "2026-11-19",
+     "peak_px": 21.968,
+     "stop": null,
+     "last_px": 21.968,
+     "reason": "bear short (rejected bounce, BTC down)",
+     "small": false,
+     "rank": 10,
+     "hi_vol": false,
+     "atr": 2.2308174044698945,
+     "climax": false
+    }
+   },
    "closed": [
     {
      "coin": "ASTER",
@@ -64,6 +83,10 @@
     [
      "2026-11-18",
      1000.36
+    ],
+    [
+     "2026-11-19",
+     1000.3
     ]
    ],
    "eq_base": 1000.0,
@@ -131,12 +154,13 @@
     "frac": 0.5
    },
    "_strong_down": true,
-   "_natr": 0.08367166161900486,
+   "_natr": 0.10154849801847662,
    "_strong_up": false,
-   "_vol_mult": 1.0
+   "_vol_mult": 1.0,
+   "_bounce": false
   }
  ],
- "last_processed_day": "2026-11-18",
- "engine": "GC-PAPER-1.67",
+ "last_processed_day": "2026-11-19",
+ "engine": "GC-PAPER-1.72",
  "started": "2026-10-21"
 }
