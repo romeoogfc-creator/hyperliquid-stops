@@ -149,7 +149,7 @@ TOP_OI = set()                         # crypto: today's top 100 by open interes
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.74"
+ENGINE_VERSION = "GC-PAPER-1.75"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -337,6 +337,9 @@ BOOKS = [
     ("F25TD", "F25L5 + time-decay ratchet: from +25% the free-short floor keeps +2.5% more of the peak for every 6 hours without a new low (cap 85%)", "adaptive", False),
     ("F25G7", "F25L5 + max-giveback leash: from +20% a free short never gives back more than 7 points of gain (or keeps 60% of the peak, whichever is higher)", "adaptive", False),
     ("F25BR", "F25L5 + BTC relief guard: while BTC's last close is above the previous day's high, free shorts up +10% or more keep 80% of the peak", "adaptive", False),
+    ("F25BE10", "F25L5 + break-even step: once a free short has been +10% its stop moves from -4% to +0.5% (it can no longer turn into a loss)", "adaptive", False),
+    ("F25BE12", "F25L5 + break-even step: once a free short has been +12% its stop moves from -4% to +0.5%", "adaptive", False),
+    ("F25DN15", "F25L5 + wide net: from a +15% peak up to +25% a free short's stop trails 14 points behind the peak (then the normal 60-80% floor)", "adaptive", False),
     ("K70", "LIVE 1.10 rules, free-short floor from +25% keeps 70-85%", "adaptive", False),
     ("K80", "LIVE 1.10 rules, free-short floor from +25% keeps 80-90%", "adaptive", False),
     ("K90", "LIVE 1.10 rules, free-short floor from +25% keeps 90%", "adaptive", False),
@@ -563,6 +566,10 @@ BOOK_OPTIONS["F25DRB"] = {**BOOK_OPTIONS["F25DR"], "ladder_when_bounce": 0.08}
 BOOK_OPTIONS["F25RE0"] = {**BOOK_OPTIONS["F25L5"], "reenter_short": True}
 # 1.74: three conditional tighteners for free shorts (ideas from Gemini). TD: the floor tightens while the coin goes sideways and loosens again on a new low.
 # G7: a cap on the giveback in points. BR: tighter floor while BTC bounces (daily proxy: BTC's last close above the previous day's high).
+# 1.75 (ideas from Gemini): close the gap between the -4% stop and the +25% floor. BE = a one-time break-even step; DN = a wide trailing net (peak - 14 points).
+BOOK_OPTIONS["F25BE10"] = {**BOOK_OPTIONS["F25L5"], "free_be": {"start": 0.10, "lock": 0.005}}
+BOOK_OPTIONS["F25BE12"] = {**BOOK_OPTIONS["F25L5"], "free_be": {"start": 0.12, "lock": 0.005}}
+BOOK_OPTIONS["F25DN15"] = {**BOOK_OPTIONS["F25L5"], "free_net": {"start": 0.15, "cap": 0.14}}
 BOOK_OPTIONS["F25TD"] = {**BOOK_OPTIONS["F25L5"], "free_decay": {"start": 0.25, "step": 0.025, "every": 6, "cap": 0.85}}
 BOOK_OPTIONS["F25G7"] = {**BOOK_OPTIONS["F25L5"], "free_giveback": {"start": 0.20, "cap": 0.07, "keep": 0.60}}
 BOOK_OPTIONS["F25BR"] = {**BOOK_OPTIONS["F25L5"], "relief_guard": {"start": 0.10, "keep": 0.80}}
@@ -1029,6 +1036,11 @@ def set_lock_stop(book, p, high, low, hours=1.0):
                 fl = max(fl or 0.0, gain * fg["keep"], gain - fg["cap"])
             if rg and book.get("_relief") and gain >= rg["start"]:
                 fl = max(fl or 0.0, gain * rg["keep"])
+            fb, fn = book.get("free_be"), book.get("free_net")          # 1.75
+            if fb and gain >= fb["start"]:
+                fl = max(fl or 0.0, fb["lock"])
+            if fn and gain >= fn["start"] and gain - fn["cap"] > 0:
+                fl = max(fl or 0.0, gain - fn["cap"])
         p["stop"] = None if fl is None else p["entry"] * (1 - fl)
         ft = book.get("free_trail")
         if ft and free_floor(book, p):                        # 1.69: ATR trailing stop for free-running shorts (only ever tightens)
