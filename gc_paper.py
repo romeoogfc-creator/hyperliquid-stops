@@ -149,7 +149,7 @@ TOP_OI = set()                         # crypto: today's top 100 by open interes
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.76"
+ENGINE_VERSION = "GC-PAPER-1.77"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -342,6 +342,8 @@ BOOKS = [
     ("F25DN15", "F25L5 + wide net: from a +15% peak up to +25% a free short's stop trails 14 points behind the peak (then the normal 60-80% floor)", "adaptive", False),
     ("F25BE14", "F25L5 + break-even step: once a free short has been +14% its stop moves from -4% to +0.5%", "adaptive", False),
     ("F25BE15", "F25L5 + break-even step: once a free short has been +15% its stop moves from -4% to +0.5%", "adaptive", False),
+    ("F25SL10", "F25BE15 + ramp: the free-short stop slides from -4% towards +0.5% as the peak climbs, reaching +0.5% at a +10.5% peak (10-point leash)", "adaptive", False),
+    ("F25SL12", "F25BE15 + ramp: the free-short stop slides from -4% towards +0.5% as the peak climbs, reaching +0.5% at a +12.5% peak (12-point leash)", "adaptive", False),
     ("K70", "LIVE 1.10 rules, free-short floor from +25% keeps 70-85%", "adaptive", False),
     ("K80", "LIVE 1.10 rules, free-short floor from +25% keeps 80-90%", "adaptive", False),
     ("K90", "LIVE 1.10 rules, free-short floor from +25% keeps 90%", "adaptive", False),
@@ -572,7 +574,9 @@ BOOK_OPTIONS["F25RE0"] = {**BOOK_OPTIONS["F25L5"], "reenter_short": True}
 BOOK_OPTIONS["F25BE10"] = {**BOOK_OPTIONS["F25L5"], "free_be": {"start": 0.10, "lock": 0.005}}
 BOOK_OPTIONS["F25BE12"] = {**BOOK_OPTIONS["F25L5"], "free_be": {"start": 0.12, "lock": 0.005}}
 BOOK_OPTIONS["F25DN15"] = {**BOOK_OPTIONS["F25L5"], "free_net": {"start": 0.15, "cap": 0.14}}
-BOOK_OPTIONS.update({f"F25BE{n}": {**BOOK_OPTIONS["F25L5"], "free_be": {"start": n / 100, "lock": 0.005}} for n in (14, 15)})   # 1.76: neighbours of BE12
+BOOK_OPTIONS.update({f"F25BE{n}": {**BOOK_OPTIONS["F25L5"], "free_be": {"start": n / 100, "lock": 0.005}} for n in (14, 15)})
+# 1.77: protect the SMALLER winners too. Ramp: lock = peak gain - lead (never above +0.5%), so a short that peaked at +8% is stopped at about -2% instead of -4%.
+BOOK_OPTIONS.update({f"F25SL{n}": {**BOOK_OPTIONS["F25BE15"], "free_slope": {"lead": n / 100}} for n in (10, 12)})   # 1.76: neighbours of BE12
 BOOK_OPTIONS["F25TD"] = {**BOOK_OPTIONS["F25L5"], "free_decay": {"start": 0.25, "step": 0.025, "every": 6, "cap": 0.85}}
 BOOK_OPTIONS["F25G7"] = {**BOOK_OPTIONS["F25L5"], "free_giveback": {"start": 0.20, "cap": 0.07, "keep": 0.60}}
 BOOK_OPTIONS["F25BR"] = {**BOOK_OPTIONS["F25L5"], "relief_guard": {"start": 0.10, "keep": 0.80}}
@@ -1039,6 +1043,9 @@ def set_lock_stop(book, p, high, low, hours=1.0):
                 fl = max(fl or 0.0, gain * fg["keep"], gain - fg["cap"])
             if rg and book.get("_relief") and gain >= rg["start"]:
                 fl = max(fl or 0.0, gain * rg["keep"])
+            fsl = book.get("free_slope")                                 # 1.77: ramp from the loss stop up to break-even
+            if fsl and gain - fsl["lead"] > -book.get("disaster", 0.04):
+                fl = max(fl if fl is not None else -9.0, min(gain - fsl["lead"], 0.005))
             fb, fn = book.get("free_be"), book.get("free_net")          # 1.75
             if fb and gain >= fb["start"]:
                 fl = max(fl or 0.0, fb["lock"])
