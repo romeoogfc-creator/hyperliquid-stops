@@ -39,7 +39,7 @@ from email.mime.text import MIMEText
 
 import gc_paper as engine
 
-BOT_VERSION = "LS15-LIVE-1.10.2"
+BOT_VERSION = "LS15-LIVE-1.12.0"
 STATE_FILE = "state.json"                  # same file the old scalper used (stops.yml commits it)
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
 SECRET_KEY = os.getenv("HL_SECRET_KEY")
@@ -65,6 +65,11 @@ BANK_HALF = engine.BOOK_OPTIONS["F25T"]["free_half"]  # 1.9: a free-running shor
                                            # AB2HF25 in 100 of 100 runs, both the 2-year test and the older-year check).
                                            # Skipped while half the position is under Hyperliquid's $10 minimum order.
 DEPOSITS_SINCE = "2026-11-14"              # 1.10.1: deposits / withdrawals from this day on are tracked (earlier money = start_nav)
+BE = (engine.BOOK_OPTIONS.get("F25BE15") or {}).get("free_be") or {"start": 0.15, "lock": 0.005}
+BE_START, BE_LOCK = float(BE["start"]), float(BE["lock"])   # 1.12.0: a free-running short that has been up BE_START (15%) can no longer turn into a loss:
+                                           # its stop moves from -4% to +0.5% (paper Book F25BE15: median +335% vs +332% for F25L5, worst +271% vs +268%;
+                                           # BE12 / BE14 / BE15 all within about 3% of F25L5, drops about 0.4 points smaller). To go back to 1.10.2 exactly,
+                                           # restore the old file (or set BE_START to 9.99).
 LONG_HALF = engine.BOOK_OPTIONS["F25L5"]["take_half"]  # 1.10: a long at +5% closes HALF (paper Book F25L5: beat F25T in the
                                            # 2-year test with funding, +342% vs +262%, and in the older-year check, +131% vs +94%);
                                            # the other half keeps the hourly lock. Same $10 minimum-order rule.
@@ -280,8 +285,12 @@ def desired_stop(p, short_lock=True):
         fl = engine.lock_floor(p["peak_px"] / p["entry"] - 1, LOCK_TIERS)
         return max(stop, p["entry"] * (1 + fl)) if fl is not None else stop
     stop = p["entry"] * (1 + DISASTER_STOP)
-    fl = engine.lock_floor(1 - p["peak_px"] / p["entry"], LOCK_TIERS if short_lock else FREE_TIERS)
-    return min(stop, p["entry"] * (1 - fl)) if fl is not None else stop
+    gain = 1 - p["peak_px"] / p["entry"]
+    fl = engine.lock_floor(gain, LOCK_TIERS if short_lock else FREE_TIERS)
+    stop = min(stop, p["entry"] * (1 - fl)) if fl is not None else stop
+    if not short_lock and gain >= BE_START:                  # 1.12.0: free-running short, up BE_START at its best: never worse than break-even
+        stop = min(stop, p["entry"] * (1 - BE_LOCK))
+    return stop
 
 
 def raise_peaks(info, state, now_ms, mids, log):
@@ -649,7 +658,7 @@ def report(state, nav, ex_pos, mids, log, skips, daily_day):
    60% from +5%, 70% from +10%, 80/85/90% from +20/35/60%) as a real stop moved every hour, plus a volume-fade exit (6 quiet hours after +3%).
    Longs bank half at +5% (when half is over the $10 minimum order).
    Shorts get the lock and fade too, except while BTC closes 5%+ under its filter
-   (now: {'📉 strong downtrend, shorts run free (half banked at +20%, big winners keep 60-80% from +25%)' if state.get('btc_strong_down') else '🔒 shorts locked'}).
+   (now: {'📉 strong downtrend, shorts run free (half banked at +20%, stop to break-even once +' + f'{BE_START*100:.0f}' + '%, big winners keep 60-80% from +25%)' if state.get('btc_strong_down') else '🔒 shorts locked'}).
    Every position: loss stop {DISASTER_STOP*100:.0f}% against the entry. Shorts also exit on a daily close above the GC filter or at -35%.
    <br>🏦 {state.get('ledger_note', '')}</div>
  </div></div></body></html>"""
