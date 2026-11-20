@@ -4,7 +4,8 @@
   "HD": {
    "opened": "2026-10-29",
    "bought": "2026-10-29",
-   "breakout": "2026-07-28"
+   "breakout": "2026-07-28",
+   "half_taken": true
   },
   "SBUX": {
    "opened": "2026-10-29",
@@ -487,6 +488,16 @@
    "pct": -3.76,
    "pnl": -171.75,
    "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "HD",
+   "opened": "2026-10-29",
+   "closed": "2026-11-20",
+   "entry": 326.65,
+   "exit": 344.95,
+   "pct": 5.6,
+   "pnl": 33.09,
+   "reason": "\ud83d\udcb5 Banked half at +5% (SPY weak)"
   }
  ],
  "last_decision_day": "2026-11-19",
