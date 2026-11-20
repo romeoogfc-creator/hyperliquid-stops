@@ -29,7 +29,7 @@
    "opened": "2026-11-05",
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
-   "stop": 0.09685312,
+   "stop": 0.09266236,
    "h1_checked_ms": 1795183200000,
    "v_ref": 992036.0,
    "fade_n": 20,
@@ -470,7 +470,7 @@
    471.96
   ]
  ],
- "version": "LS15-LIVE-1.10.2",
+ "version": "LS15-LIVE-1.12.0",
  "btc_strong_down": true,
  "h1_since_ms": 1793824939398,
  "error_streak": 0,
