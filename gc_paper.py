@@ -149,7 +149,7 @@ TOP_OI = set()                         # crypto: today's top 100 by open interes
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.72"
+ENGINE_VERSION = "GC-PAPER-1.74"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -331,6 +331,12 @@ BOOKS = [
     ("F25DR", "F25L5 normally; free shorts on the SMALLER coins (open-interest rank 51-100 at entry) use the ladder (quarter at +8%, quarter at +15%)", "adaptive", False),
     ("F25DV", "F25L5 normally; free shorts on the MORE VOLATILE coins (daily ATR % above that day's median at entry) use the ladder", "adaptive", False),
     ("F25DRB", "F25L5 normally; the ladder only for SMALLER coins (rank 51-100) AND only while BTC is 8%+ off its 10-day low", "adaptive", False),
+    ("F25RE0", "F25L5 + re-short: after a free short is stopped out by its lock, short the coin again when it closes below that low (control)", "adaptive", False),
+    ("F25RE1", "F25RE0 + a TIGHTER floor on free shorts (keeps 50% from +10%, 60% from +15%, 70% from +20%, 75% from +25%)", "adaptive", False),
+    ("F25RE2", "F25RE0 + a medium floor on free shorts (keeps 60% from +15%, 70% from +25%, 75% from +35%)", "adaptive", False),
+    ("F25TD", "F25L5 + time-decay ratchet: from +25% the free-short floor keeps +2.5% more of the peak for every 6 hours without a new low (cap 85%)", "adaptive", False),
+    ("F25G7", "F25L5 + max-giveback leash: from +20% a free short never gives back more than 7 points of gain (or keeps 60% of the peak, whichever is higher)", "adaptive", False),
+    ("F25BR", "F25L5 + BTC relief guard: while BTC's last close is above the previous day's high, free shorts up +10% or more keep 80% of the peak", "adaptive", False),
     ("K70", "LIVE 1.10 rules, free-short floor from +25% keeps 70-85%", "adaptive", False),
     ("K80", "LIVE 1.10 rules, free-short floor from +25% keeps 80-90%", "adaptive", False),
     ("K90", "LIVE 1.10 rules, free-short floor from +25% keeps 90%", "adaptive", False),
@@ -552,6 +558,16 @@ BOOK_OPTIONS.update({f"F25DM{n}": {**BOOK_OPTIONS["F25L5"], "free_ladder": BOOK_
 BOOK_OPTIONS["F25DR"] = {**BOOK_OPTIONS["F25L5"], "free_ladder": BOOK_OPTIONS["F25D1"]["free_ladder"], "ladder_rank_min": 51}
 BOOK_OPTIONS["F25DV"] = {**BOOK_OPTIONS["F25L5"], "free_ladder": BOOK_OPTIONS["F25D1"]["free_ladder"], "ladder_hivol": True}
 BOOK_OPTIONS["F25DRB"] = {**BOOK_OPTIONS["F25DR"], "ladder_when_bounce": 0.08}
+# 1.73: protect free shorts EARLIER but win the continuation back: when the lock stops a free short out, the coin may be shorted again as soon as it closes
+# below that low (the re-entry mechanism already in the engine, `reenter_short`). RE0 = re-entry only; RE1 / RE2 add tighter floors (tiers are best-first).
+BOOK_OPTIONS["F25RE0"] = {**BOOK_OPTIONS["F25L5"], "reenter_short": True}
+# 1.74: three conditional tighteners for free shorts (ideas from Gemini). TD: the floor tightens while the coin goes sideways and loosens again on a new low.
+# G7: a cap on the giveback in points. BR: tighter floor while BTC bounces (daily proxy: BTC's last close above the previous day's high).
+BOOK_OPTIONS["F25TD"] = {**BOOK_OPTIONS["F25L5"], "free_decay": {"start": 0.25, "step": 0.025, "every": 6, "cap": 0.85}}
+BOOK_OPTIONS["F25G7"] = {**BOOK_OPTIONS["F25L5"], "free_giveback": {"start": 0.20, "cap": 0.07, "keep": 0.60}}
+BOOK_OPTIONS["F25BR"] = {**BOOK_OPTIONS["F25L5"], "relief_guard": {"start": 0.10, "keep": 0.80}}
+BOOK_OPTIONS["F25RE1"] = {**BOOK_OPTIONS["F25RE0"], "free_tiers": [[0.50, 0.85], [0.35, 0.80], [0.25, 0.75], [0.20, 0.70], [0.15, 0.60], [0.10, 0.50]]}
+BOOK_OPTIONS["F25RE2"] = {**BOOK_OPTIONS["F25RE0"], "free_tiers": [[0.50, 0.85], [0.35, 0.75], [0.25, 0.70], [0.15, 0.60]]}
 BOOK_OPTIONS["F25D2"] = {**BOOK_OPTIONS["F25L5"], "free_half": None,
                          "free_ladder": [{"at": 0.05, "frac0": 0.20}, {"at": 0.10, "frac0": 0.20}, {"at": 0.15, "frac0": 0.20}]}
 # 1.48: same start (+25%) for the free-short floor, but it keeps MORE of the peak (live = F25L5 = 60/70/80%).
@@ -739,6 +755,16 @@ def btc_bounce(book, data, day):
     while x is not None and len(closes) < 10:
         closes.append(x["c"]); x = x.get("_prev")
     return pb["c"] >= min(closes) * (1 + pct)
+
+
+def btc_relief(book, data, day):
+    """1.74: BTC bounce proxy on daily bars: its last close (as of the PREVIOUS day) is above the day-before's high."""
+    if not book.get("relief_guard"):
+        return False
+    b = data.get(BENCH, {}).get(day)
+    pb = b.get("_prev") if b else None
+    pp = pb.get("_prev") if pb else None
+    return bool(pb and pp and pb.get("valid") and pb["c"] > pp["h"])
 
 
 def strong_uptrend(book, data, day):
@@ -956,7 +982,7 @@ def lock_label(book):
     return "📈 Trailing stop" if book.get("trail") else "🔒 Profit lock"
 
 
-def set_lock_stop(book, p, high, low):
+def set_lock_stop(book, p, high, low, hours=1.0):
     """Raise the position's peak with a candle's high (long) / low (short) and move the profit-lock stop to match."""
     trail = book.get("trail")
     if trail and not p.get("atr"):
@@ -982,7 +1008,9 @@ def set_lock_stop(book, p, high, low):
         fl = lock_floor(p["peak_px"] / p["entry"] - 1, small_tiers(book, p) or book.get("lock_tiers"))
         p["stop"] = None if fl is None else p["entry"] * (1 + fl)
     else:
+        prev_low = p["peak_px"]
         p["peak_px"] = min(p["peak_px"], low)
+        p["calm_h"] = 0.0 if low < prev_low else p.get("calm_h", 0.0) + hours      # 1.74: hours since the coin last made a new low
         if small_tiers(book, p):                              # small coins: their own ladder, free-running or not
             fl = lock_floor(1 - p["peak_px"] / p["entry"], small_tiers(book, p))
             p["stop"] = None if fl is None else p["entry"] * (1 - fl)
@@ -991,7 +1019,16 @@ def set_lock_stop(book, p, high, low):
             p["stop"] = None                                  # free short with no floor (AB2HT): only the -4% stop
             return
         tiers = book["free_tiers"] if free_floor(book, p) else book.get("lock_tiers")
-        fl = lock_floor(1 - p["peak_px"] / p["entry"], tiers)
+        gain = 1 - p["peak_px"] / p["entry"]
+        fl = lock_floor(gain, tiers)
+        if free_floor(book, p):                               # 1.74: conditional tighteners (each only ever raises the locked gain)
+            fd, fg, rg = book.get("free_decay"), book.get("free_giveback"), book.get("relief_guard")
+            if fd and fl is not None and gain >= fd["start"]:
+                fl = gain * min(fd["cap"], fl / gain + fd["step"] * int(p.get("calm_h", 0.0) // fd["every"]))
+            if fg and gain >= fg["start"]:
+                fl = max(fl or 0.0, gain * fg["keep"], gain - fg["cap"])
+            if rg and book.get("_relief") and gain >= rg["start"]:
+                fl = max(fl or 0.0, gain * rg["keep"])
         p["stop"] = None if fl is None else p["entry"] * (1 - fl)
         ft = book.get("free_trail")
         if ft and free_floor(book, p):                        # 1.69: ATR trailing stop for free-running shorts (only ever tightens)
@@ -1216,6 +1253,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
         book["_strong_up"] = strong_uptrend(book, data, day)
         book["_vol_mult"] = vol_mult(book, data, day)
         book["_bounce"] = btc_bounce(book, data, day)
+        book["_relief"] = btc_relief(book, data, day)
     if book.get("crash_slots"):
         cs, base = book["crash_slots"], BOOK_OPTIONS["AB2H"]
         book["max_pos"] = cs["max_pos"] if book.get("_strong_down") else base["max_pos"]
@@ -1315,7 +1353,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
                         partial_close(book, c, min(k["o"], tp), book["free_half"]["frac"], day,
                                       f"💵 Banked half at +{book['free_half']['at']*100:.0f}% (free short)", log)
                     ladder_exec(book, p, c, k["o"], k["l"], day, log)
-                    set_lock_stop(book, p, k["h"], k["l"])    # this candle's high/low raises the peak, stop moves up
+                    set_lock_stop(book, p, k["h"], k["l"], 1.0 if iv == "1h" else 4.0)    # this candle's high/low raises the peak, stop moves up
                     if free and not book.get("free_fade"):
                         continue                              # free-running short: only the wide floor, no fade / smart exits
                     why_smart = smart_exits(book, p, k)
@@ -1589,7 +1627,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
         if not b or p["opened"] == day:
             continue                                          # entered at today's close: today's high/low came BEFORE the entry
         if lock_applies(book, p["side"]) or free_floor(book, p):
-            set_lock_stop(book, p, b["h"], b["l"])
+            set_lock_stop(book, p, b["h"], b["l"], 0.0 if book.get("lock_intraday") else 24.0)
         elif p["side"] == "LONG":
             p["peak_px"] = max(p["peak_px"], b["h"])
         else:
