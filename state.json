@@ -9,16 +9,16 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1795125600000,
+   "h1_checked_ms": 1795132800000,
    "v_ref": 1092995.6666666667,
-   "fade_n": 13,
+   "fade_n": 15,
    "fade_vols": [
-    292704.0,
-    279607.0,
     215312.0,
     219852.0,
     283666.0,
-    161299.0
+    161299.0,
+    179275.0,
+    85308.0
    ]
   },
   "POL": {
@@ -30,37 +30,37 @@
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.09685312,
-   "h1_checked_ms": 1795125600000,
+   "h1_checked_ms": 1795132800000,
    "v_ref": 992036.0,
-   "fade_n": 4,
+   "fade_n": 6,
    "fade_vols": [
-    450610.0,
-    4035332.0,
     135702.0,
     38466.0,
     68009.0,
-    76471.0
+    76471.0,
+    64984.0,
+    64144.0
    ]
   },
   "PAXG": {
    "side": "SHORT",
    "sz": 0.004,
    "entry": 4120.5,
-   "peak_px": 3611.1,
+   "peak_px": 3583.9,
    "opened": "2026-11-09",
    "opened_ms": 1794269054441,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 4285.32,
-   "h1_checked_ms": 1795125600000,
+   "h1_checked_ms": 1795132800000,
    "v_ref": 115.53899999999999,
    "fade_n": 0,
    "fade_vols": [
-    119.36,
-    152.194,
     11.028,
     15.797,
     15.954,
-    43.186
+    43.186,
+    20.91,
+    250.864
    ]
   },
   "ETHFI": {
@@ -72,18 +72,29 @@
    "opened_ms": 1794441849836,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.529578,
-   "h1_checked_ms": 1795125600000,
+   "h1_checked_ms": 1795132800000,
    "v_ref": 552918.8333333334,
-   "fade_n": 1,
+   "fade_n": 3,
    "fade_vols": [
-    241594.5,
-    676340.3,
     159734.3,
     71551.6,
     358174.8,
-    52899.0
+    52899.0,
+    163978.5,
+    198166.8
    ],
    "half_small_logged": true
+  },
+  "VVV": {
+   "side": "SHORT",
+   "sz": 3.21,
+   "entry": 22.061,
+   "peak_px": 22.061,
+   "opened": "2026-11-19",
+   "opened_ms": 1795133050648,
+   "reason": "bear short (rejected bounce, BTC down)",
+   "stop": 22.943440000000002,
+   "h1_checked_ms": 1795133050648
   }
  },
  "closed": [
@@ -328,7 +339,7 @@
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
- "last_daily_day": "2026-11-18",
+ "last_daily_day": "2026-11-19",
  "started": "2026-10-23",
  "start_nav": 110.8395182,
  "nav_history": [
@@ -443,6 +454,10 @@
   [
    "2026-11-19 00:04",
    472.46
+  ],
+  [
+   "2026-11-20 00:04",
+   471.96
   ]
  ],
  "version": "LS15-LIVE-1.10.2",
