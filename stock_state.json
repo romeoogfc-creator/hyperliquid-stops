@@ -28,11 +28,6 @@
    "breakout": "2025-12-04",
    "half_taken": true
   },
-  "AAPL": {
-   "opened": "2026-11-04",
-   "bought": "2026-11-04",
-   "breakout": "2026-07-02"
-  },
   "CMCSA": {
    "opened": "2026-11-04",
    "bought": "2026-11-04",
@@ -509,9 +504,19 @@
    "pct": 4.97,
    "pnl": 29.32,
    "reason": "\ud83d\udcb5 Banked half at +5% (SPY weak)"
+  },
+  {
+   "symbol": "AAPL",
+   "opened": "2026-11-04",
+   "closed": "2026-11-20",
+   "entry": 352.46,
+   "exit": 342.86,
+   "pct": -2.72,
+   "pnl": -32.36,
+   "reason": "Close below upper GC band"
   }
  ],
- "last_decision_day": "2026-11-19",
+ "last_decision_day": "2026-11-20",
  "started": "2026-10-22",
  "start_equity": 97918.51,
  "start_spy": 762.85,
@@ -595,6 +600,10 @@
   [
    "2026-11-19",
    93741.62
+  ],
+  [
+   "2026-11-20",
+   93857.51
   ]
  ]
 }
