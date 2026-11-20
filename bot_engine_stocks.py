@@ -38,7 +38,7 @@ import requests
 
 import gc_paper as engine
 
-BOT_VERSION = "V6.3.0"
+BOT_VERSION = "V6.3.1"
 BOT_TITLE = f"TR-GC-Equities-LS-15-F {BOT_VERSION}"
 STATE_VERSION = "GCSTK-F-1"
 
@@ -556,6 +556,8 @@ def main():
         time.sleep(2)
         acct = call("get", "/v2/account").json()
         equity = float(acct.get("equity", equity))
+        if halves:                                               # V6.3.1: show the position table AFTER the half was sold (it showed the old size)
+            positions = {p["symbol"]: p for p in (call("get", "/v2/positions").json() or []) if p.get("side", "long") == "long"}
     report(state, equity, positions, spy_now, log, skips, bool(due or catchup_day or losers or halves), next_window)
 
 
