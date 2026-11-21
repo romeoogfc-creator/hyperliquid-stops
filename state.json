@@ -85,27 +85,6 @@
     51540.1
    ],
    "half_small_logged": true
-  },
-  "VVV": {
-   "side": "SHORT",
-   "sz": 3.21,
-   "entry": 22.061,
-   "peak_px": 19.103,
-   "opened": "2026-11-19",
-   "opened_ms": 1795133050648,
-   "reason": "bear short (rejected bounce, BTC down)",
-   "stop": 22.943440000000002,
-   "h1_checked_ms": 1795262400000,
-   "v_ref": 47984.21,
-   "fade_n": 1,
-   "fade_vols": [
-    68956.04,
-    56073.45,
-    35012.81,
-    46502.55,
-    33227.95,
-    23897.97
-   ]
   }
  },
  "closed": [
@@ -347,6 +326,18 @@
    "pct": 15.33,
    "peak_pct": 26.06,
    "pnl": 2.5382,
+   "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
+  },
+  {
+   "coin": "VVV",
+   "side": "SHORT",
+   "opened": "2026-11-19",
+   "closed": "2026-11-21 13:10",
+   "entry": 22.061,
+   "exit": 22.967,
+   "pct": -4.11,
+   "peak_pct": 13.41,
+   "pnl": -2.9401,
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
