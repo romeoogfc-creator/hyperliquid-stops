@@ -426,6 +426,8 @@ def daily_decisions(info, exchange, state, nav, ex_pos, sz_dec, log, skips):
         if open_own(info, exchange, state, coin, side, usd, bar[coin]["c"], sz_dec.get(coin, 2), day, why, log):
             held.add(coin)
             budget -= usd
+        else:                                                      # failed / too small: also list it under "Signals not taken"
+            skips.append((coin, f"{side} signal — order NOT placed (see 'This run'); not retried today"))
     state["last_daily_day"] = day
     return day, True
 
