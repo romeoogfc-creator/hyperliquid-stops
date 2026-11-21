@@ -9,16 +9,16 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1795219200000,
+   "h1_checked_ms": 1795226400000,
    "v_ref": 1092995.6666666667,
-   "fade_n": 3,
+   "fade_n": 5,
    "fade_vols": [
-    448624.0,
-    504554.0,
     490811.0,
     149145.0,
     449905.0,
-    141229.0
+    141229.0,
+    319941.0,
+    73989.0
    ]
   },
   "POL": {
@@ -30,16 +30,16 @@
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.09266236,
-   "h1_checked_ms": 1795219200000,
+   "h1_checked_ms": 1795226400000,
    "v_ref": 992036.0,
-   "fade_n": 4,
+   "fade_n": 6,
    "fade_vols": [
-    61742.0,
-    425159.0,
     239252.0,
     56597.0,
     197091.0,
-    176586.0
+    176586.0,
+    222588.0,
+    73613.0
    ],
    "half_small_logged": true
   },
@@ -52,16 +52,16 @@
    "opened_ms": 1794269054441,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 4099.8975,
-   "h1_checked_ms": 1795219200000,
+   "h1_checked_ms": 1795226400000,
    "v_ref": 253.60616666666667,
-   "fade_n": 5,
+   "fade_n": 7,
    "fade_vols": [
-    122.472,
-    124.682,
     47.607,
     45.672,
     21.483,
-    4.852
+    4.852,
+    37.488,
+    6.901
    ]
   },
   "ETHFI": {
@@ -73,16 +73,16 @@
    "opened_ms": 1794441849836,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.510096,
-   "h1_checked_ms": 1795219200000,
+   "h1_checked_ms": 1795226400000,
    "v_ref": 552918.8333333334,
-   "fade_n": 3,
+   "fade_n": 5,
    "fade_vols": [
-    110918.0,
-    83561.1,
     110004.1,
     79939.5,
     46714.1,
-    37903.3
+    37903.3,
+    24704.5,
+    158392.0
    ],
    "half_small_logged": true
   },
@@ -95,16 +95,16 @@
    "opened_ms": 1795133050648,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 22.943440000000002,
-   "h1_checked_ms": 1795219200000,
+   "h1_checked_ms": 1795226400000,
    "v_ref": 46963.72166666666,
-   "fade_n": 1,
+   "fade_n": 3,
    "fade_vols": [
-    24197.08,
-    100680.41,
     25450.55,
     29395.92,
     25008.35,
-    16889.66
+    16889.66,
+    11493.92,
+    13372.95
    ]
   }
  },
