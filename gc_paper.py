@@ -149,7 +149,7 @@ TOP_OI = set()                         # crypto: today's top 100 by open interes
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.77"
+ENGINE_VERSION = "GC-PAPER-1.78"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -160,6 +160,7 @@ BACKTEST_SKIP_DAYS = int(_BD.split("-")[1]) if "-" in _BD else 0
 FUNDING = os.getenv("FUNDING", "on").strip().lower() != "off"
 FUNDING_COINS = int(os.getenv("FUNDING_COINS", "12") or 12)
 FUNDING_DAY = {}                       # day -> average hourly funding rate (positive = longs pay shorts)
+FUNDING_COIN = {}                      # 1.78: coin -> day -> average hourly funding rate of THAT coin (only loaded for the FX / FE books)
 FUNDING_NOTE = ""
 STATE_FILE = "gc_paper_state.json"
 START_NAV = float(os.getenv("START_NAV", "1000") or 1000)   # starting balance of each NEW book (Run workflow option)
@@ -344,6 +345,11 @@ BOOKS = [
     ("F25BE15", "F25L5 + break-even step: once a free short has been +15% its stop moves from -4% to +0.5%", "adaptive", False),
     ("F25SL10", "F25BE15 + ramp: the free-short stop slides from -4% towards +0.5% as the peak climbs, reaching +0.5% at a +10.5% peak (10-point leash)", "adaptive", False),
     ("F25SL12", "F25BE15 + ramp: the free-short stop slides from -4% towards +0.5% as the peak climbs, reaching +0.5% at a +12.5% peak (12-point leash)", "adaptive", False),
+    ("F25FX1", "F25BE15 + crowded-short exit: a short up +5% or more closes when its coin's funding the day before was -0.002%/h or lower (shorts paying)", "adaptive", False),
+    ("F25FX2", "F25BE15 + crowded-short exit: same, funding -0.005%/h or lower", "adaptive", False),
+    ("F25FX3", "F25BE15 + crowded-short exit: same, funding -0.010%/h or lower", "adaptive", False),
+    ("F25FE1", "F25BE15 + crowded-short filter: skip a short signal when its coin's funding the day before was -0.005%/h or lower", "adaptive", False),
+    ("F25FE2", "F25BE15 + crowded-short filter: skip a short signal when its coin's funding the day before was -0.010%/h or lower", "adaptive", False),
     ("K70", "LIVE 1.10 rules, free-short floor from +25% keeps 70-85%", "adaptive", False),
     ("K80", "LIVE 1.10 rules, free-short floor from +25% keeps 80-90%", "adaptive", False),
     ("K90", "LIVE 1.10 rules, free-short floor from +25% keeps 90%", "adaptive", False),
@@ -577,6 +583,10 @@ BOOK_OPTIONS["F25DN15"] = {**BOOK_OPTIONS["F25L5"], "free_net": {"start": 0.15, 
 BOOK_OPTIONS.update({f"F25BE{n}": {**BOOK_OPTIONS["F25L5"], "free_be": {"start": n / 100, "lock": 0.005}} for n in (14, 15)})
 # 1.77: protect the SMALLER winners too. Ramp: lock = peak gain - lead (never above +0.5%), so a short that peaked at +8% is stopped at about -2% instead of -4%.
 BOOK_OPTIONS.update({f"F25SL{n}": {**BOOK_OPTIONS["F25BE15"], "free_slope": {"lead": n / 100}} for n in (10, 12)})   # 1.76: neighbours of BE12
+# 1.78: per-coin funding. FX = exit a short that is in profit when its own coin's funding (the day before) shows shorts paying (a crowded short can squeeze);
+# FE = do not open a short on such a coin. Rates are average HOURLY rates (-0.00005 = -0.005%/h). Needs FUNDING=on (loads about 100 coins, slow).
+BOOK_OPTIONS.update({f"F25FX{i}": {**BOOK_OPTIONS["F25BE15"], "fund_exit": {"min_gain": 0.05, "rate": r}} for i, r in ((1, -0.00002), (2, -0.00005), (3, -0.0001))})
+BOOK_OPTIONS.update({f"F25FE{i}": {**BOOK_OPTIONS["F25BE15"], "fund_entry": {"rate": r}} for i, r in ((1, -0.00005), (2, -0.0001))})
 BOOK_OPTIONS["F25TD"] = {**BOOK_OPTIONS["F25L5"], "free_decay": {"start": 0.25, "step": 0.025, "every": 6, "cap": 0.85}}
 BOOK_OPTIONS["F25G7"] = {**BOOK_OPTIONS["F25L5"], "free_giveback": {"start": 0.20, "cap": 0.07, "keep": 0.60}}
 BOOK_OPTIONS["F25BR"] = {**BOOK_OPTIONS["F25L5"], "relief_guard": {"start": 0.10, "keep": 0.80}}
@@ -1264,6 +1274,22 @@ def take_half_hit(book, p, high, day=None, bar=None):
     return bool(th and p["side"] == "LONG" and not p.get("half_taken") and high >= p["entry"] * (1 + th["at"]))
 
 
+def coin_funding(coin, day, back=1):
+    """1.78: average hourly funding of `coin` on the day `back` days before `day` (positive = longs pay shorts), or None if unknown."""
+    d = (datetime.strptime(day, "%Y-%m-%d") - timedelta(days=back)).strftime("%Y-%m-%d")
+    return (FUNDING_COIN.get(coin) or {}).get(d)
+
+
+def fund_exit_hit(book, p, b, day, coin):
+    """1.78 FX books: the funding rate that triggered the exit, or None. A short up at least min_gain whose coin's funding the day
+    before was at or under `rate` (shorts paying) closes at today's close. No funding data = no signal."""
+    fx = book.get("fund_exit")
+    if not fx or p["side"] != "SHORT" or p["opened"] == day or 1 - b["c"] / p["entry"] < fx["min_gain"]:
+        return None
+    r = coin_funding(coin, day)
+    return r if r is not None and r <= fx["rate"] else None
+
+
 def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=None):
     """Runs one LS-15 decision cycle on the daily candle `day` (YYYY-MM-DD) for one book."""
     if (book.get("take_half") or {}).get("only_weak_mkt"):    # 1.67: benchmark regime as of the PREVIOUS close (no peeking)
@@ -1497,6 +1523,10 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
         elif b["c"] <= SHORT_TP_RATIO * p["entry"]:
             close_position(book, c, b["c"], day, "Take profit (-35%)", log)
             exited.add(c)
+        elif fund_exit_hit(book, p, b, day, c) is not None:
+            fr = fund_exit_hit(book, p, b, day, c)
+            close_position(book, c, b["c"], day, f"💸 Crowded short (funding {fr * 100:+.4f}%/h, up {(1 - b['c'] / p['entry']) * 100:.0f}%)", log)
+            exited.add(c)
 
     nav = book_nav(book, closes)
 
@@ -1596,6 +1626,11 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
             relock_s.pop(c, None)
         if not (hedge or bear or reshort):
             continue
+        fe = book.get("fund_entry")                               # 1.78 FE books: no new short on a coin whose shorts are already paying
+        if fe:
+            fr = coin_funding(c, day)
+            if fr is not None and fr <= fe["rate"]:
+                skips.append((c, f"Short signal, but the coin's funding was {fr * 100:+.4f}%/h (crowded short)")); continue
         if weak_volume(book, b):
             skips.append((c, f"Short signal on weak volume ({b['v'] / b['vavg']:.1f}x the 20-day average)")); continue
         if c in exited:
@@ -2259,6 +2294,44 @@ def load_funding(info, universe, data, days):
     print(FUNDING_NOTE, flush=True)
 
 
+def load_funding_coins(info, universe, days, codes):
+    """1.78: per-coin hourly funding for the whole universe, only when a selected book uses it (FX / FE books). Slow: about 36 requests of
+    ~2.4 s per coin for 2 years, so roughly 2.5 hours for 100 coins. A coin that fails to load simply gives those books no signal."""
+    global FUNDING_NOTE
+    FUNDING_COIN.clear()
+    if STOCKS or not FUNDING or not days or not any(BOOK_OPTIONS.get(c, {}).get("fund_exit") or BOOK_OPTIONS.get(c, {}).get("fund_entry") for c in codes):
+        return
+    start0 = int(datetime.strptime(days[0], "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp() * 1000) - 3 * 86400000
+    end_ms = int(datetime.strptime(days[-1], "%Y-%m-%d").replace(tzinfo=timezone.utc).timestamp() * 1000) + 2 * 86400000
+    loaded = 0
+    for coin in universe:
+        per_day, start, rows = {}, start0, 0
+        while start < end_ms:
+            res = None
+            for attempt in range(5):
+                try:
+                    res = info.funding_history(coin, start, end_ms)
+                    break
+                except Exception as e:
+                    print(f"funding {coin}: {e} (retry {attempt + 1})", flush=True)
+                    time.sleep(10 * (attempt + 1))
+            time.sleep(2.4)                                   # stay under Hyperliquid's request-weight limit
+            if not res:
+                break
+            for r in res:
+                d = datetime.fromtimestamp(int(r["time"]) / 1000, timezone.utc).strftime("%Y-%m-%d")
+                per_day.setdefault(d, []).append(float(r["fundingRate"]))
+            rows += len(res)
+            start = int(res[-1]["time"]) + 1
+            if len(res) < 2:
+                break
+        if per_day:
+            FUNDING_COIN[coin] = {d: sum(v) / len(v) for d, v in per_day.items()}
+            loaded += 1
+        print(f"coin funding {coin}: {rows} hourly rates ({loaded}/{len(universe)} coins loaded)", flush=True)
+    FUNDING_NOTE += f" Per-coin funding loaded for {loaded} of {len(universe)} coins (used by the F25FX / F25FE books only)."
+
+
 def run_backtest(info):
     ranked, data = load_market(info, BACKTEST_DAYS)
     universe = ranked[:UNIVERSE_SIZE]
@@ -2269,6 +2342,7 @@ def run_backtest(info):
     data4h = load_intraday(info, universe, BACKTEST_DAYS) if needs_intraday(books) else {}
     load_hourly(info, universe, BACKTEST_DAYS, [b["code"] for b in books])
     load_funding(info, universe, data, days)
+    load_funding_coins(info, universe, days, [b["code"] for b in books])
     min_order_skips = {b["code"]: 0 for b in books}
     for day in days:
         btc_down = btc_downtrend(data, day)
@@ -2307,6 +2381,7 @@ def run_robust(info):
     data4h = load_intraday(info, universe, BACKTEST_DAYS) if any(BOOK_OPTIONS.get(c, {}).get("lock_intraday") for c, *_ in specs) else {}
     load_hourly(info, universe, BACKTEST_DAYS, [c for c, *_ in specs])
     load_funding(info, universe, data, days)
+    load_funding_coins(info, universe, days, [c for c, *_ in specs])
     btc_down = {d: btc_downtrend(data, d) for d in days}
     last = days[-1]
     prices = {c: data[c][last]["c"] for c in data if last in data[c]}
