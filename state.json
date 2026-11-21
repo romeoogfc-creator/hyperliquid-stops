@@ -4,42 +4,42 @@
    "side": "SHORT",
    "sz": 50.0,
    "entry": 0.32857,
-   "peak_px": 0.3,
+   "peak_px": 0.29821,
    "opened": "2026-10-30",
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1795233600000,
+   "h1_checked_ms": 1795240800000,
    "v_ref": 1092995.6666666667,
    "fade_n": 0,
    "fade_vols": [
-    449905.0,
-    141229.0,
     319941.0,
     73989.0,
     141093.0,
-    697957.0
+    697957.0,
+    854351.0,
+    258248.0
    ]
   },
   "POL": {
    "side": "SHORT",
    "sz": 178.0,
    "entry": 0.093128,
-   "peak_px": 0.072345,
+   "peak_px": 0.071869,
    "opened": "2026-11-05",
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.09266236,
-   "h1_checked_ms": 1795233600000,
+   "h1_checked_ms": 1795240800000,
    "v_ref": 992036.0,
-   "fade_n": 0,
+   "fade_n": 1,
    "fade_vols": [
-    197091.0,
-    176586.0,
     222588.0,
     73613.0,
     121235.0,
-    887100.0
+    887100.0,
+    275945.0,
+    65436.0
    ],
    "half_small_logged": true
   },
@@ -52,37 +52,37 @@
    "opened_ms": 1794269054441,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 4099.8975,
-   "h1_checked_ms": 1795233600000,
+   "h1_checked_ms": 1795240800000,
    "v_ref": 253.60616666666667,
-   "fade_n": 0,
+   "fade_n": 2,
    "fade_vols": [
-    21.483,
-    4.852,
     37.488,
     6.901,
     2.056,
-    289.031
+    289.031,
+    62.154,
+    14.415
    ]
   },
   "ETHFI": {
    "side": "SHORT",
    "sz": 27.4,
    "entry": 0.63645,
-   "peak_px": 0.42279,
+   "peak_px": 0.41668,
    "opened": "2026-11-11",
    "opened_ms": 1794441849836,
    "reason": "bear short (rejected bounce, BTC down)",
-   "stop": 0.508254,
-   "h1_checked_ms": 1795233600000,
+   "stop": 0.504588,
+   "h1_checked_ms": 1795240800000,
    "v_ref": 552918.8333333334,
-   "fade_n": 0,
+   "fade_n": 1,
    "fade_vols": [
-    46714.1,
-    37903.3,
     24704.5,
     158392.0,
     168004.9,
-    174605.9
+    174605.9,
+    369830.6,
+    50688.3
    ],
    "half_small_logged": true
   },
@@ -95,16 +95,16 @@
    "opened_ms": 1795133050648,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 22.943440000000002,
-   "h1_checked_ms": 1795233600000,
+   "h1_checked_ms": 1795240800000,
    "v_ref": 46963.72166666666,
    "fade_n": 0,
    "fade_vols": [
-    25008.35,
-    16889.66,
     11493.92,
     13372.95,
     16905.08,
-    63968.56
+    63968.56,
+    30138.1,
+    33756.3
    ]
   }
  },
