@@ -149,7 +149,7 @@ TOP_OI = set()                         # crypto: today's top 100 by open interes
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.78"
+ENGINE_VERSION = "GC-PAPER-1.79"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -2368,8 +2368,204 @@ def run_backtest(info):
     send_email(f"📊 {title} — {summary}", html, text, chart)
 
 
+# ======================================================================================
+# 1.79 TRAIN mode (mode robust, robust_books = TRAIN): does ANYTHING known at the close predict that a winning short is about to reverse?
+# Stage 1 only: it builds the examples from the LIVE rules (F25BE15), trains a small logistic regression on one half of the window, scores it on
+# the other half (and the other way round), and reports whether it beats chance. It changes no rule and trades nothing.
+# Decision point = a daily close where a short that has been up +10% at its best has pulled back 3+ points from that peak and is still open.
+# Label "exit better" = the live rules' final exit was WORSE than closing right then. Every feature is known at that close (no peeking).
+# ======================================================================================
+ML_BOOK = "F25BE15"
+ML_PEAK, ML_PULL, ML_MAX_ROWS = 0.10, 0.03, 3             # peak gain needed, pullback from the peak, rows kept per trade
+ML_FEATURES = ["gain_now", "peak_gain", "pullback", "days_since_peak", "range_vs_atr", "volume_vs_avg", "close_in_range",
+               "atr_pct", "coin_ret3", "btc_vs_filter", "btc_ret5"]
+ML_THRESHOLDS = (0.5, 0.6, 0.7)
+
+
+def ml_row(c, p, b, day, data, day_idx, all_days):
+    """Feature vector for short `p` on coin `c` at the close of `day`, or None if something needed is missing."""
+    i = day_idx.get(day)
+    if i is None or i < 5 or not b.get("atr") or not b.get("vavg") or b["h"] <= b["l"]:
+        return None
+    mb, b3 = (data.get(BENCH) or {}).get(day), (data.get(c) or {}).get(all_days[i - 3])
+    b5 = (data.get(BENCH) or {}).get(all_days[i - 5])
+    if not (mb and mb.get("filter") and b3 and b5):
+        return None
+    gain, peak = 1 - b["c"] / p["entry"], 1 - p["peak_px"] / p["entry"]
+    j0, best_j, best_l = day_idx.get(p["opened"], i), i, b["l"]
+    for j in range(j0, i + 1):
+        bb = (data.get(c) or {}).get(all_days[j])
+        if bb and bb["l"] <= best_l:
+            best_l, best_j = bb["l"], j
+    return [gain, peak, peak - gain, float(i - best_j), (b["h"] - b["l"]) / b["atr"], b["v"] / b["vavg"], (b["c"] - b["l"]) / (b["h"] - b["l"]),
+            b["atr"] / b["c"], b["c"] / b3["c"] - 1, mb["c"] / mb["filter"] - 1, mb["c"] / b5["c"] - 1]
+
+
+def train_collect(data, universe, days, n_runs):
+    """Runs the live-rules book over `days` in n_runs coin orders and returns (rows, unlabelled). One row per decision point."""
+    all_days = sorted({d for c in data for d in data[c]})
+    day_idx = {d: i for i, d in enumerate(all_days)}
+    btc_down = {d: btc_downtrend(data, d) for d in days}
+    spec = next(b for b in BOOKS if b[0] == ML_BOOK)
+    rows, seen, unlabelled = [], set(), 0
+    for run in range(n_runs):
+        order = list(universe)
+        if run:
+            random.Random(run).shuffle(order)
+        book, pending, n_closed = new_book(*spec), {}, 0
+        for day in days:
+            step_day(book, day, data, order, btc_down[day], False, [], [], {})
+            for c, p in book["positions"].items():
+                b = (data.get(c) or {}).get(day)
+                if p["side"] != "SHORT" or p["opened"] == day or not b:
+                    continue
+                gain, peak = 1 - b["c"] / p["entry"], 1 - p["peak_px"] / p["entry"]
+                key = (c, p["opened"])
+                if peak < ML_PEAK or peak - gain < ML_PULL or len(pending.get(key, [])) >= ML_MAX_ROWS:
+                    continue
+                x = ml_row(c, p, b, day, data, day_idx, all_days)
+                if x:
+                    pending.setdefault(key, []).append({"key": key, "day": day, "x": x, "gain_now": gain})
+            for t in book["closed"][n_closed:]:                  # a trade is finished when its last part is closed (not a bank-half)
+                key = (t["coin"], t["opened"])
+                if t["side"] == "SHORT" and not str(t["reason"]).startswith("💵") and key in pending:
+                    for r in pending.pop(key):
+                        if (key, r["day"]) not in seen:
+                            seen.add((key, r["day"]))
+                            r["final"] = t["pct"] / 100
+                            r["exit_better"] = 1 if r["final"] < r["gain_now"] else 0
+                            rows.append(r)
+            n_closed = len(book["closed"])
+        unlabelled += len(pending)
+        print(f"train run {run + 1}/{n_runs}: {len(rows)} decision points so far", flush=True)
+    return rows, unlabelled
+
+
+def _auc(scores, y):
+    pos, neg = [s for s, t in zip(scores, y) if t == 1], [s for s, t in zip(scores, y) if t == 0]
+    if not pos or not neg:
+        return None
+    sp, sn = np.array(pos)[:, None], np.array(neg)[None, :]
+    return float(((sp > sn).sum() + 0.5 * (sp == sn).sum()) / (len(pos) * len(neg)))
+
+
+def _fit_logit(X, y, lam=2.0, iters=2000, lr=0.3):
+    """Small L2-regularised logistic regression on standardised features (numpy only)."""
+    mu, sd = X.mean(0), X.std(0)
+    sd[sd < 1e-9] = 1.0
+    Z, w, b, n = (X - mu) / sd, np.zeros(X.shape[1]), 0.0, len(y)
+    for _ in range(iters):
+        pr = 1 / (1 + np.exp(-np.clip(Z @ w + b, -30, 30)))
+        w -= lr * (Z.T @ (pr - y) / n + lam * w / n)
+        b -= lr * float((pr - y).mean())
+    return mu, sd, w, b
+
+
+def _predict(model, X):
+    mu, sd, w, b = model
+    return 1 / (1 + np.exp(-np.clip(((X - mu) / sd) @ w + b, -30, 30)))
+
+
+def train_split(train, test, perms=100):
+    """Train on `train` rows, score `test` rows. Returns a dict, or None when a half is too small / one-sided."""
+    if len(train) < 20 or len(test) < 10 or len({r["exit_better"] for r in train}) < 2:
+        return None
+    Xtr, ytr = np.array([r["x"] for r in train]), np.array([r["exit_better"] for r in train], dtype=float)
+    Xte, yte = np.array([r["x"] for r in test]), [r["exit_better"] for r in test]
+    sc = _predict(_fit_logit(Xtr, ytr), Xte)
+    auc = _auc(sc, yte)
+    rng, null = np.random.default_rng(0), []
+    for _ in range(perms):                                       # luck check: same model, shuffled training labels
+        a = _auc(_predict(_fit_logit(Xtr, rng.permutation(ytr), iters=600), Xte), yte)
+        if a is not None:
+            null.append(a)
+    p_luck = (sum(1 for a in null if a >= auc) + 1) / (len(null) + 1) if auc is not None else None
+    trades = {}
+    for r, s in zip(test, sc):
+        trades.setdefault(r["key"], []).append((r["day"], s, r["gain_now"], r["final"]))
+    base = float(np.mean([v[0][3] for v in trades.values()])) if trades else 0.0
+    table = []
+    for t in ML_THRESHOLDS:                                      # first row per trade where the model says "exit": take gain_now, else the live final
+        real, fired = [], 0
+        for v in trades.values():
+            hit = next((g for _, s, g, _f in sorted(v) if s > t), None)
+            fired += hit is not None
+            real.append(hit if hit is not None else v[0][3])
+        table.append({"t": t, "fired": fired, "uplift": (float(np.mean(real)) - base) * 100 if real else 0.0})
+    return {"n_train": len(train), "n_test": len(test), "trades_test": len(trades), "auc": auc, "p_luck": p_luck,
+            "table": table, "base": base * 100, "exit_share": float(np.mean(yte)) * 100}
+
+
+def train_analyse(rows, days):
+    mid = days[len(days) // 2]
+    a, b = [r for r in rows if r["day"] < mid], [r for r in rows if r["day"] >= mid]
+    res = {"mid": mid, "ab": train_split(a, b), "ba": train_split(b, a), "n_a": len(a), "n_b": len(b), "coef": None}
+    if len(rows) >= 20 and len({r["exit_better"] for r in rows}) == 2:
+        mu, sd, w, _ = _fit_logit(np.array([r["x"] for r in rows]), np.array([r["exit_better"] for r in rows], dtype=float))
+        res["coef"] = sorted(zip(ML_FEATURES, w), key=lambda kv: -abs(kv[1]))
+    ok = [res["ab"], res["ba"]]
+    mid_t = lambda r: next(x for x in r["table"] if x["t"] == 0.6)
+    res["signal"] = all(r and r["auc"] is not None and r["auc"] >= 0.58 and r["p_luck"] <= 0.10 and mid_t(r)["uplift"] > 0 and mid_t(r)["fired"] >= 5
+                        for r in ok)
+    return res
+
+
+def run_train(info):
+    if STOCKS:
+        raise RuntimeError("TRAIN mode is crypto only")
+    if BACKTEST_SKIP_DAYS:
+        raise RuntimeError("TRAIN needs the whole window: use backtest_days 730")
+    ranked, data = load_market(info, BACKTEST_DAYS)
+    universe = ranked[:UNIVERSE_SIZE]
+    days = backtest_days(sorted({d for c in data for d in data[c]}))
+    load_hourly(info, universe, BACKTEST_DAYS, [ML_BOOK])
+    n_runs = max(1, min(ROBUST_RUNS, 10))
+    rows, unlabelled = train_collect(data, universe, days, n_runs)
+    res = train_analyse(rows, days)
+    trades = len({r["key"] for r in rows})
+    fmt = lambda v, d=2: "n/a" if v is None else f"{v:.{d}f}"
+    def block(name, r):
+        if not r:
+            return f"<tr><td colspan='6'>{name}: not enough examples in one half (need 20 to learn from, 10 to score).</td></tr>"
+        return "".join(f"<tr><td>{name if i == 0 else ''}</td><td>{fmt(r['auc'], 3) if i == 0 else ''}</td><td>{fmt(r['p_luck'], 2) if i == 0 else ''}</td>"
+                       f"<td>exit if score &gt; {x['t']}</td><td>{x['fired']}/{r['trades_test']} trades</td><td>{x['uplift']:+.2f} pts</td></tr>"
+                       for i, x in enumerate(r["table"]))
+    coef = "".join(f"<tr><td>{n}</td><td>{w:+.2f}</td></tr>" for n, w in (res["coef"] or []))
+    verdict = ("✅ SIGNAL: both directions beat chance and the exit rule beat holding. Worth a stage-2 test." if res["signal"] else
+               "❌ NO CLEAR SIGNAL: the model does not reliably tell a reversal from a pause on data it has not seen. Stop here.")
+    title = f"{STRATEGY_ID} TRAIN CHECK — {len(rows)} decision points, {trades} trades"
+    html = f"""<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1.0"></head>
+<body style="font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f4f6f8;margin:0;padding:8px;color:#333;">
+<div style="max-width:680px;margin:0 auto;background:#fff;border-radius:8px;overflow:hidden;">
+  <div style="background:#0f172a;color:#fff;padding:14px;"><div style="font-size:15px;font-weight:700;">{title}</div>
+    <div style="font-size:11px;color:#94a3b8;margin-top:3px;">{days[0]} → {days[-1]} • live rules {ML_BOOK} • {n_runs} coin orders • {ENGINE_VERSION}</div></div>
+  <div style="padding:12px;font-size:12px;">
+    <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:6px;padding:8px;font-size:11px;color:#92400e;margin-bottom:12px;">
+      📝 PAPER ONLY, stage 1. A decision point is a daily close where a short that was up +{ML_PEAK*100:.0f}% at its best has pulled back {ML_PULL*100:.0f}+ points and is still open.
+      "Exit better" means the live rules' final exit was worse than closing right then. The model learns on one half of the window and is scored on the other half, then the halves swap.</div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:8px;">{verdict}</div>
+    <div>Decision points: {len(rows)} from {trades} different trades ({res['n_a']} before {res['mid']}, {res['n_b']} after). Still open at the end (not used): {unlabelled}.
+      Share where exiting at that close beat the live exit: {fmt(100 * sum(r['exit_better'] for r in rows) / len(rows), 1) if rows else 'n/a'}%.</div>
+    <table style="width:100%;font-size:11px;border-collapse:collapse;margin-top:10px;" cellpadding="4">
+      <tr style="background:#f1f5f9;"><th align="left">Test half</th><th align="left">AUC (0.5 = chance)</th><th align="left">Luck chance</th><th align="left">Rule</th><th align="left">Fired</th><th align="left">Avg gain vs holding</th></tr>
+      {block(f'Trained before {res["mid"]}, scored after', res['ab'])}{block(f'Trained after {res["mid"]}, scored before', res['ba'])}</table>
+    <div style="font-size:10px;color:#64748b;margin-top:6px;">"Luck chance" = how often a model trained on shuffled labels scores as well (under 0.10 is encouraging). "Avg gain vs holding" is per trade, in percentage points of the position, taking the first exit signal per trade.</div>
+    <div style="font-weight:700;margin-top:12px;">What the model leans on (all rows, standardised weights; positive = pushes towards "exit")</div>
+    <table style="font-size:11px;border-collapse:collapse;" cellpadding="3">{coef or '<tr><td>not enough examples</td></tr>'}</table>
+    <div style="font-size:10px;color:#64748b;margin-top:10px;">Funding is not used or charged in this stage. Trade results use the remaining position's final exit (a bank-half is not counted). Same history, same rules as the stability checks; no live trading.</div>
+  </div></div></body></html>"""
+    text = f"{title}\n{verdict}\n" + "\n".join(
+        f"{k}: " + ("not enough examples" if not r else f"AUC {fmt(r['auc'], 3)}, luck {fmt(r['p_luck'], 2)}, " +
+                    "; ".join(f"t>{x['t']}: {x['uplift']:+.2f} pts ({x['fired']}/{r['trades_test']})" for x in r["table"]))
+        for k, r in (("train A -> test B", res["ab"]), ("train B -> test A", res["ba"])))
+    print(text, flush=True)
+    send_email(f"🧠 {title} — {'SIGNAL' if res['signal'] else 'no clear signal'}", html, text, None)
+
+
 def run_robust(info):
     """Same history, ROBUST_RUNS different coin orders. Run 1 = the normal open-interest order."""
+    if "TRAIN" in ROBUST_BOOKS:                              # 1.79: robust_books = TRAIN runs the model check instead
+        return run_train(info)
     ranked, data = load_market(info, BACKTEST_DAYS)
     universe = ranked[:UNIVERSE_SIZE]
     all_days = sorted({d for c in data for d in data[c]})
