@@ -5,28 +5,8 @@
    "name": "LIVE RULES (bot 1.10.2): F25T + bank half of a LONG at +5%",
    "lock": "adaptive",
    "guard": false,
-   "cash": 698.9009237535538,
+   "cash": 842.8829186245543,
    "positions": {
-    "VVV": {
-     "side": "SHORT",
-     "qty": 6.830589774919324,
-     "entry": 21.968,
-     "cost": 150.0543961754277,
-     "collateral": 150.0543961754277,
-     "fees": 0.06752447827894247,
-     "opened": "2026-11-19",
-     "peak_px": 19.103,
-     "stop": null,
-     "last_px": 20.77,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "small": false,
-     "rank": 10,
-     "hi_vol": false,
-     "atr": 2.2839733040913743,
-     "climax": false,
-     "held": 1,
-     "calm_h": 4.0
-    },
     "HMSTR": {
      "side": "SHORT",
      "qty": 1008478.1632415926,
@@ -35,15 +15,17 @@
      "collateral": 151.27172448623887,
      "fees": 0.06807227601880748,
      "opened": "2026-11-20",
-     "peak_px": 0.00015,
+     "peak_px": 0.000143,
      "stop": null,
-     "last_px": 0.00015,
+     "last_px": 0.000147,
      "reason": "bear short (rejected bounce, BTC down)",
      "small": false,
      "rank": 75,
      "hi_vol": false,
-     "atr": 1.1881626208083523e-05,
-     "climax": false
+     "atr": 1.1532938630142375e-05,
+     "climax": false,
+     "held": 1,
+     "calm_h": 14.0
     }
    },
    "closed": [
@@ -85,6 +67,19 @@
      "peak_pct": 6.51,
      "reason": "\ud83d\udd12 Profit lock (stop 0.0537904, 1h)",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "VVV",
+     "side": "SHORT",
+     "opened": "2026-11-19",
+     "closed": "2026-11-21",
+     "entry": 21.968,
+     "exit": 22.84672,
+     "pnl": -6.1399,
+     "pct": -4.0,
+     "peak_pct": 13.04,
+     "reason": "\u2702\ufe0f Loss stop (+4% against, 1h)",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -111,6 +106,10 @@
     [
      "2026-11-20",
      1008.41
+    ],
+    [
+     "2026-11-21",
+     997.18
     ]
    ],
    "eq_base": 1000.0,
@@ -185,7 +184,7 @@
    "_relief": false
   }
  ],
- "last_processed_day": "2026-11-20",
- "engine": "GC-PAPER-1.77",
+ "last_processed_day": "2026-11-21",
+ "engine": "GC-PAPER-1.78",
  "started": "2026-10-21"
 }
