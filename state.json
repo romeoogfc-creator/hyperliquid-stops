@@ -63,28 +63,6 @@
     1.432,
     6.914
    ]
-  },
-  "ETHFI": {
-   "side": "SHORT",
-   "sz": 27.4,
-   "entry": 0.63645,
-   "peak_px": 0.41668,
-   "opened": "2026-11-11",
-   "opened_ms": 1794441849836,
-   "reason": "bear short (rejected bounce, BTC down)",
-   "stop": 0.504588,
-   "h1_checked_ms": 1795363200000,
-   "v_ref": 552918.8333333334,
-   "fade_n": 26,
-   "fade_vols": [
-    129633.1,
-    76983.2,
-    104492.7,
-    118567.6,
-    137036.0,
-    52706.7
-   ],
-   "half_small_logged": true
   }
  },
  "closed": [
@@ -338,6 +316,18 @@
    "pct": -4.11,
    "peak_pct": 13.41,
    "pnl": -2.9401,
+   "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
+  },
+  {
+   "coin": "ETHFI",
+   "side": "SHORT",
+   "opened": "2026-11-11",
+   "closed": "2026-11-22 17:40",
+   "entry": 0.63645,
+   "exit": 0.50461,
+   "pct": 20.71,
+   "peak_pct": 34.53,
+   "pnl": 3.6064,
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
