@@ -9,16 +9,16 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1795298400000,
+   "h1_checked_ms": 1795305600000,
    "v_ref": 1092995.6666666667,
-   "fade_n": 11,
+   "fade_n": 13,
    "fade_vols": [
-    419617.0,
-    65689.0,
     280718.0,
     291700.0,
     72594.0,
-    79732.0
+    79732.0,
+    60622.0,
+    110227.0
    ]
   },
   "POL": {
@@ -30,16 +30,16 @@
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.09266236,
-   "h1_checked_ms": 1795298400000,
+   "h1_checked_ms": 1795305600000,
    "v_ref": 992036.0,
-   "fade_n": 15,
+   "fade_n": 17,
    "fade_vols": [
-    112989.0,
-    73783.0,
     159795.0,
     75254.0,
     172570.0,
-    65797.0
+    65797.0,
+    50553.0,
+    31534.0
    ],
    "half_small_logged": true
   },
@@ -52,16 +52,16 @@
    "opened_ms": 1794269054441,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 4099.8975,
-   "h1_checked_ms": 1795298400000,
+   "h1_checked_ms": 1795305600000,
    "v_ref": 253.60616666666667,
-   "fade_n": 18,
+   "fade_n": 20,
    "fade_vols": [
-    16.699,
-    6.966,
     10.421,
     33.452,
     13.868,
-    14.222
+    14.222,
+    9.416,
+    5.962
    ]
   },
   "ETHFI": {
@@ -73,16 +73,16 @@
    "opened_ms": 1794441849836,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.504588,
-   "h1_checked_ms": 1795298400000,
+   "h1_checked_ms": 1795305600000,
    "v_ref": 552918.8333333334,
-   "fade_n": 8,
+   "fade_n": 10,
    "fade_vols": [
-    111018.6,
-    266639.6,
     252292.0,
     56426.6,
     86476.4,
-    15933.9
+    15933.9,
+    11792.0,
+    60042.9
    ],
    "half_small_logged": true
   }
@@ -341,7 +341,7 @@
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
- "last_daily_day": "2026-11-20",
+ "last_daily_day": "2026-11-21",
  "started": "2026-10-23",
  "start_nav": 110.8395182,
  "nav_history": [
@@ -464,6 +464,10 @@
   [
    "2026-11-21 00:04",
    478.47
+  ],
+  [
+   "2026-11-22 00:04",
+   470.55
   ]
  ],
  "version": "LS15-LIVE-1.12.0",
