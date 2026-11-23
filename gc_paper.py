@@ -149,7 +149,7 @@ TOP_OI = set()                         # crypto: today's top 100 by open interes
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.79"
+ENGINE_VERSION = "GC-PAPER-1.80"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -350,6 +350,12 @@ BOOKS = [
     ("F25FX3", "F25BE15 + crowded-short exit: same, funding -0.010%/h or lower", "adaptive", False),
     ("F25FE1", "F25BE15 + crowded-short filter: skip a short signal when its coin's funding the day before was -0.005%/h or lower", "adaptive", False),
     ("F25FE2", "F25BE15 + crowded-short filter: skip a short signal when its coin's funding the day before was -0.010%/h or lower", "adaptive", False),
+    ("F25LD4", "F25BE15 + leash: from a +5% peak a free short's stop trails 4 points behind the peak (can go above break-even)", "adaptive", False),
+    ("F25LD6", "F25BE15 + leash: same, 6 points behind the peak", "adaptive", False),
+    ("F25LD8", "F25BE15 + leash: same, 8 points behind the peak", "adaptive", False),
+    ("F25SQ1", "F25BE15 + squeeze exit: a free short that has been +5% closes at a profit on a 1h green candle of +2% or more on 2x volume that closes near its high", "adaptive", False),
+    ("F25SQ2", "F25BE15 + squeeze exit: same, green candle +3% or more", "adaptive", False),
+    ("F25SQ3", "F25BE15 + squeeze exit: same, green candle +4% or more", "adaptive", False),
     ("K70", "LIVE 1.10 rules, free-short floor from +25% keeps 70-85%", "adaptive", False),
     ("K80", "LIVE 1.10 rules, free-short floor from +25% keeps 80-90%", "adaptive", False),
     ("K90", "LIVE 1.10 rules, free-short floor from +25% keeps 90%", "adaptive", False),
@@ -587,6 +593,12 @@ BOOK_OPTIONS.update({f"F25SL{n}": {**BOOK_OPTIONS["F25BE15"], "free_slope": {"le
 # FE = do not open a short on such a coin. Rates are average HOURLY rates (-0.00005 = -0.005%/h). Needs FUNDING=on (loads about 100 coins, slow).
 BOOK_OPTIONS.update({f"F25FX{i}": {**BOOK_OPTIONS["F25BE15"], "fund_exit": {"min_gain": 0.05, "rate": r}} for i, r in ((1, -0.00002), (2, -0.00005), (3, -0.0001))})
 BOOK_OPTIONS.update({f"F25FE{i}": {**BOOK_OPTIONS["F25BE15"], "fund_entry": {"rate": r}} for i, r in ((1, -0.00005), (2, -0.0001))})
+# 1.80: protect the smaller winners that never reach the +15% break-even step. LD = a trailing stop N points behind the peak (starts at a +5% peak, may rise
+# above break-even). SQ = the mirror of the long "falling knife" exit: a hot green hourly candle (squeeze) against a short that is in profit closes it at that
+# candle's close. SQ only acts where hourly candles exist (Hyperliquid keeps about 200 days of them), so test it with backtest_days 200.
+BOOK_OPTIONS.update({f"F25LD{n}": {**BOOK_OPTIONS["F25BE15"], "free_leash": {"start": 0.05, "lead": n / 100}} for n in (4, 6, 8)})
+BOOK_OPTIONS.update({f"F25SQ{i}": {**BOOK_OPTIONS["F25BE15"], "sqz_exit": {"after_gain": 0.05, "close_in_top": 0.3, "vol_mult": 2.0, "rise": r}}
+                     for i, r in ((1, 0.02), (2, 0.03), (3, 0.04))})
 BOOK_OPTIONS["F25TD"] = {**BOOK_OPTIONS["F25L5"], "free_decay": {"start": 0.25, "step": 0.025, "every": 6, "cap": 0.85}}
 BOOK_OPTIONS["F25G7"] = {**BOOK_OPTIONS["F25L5"], "free_giveback": {"start": 0.20, "cap": 0.07, "keep": 0.60}}
 BOOK_OPTIONS["F25BR"] = {**BOOK_OPTIONS["F25L5"], "relief_guard": {"start": 0.10, "keep": 0.80}}
@@ -1056,6 +1068,9 @@ def set_lock_stop(book, p, high, low, hours=1.0):
             fsl = book.get("free_slope")                                 # 1.77: ramp from the loss stop up to break-even
             if fsl and gain - fsl["lead"] > -book.get("disaster", 0.04):
                 fl = max(fl if fl is not None else -9.0, min(gain - fsl["lead"], 0.005))
+            fld = book.get("free_leash")                                 # 1.80: trailing stop N points behind the peak, may go above break-even
+            if fld and gain >= fld["start"]:
+                fl = max(fl if fl is not None else -9.0, gain - fld["lead"])
             fb, fn = book.get("free_be"), book.get("free_net")          # 1.75
             if fb and gain >= fb["start"]:
                 fl = max(fl or 0.0, fb["lock"])
@@ -1111,6 +1126,18 @@ def smart_cut(book, p, b):
     rng = b["h"] - b["l"]
     return (b["c"] <= p["entry"] * (1 - sc["loss"]) and b["c"] < b["o"] and b.get("v", 0) >= sc["vol_mult"] * b["vavg"]
             and rng > 0 and (b["c"] - b["l"]) <= sc["close_in_bottom"] * rng)
+
+
+def squeeze_hit(book, p, k):
+    """1.80 SQ books: a short that has been up `after_gain` and is in profit at this hourly candle's close, where the candle is green, rose at least
+    `rise` open-to-close, closes in the top `close_in_top` of its range and traded `vol_mult` x the recent average volume (a squeeze against the short)."""
+    sq = book.get("sqz_exit")
+    if not sq or p["side"] != "SHORT" or 1 - p["peak_px"] / p["entry"] < sq["after_gain"] or k["c"] <= k["o"] or k["c"] >= p["entry"]:
+        return False
+    rng = k["h"] - k["l"]
+    if rng <= 0 or (k["h"] - k["c"]) > sq["close_in_top"] * rng or (k["c"] - k["o"]) / k["o"] < sq["rise"]:
+        return False
+    return not (sq.get("vol_mult") and not (k.get("va") and k.get("v", 0) >= sq["vol_mult"] * k["va"]))
 
 
 def knife_hit(book, p, k):
@@ -1402,6 +1429,10 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
                                       f"💵 Banked half at +{book['free_half']['at']*100:.0f}% (free short)", log)
                     ladder_exec(book, p, c, k["o"], k["l"], day, log)
                     set_lock_stop(book, p, k["h"], k["l"], 1.0 if iv == "1h" else 4.0)    # this candle's high/low raises the peak, stop moves up
+                    if free and squeeze_hit(book, p, k):
+                        close_position(book, c, k["c"], day, f"🗜️ Squeeze (1h green candle {(k['c']/k['o']-1)*100:+.1f}% on {k['v']/k['va']:.1f}x volume, closed near the high)", log)
+                        exited.add(c)
+                        break
                     if free and not book.get("free_fade"):
                         continue                              # free-running short: only the wide floor, no fade / smart exits
                     why_smart = smart_exits(book, p, k)
