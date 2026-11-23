@@ -32,6 +32,21 @@
    "opened": "2026-11-04",
    "bought": "2026-11-04",
    "breakout": "2026-11-04"
+  },
+  "AAPL": {
+   "opened": "2026-11-23",
+   "bought": "2026-11-23",
+   "breakout": "2026-07-02"
+  },
+  "TMO": {
+   "opened": "2026-11-23",
+   "bought": "2026-11-23",
+   "breakout": "2026-11-23"
+  },
+  "BLK": {
+   "opened": "2026-11-23",
+   "bought": "2026-11-23",
+   "breakout": "2026-11-23"
   }
  },
  "closed": [
@@ -516,7 +531,7 @@
    "reason": "Close below upper GC band"
   }
  ],
- "last_decision_day": "2026-11-20",
+ "last_decision_day": "2026-11-23",
  "started": "2026-10-22",
  "start_equity": 97918.51,
  "start_spy": 762.85,
@@ -604,6 +619,10 @@
   [
    "2026-11-20",
    93857.51
+  ],
+  [
+   "2026-11-23",
+   93851.08
   ]
  ]
 }
