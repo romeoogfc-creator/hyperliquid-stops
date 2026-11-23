@@ -149,7 +149,7 @@ TOP_OI = set()                         # crypto: today's top 100 by open interes
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.80"
+ENGINE_VERSION = "GC-PAPER-1.81"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -356,6 +356,9 @@ BOOKS = [
     ("F25SQ1", "F25BE15 + squeeze exit: a free short that has been +5% closes at a profit on a 1h green candle of +2% or more on 2x volume that closes near its high", "adaptive", False),
     ("F25SQ2", "F25BE15 + squeeze exit: same, green candle +3% or more", "adaptive", False),
     ("F25SQ3", "F25BE15 + squeeze exit: same, green candle +4% or more", "adaptive", False),
+    ("F25M30", "F25BE15 with the stops, peaks and fade walking 30-MINUTE candles instead of hourly (history only ~104 days)", "adaptive", False),
+    ("F25H2", "F25BE15 with the stops, peaks and fade walking 2-HOUR candles instead of hourly (history ~416 days)", "adaptive", False),
+    ("F25H4", "F25BE15 with the stops, peaks and fade walking 4-HOUR candles instead of hourly (history ~833 days)", "adaptive", False),
     ("K70", "LIVE 1.10 rules, free-short floor from +25% keeps 70-85%", "adaptive", False),
     ("K80", "LIVE 1.10 rules, free-short floor from +25% keeps 80-90%", "adaptive", False),
     ("K90", "LIVE 1.10 rules, free-short floor from +25% keeps 90%", "adaptive", False),
@@ -599,6 +602,10 @@ BOOK_OPTIONS.update({f"F25FE{i}": {**BOOK_OPTIONS["F25BE15"], "fund_entry": {"ra
 BOOK_OPTIONS.update({f"F25LD{n}": {**BOOK_OPTIONS["F25BE15"], "free_leash": {"start": 0.05, "lead": n / 100}} for n in (4, 6, 8)})
 BOOK_OPTIONS.update({f"F25SQ{i}": {**BOOK_OPTIONS["F25BE15"], "sqz_exit": {"after_gain": 0.05, "close_in_top": 0.3, "vol_mult": 2.0, "rise": r}}
                      for i, r in ((1, 0.02), (2, 0.03), (3, 0.04))})
+# 1.81: timing. Same rules as F25BE15, but the lock / break-even / peak tracking walks candles of another size. The volume fade keeps its 6-HOUR window
+# (30m = 12 candles, 2h = 3, 4h = 2). Coverage: Hyperliquid keeps 5000 candles, so test 30m with backtest_days 100, 2h with up to 400.
+BOOK_OPTIONS.update({code: {**BOOK_OPTIONS["F25BE15"], "lock_interval": iv, "fade": {**BOOK_OPTIONS["F25BE15"]["fade"], "bars": nb}}
+                     for code, iv, nb in (("F25M30", "30m", 12), ("F25H2", "2h", 3), ("F25H4", "4h", 2))})
 BOOK_OPTIONS["F25TD"] = {**BOOK_OPTIONS["F25L5"], "free_decay": {"start": 0.25, "step": 0.025, "every": 6, "cap": 0.85}}
 BOOK_OPTIONS["F25G7"] = {**BOOK_OPTIONS["F25L5"], "free_giveback": {"start": 0.20, "cap": 0.07, "keep": 0.60}}
 BOOK_OPTIONS["F25BR"] = {**BOOK_OPTIONS["F25L5"], "relief_guard": {"start": 0.10, "keep": 0.80}}
@@ -671,7 +678,8 @@ CLIMAX_ATR = 2.0                       # "parabolic" = daily close more than 2 A
 INTRADAY_INTERVAL = "4h"               # candles used by lock_intraday books (Hyperliquid keeps the last 5000 = ~833 days)
 INTRADAY_MS = 4 * 3600 * 1000
 INTRADAY_MAX_DAYS = 830
-INTERVAL_HOURS = {"4h": 4, "1h": 1}
+INTERVAL_HOURS = {"4h": 4, "2h": 2, "1h": 1, "30m": 0.5}
+DATA_IV = {}                           # 1.81: candles for lock_interval "30m" / "2h" books: {interval: {coin: {date: [candles]}}}
 DATA_1H = {}                           # hourly candles for lock_interval "1h" books (crypto), loaded only when needed
 KNIFE_LOOKBACK = 6                     # knife exit: a 4h candle's volume vs the previous 6 candles (one day)
 
@@ -1393,8 +1401,9 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
             if not b or not (lock_applies(book, p["side"]) or free):
                 continue
             hourly = book.get("lock_interval") == "1h" and DATA_1H
-            iv = "1h" if hourly or (book.get("lock_interval") == "1h" and STOCKS) else "4h"
-            intraday = ((DATA_1H if hourly else data4h) or {}).get(c, {}).get(day) if book.get("lock_intraday") else None
+            alt = DATA_IV.get(book.get("lock_interval")) if book.get("lock_interval") in ("30m", "2h") else None      # 1.81 timing books
+            iv = "1h" if hourly or (book.get("lock_interval") == "1h" and STOCKS) else (book["lock_interval"] if alt else "4h")
+            intraday = ((DATA_1H if hourly else (alt or data4h)) or {}).get(c, {}).get(day) if book.get("lock_intraday") else None
             if intraday:
                 for k in intraday:
                     # The loss / disaster stop rests on the exchange too: inside the day it competes with the lock,
@@ -1428,7 +1437,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
                         partial_close(book, c, min(k["o"], tp), book["free_half"]["frac"], day,
                                       f"💵 Banked half at +{book['free_half']['at']*100:.0f}% (free short)", log)
                     ladder_exec(book, p, c, k["o"], k["l"], day, log)
-                    set_lock_stop(book, p, k["h"], k["l"], 1.0 if iv == "1h" else 4.0)    # this candle's high/low raises the peak, stop moves up
+                    set_lock_stop(book, p, k["h"], k["l"], INTERVAL_HOURS.get(iv, 4.0))    # this candle's high/low raises the peak, stop moves up
                     if free and squeeze_hit(book, p, k):
                         close_position(book, c, k["c"], day, f"🗜️ Squeeze (1h green candle {(k['c']/k['o']-1)*100:+.1f}% on {k['v']/k['va']:.1f}x volume, closed near the high)", log)
                         exited.add(c)
@@ -2267,8 +2276,12 @@ def load_market(info, history_days):
 def load_hourly(info, coins, history_days, codes):
     """Fill DATA_1H when a book uses the hourly lock (crypto only; stock 'intraday' bars are hourly already)."""
     DATA_1H.clear()
+    DATA_IV.clear()
     if not STOCKS and any(BOOK_OPTIONS.get(c, {}).get("lock_interval") == "1h" for c in codes):
         DATA_1H.update(fetch_intraday(info, coins, history_days, "1h"))
+    for iv in ("30m", "2h"):                                  # 1.81: timing books; Hyperliquid keeps the last 5000 candles (30m = ~104 days, 2h = ~416 days)
+        if not STOCKS and any(BOOK_OPTIONS.get(c, {}).get("lock_interval") == iv for c in codes):
+            DATA_IV[iv] = fetch_intraday(info, coins, history_days, iv)
 
 
 def load_intraday(info, coins, history_days):

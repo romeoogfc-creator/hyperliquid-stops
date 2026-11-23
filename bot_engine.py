@@ -39,7 +39,7 @@ from email.mime.text import MIMEText
 
 import gc_paper as engine
 
-BOT_VERSION = "LS15-LIVE-1.12.0"
+BOT_VERSION = "LS15-LIVE-1.12.1"
 STATE_FILE = "state.json"                  # same file the old scalper used (stops.yml commits it)
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
 SECRET_KEY = os.getenv("HL_SECRET_KEY")
@@ -293,6 +293,42 @@ def desired_stop(p, short_lock=True):
     return stop
 
 
+EVENT_MIN_PEAK, EVENT_MIN_RISE, EVENT_VOL_X, EVENT_TOP, EVENT_KEEP = 0.05, 0.02, 2.0, 0.3, 300
+
+
+def log_squeeze_event(info, state, coin, p, o, h, l, c, v, va, t_ms):
+    """1.12.1 LOGGING ONLY (no trading effect): when a short that has been up 5%+ and is still in profit gets a hot hourly candle against it (green, +2% or
+    more, 2x the recent volume, closing in the top 30% of its range), save the candle, the position and the coin's live market data (funding, open interest,
+    premium) in state['events']. record_closed() later adds the trade's final result, so a few months of these can show whether anything tells a bounce from
+    a reversal. Errors here are caught by the caller and never touch orders or stops."""
+    if p["side"] != "SHORT" or not va or c <= o or c >= p["entry"] or 1 - p["peak_px"] / p["entry"] < EVENT_MIN_PEAK:
+        return
+    rng = h - l
+    if rng <= 0 or (h - c) > EVENT_TOP * rng or (c - o) / o < EVENT_MIN_RISE or v < EVENT_VOL_X * va:
+        return
+    evs = state.setdefault("events", [])
+    eid = f"{coin}-{t_ms}"
+    if any(e.get("id") == eid for e in evs[-60:]):
+        return
+    ev = {"id": eid, "coin": coin, "opened_ms": int(p["opened_ms"]), "candle": datetime.fromtimestamp(t_ms / 1000, tz=timezone.utc).strftime("%Y-%m-%d %H:%M"),
+          "gain": round(1 - c / p["entry"], 4), "peak": round(1 - p["peak_px"] / p["entry"], 4), "rise": round((c - o) / o, 4),
+          "vol_x": round(v / va, 2), "close_pos": round((h - c) / rng, 2), "strong_down": bool(state.get("btc_strong_down")), "free": not short_lock_on(state)}
+    try:                                                           # live market data for the coin right now (not available in the backtest)
+        meta, ctxs = api_retry(info.meta_and_asset_ctxs, retries=2)
+        for a, ctx in zip(meta.get("universe", []), ctxs):
+            if a.get("name") == coin:
+                ev["funding"] = float(ctx.get("funding", 0) or 0)
+                ev["open_interest"] = float(ctx.get("openInterest", 0) or 0)
+                ev["premium"] = float(ctx.get("premium", 0) or 0)
+                ev["day_volume"] = float(ctx.get("dayNtlVlm", 0) or 0)
+                ev["mark"] = float(ctx.get("markPx", 0) or 0)
+                break
+    except Exception as e:
+        ev["ctx_error"] = str(e)[:80]
+    evs.append(ev)
+    state["events"] = evs[-EVENT_KEEP:]
+
+
 def raise_peaks(info, state, now_ms, mids, log):
     """Walk the hourly candles closed since each position was opened / last checked: move its best price (peak) and
     run the volume-fade check (same rule as gc_paper.fade_out). Sets p["fade_exit"] when the move has run out of fuel."""
@@ -329,6 +365,7 @@ def raise_peaks(info, state, now_ms, mids, log):
                     vols = (vols + [v])[-FADE_LOOKBACK:]           # history before entry seeds the volume average
                 continue
             h, l, c = float(k["h"]), float(k["l"]), float(k["c"])
+            o = float(k.get("o", c) or c)
             va = sum(vols) / FADE_LOOKBACK if len(vols) >= FADE_LOOKBACK else None
             vols = (vols + [v])[-FADE_LOOKBACK:]
             if p["side"] == "LONG":
@@ -338,6 +375,10 @@ def raise_peaks(info, state, now_ms, mids, log):
                 p["peak_px"] = min(p["peak_px"], l)
                 new_extreme, sign = l <= p["peak_px"], -1
             p["v_ref"] = max(p.get("v_ref") or 0.0, va or 0.0)
+            try:                                                   # 1.12.1 logging only
+                log_squeeze_event(info, state, coin, p, o, h, l, c, v, va, t)
+            except Exception as e:
+                print(f"[WARN] event log skipped ({e})", flush=True)
             quiet = p["v_ref"] > 0 and v < FADE["vol_ratio"] * p["v_ref"]
             p["fade_n"] = (p.get("fade_n") or 0) + 1 if quiet and not new_extreme else 0
             peak_gain = sign * (p["peak_px"] / p["entry"] - 1)
@@ -583,6 +624,12 @@ def record_closed(info, state, coin, px, why, log):
     state["closed"].append({"coin": coin, "side": p["side"], "opened": p["opened"], "closed": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
                             "entry": p["entry"], "exit": px, "pct": round(gain * 100, 2), "peak_pct": round(max(peak, 0) * 100, 2),
                             "pnl": round(pnl, 4), "reason": why})
+    try:                                                           # 1.12.1 logging only: the trade's final result goes onto its logged events
+        for e in state.get("events", []):
+            if e.get("coin") == coin and e.get("opened_ms") == int(p.get("opened_ms", 0)) and "final" not in e:
+                e["final"], e["final_why"] = round(gain, 4), str(why)[:60]
+    except Exception:
+        pass
     log.append(f"{'💰' if pnl > 0 else '🔻'} {coin}: {p['side']} closed {gain*100:+.2f}% (${pnl:+,.2f}) — {why}")
 
 
