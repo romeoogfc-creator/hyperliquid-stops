@@ -22,10 +22,10 @@
      "small": false,
      "rank": 75,
      "hi_vol": false,
-     "atr": 1.1532938630142375e-05,
+     "atr": 1.1137728732628534e-05,
      "climax": false,
-     "held": 1,
-     "calm_h": 14.0
+     "held": 2,
+     "calm_h": 34.0
     }
    },
    "closed": [
@@ -110,6 +110,10 @@
     [
      "2026-11-21",
      997.18
+    ],
+    [
+     "2026-11-22",
+     997.18
     ]
    ],
    "eq_base": 1000.0,
@@ -184,7 +188,7 @@
    "_relief": false
   }
  ],
- "last_processed_day": "2026-11-21",
- "engine": "GC-PAPER-1.78",
+ "last_processed_day": "2026-11-22",
+ "engine": "GC-PAPER-1.79",
  "started": "2026-10-21"
 }
