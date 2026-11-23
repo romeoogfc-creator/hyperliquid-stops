@@ -9,16 +9,16 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1795384800000,
+   "h1_checked_ms": 1795392000000,
    "v_ref": 1092995.6666666667,
-   "fade_n": 4,
+   "fade_n": 6,
    "fade_vols": [
-    243461.0,
-    764508.0,
     116605.0,
     20196.0,
     43922.0,
-    81478.0
+    81478.0,
+    130295.0,
+    28244.0
    ]
   },
   "POL": {
@@ -30,16 +30,16 @@
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.09266236,
-   "h1_checked_ms": 1795384800000,
+   "h1_checked_ms": 1795392000000,
    "v_ref": 992036.0,
-   "fade_n": 13,
+   "fade_n": 15,
    "fade_vols": [
-    65036.0,
-    61692.0,
     63022.0,
     64084.0,
     351947.0,
-    47364.0
+    47364.0,
+    35211.0,
+    43089.0
    ],
    "half_small_logged": true
   },
@@ -52,16 +52,16 @@
    "opened_ms": 1794269054441,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 4099.8975,
-   "h1_checked_ms": 1795384800000,
+   "h1_checked_ms": 1795392000000,
    "v_ref": 253.60616666666667,
-   "fade_n": 42,
+   "fade_n": 44,
    "fade_vols": [
-    12.255,
-    38.113,
     66.793,
     6.683,
     8.893,
-    6.352
+    6.352,
+    9.782,
+    125.146
    ]
   }
  },
@@ -331,7 +331,7 @@
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
- "last_daily_day": "2026-11-21",
+ "last_daily_day": "2026-11-22",
  "started": "2026-10-23",
  "start_nav": 110.8395182,
  "nav_history": [
@@ -458,6 +458,10 @@
   [
    "2026-11-22 00:04",
    470.55
+  ],
+  [
+   "2026-11-23 00:04",
+   469.56
   ]
  ],
  "version": "LS15-LIVE-1.12.0",
