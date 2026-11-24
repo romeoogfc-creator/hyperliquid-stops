@@ -17,15 +17,15 @@
      "opened": "2026-11-20",
      "peak_px": 0.000143,
      "stop": null,
-     "last_px": 0.000147,
+     "last_px": 0.000149,
      "reason": "bear short (rejected bounce, BTC down)",
      "small": false,
      "rank": 75,
      "hi_vol": false,
-     "atr": 1.1137728732628534e-05,
+     "atr": 1.0627890953022491e-05,
      "climax": false,
-     "held": 2,
-     "calm_h": 34.0
+     "held": 3,
+     "calm_h": 58.0
     }
    },
    "closed": [
@@ -114,6 +114,10 @@
     [
      "2026-11-22",
      997.18
+    ],
+    [
+     "2026-11-23",
+     995.16
     ]
    ],
    "eq_base": 1000.0,
@@ -188,7 +192,7 @@
    "_relief": false
   }
  ],
- "last_processed_day": "2026-11-22",
- "engine": "GC-PAPER-1.79",
+ "last_processed_day": "2026-11-23",
+ "engine": "GC-PAPER-1.81",
  "started": "2026-10-21"
 }
