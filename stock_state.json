@@ -15,7 +15,8 @@
   "PEP": {
    "opened": "2026-10-30",
    "bought": "2026-10-30",
-   "breakout": "2026-10-30"
+   "breakout": "2026-10-30",
+   "half_taken": true
   },
   "NEE": {
    "opened": "2026-10-30",
@@ -559,6 +560,16 @@
    "pct": -0.85,
    "pnl": -38.07,
    "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "PEP",
+   "opened": "2026-10-30",
+   "closed": "2026-11-25",
+   "entry": 138.06,
+   "exit": 144.95,
+   "pct": 4.99,
+   "pnl": 117.21,
+   "reason": "\ud83d\udcb5 Banked half at +5% (SPY weak)"
   }
  ],
  "last_decision_day": "2026-11-24",
