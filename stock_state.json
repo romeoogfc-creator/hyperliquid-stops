@@ -40,17 +40,7 @@
    "bought": "2026-11-23",
    "breakout": "2026-07-02"
   },
-  "TMO": {
-   "opened": "2026-11-23",
-   "bought": "2026-11-23",
-   "breakout": "2026-11-23"
-  },
   "JNJ": {
-   "opened": "2026-11-24",
-   "bought": "2026-11-24",
-   "breakout": "2026-11-24"
-  },
-  "ISRG": {
    "opened": "2026-11-24",
    "bought": "2026-11-24",
    "breakout": "2026-11-24"
@@ -69,6 +59,21 @@
    "opened": "2026-11-24",
    "bought": "2026-11-24",
    "breakout": "2026-11-24"
+  },
+  "VZ": {
+   "opened": "2026-11-25",
+   "bought": "2026-11-25",
+   "breakout": "2026-11-25"
+  },
+  "UNP": {
+   "opened": "2026-11-25",
+   "bought": "2026-11-25",
+   "breakout": "2026-11-09"
+  },
+  "ABT": {
+   "opened": "2026-11-25",
+   "bought": "2026-11-25",
+   "breakout": "2026-11-25"
   }
  },
  "closed": [
@@ -581,9 +586,29 @@
    "pct": 5.12,
    "pnl": 121.6,
    "reason": "\ud83d\udcb5 Banked half at +5% (SPY weak)"
+  },
+  {
+   "symbol": "ISRG",
+   "opened": "2026-11-24",
+   "closed": "2026-11-25",
+   "entry": 433.66,
+   "exit": 426.79,
+   "pct": -1.58,
+   "pnl": -71.55,
+   "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "TMO",
+   "opened": "2026-11-23",
+   "closed": "2026-11-25",
+   "entry": 689.6,
+   "exit": 684.06,
+   "pct": -0.8,
+   "pnl": -36.19,
+   "reason": "Close below upper GC band"
   }
  ],
- "last_decision_day": "2026-11-24",
+ "last_decision_day": "2026-11-25",
  "started": "2026-10-22",
  "start_equity": 97918.51,
  "start_spy": 762.85,
@@ -679,6 +704,10 @@
   [
    "2026-11-24",
    94094.72
+  ],
+  [
+   "2026-11-25",
+   94257.29
   ]
  ]
 }
