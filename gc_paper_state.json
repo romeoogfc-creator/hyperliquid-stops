@@ -5,7 +5,7 @@
    "name": "LIVE RULES (bot 1.10.2): F25T + bank half of a LONG at +5%",
    "lock": "adaptive",
    "guard": false,
-   "cash": 842.8829186245543,
+   "cash": 691.8765391583784,
    "positions": {
     "HMSTR": {
      "side": "SHORT",
@@ -15,17 +15,35 @@
      "collateral": 151.27172448623887,
      "fees": 0.06807227601880748,
      "opened": "2026-11-20",
-     "peak_px": 0.000143,
+     "peak_px": 0.000131,
      "stop": null,
-     "last_px": 0.000149,
+     "last_px": 0.000138,
      "reason": "bear short (rejected bounce, BTC down)",
      "small": false,
      "rank": 75,
      "hi_vol": false,
-     "atr": 1.0627890953022491e-05,
+     "atr": 1.1297327313984802e-05,
      "climax": false,
-     "held": 3,
-     "calm_h": 58.0
+     "held": 4,
+     "calm_h": 11.0
+    },
+    "kLUNC": {
+     "side": "SHORT",
+     "qty": 3412.5809893839896,
+     "entry": 0.04423,
+     "cost": 150.93845716045385,
+     "collateral": 150.93845716045385,
+     "fees": 0.06792230572220423,
+     "opened": "2026-11-24",
+     "peak_px": 0.04423,
+     "stop": null,
+     "last_px": 0.04423,
+     "reason": "bear short (rejected bounce, BTC down)",
+     "small": false,
+     "rank": 93,
+     "hi_vol": false,
+     "atr": 0.003714193868153746,
+     "climax": false
     }
    },
    "closed": [
@@ -118,6 +136,10 @@
     [
      "2026-11-23",
      995.16
+    ],
+    [
+     "2026-11-24",
+     1006.19
     ]
    ],
    "eq_base": 1000.0,
@@ -185,14 +207,14 @@
     "frac": 0.5
    },
    "_strong_down": true,
-   "_natr": 0.0792108413872235,
+   "_natr": 0.08397453918502705,
    "_strong_up": false,
    "_vol_mult": 1.0,
    "_bounce": false,
    "_relief": false
   }
  ],
- "last_processed_day": "2026-11-23",
+ "last_processed_day": "2026-11-24",
  "engine": "GC-PAPER-1.81",
  "started": "2026-10-21"
 }
