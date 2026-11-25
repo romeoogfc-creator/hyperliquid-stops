@@ -9,16 +9,16 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1795557600000,
+   "h1_checked_ms": 1795564800000,
    "v_ref": 1092995.6666666667,
-   "fade_n": 12,
+   "fade_n": 14,
    "fade_vols": [
-    130754.0,
-    136348.0,
     31453.0,
     43108.0,
     45758.0,
-    70826.0
+    70826.0,
+    26801.0,
+    83507.0
    ]
   },
   "POL": {
@@ -30,16 +30,16 @@
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.09266236,
-   "h1_checked_ms": 1795557600000,
+   "h1_checked_ms": 1795564800000,
    "v_ref": 992036.0,
-   "fade_n": 31,
+   "fade_n": 33,
    "fade_vols": [
-    133138.0,
-    102337.0,
     335928.0,
     35458.0,
     36055.0,
-    37855.0
+    37855.0,
+    31537.0,
+    24687.0
    ],
    "half_small_logged": true
   },
@@ -52,17 +52,39 @@
    "opened_ms": 1794269054441,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 4099.8975,
-   "h1_checked_ms": 1795557600000,
+   "h1_checked_ms": 1795564800000,
    "v_ref": 253.60616666666667,
-   "fade_n": 5,
+   "fade_n": 7,
    "fade_vols": [
-    182.953,
-    23.865,
     29.537,
     20.236,
     9.608,
-    5.793
+    5.793,
+    4.116,
+    71.914
    ]
+  },
+  "HMSTR": {
+   "side": "SHORT",
+   "sz": 514111.0,
+   "entry": 0.000137,
+   "peak_px": 0.000137,
+   "opened": "2026-11-24",
+   "opened_ms": 1795565059878,
+   "reason": "bear short (rejected bounce, BTC down)",
+   "stop": 0.00014248,
+   "h1_checked_ms": 1795565059878
+  },
+  "kLUNC": {
+   "side": "SHORT",
+   "sz": 1605.0,
+   "entry": 0.043865,
+   "peak_px": 0.043865,
+   "opened": "2026-11-24",
+   "opened_ms": 1795565061639,
+   "reason": "bear short (rejected bounce, BTC down)",
+   "stop": 0.0456196,
+   "h1_checked_ms": 1795565061639
   }
  },
  "closed": [
@@ -331,7 +353,7 @@
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
- "last_daily_day": "2026-11-23",
+ "last_daily_day": "2026-11-24",
  "started": "2026-10-23",
  "start_nav": 110.8395182,
  "nav_history": [
@@ -466,6 +488,10 @@
   [
    "2026-11-24 00:04",
    468.9
+  ],
+  [
+   "2026-11-25 00:04",
+   469.45
   ]
  ],
  "version": "LS15-LIVE-1.12.1",
