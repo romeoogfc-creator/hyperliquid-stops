@@ -32,7 +32,8 @@
   "CMCSA": {
    "opened": "2026-11-04",
    "bought": "2026-11-04",
-   "breakout": "2026-11-04"
+   "breakout": "2026-11-04",
+   "half_taken": true
   },
   "AAPL": {
    "opened": "2026-11-23",
@@ -569,6 +570,16 @@
    "exit": 144.95,
    "pct": 4.99,
    "pnl": 117.21,
+   "reason": "\ud83d\udcb5 Banked half at +5% (SPY weak)"
+  },
+  {
+   "symbol": "CMCSA",
+   "opened": "2026-11-04",
+   "closed": "2026-11-25",
+   "entry": 24.62,
+   "exit": 25.88,
+   "pct": 5.12,
+   "pnl": 121.6,
    "reason": "\ud83d\udcb5 Banked half at +5% (SPY weak)"
   }
  ],
