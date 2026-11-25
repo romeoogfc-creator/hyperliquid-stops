@@ -9,16 +9,16 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1795564800000,
+   "h1_checked_ms": 1795572000000,
    "v_ref": 1092995.6666666667,
-   "fade_n": 14,
+   "fade_n": 16,
    "fade_vols": [
-    31453.0,
-    43108.0,
     45758.0,
     70826.0,
     26801.0,
-    83507.0
+    83507.0,
+    149861.0,
+    29614.0
    ]
   },
   "POL": {
@@ -30,16 +30,16 @@
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.09266236,
-   "h1_checked_ms": 1795564800000,
+   "h1_checked_ms": 1795572000000,
    "v_ref": 992036.0,
-   "fade_n": 33,
+   "fade_n": 35,
    "fade_vols": [
-    335928.0,
-    35458.0,
     36055.0,
     37855.0,
     31537.0,
-    24687.0
+    24687.0,
+    168231.0,
+    151203.0
    ],
    "half_small_logged": true
   },
@@ -52,16 +52,16 @@
    "opened_ms": 1794269054441,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 4099.8975,
-   "h1_checked_ms": 1795564800000,
+   "h1_checked_ms": 1795572000000,
    "v_ref": 253.60616666666667,
-   "fade_n": 7,
+   "fade_n": 9,
    "fade_vols": [
-    29.537,
-    20.236,
     9.608,
     5.793,
     4.116,
-    71.914
+    71.914,
+    41.567,
+    20.732
    ]
   },
   "HMSTR": {
@@ -73,18 +73,38 @@
    "opened_ms": 1795565059878,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.00014248,
-   "h1_checked_ms": 1795565059878
+   "h1_checked_ms": 1795572000000,
+   "v_ref": 691218.1666666666,
+   "fade_n": 0,
+   "fade_vols": [
+    353808.0,
+    910008.0,
+    0.0,
+    570218.0,
+    2313275.0,
+    40801677.0
+   ]
   },
   "kLUNC": {
    "side": "SHORT",
    "sz": 1605.0,
    "entry": 0.043865,
-   "peak_px": 0.043865,
+   "peak_px": 0.043767,
    "opened": "2026-11-24",
    "opened_ms": 1795565061639,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.0456196,
-   "h1_checked_ms": 1795565061639
+   "h1_checked_ms": 1795572000000,
+   "v_ref": 1685598.6666666667,
+   "fade_n": 0,
+   "fade_vols": [
+    4226505.0,
+    1559619.0,
+    744018.0,
+    595792.0,
+    1647392.0,
+    1103220.0
+   ]
   }
  },
  "closed": [
