@@ -149,7 +149,7 @@ TOP_OI = set()                         # crypto: today's top 100 by open interes
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.81"
+ENGINE_VERSION = "GC-PAPER-1.82"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -359,6 +359,8 @@ BOOKS = [
     ("F25M30", "F25BE15 with the stops, peaks and fade walking 30-MINUTE candles instead of hourly (history only ~104 days)", "adaptive", False),
     ("F25H2", "F25BE15 with the stops, peaks and fade walking 2-HOUR candles instead of hourly (history ~416 days)", "adaptive", False),
     ("F25H4", "F25BE15 with the stops, peaks and fade walking 4-HOUR candles instead of hourly (history ~833 days)", "adaptive", False),
+    ("F25LF", "F25BE15, but shorts get the LONG format even in a strong downtrend: bank half at +5%, then the regular hourly lock (50-90% of the peak from +3%) and the volume fade", "adaptive", False),
+    ("F25LK", "F25BE15, but shorts always get the regular hourly lock and volume fade (no bank-half)", "adaptive", False),
     ("K70", "LIVE 1.10 rules, free-short floor from +25% keeps 70-85%", "adaptive", False),
     ("K80", "LIVE 1.10 rules, free-short floor from +25% keeps 80-90%", "adaptive", False),
     ("K90", "LIVE 1.10 rules, free-short floor from +25% keeps 90%", "adaptive", False),
@@ -606,6 +608,10 @@ BOOK_OPTIONS.update({f"F25SQ{i}": {**BOOK_OPTIONS["F25BE15"], "sqz_exit": {"afte
 # (30m = 12 candles, 2h = 3, 4h = 2). Coverage: Hyperliquid keeps 5000 candles, so test 30m with backtest_days 100, 2h with up to 400.
 BOOK_OPTIONS.update({code: {**BOOK_OPTIONS["F25BE15"], "lock_interval": iv, "fade": {**BOOK_OPTIONS["F25BE15"]["fade"], "bars": nb}}
                      for code, iv, nb in (("F25M30", "30m", 12), ("F25H2", "2h", 3), ("F25H4", "4h", 2))})
+# 1.82: "the long format on shorts". In a strong downtrend the live shorts run free; LF / LK give them what longs get (the regular lock tiers + volume fade,
+# and for LF a bank-half at +5%). Longs are unchanged.
+BOOK_OPTIONS["F25LF"] = {**BOOK_OPTIONS["F25BE15"], "short_long_format": True, "free_half": {"at": 0.05, "frac": 0.5}}
+BOOK_OPTIONS["F25LK"] = {**BOOK_OPTIONS["F25BE15"], "short_long_format": True, "free_half": None}
 BOOK_OPTIONS["F25TD"] = {**BOOK_OPTIONS["F25L5"], "free_decay": {"start": 0.25, "step": 0.025, "every": 6, "cap": 0.85}}
 BOOK_OPTIONS["F25G7"] = {**BOOK_OPTIONS["F25L5"], "free_giveback": {"start": 0.20, "cap": 0.07, "keep": 0.60}}
 BOOK_OPTIONS["F25BR"] = {**BOOK_OPTIONS["F25L5"], "relief_guard": {"start": 0.10, "keep": 0.80}}
@@ -720,14 +726,14 @@ def lock_applies(book, side):
     "adaptive": longs always, shorts unless step_day flagged a strong BTC downtrend for today (book["_strong_down"])."""
     mode = book.get("lock")
     if mode == "adaptive":
-        return side == "LONG" or not book.get("_strong_down")
+        return side == "LONG" or not book.get("_strong_down") or bool(book.get("short_long_format"))   # 1.82: LF / LK books lock shorts always
     return mode is True or mode == "all" or (mode == "long" and side == "LONG")
 
 
 def free_floor(book, p):
     """AB2HF: a short that 'runs free' (adaptive lock off for shorts today) still gets the wide big-winner floor."""
     return bool((book.get("free_tiers") or book.get("free_half")) and p["side"] == "SHORT" and book.get("lock") == "adaptive"
-                and book.get("_strong_down"))
+                and book.get("_strong_down") and not book.get("short_long_format"))
 
 
 def free_ladder_next(book, p, low):
@@ -760,7 +766,8 @@ def ladder_exec(book, p, coin, open_px, low, day, log):
 def free_half_hit(book, p, low):
     """AB2HT books: a free-running short reached the bank-half level (checked against a candle's low)."""
     fh = book.get("free_half")
-    return bool(fh and free_floor(book, p) and not p.get("half_taken") and not p.get("rung") and low <= p["entry"] * (1 - fh["at"]))
+    return bool(fh and (free_floor(book, p) or (book.get("short_long_format") and p["side"] == "SHORT")) and not p.get("half_taken")
+                and not p.get("rung") and low <= p["entry"] * (1 - fh["at"]))
 
 
 def vol_mult(book, data, day):
