@@ -64,27 +64,6 @@
     61.204
    ]
   },
-  "VVV": {
-   "side": "LONG",
-   "sz": 2.37,
-   "entry": 29.2834,
-   "peak_px": 30.63,
-   "opened": "2026-11-25",
-   "opened_ms": 1795651457962,
-   "reason": "band breakout",
-   "stop": 29.956699999999994,
-   "h1_checked_ms": 1795658400000,
-   "v_ref": 147468.5,
-   "fade_n": 0,
-   "fade_vols": [
-    156191.41,
-    130386.38,
-    116007.04,
-    123889.63,
-    179093.58,
-    142662.73
-   ]
-  },
   "BIGTIME": {
    "side": "SHORT",
    "sz": 10664.0,
@@ -394,6 +373,18 @@
    "pct": -4.09,
    "peak_pct": 0.52,
    "pnl": -2.9078,
+   "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
+  },
+  {
+   "coin": "VVV",
+   "side": "LONG",
+   "opened": "2026-11-25",
+   "closed": "2026-11-26 02:30",
+   "entry": 29.2834,
+   "exit": 29.932,
+   "pct": 2.21,
+   "peak_pct": 4.6,
+   "pnl": 1.5065,
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
