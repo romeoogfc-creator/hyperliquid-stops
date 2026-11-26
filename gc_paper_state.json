@@ -5,7 +5,7 @@
    "name": "LIVE RULES (bot 1.10.2): F25T + bank half of a LONG at +5%",
    "lock": "adaptive",
    "guard": false,
-   "cash": 691.8765391583784,
+   "cash": 536.54772361261,
    "positions": {
     "HMSTR": {
      "side": "SHORT",
@@ -22,27 +22,45 @@
      "small": false,
      "rank": 75,
      "hi_vol": false,
-     "atr": 1.1297327313984802e-05,
+     "atr": 1.0990375362985887e-05,
      "climax": false,
-     "held": 4,
-     "calm_h": 11.0
+     "held": 5,
+     "calm_h": 35.0
     },
-    "kLUNC": {
-     "side": "SHORT",
-     "qty": 3412.5809893839896,
-     "entry": 0.04423,
-     "cost": 150.93845716045385,
-     "collateral": 150.93845716045385,
-     "fees": 0.06792230572220423,
-     "opened": "2026-11-24",
-     "peak_px": 0.04423,
+    "VVV": {
+     "side": "LONG",
+     "qty": 5.120214423917679,
+     "entry": 29.298,
+     "cost": 150.01204219194014,
+     "collateral": 0.0,
+     "fees": 0.06750541898637306,
+     "opened": "2026-11-25",
+     "peak_px": 29.298,
      "stop": null,
-     "last_px": 0.04423,
+     "last_px": 29.298,
+     "reason": "band breakout (old breakout, 15% NAV)",
+     "small": false,
+     "rank": 7,
+     "hi_vol": false,
+     "atr": 2.6772345599170966,
+     "climax": false
+    },
+    "BIGTIME": {
+     "side": "SHORT",
+     "qty": 23189.37118440874,
+     "entry": 0.006469,
+     "cost": 150.01204219194014,
+     "collateral": 150.01204219194014,
+     "fees": 0.06750541898637306,
+     "opened": "2026-11-25",
+     "peak_px": 0.006469,
+     "stop": null,
+     "last_px": 0.006469,
      "reason": "bear short (rejected bounce, BTC down)",
      "small": false,
-     "rank": 93,
+     "rank": 88,
      "hi_vol": false,
-     "atr": 0.003714193868153746,
+     "atr": 0.0005711919984636922,
      "climax": false
     }
    },
@@ -98,6 +116,19 @@
      "peak_pct": 13.04,
      "reason": "\u2702\ufe0f Loss stop (+4% against, 1h)",
      "why_in": "bear short (rejected bounce, BTC down)"
+    },
+    {
+     "coin": "kLUNC",
+     "side": "SHORT",
+     "opened": "2026-11-24",
+     "closed": "2026-11-25",
+     "entry": 0.04423,
+     "exit": 0.0459992,
+     "pnl": -6.1761,
+     "pct": -4.0,
+     "peak_pct": 1.35,
+     "reason": "\u2702\ufe0f Loss stop (+4% against, 1h)",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -140,6 +171,10 @@
     [
      "2026-11-24",
      1006.19
+    ],
+    [
+     "2026-11-25",
+     999.95
     ]
    ],
    "eq_base": 1000.0,
@@ -207,14 +242,14 @@
     "frac": 0.5
    },
    "_strong_down": true,
-   "_natr": 0.08397453918502705,
+   "_natr": 0.08829679988617904,
    "_strong_up": false,
    "_vol_mult": 1.0,
    "_bounce": false,
    "_relief": false
   }
  ],
- "last_processed_day": "2026-11-24",
+ "last_processed_day": "2026-11-25",
  "engine": "GC-PAPER-1.81",
  "started": "2026-10-21"
 }
