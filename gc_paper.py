@@ -149,7 +149,7 @@ TOP_OI = set()                         # crypto: today's top 100 by open interes
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.82"
+ENGINE_VERSION = "GC-PAPER-1.83"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -361,6 +361,9 @@ BOOKS = [
     ("F25H4", "F25BE15 with the stops, peaks and fade walking 4-HOUR candles instead of hourly (history ~833 days)", "adaptive", False),
     ("F25LF", "F25BE15, but shorts get the LONG format even in a strong downtrend: bank half at +5%, then the regular hourly lock (50-90% of the peak from +3%) and the volume fade", "adaptive", False),
     ("F25LK", "F25BE15, but shorts always get the regular hourly lock and volume fade (no bank-half)", "adaptive", False),
+    ("F25BL3", "F25BE15, but once a free short has been +15% its stop moves to +3% (not +0.5%), so a small slip past the stop still ends in profit", "adaptive", False),
+    ("F25BL5", "F25BE15, but once a free short has been +15% its stop moves to +5%", "adaptive", False),
+    ("F25SB15", "F25BE15 + bank half of a free short when it reaches +15% (instead of +20%)", "adaptive", False),
     ("K70", "LIVE 1.10 rules, free-short floor from +25% keeps 70-85%", "adaptive", False),
     ("K80", "LIVE 1.10 rules, free-short floor from +25% keeps 80-90%", "adaptive", False),
     ("K90", "LIVE 1.10 rules, free-short floor from +25% keeps 90%", "adaptive", False),
@@ -612,6 +615,10 @@ BOOK_OPTIONS.update({code: {**BOOK_OPTIONS["F25BE15"], "lock_interval": iv, "fad
 # and for LF a bank-half at +5%). Longs are unchanged.
 BOOK_OPTIONS["F25LF"] = {**BOOK_OPTIONS["F25BE15"], "short_long_format": True, "free_half": {"at": 0.05, "frac": 0.5}}
 BOOK_OPTIONS["F25LK"] = {**BOOK_OPTIONS["F25BE15"], "short_long_format": True, "free_half": None}
+# 1.83: after BIGTIME (peak +16.6%, closed -0.92% when the stop slipped). BL = the +15% step moves the stop to +3% / +5% instead of +0.5%.
+# SB15 = bank half at +15% on top of the live break-even step. Add "@1" to any code in robust_books (e.g. F25BE15@1) to charge 1% slippage on every stop fill.
+BOOK_OPTIONS.update({f"F25BL{n}": {**BOOK_OPTIONS["F25BE15"], "free_be": {"start": 0.15, "lock": n / 100}} for n in (3, 5)})
+BOOK_OPTIONS["F25SB15"] = {**BOOK_OPTIONS["F25BE15"], "free_half": {"at": 0.15, "frac": 0.5}}
 BOOK_OPTIONS["F25TD"] = {**BOOK_OPTIONS["F25L5"], "free_decay": {"start": 0.25, "step": 0.025, "every": 6, "cap": 0.85}}
 BOOK_OPTIONS["F25G7"] = {**BOOK_OPTIONS["F25L5"], "free_giveback": {"start": 0.20, "cap": 0.07, "keep": 0.60}}
 BOOK_OPTIONS["F25BR"] = {**BOOK_OPTIONS["F25L5"], "relief_guard": {"start": 0.10, "keep": 0.80}}
@@ -919,7 +926,10 @@ def enrich(bars):
 def new_book(code, name, lock, guard=False):
     book = {"code": code, "name": name, "lock": lock, "guard": guard, "cash": START_NAV, "positions": {}, "closed": [], "equity": [],
             "eq_base": START_NAV, "eq_hwm": START_NAV, "guard_hits": 0, "start_nav": START_NAV}
-    book.update(BOOK_OPTIONS.get(code, {}))
+    base, _, slip = code.partition("@")                       # 1.83: "F25BE15@1" = the same book with 1% slippage on every stop fill
+    book.update(BOOK_OPTIONS.get(base, {}))
+    if slip:
+        book["stop_slip"] = float(slip) / 100
     return book
 
 
@@ -1016,6 +1026,9 @@ def close_position(book, coin, px, date, reason, log):
         book.setdefault("relock", {})[coin] = p["peak_px"]          # may buy back above this peak (see LONG ENTRIES)
     if book.get("reenter_short") and p["side"] == "SHORT" and reason.startswith(lock_label(book)):
         book.setdefault("relock_s", {})[coin] = p["peak_px"]        # may short again below this low (see SHORT ENTRIES)
+    slip = book.get("stop_slip")                              # 1.83: stop orders are market orders and can fill past their level (BIGTIME 2026-11-27: -1.4%)
+    if slip and (reason.startswith(lock_label(book)) or reason.startswith(stop_label(book))):
+        px = px * (1 + slip) if p["side"] == "SHORT" else px * (1 - slip)
     value = pos_value(p, px)
     fee = p["qty"] * px * fee_of(book, p)
     book["cash"] += value - fee
@@ -2621,14 +2634,16 @@ def run_robust(info):
     universe = ranked[:UNIVERSE_SIZE]
     all_days = sorted({d for c in data for d in data[c]})
     days = backtest_days(all_days)
-    specs = [b for b in BOOKS if b[0] in ROBUST_BOOKS]
-    unknown = [c for c in ROBUST_BOOKS if c not in {b[0] for b in BOOKS}]
+    known = {b[0]: b for b in BOOKS}
+    specs = [(c, known[c.partition("@")[0]][1] + (f" [{c.partition('@')[2]}% stop slippage]" if "@" in c else ""), known[c.partition("@")[0]][2],
+              known[c.partition("@")[0]][3]) for c in ROBUST_BOOKS if c.partition("@")[0] in known]      # 1.83: CODE@N = N% slippage on stop fills
+    unknown = [c for c in ROBUST_BOOKS if c.partition("@")[0] not in known]
     if not specs:
         raise RuntimeError(f"ROBUST_BOOKS {ROBUST_BOOKS} matches no book")
-    data4h = load_intraday(info, universe, BACKTEST_DAYS) if any(BOOK_OPTIONS.get(c, {}).get("lock_intraday") for c, *_ in specs) else {}
-    load_hourly(info, universe, BACKTEST_DAYS, [c for c, *_ in specs])
+    data4h = load_intraday(info, universe, BACKTEST_DAYS) if any(BOOK_OPTIONS.get(c.partition("@")[0], {}).get("lock_intraday") for c, *_ in specs) else {}
+    load_hourly(info, universe, BACKTEST_DAYS, [c.partition("@")[0] for c, *_ in specs])
     load_funding(info, universe, data, days)
-    load_funding_coins(info, universe, days, [c for c, *_ in specs])
+    load_funding_coins(info, universe, days, [c.partition("@")[0] for c, *_ in specs])
     btc_down = {d: btc_downtrend(data, d) for d in days}
     last = days[-1]
     prices = {c: data[c][last]["c"] for c in data if last in data[c]}
