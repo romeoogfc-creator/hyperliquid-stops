@@ -9,16 +9,16 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1795759200000,
+   "h1_checked_ms": 1795766400000,
    "v_ref": 1092995.6666666667,
-   "fade_n": 14,
+   "fade_n": 16,
    "fade_vols": [
-    235563.0,
-    38327.0,
     171610.0,
     119700.0,
     75517.0,
-    90654.0
+    90654.0,
+    40380.0,
+    240895.0
    ]
   },
   "POL": {
@@ -30,16 +30,16 @@
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.09266236,
-   "h1_checked_ms": 1795759200000,
+   "h1_checked_ms": 1795766400000,
    "v_ref": 992036.0,
-   "fade_n": 34,
+   "fade_n": 36,
    "fade_vols": [
-    76085.0,
-    113115.0,
     346306.0,
     44442.0,
     45551.0,
-    79333.0
+    79333.0,
+    99440.0,
+    40156.0
    ],
    "half_small_logged": true
   },
@@ -52,16 +52,16 @@
    "opened_ms": 1794269054441,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 4099.8975,
-   "h1_checked_ms": 1795759200000,
+   "h1_checked_ms": 1795766400000,
    "v_ref": 253.60616666666667,
-   "fade_n": 38,
+   "fade_n": 40,
    "fade_vols": [
-    14.386,
-    8.647,
     39.346,
     10.709,
     16.45,
-    75.48
+    75.48,
+    23.328,
+    18.781
    ]
   },
   "kLUNC": {
@@ -73,16 +73,16 @@
    "opened_ms": 1795737855949,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.0472836,
-   "h1_checked_ms": 1795759200000,
+   "h1_checked_ms": 1795766400000,
    "v_ref": 536144.6666666666,
    "fade_n": 0,
    "fade_vols": [
-    1032335.0,
-    483923.0,
     350552.0,
     232881.0,
     200456.0,
-    409551.0
+    409551.0,
+    125725.0,
+    426427.0
    ]
   }
  },
