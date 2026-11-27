@@ -9,16 +9,16 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1795809600000,
+   "h1_checked_ms": 1795816800000,
    "v_ref": 1092995.6666666667,
-   "fade_n": 4,
+   "fade_n": 6,
    "fade_vols": [
-    1696520.0,
-    659841.0,
     444724.0,
     285736.0,
     168896.0,
-    26277.0
+    26277.0,
+    80088.0,
+    26215.0
    ]
   },
   "POL": {
@@ -30,16 +30,16 @@
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.09266236,
-   "h1_checked_ms": 1795809600000,
+   "h1_checked_ms": 1795816800000,
    "v_ref": 992036.0,
-   "fade_n": 11,
+   "fade_n": 13,
    "fade_vols": [
-    327470.0,
-    243064.0,
     117823.0,
     79603.0,
     33459.0,
-    33804.0
+    33804.0,
+    29648.0,
+    27346.0
    ],
    "half_small_logged": true
   },
@@ -52,16 +52,16 @@
    "opened_ms": 1794269054441,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 4099.8975,
-   "h1_checked_ms": 1795809600000,
+   "h1_checked_ms": 1795816800000,
    "v_ref": 253.60616666666667,
-   "fade_n": 52,
+   "fade_n": 54,
    "fade_vols": [
-    39.417,
-    96.47,
     20.383,
     12.12,
     15.86,
-    11.091
+    11.091,
+    11.106,
+    4.038
    ]
   }
  },
