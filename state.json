@@ -63,27 +63,6 @@
     23.328,
     18.781
    ]
-  },
-  "kLUNC": {
-   "side": "SHORT",
-   "sz": 1555.0,
-   "entry": 0.045465,
-   "peak_px": 0.044981,
-   "opened": "2026-11-26",
-   "opened_ms": 1795737855949,
-   "reason": "bear short (rejected bounce, BTC down)",
-   "stop": 0.0472836,
-   "h1_checked_ms": 1795766400000,
-   "v_ref": 536144.6666666666,
-   "fade_n": 0,
-   "fade_vols": [
-    350552.0,
-    232881.0,
-    200456.0,
-    409551.0,
-    125725.0,
-    426427.0
-   ]
   }
  },
  "closed": [
@@ -398,6 +377,21 @@
    "peak_pct": 16.55,
    "pnl": -0.6698,
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
+  },
+  {
+   "coin": "kLUNC",
+   "side": "SHORT",
+   "opened": "2026-11-26",
+   "closed": "2026-11-27 09:15",
+   "entry": 0.045465,
+   "exit": 0.047313,
+   "pct": -4.06,
+   "peak_pct": 1.06,
+   "pnl": -2.9054,
+   "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)",
+   "oi_rank": null,
+   "stop_px": 0.0472836,
+   "slip_pct": 0.062
   }
  ],
  "last_daily_day": "2026-11-26",
