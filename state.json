@@ -64,27 +64,6 @@
     8.647
    ]
   },
-  "BIGTIME": {
-   "side": "SHORT",
-   "sz": 10664.0,
-   "entry": 0.006512,
-   "peak_px": 0.005434,
-   "opened": "2026-11-25",
-   "opened_ms": 1795651459834,
-   "reason": "bear short (rejected bounce, BTC down)",
-   "stop": 0.00647944,
-   "h1_checked_ms": 1795744800000,
-   "v_ref": 34095805.333333336,
-   "fade_n": 0,
-   "fade_vols": [
-    3996219.0,
-    3711939.0,
-    5186721.0,
-    3754802.0,
-    6880910.0,
-    32916463.0
-   ]
-  },
   "kLUNC": {
    "side": "SHORT",
    "sz": 1555.0,
@@ -406,6 +385,18 @@
    "pct": 2.21,
    "peak_pct": 4.6,
    "pnl": 1.5065,
+   "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
+  },
+  {
+   "coin": "BIGTIME",
+   "side": "SHORT",
+   "opened": "2026-11-25",
+   "closed": "2026-11-27 02:10",
+   "entry": 0.006512,
+   "exit": 0.0065719682108027,
+   "pct": -0.92,
+   "peak_pct": 16.55,
+   "pnl": -0.6698,
    "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)"
   }
  ],
