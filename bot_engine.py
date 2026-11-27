@@ -39,7 +39,7 @@ from email.mime.text import MIMEText
 
 import gc_paper as engine
 
-BOT_VERSION = "LS15-LIVE-1.12.1"
+BOT_VERSION = "LS15-LIVE-1.12.2"
 STATE_FILE = "state.json"                  # same file the old scalper used (stops.yml commits it)
 ACCOUNT_ADDRESS = os.getenv("HL_ACCOUNT_ADDRESS")
 SECRET_KEY = os.getenv("HL_SECRET_KEY")
@@ -408,6 +408,11 @@ def daily_decisions(info, exchange, state, nav, ex_pos, sz_dec, log, skips):
     bar = {c: data[c][day] for c in data if day in data[c]}
     prev = {c: data[c][prev_day] for c in data if prev_day in data[c]}
     rank_of = {c: i + 1 for i, c in enumerate(ranked)}
+    try:                                                           # 1.12.2 LOGGING ONLY: open-interest rank on every open position (for the slippage-by-size study)
+        for c, p in state["positions"].items():
+            p.setdefault("oi_rank", rank_of.get(c))
+    except Exception:
+        pass
     btc_down = engine.btc_downtrend(data, day)
     strong, bc, bf = btc_regime(data=data)
     state["btc_strong_down"] = strong
@@ -467,6 +472,11 @@ def daily_decisions(info, exchange, state, nav, ex_pos, sz_dec, log, skips):
         if open_own(info, exchange, state, coin, side, usd, bar[coin]["c"], sz_dec.get(coin, 2), day, why, log):
             held.add(coin)
             budget -= usd
+            try:                                                   # 1.12.2 logging only
+                if coin in state["positions"]:
+                    state["positions"][coin]["oi_rank"] = rank_of.get(coin)
+            except Exception:
+                pass
         else:                                                      # failed / too small: also list it under "Signals not taken"
             skips.append((coin, f"{side} signal — order NOT placed (see 'This run'); not retried today"))
     state["last_daily_day"] = day
@@ -624,6 +634,15 @@ def record_closed(info, state, coin, px, why, log):
     state["closed"].append({"coin": coin, "side": p["side"], "opened": p["opened"], "closed": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M"),
                             "entry": p["entry"], "exit": px, "pct": round(gain * 100, 2), "peak_pct": round(max(peak, 0) * 100, 2),
                             "pnl": round(pnl, 4), "reason": why})
+    try:                                                           # 1.12.2 logging only: how far past its stop a stop order filled, and the coin's open-interest rank
+        extra = {"oi_rank": p.get("oi_rank")}
+        stop = p.get("stop")
+        if stop and str(why).startswith("🛡️ Stop filled") and px:
+            extra["stop_px"] = stop
+            extra["slip_pct"] = round(((px - stop) if p["side"] == "SHORT" else (stop - px)) / stop * 100, 3)   # positive = filled worse than the stop level
+        state["closed"][-1].update(extra)
+    except Exception:
+        pass
     try:                                                           # 1.12.1 logging only: the trade's final result goes onto its logged events
         for e in state.get("events", []):
             if e.get("coin") == coin and e.get("opened_ms") == int(p.get("opened_ms", 0)) and "final" not in e:

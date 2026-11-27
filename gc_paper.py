@@ -146,10 +146,11 @@ WIDE = MARKET == "stocks_wide"
 ALL_COINS = MARKET == "crypto_all"     # every Hyperliquid perp with open interest, not just the top 100 (backtest / robust)
 WIDE_SIZE = int(os.getenv("WIDE_SIZE", "1000") or 1000)
 TOP_OI = set()                         # crypto: today's top 100 by open interest (C100), fixed before any shuffle
+TOP_OI50 = set()                       # 1.84: today's top 50 by open interest (F25TOP50 and the tiered slippage), fixed before any shuffle
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.83"
+ENGINE_VERSION = "GC-PAPER-1.84"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -364,6 +365,7 @@ BOOKS = [
     ("F25BL3", "F25BE15, but once a free short has been +15% its stop moves to +3% (not +0.5%), so a small slip past the stop still ends in profit", "adaptive", False),
     ("F25BL5", "F25BE15, but once a free short has been +15% its stop moves to +5%", "adaptive", False),
     ("F25SB15", "F25BE15 + bank half of a free short when it reaches +15% (instead of +20%)", "adaptive", False),
+    ("F25TOP50", "F25BE15, but only the top 50 coins by open interest are traded (ranks 51-100 skipped)", "adaptive", False),
     ("K70", "LIVE 1.10 rules, free-short floor from +25% keeps 70-85%", "adaptive", False),
     ("K80", "LIVE 1.10 rules, free-short floor from +25% keeps 80-90%", "adaptive", False),
     ("K90", "LIVE 1.10 rules, free-short floor from +25% keeps 90%", "adaptive", False),
@@ -619,6 +621,9 @@ BOOK_OPTIONS["F25LK"] = {**BOOK_OPTIONS["F25BE15"], "short_long_format": True, "
 # SB15 = bank half at +15% on top of the live break-even step. Add "@1" to any code in robust_books (e.g. F25BE15@1) to charge 1% slippage on every stop fill.
 BOOK_OPTIONS.update({f"F25BL{n}": {**BOOK_OPTIONS["F25BE15"], "free_be": {"start": 0.15, "lock": n / 100}} for n in (3, 5)})
 BOOK_OPTIONS["F25SB15"] = {**BOOK_OPTIONS["F25BE15"], "free_half": {"at": 0.15, "frac": 0.5}}
+# 1.84: liquidity. TOP50 = the live rules on today's top 50 coins by open interest only. Slippage by coin size: add @T1 (0.1% top 50 / 0.5% ranks 51-100) or
+# @T2 (0.2% / 1.0%) to a book code in robust_books, e.g. F25BE15@T1. (The rank cut-off is today's open-interest ranking, like the rest of the backtest universe.)
+BOOK_OPTIONS["F25TOP50"] = {**BOOK_OPTIONS["F25BE15"], "size_group": "top50"}
 BOOK_OPTIONS["F25TD"] = {**BOOK_OPTIONS["F25L5"], "free_decay": {"start": 0.25, "step": 0.025, "every": 6, "cap": 0.85}}
 BOOK_OPTIONS["F25G7"] = {**BOOK_OPTIONS["F25L5"], "free_giveback": {"start": 0.20, "cap": 0.07, "keep": 0.60}}
 BOOK_OPTIONS["F25BR"] = {**BOOK_OPTIONS["F25L5"], "relief_guard": {"start": 0.10, "keep": 0.80}}
@@ -923,12 +928,17 @@ def enrich(bars):
 # ======================================================================================
 # Paper book
 # ======================================================================================
+SLIP_TIERS = {"T1": {"top": 0.001, "rest": 0.005}, "T2": {"top": 0.002, "rest": 0.010}}   # 1.84: stop-fill slippage for today's top-50 coins / ranks 51-100
+
+
 def new_book(code, name, lock, guard=False):
     book = {"code": code, "name": name, "lock": lock, "guard": guard, "cash": START_NAV, "positions": {}, "closed": [], "equity": [],
             "eq_base": START_NAV, "eq_hwm": START_NAV, "guard_hits": 0, "start_nav": START_NAV}
     base, _, slip = code.partition("@")                       # 1.83: "F25BE15@1" = the same book with 1% slippage on every stop fill
     book.update(BOOK_OPTIONS.get(base, {}))
-    if slip:
+    if slip.upper() in SLIP_TIERS:                            # 1.84: "@T1" / "@T2" = slippage that depends on the coin's open-interest rank
+        book["stop_slip_tier"] = SLIP_TIERS[slip.upper()]
+    elif slip:
         book["stop_slip"] = float(slip) / 100
     return book
 
@@ -1027,6 +1037,8 @@ def close_position(book, coin, px, date, reason, log):
     if book.get("reenter_short") and p["side"] == "SHORT" and reason.startswith(lock_label(book)):
         book.setdefault("relock_s", {})[coin] = p["peak_px"]        # may short again below this low (see SHORT ENTRIES)
     slip = book.get("stop_slip")                              # 1.83: stop orders are market orders and can fill past their level (BIGTIME 2026-11-27: -1.4%)
+    if book.get("stop_slip_tier"):                            # 1.84: smaller for the liquid top 50, larger for ranks 51-100
+        slip = book["stop_slip_tier"]["top" if coin in TOP_OI50 else "rest"]
     if slip and (reason.startswith(lock_label(book)) or reason.startswith(stop_label(book))):
         px = px * (1 + slip) if p["side"] == "SHORT" else px * (1 - slip)
     value = pos_value(p, px)
@@ -1374,6 +1386,8 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
         universe = [c for c in universe if c in LARGE_CAPS]
     elif book.get("size_group") == "top100":                  # C100: today's top 100 by open interest only
         universe = [c for c in universe if c in TOP_OI]
+    elif book.get("size_group") == "top50":                   # 1.84 F25TOP50: today's top 50 by open interest only
+        universe = [c for c in universe if c in TOP_OI50]
     elif book.get("size_group") == "daily_top":               # WDAY: the 100 most-traded names as of that day
         top = set(sorted((c for c in universe if (bar.get(c) or {}).get("dv20")), key=lambda c: -bar[c]["dv20"])[:100])
         universe = [c for c in universe if c in top]          # keep the run's (shuffled) order: only the membership changes
@@ -1778,6 +1792,8 @@ def fetch_market(info, history_days, paced=False):
     ranked = [c for _, c in rows]
     TOP_OI.clear()
     TOP_OI.update(ranked[:100])
+    TOP_OI50.clear()
+    TOP_OI50.update(ranked[:50])
     if "BTC" not in ranked[:UNIVERSE_SIZE]:
         ranked.insert(0, "BTC")
     now_ms = int(time.time() * 1000)
