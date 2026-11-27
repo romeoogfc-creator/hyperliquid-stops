@@ -150,7 +150,7 @@ TOP_OI50 = set()                       # 1.84: today's top 50 by open interest (
 LARGE_CAPS = set()                     # the top 100 of the wide universe by dollar volume (filled when data loads)
 STRATEGY_ID = "TR-GC-Equities-LS-15" if STOCKS else "TR-GC-Crypto-LS-15"
 BENCH = "SPY" if STOCKS else "BTC"      # market filter for bear shorts + buy & hold comparison
-ENGINE_VERSION = "GC-PAPER-1.84"
+ENGINE_VERSION = "GC-PAPER-1.85"
 MODE = os.getenv("MODE", "paper").strip().lower()
 # "730" = the last 730 days. "730-365" = from 730 days ago up to 365 days ago (a hold-out check on the older year).
 _BD = (os.getenv("BACKTEST_DAYS", "365") or "365").replace(" ", "")
@@ -366,6 +366,8 @@ BOOKS = [
     ("F25BL5", "F25BE15, but once a free short has been +15% its stop moves to +5%", "adaptive", False),
     ("F25SB15", "F25BE15 + bank half of a free short when it reaches +15% (instead of +20%)", "adaptive", False),
     ("F25TOP50", "F25BE15, but only the top 50 coins by open interest are traded (ranks 51-100 skipped)", "adaptive", False),
+    ("F25STR1", "F25BE15, but when several signals fire on the same close the strongest claim the slots first, strength = distance past the band (longs) / under the filter (shorts) in daily ATRs", "adaptive", False),
+    ("F25STR2", "F25BE15, but the strongest signals claim the slots first, strength = distance past the band / under the filter as a % of the level", "adaptive", False),
     ("K70", "LIVE 1.10 rules, free-short floor from +25% keeps 70-85%", "adaptive", False),
     ("K80", "LIVE 1.10 rules, free-short floor from +25% keeps 80-90%", "adaptive", False),
     ("K90", "LIVE 1.10 rules, free-short floor from +25% keeps 90%", "adaptive", False),
@@ -624,6 +626,10 @@ BOOK_OPTIONS["F25SB15"] = {**BOOK_OPTIONS["F25BE15"], "free_half": {"at": 0.15, 
 # 1.84: liquidity. TOP50 = the live rules on today's top 50 coins by open interest only. Slippage by coin size: add @T1 (0.1% top 50 / 0.5% ranks 51-100) or
 # @T2 (0.2% / 1.0%) to a book code in robust_books, e.g. F25BE15@T1. (The rank cut-off is today's open-interest ranking, like the rest of the backtest universe.)
 BOOK_OPTIONS["F25TOP50"] = {**BOOK_OPTIONS["F25BE15"], "size_group": "top50"}
+# 1.85: slot priority. The live order is open-interest rank (the shuffled orders in robust runs are the "random priority" comparison). STR books sort by breakout
+# strength instead, so every shuffled run gives the SAME answer for them (a single number, not a spread): compare it with F25BE15's normal-order result and its range.
+BOOK_OPTIONS["F25STR1"] = {**BOOK_OPTIONS["F25BE15"], "rank_by": "atr"}
+BOOK_OPTIONS["F25STR2"] = {**BOOK_OPTIONS["F25BE15"], "rank_by": "pct"}
 BOOK_OPTIONS["F25TD"] = {**BOOK_OPTIONS["F25L5"], "free_decay": {"start": 0.25, "step": 0.025, "every": 6, "cap": 0.85}}
 BOOK_OPTIONS["F25G7"] = {**BOOK_OPTIONS["F25L5"], "free_giveback": {"start": 0.20, "cap": 0.07, "keep": 0.60}}
 BOOK_OPTIONS["F25BR"] = {**BOOK_OPTIONS["F25L5"], "relief_guard": {"start": 0.10, "keep": 0.80}}
@@ -1357,6 +1363,17 @@ def fund_exit_hit(book, p, b, day, coin):
     return r if r is not None and r <= fx["rate"] else None
 
 
+def entry_strength(kind, b, side):
+    """1.85: how far today's close is past the level that triggered the signal. Longs: past the upper band; shorts: under the GC filter.
+    kind "atr" = in daily ATRs, "pct" = as a share of the level. Missing data sorts last."""
+    if not b or not b.get("valid"):
+        return -1e9
+    d, ref = (b["c"] - b["upper"], b["upper"]) if side == "LONG" else (b["filter"] - b["c"], b["filter"])
+    if kind == "atr":
+        return d / b["atr"] if b.get("atr") else -1e9
+    return d / ref if ref else -1e9
+
+
 def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=None):
     """Runs one LS-15 decision cycle on the daily candle `day` (YYYY-MM-DD) for one book."""
     if (book.get("take_half") or {}).get("only_weak_mkt"):    # 1.67: benchmark regime as of the PREVIOUS close (no peeking)
@@ -1612,7 +1629,11 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
             relock.pop(c)
     mb = data.get(BENCH, {}).get(day) if book.get("mkt_filter") else None
     mkt_weak = bool(mb and mb.get("valid") and mb["c"] <= mb["filter"])
-    for c in universe:
+    long_order = short_order = universe
+    if book.get("rank_by"):                                   # 1.85 STR books: the strongest breakouts claim the slots first (stable sort: ties keep the run's order)
+        long_order = sorted(universe, key=lambda c: -entry_strength(book["rank_by"], bar.get(c), "LONG"))
+        short_order = sorted(universe, key=lambda c: -entry_strength(book["rank_by"], bar.get(c), "SHORT"))
+    for c in long_order:
         b, pb = bar.get(c), prev.get(c)
         if not b or not pb or not b.get("valid"):
             continue
@@ -1687,7 +1708,7 @@ def step_day(book, day, data, ranked, btc_down, drift_exits, log, skips, data4h=
         b = bar.get(c)
         if b and b.get("valid") and b["c"] > b["filter"]:
             relock_s.pop(c)
-    for c in ([] if LONG_ONLY else universe):
+    for c in ([] if LONG_ONLY else short_order):
         b, pb = bar.get(c), prev.get(c)
         if not b or not pb or not b.get("valid") or c in book["positions"]:
             continue
