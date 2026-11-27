@@ -50,11 +50,6 @@
    "bought": "2026-11-24",
    "breakout": "2026-11-24"
   },
-  "VRTX": {
-   "opened": "2026-11-24",
-   "bought": "2026-11-24",
-   "breakout": "2026-11-24"
-  },
   "LMT": {
    "opened": "2026-11-24",
    "bought": "2026-11-24",
@@ -606,6 +601,16 @@
    "pct": -0.8,
    "pnl": -36.19,
    "reason": "Close below upper GC band"
+  },
+  {
+   "symbol": "VRTX",
+   "opened": "2026-11-24",
+   "closed": "2026-11-27",
+   "entry": 563.735066,
+   "exit": 506.0975,
+   "pct": -10.22,
+   "pnl": -461.78,
+   "reason": "\u2702\ufe0f Loss stop (-5%)"
   }
  ],
  "last_decision_day": "2026-11-25",
