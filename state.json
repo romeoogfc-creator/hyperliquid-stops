@@ -9,17 +9,18 @@
    "opened_ms": 1793405045003,
    "reason": "hedge short (cross under filter)",
    "stop": 0.3417128,
-   "h1_checked_ms": 1795816800000,
+   "h1_checked_ms": 1795824000000,
    "v_ref": 1092995.6666666667,
-   "fade_n": 6,
+   "fade_n": 8,
    "fade_vols": [
-    444724.0,
-    285736.0,
     168896.0,
     26277.0,
     80088.0,
-    26215.0
-   ]
+    26215.0,
+    40078.0,
+    19179.0
+   ],
+   "oi_rank": 35
   },
   "POL": {
    "side": "SHORT",
@@ -30,18 +31,19 @@
    "opened_ms": 1793923468385,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 0.09266236,
-   "h1_checked_ms": 1795816800000,
+   "h1_checked_ms": 1795824000000,
    "v_ref": 992036.0,
-   "fade_n": 13,
+   "fade_n": 15,
    "fade_vols": [
-    117823.0,
-    79603.0,
     33459.0,
     33804.0,
     29648.0,
-    27346.0
+    27346.0,
+    33620.0,
+    25070.0
    ],
-   "half_small_logged": true
+   "half_small_logged": true,
+   "oi_rank": 59
   },
   "PAXG": {
    "side": "SHORT",
@@ -52,17 +54,30 @@
    "opened_ms": 1794269054441,
    "reason": "bear short (rejected bounce, BTC down)",
    "stop": 4099.8975,
-   "h1_checked_ms": 1795816800000,
+   "h1_checked_ms": 1795824000000,
    "v_ref": 253.60616666666667,
-   "fade_n": 54,
+   "fade_n": 56,
    "fade_vols": [
-    20.383,
-    12.12,
     15.86,
     11.091,
     11.106,
-    4.038
-   ]
+    4.038,
+    6.143,
+    3.945
+   ],
+   "oi_rank": 25
+  },
+  "BLUR": {
+   "side": "SHORT",
+   "sz": 10268.0,
+   "entry": 0.00669,
+   "peak_px": 0.00669,
+   "opened": "2026-11-27",
+   "opened_ms": 1795824261647,
+   "reason": "bear short (rejected bounce, BTC down)",
+   "stop": 0.0069576,
+   "oi_rank": 86,
+   "h1_checked_ms": 1795824261647
   }
  },
  "closed": [
@@ -394,7 +409,7 @@
    "slip_pct": 0.062
   }
  ],
- "last_daily_day": "2026-11-26",
+ "last_daily_day": "2026-11-27",
  "started": "2026-10-23",
  "start_nav": 110.8395182,
  "nav_history": [
@@ -541,6 +556,10 @@
   [
    "2026-11-27 00:04",
    471.36
+  ],
+  [
+   "2026-11-28 00:04",
+   458.26
   ]
  ],
  "version": "LS15-LIVE-1.12.2",
