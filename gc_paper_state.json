@@ -5,7 +5,7 @@
    "name": "LIVE RULES (bot 1.10.2): F25T + bank half of a LONG at +5%",
    "lock": "adaptive",
    "guard": false,
-   "cash": 624.8363257009263,
+   "cash": 766.9704485140135,
    "positions": {
     "HMSTR": {
      "side": "SHORT",
@@ -17,53 +17,33 @@
      "opened": "2026-11-20",
      "peak_px": 0.000119,
      "stop": null,
-     "last_px": 0.000124,
+     "last_px": 0.000125,
      "reason": "bear short (rejected bounce, BTC down)",
      "small": false,
      "rank": 75,
      "hi_vol": false,
-     "atr": 1.1848205695129018e-05,
+     "atr": 1.1430476717369436e-05,
      "climax": false,
-     "held": 6,
-     "calm_h": 15.0,
+     "held": 7,
+     "calm_h": 39.0,
      "half_taken": true
     },
-    "BIGTIME": {
+    "BLUR": {
      "side": "SHORT",
-     "qty": 23189.37118440874,
-     "entry": 0.006469,
-     "cost": 150.01204219194014,
-     "collateral": 150.01204219194014,
-     "fees": 0.06750541898637306,
-     "opened": "2026-11-25",
-     "peak_px": 0.005434,
+     "qty": 22631.849040994344,
+     "entry": 0.006669,
+     "cost": 150.93180125439127,
+     "collateral": 150.93180125439127,
+     "fees": 0.06791931056447607,
+     "opened": "2026-11-27",
+     "peak_px": 0.006669,
      "stop": null,
-     "last_px": 0.005718,
+     "last_px": 0.006669,
      "reason": "bear short (rejected bounce, BTC down)",
      "small": false,
-     "rank": 88,
+     "rank": 86,
      "hi_vol": false,
-     "atr": 0.0006188925699528245,
-     "climax": false,
-     "held": 1,
-     "calm_h": 15.0
-    },
-    "kLUNC": {
-     "side": "SHORT",
-     "qty": 3412.220268174141,
-     "entry": 0.045567,
-     "cost": 155.4846409598911,
-     "collateral": 155.4846409598911,
-     "fees": 0.06996808843195099,
-     "opened": "2026-11-26",
-     "peak_px": 0.045567,
-     "stop": null,
-     "last_px": 0.045567,
-     "reason": "bear short (rejected bounce, BTC down)",
-     "small": false,
-     "rank": 96,
-     "hi_vol": false,
-     "atr": 0.003648049814933199,
+     "atr": 0.0012672675621903733,
      "climax": false
     }
    },
@@ -158,6 +138,32 @@
      "peak_pct": 4.22,
      "reason": "\ud83d\udd12 Profit lock (stop 29.916, 1h)",
      "why_in": "band breakout (old breakout, 15% NAV)"
+    },
+    {
+     "coin": "BIGTIME",
+     "side": "SHORT",
+     "opened": "2026-11-25",
+     "closed": "2026-11-27",
+     "entry": 0.006469,
+     "exit": 0.00672776,
+     "pnl": -6.1382,
+     "pct": -4.0,
+     "peak_pct": 16.0,
+     "reason": "\u2702\ufe0f Loss stop (+4% against, 1h)",
+     "why_in": "bear short (rejected bounce, BTC down)"
+    },
+    {
+     "coin": "kLUNC",
+     "side": "SHORT",
+     "opened": "2026-11-26",
+     "closed": "2026-11-27",
+     "entry": 0.045567,
+     "exit": 0.04738968,
+     "pnl": -6.3621,
+     "pct": -4.0,
+     "peak_pct": 1.29,
+     "reason": "\u2702\ufe0f Loss stop (+4% against, 1h)",
+     "why_in": "bear short (rejected bounce, BTC down)"
     }
    ],
    "equity": [
@@ -208,6 +214,10 @@
     [
      "2026-11-26",
      1036.49
+    ],
+    [
+     "2026-11-27",
+     1006.14
     ]
    ],
    "eq_base": 1000.0,
@@ -275,14 +285,14 @@
     "frac": 0.5
    },
    "_strong_down": true,
-   "_natr": 0.08005902988858601,
+   "_natr": 0.1900236260594352,
    "_strong_up": false,
    "_vol_mult": 1.0,
    "_bounce": false,
    "_relief": false
   }
  ],
- "last_processed_day": "2026-11-26",
- "engine": "GC-PAPER-1.82",
+ "last_processed_day": "2026-11-27",
+ "engine": "GC-PAPER-1.85",
  "started": "2026-10-21"
 }
