@@ -66,18 +66,6 @@
     3.945
    ],
    "oi_rank": 25
-  },
-  "BLUR": {
-   "side": "SHORT",
-   "sz": 10268.0,
-   "entry": 0.00669,
-   "peak_px": 0.00669,
-   "opened": "2026-11-27",
-   "opened_ms": 1795824261647,
-   "reason": "bear short (rejected bounce, BTC down)",
-   "stop": 0.0069576,
-   "oi_rank": 86,
-   "h1_checked_ms": 1795824261647
   }
  },
  "closed": [
@@ -407,6 +395,21 @@
    "oi_rank": null,
    "stop_px": 0.0472836,
    "slip_pct": 0.062
+  },
+  {
+   "coin": "BLUR",
+   "side": "SHORT",
+   "opened": "2026-11-27",
+   "closed": "2026-11-28 00:45",
+   "entry": 0.00669,
+   "exit": 0.006971999999999999,
+   "pct": -4.22,
+   "peak_pct": 0.0,
+   "pnl": -2.9265,
+   "reason": "\ud83d\udee1\ufe0f Stop filled on the exchange (profit lock / loss stop)",
+   "oi_rank": 86,
+   "stop_px": 0.0069576,
+   "slip_pct": 0.207
   }
  ],
  "last_daily_day": "2026-11-27",
