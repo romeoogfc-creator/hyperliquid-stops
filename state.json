@@ -572,5 +572,5 @@
  "ledger_ms": 1794773497440,
  "net_deposits": 342.09,
  "ledger_seen_ms": 1794773497440,
- "ledger_note": "Ledger since 2026-11-14: 3 entries (send x3), net added $+342.09"
+ "ledger_note": "\u26a0\ufe0f deposit check failed: (500, 'null')"
 }
